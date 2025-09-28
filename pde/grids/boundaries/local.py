@@ -74,7 +74,6 @@ from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import address_as_void_pointer, jit, numba_dict
 from ...tools.typing import (
-    FloatOrArray,
     GhostCellSetter,
     NumberOrArray,
     NumericArray,
@@ -640,108 +639,6 @@ class BCBase(metaclass=ABCMeta):
             else:
                 return 0
 
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells for this boundary."""
-        normal = self.normal
-        axis = self.axis
-
-        # get information of the virtual points (ghost cells)
-        vp_idx = self.grid.shape[self.axis] + 1 if self.upper else 0
-        np_idx = self._get_value_cell_index(with_ghost_cells=False)
-        vp_value = self.make_virtual_point_evaluator()
-
-        if self.grid.num_axes == 1:  # 1d grid
-
-            @register_jitable
-            def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                """Helper function setting the conditions on all axes."""
-                data_valid = data_full[..., 1:-1]
-                val = vp_value(data_valid, (np_idx,), args=args)
-                if normal:
-                    data_full[..., axis, vp_idx] = val
-                else:
-                    data_full[..., vp_idx] = val
-
-        elif self.grid.num_axes == 2:  # 2d grid
-            if self.axis == 0:
-                num_y = self.grid.shape[1]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1]
-                    for j in range(num_y):
-                        val = vp_value(data_valid, (np_idx, j), args=args)
-                        if normal:
-                            data_full[..., axis, vp_idx, j + 1] = val
-                        else:
-                            data_full[..., vp_idx, j + 1] = val
-
-            elif self.axis == 1:
-                num_x = self.grid.shape[0]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1]
-                    for i in range(num_x):
-                        val = vp_value(data_valid, (i, np_idx), args=args)
-                        if normal:
-                            data_full[..., axis, i + 1, vp_idx] = val
-                        else:
-                            data_full[..., i + 1, vp_idx] = val
-
-        elif self.grid.num_axes == 3:  # 3d grid
-            if self.axis == 0:
-                num_y, num_z = self.grid.shape[1:]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
-                    for j in range(num_y):
-                        for k in range(num_z):
-                            val = vp_value(data_valid, (np_idx, j, k), args=args)
-                            if normal:
-                                data_full[..., axis, vp_idx, j + 1, k + 1] = val
-                            else:
-                                data_full[..., vp_idx, j + 1, k + 1] = val
-
-            elif self.axis == 1:
-                num_x, num_z = self.grid.shape[0], self.grid.shape[2]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
-                    for i in range(num_x):
-                        for k in range(num_z):
-                            val = vp_value(data_valid, (i, np_idx, k), args=args)
-                            if normal:
-                                data_full[..., axis, i + 1, vp_idx, k + 1] = val
-                            else:
-                                data_full[..., i + 1, vp_idx, k + 1] = val
-
-            elif self.axis == 2:
-                num_x, num_y = self.grid.shape[:2]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
-                    for i in range(num_x):
-                        for j in range(num_y):
-                            val = vp_value(data_valid, (i, j, np_idx), args=args)
-                            if normal:
-                                data_full[..., axis, i + 1, j + 1, vp_idx] = val
-                            else:
-                                data_full[..., i + 1, j + 1, vp_idx] = val
-
-        else:
-            raise NotImplementedError("Too many axes")
-
-        return ghost_cell_setter  # type: ignore
-
 
 class _MPIBC(BCBase):
     """Represents a boundary that is exchanged with another MPI process."""
@@ -871,60 +768,6 @@ class _MPIBC(BCBase):
             raise NotImplementedError
 
         return register_jitable(ghost_cell_sender)  # type: ignore
-
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells for this boundary."""
-        from ...tools.mpi import mpi_recv
-
-        cell = self._neighbor_id
-        flag = self._mpi_flag
-        num_axes = self.grid.num_axes
-        axis = self.axis
-        idx = -1 if self.upper else 0  # index for writing data
-
-        if num_axes == 1:
-
-            def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                if data_full.ndim == 1:
-                    # in this case, `data_full[..., idx]` is a scalar, which numba
-                    # treats differently, so `numba_mpi.mpi_recv` fails
-                    buffer = np.empty((), dtype=data_full.dtype)
-                    mpi_recv(buffer, cell, flag)
-                    data_full[..., idx] = buffer
-                else:
-                    mpi_recv(data_full[..., idx], cell, flag)
-
-        elif num_axes == 2:
-            if axis == 0:
-
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    mpi_recv(data_full[..., idx, 1:-1], cell, flag)
-
-            else:
-
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    mpi_recv(data_full[..., 1:-1, idx], cell, flag)
-
-        elif num_axes == 3:
-            if axis == 0:
-
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    mpi_recv(data_full[..., idx, 1:-1, 1:-1], cell, flag)
-
-            elif axis == 1:
-
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    mpi_recv(data_full[..., 1:-1, idx, 1:-1], cell, flag)
-
-            else:
-
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    mpi_recv(data_full[..., 1:-1, 1:-1, idx], cell, flag)
-
-        else:
-            raise NotImplementedError
-
-        return register_jitable(ghost_cell_setter)  # type: ignore
 
 
 class UserBC(BCBase):
@@ -1073,23 +916,6 @@ class UserBC(BCBase):
                 return math.nan
 
         return virtual_point  # type: ignore
-
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells for this boundary."""
-        ghost_cell_setter_inner = super().make_ghost_cell_setter()
-
-        @register_jitable
-        def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-            """Helper function setting the conditions on all axes."""
-            if args is None:
-                return  # no-op when no specific arguments are given
-
-            if "virtual_point" in args or "value" in args or "derivative" in args:
-                # ghost cells will only be set if any of the above keys were supplied
-                ghost_cell_setter_inner(data_full, args=args)
-            # else: no-op for the default case where BCs are not set by user
-
-        return ghost_cell_setter  # type: ignore
 
 
 ExpressionBCTargetType = Literal["value", "derivative", "mixed", "virtual_point"]

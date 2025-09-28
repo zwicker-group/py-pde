@@ -349,13 +349,20 @@ class GridBase(metaclass=ABCMeta):
         self, bcs: BoundariesBase
     ) -> Callable[[NumericArray, NumericArray, dict], None]: ...
 
-    def _make_set_valid(self, bcs: BoundariesBase | None = None) -> Callable:
+    def _make_set_valid(
+        self,
+        bcs: BoundariesBase | None = None,
+        *,
+        backend: str | BackendBase = "config",
+    ) -> Callable:
         """Create a function to set the valid part of a full data array.
 
         Args:
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 If supplied, the returned function also enforces boundary conditions by
                 setting the ghost cells to the correct values
+            backend (str):
+                The backend to use for making the operator
 
         Returns:
             callable:
@@ -390,7 +397,11 @@ class GridBase(metaclass=ABCMeta):
             return set_valid  # type: ignore
         else:
             # set the valid elements and the ghost cells according to boundary condition
-            set_bcs = bcs.make_ghost_cell_setter()
+
+            from ..backends import backends
+
+            # determine the operator for the chosen backend
+            set_bcs = backends[backend].make_ghost_cell_setter(bcs)
 
             @jit
             def set_valid_bcs(
@@ -1275,7 +1286,6 @@ class GridBase(metaclass=ABCMeta):
 
         elif backend_impl.name.startswith("numba"):
             # overload `apply_op` with numba-compiled version
-            # set_ghost_cells = bcs.make_ghost_cell_setter()
             set_valid_w_bc = self._make_set_valid(bcs=bcs)
 
             if not is_jitted(operator_raw):

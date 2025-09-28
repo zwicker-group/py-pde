@@ -13,7 +13,8 @@ from collections import defaultdict
 from typing import NamedTuple
 
 from ..grids.base import GridBase
-from ..tools.typing import OperatorFactory
+from ..grids.boundaries.axes import BoundariesBase
+from ..tools.typing import GhostCellSetter, NumericArray, OperatorFactory
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
@@ -150,3 +151,23 @@ class BackendBase(metaclass=ABCMeta):
 
         # throw an error since operator was not found
         raise NotImplementedError(f"Operator '{operator}' is not defined.")
+
+    def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
+        """Return function that sets the ghost cells on a full array.
+
+        Args:
+            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
+                Defines the boundary conditions for a particular grid, for which the
+                setter should be defined.
+
+        Returns:
+            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
+            sets the ghost cells of the full data, potentially using additional
+            information in `args` (e.g., the time `t` during solving a PDE)
+        """
+
+        def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+            """Default implementation that simply uses the python interface."""
+            boundaries.set_ghost_cells(data_full, *args)
+
+        return ghost_cell_setter

@@ -19,14 +19,10 @@ import warnings
 from collections.abc import Iterator, Sequence
 from typing import Any, Callable, Union
 
-import numpy as np
-from numba.extending import register_jitable
-
 from ... import config
-from ...tools.numba import jit
 from ...tools.typing import GhostCellSetter, NumericArray
 from ..base import GridBase, PeriodicityError
-from .axis import BoundaryAxisBase, BoundaryPair, BoundaryPairData, get_boundary_axis
+from .axis import BoundaryAxisBase, BoundaryPairData, get_boundary_axis
 from .local import BCBase, BCDataError, BoundaryData
 
 _logger = logging.getLogger(__name__)
@@ -58,16 +54,6 @@ class BoundariesBase:
             args:
                 Additional arguments that might be supported by special boundary
                 conditions.
-        """
-        raise NotImplementedError
-
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells on a full array.
-
-        Returns:
-            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-            sets the ghost cells of the full data, potentially using additional
-            information in `args` (e.g., the time `t` during solving a PDE)
         """
         raise NotImplementedError
 
@@ -480,49 +466,6 @@ class BoundariesList(BoundariesBase):
                     f"Can't interpolate corners for grid with {self.grid.num_axes} axes"
                 )
 
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells on a full array."""
-        ghost_cell_setters = tuple(b.make_ghost_cell_setter() for b in self)
-
-        # TODO: use numba.literal_unroll
-        # # get the setters for all axes
-        #
-        # from pde.tools.numba import jit
-        #
-        # @jit
-        # def set_ghost_cells(data_full: NumericArray, args=None) -> None:
-        #     for f in nb.literal_unroll(ghost_cell_setters):
-        #         f(data_full, args=args)
-        #
-        # return set_ghost_cells
-
-        def chain(
-            fs: Sequence[GhostCellSetter], inner: GhostCellSetter | None = None
-        ) -> GhostCellSetter:
-            """Helper function composing setters of all axes recursively."""
-
-            first, rest = fs[0], fs[1:]
-
-            if inner is None:
-
-                @register_jitable
-                def wrap(data_full: NumericArray, args=None) -> None:
-                    first(data_full, args=args)
-
-            else:
-
-                @register_jitable
-                def wrap(data_full: NumericArray, args=None) -> None:
-                    inner(data_full, args=args)
-                    first(data_full, args=args)
-
-            if rest:
-                return chain(rest, wrap)
-            else:
-                return wrap  # type: ignore
-
-        return chain(ghost_cell_setters)
-
 
 class BoundariesSetter(BoundariesBase):
     """Represents a function that sets ghost cells to determine boundary conditions.
@@ -584,16 +527,6 @@ class BoundariesSetter(BoundariesBase):
                 conditions.
         """
         self._setter(data_full, args=args)
-
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells on a full array.
-
-        Returns:
-            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-            sets the ghost cells of the full data, potentially using additional
-            information in `args` (e.g., the time `t` during solving a PDE)
-        """
-        return jit(self._setter)  # type: ignore
 
 
 def set_default_bc(
