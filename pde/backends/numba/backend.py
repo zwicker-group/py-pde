@@ -6,14 +6,11 @@
 from __future__ import annotations
 
 import functools
-import inspect
-import logging
-import warnings
 
 from ...grids.base import GridBase
-from ...tools.typing import OperatorFactory
+from ...grids.boundaries.axes import BoundariesBase
+from ...tools.typing import GhostCellSetter
 from ..base import BackendBase, OperatorInfo
-from ..registry import backends
 
 
 class NumbaBackend(BackendBase):
@@ -104,3 +101,20 @@ class NumbaBackend(BackendBase):
             f"'{operator}' is not one of the defined operators ({op_list}). Custom "
             "operators can be added using the `register_operator` method."
         )
+
+    def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
+        """Return function that sets the ghost cells on a full array.
+
+        Args:
+            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
+                Defines the boundary conditions for a particular grid, for which the
+                setter should be defined.
+
+        Returns:
+            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
+            sets the ghost cells of the full data, potentially using additional
+            information in `args` (e.g., the time `t` during solving a PDE)
+        """
+        from ._boundaries import make_axes_ghost_cell_setter
+
+        return make_axes_ghost_cell_setter(boundaries)

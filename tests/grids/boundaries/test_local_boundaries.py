@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from pde import CartesianGrid, DiffusionPDE, PolarSymGrid, ScalarField, UnitGrid
+from pde.backends import backends
 from pde.grids._mesh import GridMesh
 from pde.grids.boundaries.local import (
     _MPIBC,
@@ -294,7 +295,7 @@ def test_expression_bc_setting_value(expr, rng):
         np.testing.assert_almost_equal(f_ref._data_full, f1._data_full)
 
         f2 = field.copy()
-        bc.make_ghost_cell_setter()(f2._data_full)
+        backends["numba"].make_ghost_cell_setter(bc)(f2._data_full)
         np.testing.assert_almost_equal(f_ref._data_full, f2._data_full)
 
 
@@ -328,7 +329,7 @@ def test_expression_bc_setting_derivative(expr, rng):
         np.testing.assert_almost_equal(f_ref._data_full, f1._data_full)
 
         f2 = field.copy()
-        bc.make_ghost_cell_setter()(f2._data_full)
+        backends["numba"].make_ghost_cell_setter(bc)(f2._data_full)
         np.testing.assert_almost_equal(f_ref._data_full, f2._data_full)
 
 
@@ -378,7 +379,7 @@ def test_expression_bc_setting_mixed(value_expr, const_expr, rng):
         np.testing.assert_almost_equal(f_ref._data_full, f1._data_full)
 
         f2 = field.copy()
-        bc.make_ghost_cell_setter()(f2._data_full)
+        backends["numba"].make_ghost_cell_setter(bc)(f2._data_full)
         np.testing.assert_almost_equal(f_ref._data_full, f2._data_full)
 
 
@@ -486,7 +487,7 @@ def test_expression_bc_polar_grid():
     assert state._data_full[0] == state._data_full[-1] == 2
 
     state._data_full[...] = 0
-    bc_setter = bcs.make_ghost_cell_setter()
+    bc_setter = backends["numba"].make_ghost_cell_setter(bcs)
     bc_setter(state._data_full)
     np.testing.assert_allclose(state.data, 0)
     assert state._data_full[0] == state._data_full[-1] == 2
@@ -519,7 +520,7 @@ def test_expression_bc_specific_value(dim, compiled):
         if compiled:
 
             def set_bcs():
-                bcs.make_ghost_cell_setter()(field._data_full)  # noqa: B023
+                backends["numba"].make_ghost_cell_setter(bcs)(field._data_full)  # noqa: B023
 
         else:
 
@@ -580,7 +581,7 @@ def test_expression_bc_user_func_nojit(dim):
     # check setting boundary conditions using compiled setup
     bcs = grid.get_boundary_conditions(bc)
     field = ScalarField(grid, 1)
-    bcs.make_ghost_cell_setter()(field._data_full)
+    backends["numba"].make_ghost_cell_setter(bcs)(field._data_full)
     if dim == 1:
         np.testing.assert_allclose(field._data_full, 1)
     else:
@@ -617,7 +618,7 @@ def test_expression_bc_user_expr_nojit(dim):
     # check setting boundary conditions using compiled setup
     bcs = grid.get_boundary_conditions(bc)
     field = ScalarField(grid, 1)
-    bcs.make_ghost_cell_setter()(field._data_full)
+    backends["numba"].make_ghost_cell_setter(bcs)(field._data_full)
     if dim == 1:
         np.testing.assert_allclose(field._data_full, 1)
     elif dim == 2:
@@ -689,7 +690,7 @@ def test_user_bcs_numba(dim, target):
 
     # use user method to set BCs
     f2 = ScalarField(grid)
-    setter = bcs.make_ghost_cell_setter()
+    setter = backends["numba"].make_ghost_cell_setter(bcs)
 
     # test whether normal call is a no-op
     f2._data_full = 3
