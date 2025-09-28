@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from pde import CartesianGrid, ScalarField
-from pde.grids.operators import common as ops
+from pde.backends.numba.operators import common as ops
 
 
 @pytest.mark.parametrize("ndim,axis", [(1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2)])

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from ..backends import backends
 from ..fields import ScalarField
 from ..grids.base import GridBase
 from ..grids.boundaries.axes import BoundariesData
@@ -56,7 +57,7 @@ def solve_poisson_equation(
         the equation. This field will be defined on the same grid as `rhs`.
     """
     # get the operator information
-    operator = rhs.grid._get_operator_info("poisson_solver")
+    operator = backends["scipy"].get_operator_info(rhs.grid, "poisson_solver")
     # get the boundary conditions
     bcs = rhs.grid.get_boundary_conditions(bc)
     # get the actual solver

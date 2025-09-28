@@ -38,6 +38,7 @@ from ..tools.typing import (
 from .coordinates import CoordinatesBase, DimensionError
 
 if TYPE_CHECKING:
+    from ..backends.base import BackendBase, OperatorInfo
     from ._mesh import GridMesh
     from .boundaries.axes import BoundariesBase, BoundariesData
 
@@ -47,15 +48,6 @@ _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 PI_4 = 4 * np.pi
 PI_43 = 4 / 3 * np.pi
 CoordsType = Literal["cartesian", "grid", "cell"]
-
-
-class OperatorInfo(NamedTuple):
-    """Stores information about an operator."""
-
-    factory: OperatorFactory
-    rank_in: int
-    rank_out: int
-    name: str = ""  # attach a unique name to help caching
 
 
 def _check_shape(shape: int | Sequence[int]) -> tuple[int, ...]:
@@ -119,7 +111,6 @@ class GridBase(metaclass=ABCMeta):
 
     # class properties
     _subclasses: dict[str, type[GridBase]] = {}  # all classes inheriting from this
-    _operators: dict[str, OperatorInfo] = {}  # all operators defined for the grid
     _logger: logging.Logger  # logger instance to output information
 
     # properties that are defined in subclasses
@@ -176,7 +167,6 @@ class GridBase(metaclass=ABCMeta):
             if cls.__name__ in cls._subclasses:
                 warnings.warn(f"Redefining class {cls.__name__}")
             cls._subclasses[cls.__name__] = cls
-        cls._operators = {}
 
     def __getstate__(self) -> dict[str, Any]:
         state = self.__dict__.copy()
@@ -1124,153 +1114,36 @@ class GridBase(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    @classmethod
-    def register_operator(
-        cls,
-        name: str,
-        factory_func: OperatorFactory | None = None,
-        rank_in: int = 0,
-        rank_out: int = 0,
-    ):
-        """Register an operator for this grid.
-
-        Example:
-            The method can either be used directly:
-
-            .. code-block:: python
-
-                GridClass.register_operator("operator", make_operator)
-
-            or as a decorator for the factory function:
-
-            .. code-block:: python
-
-                @GridClass.register_operator("operator")
-                def make_operator(grid: GridBase): ...
-
-        Args:
-            name (str):
-                The name of the operator to register
-            factory_func (callable):
-                A function with signature ``(grid: GridBase, **kwargs)``, which takes
-                a grid object and optional keyword arguments and returns an
-                implementation of the given operator. This implementation is a function
-                that takes a :class:`~numpy.ndarray` of discretized values as arguments
-                and returns the resulting discretized data in a :class:`~numpy.ndarray`
-                after applying the operator.
-            rank_in (int):
-                The rank of the input field for the operator
-            rank_out (int):
-                The rank of the field that is returned by the operator
-        """
-
-        def register_operator(factor_func_arg: OperatorFactory):
-            """Helper function to register the operator."""
-            cls._operators[name] = OperatorInfo(
-                factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out, name=name
-            )
-            return factor_func_arg
-
-        if factory_func is None:
-            # method is used as a decorator, so return the helper function
-            return register_operator
-        else:
-            # method is used directly
-            register_operator(factory_func)
-            return None
-
     @hybridmethod  # type: ignore
     @property
     def operators(cls) -> set[str]:
         """set: all operators defined for this class"""
-        result = set()
-        # add all custom defined operators
-        classes = inspect.getmro(cls)[:-1]  # type: ignore
-        for anycls in classes:
-            result |= set(anycls._operators.keys())  # type: ignore
-        if hasattr(cls, "axes"):
-            for ax in cls.axes:
-                result |= {
-                    f"d_d{ax}",
-                    f"d_d{ax}_forward",
-                    f"d_d{ax}_backward",
-                    f"d2_d{ax}2",
-                }
-        return result
+        from ..backends import backends
+
+        # get all operators registered on the class
+        operators = set()
+        for backend in backends:
+            operators |= backend.get_registered_operators(cls)
+        return operators
 
     @operators.instancemethod  # type: ignore
     @property
     def operators(self) -> set[str]:
         """set: all operators defined for this instance"""
+        from ..backends import backends
+
         # get all operators registered on the class
-        result = self.__class__.operators
-        if not hasattr(self.__class__, "axes"):
-            # add operators calculating derivate along a coordinate for the case where
-            # the axes argument is only defined on instances
-            for ax in self.axes:
-                result |= {f"d_d{ax}", f"d2_d{ax}2"}
-        return result
-
-    def _get_operator_info(self, operator: str | OperatorInfo) -> OperatorInfo:
-        """Return the operator defined on this grid.
-
-        Args:
-            operator (str):
-                Identifier for the operator. Some examples are 'laplace', 'gradient', or
-                'divergence'. The registered operators for this grid can be obtained
-                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
-
-        Returns:
-            :class:`~pde.grids.base.OperatorInfo`: information for the operator
-        """
-        if isinstance(operator, OperatorInfo):
-            return operator
-        assert isinstance(operator, str)
-
-        # look for defined operators on all parent classes (except `object`)
-        classes = inspect.getmro(self.__class__)[:-1]
-        for cls in classes:
-            if operator in cls._operators:  # type: ignore
-                return cls._operators[operator]  # type: ignore
-
-        # deal with some special patterns that are often used
-        if operator.startswith("d_d"):
-            # create a special operator that takes a first derivative along one axis
-            from .operators.common import make_derivative
-
-            # determine axis to which operator is applied (and the method to use)
-            axis_name = operator[len("d_d") :]
-            for direction in ["central", "forward", "backward"]:
-                if axis_name.endswith("_" + direction):
-                    method = direction
-                    axis_name = axis_name[: -len("_" + direction)]
-                    break
-            else:
-                method = "central"
-
-            axis_id = self.axes.index(axis_name)
-            factory = functools.partial(make_derivative, axis=axis_id, method=method)  # type: ignore
-            return OperatorInfo(factory, rank_in=0, rank_out=0, name=operator)
-
-        elif operator.startswith("d2_d") and operator.endswith("2"):
-            # create a special operator that takes a second derivative along one axis
-            from .operators.common import make_derivative2
-
-            axis_id = self.axes.index(operator[len("d2_d") : -1])
-            factory = functools.partial(make_derivative2, axis=axis_id)
-            return OperatorInfo(factory, rank_in=0, rank_out=0, name=operator)
-
-        # throw an informative error since operator was not found
-        op_list = ", ".join(sorted(self.operators))
-        raise ValueError(
-            f"'{operator}' is not one of the defined operators ({op_list}). Custom "
-            "operators can be added using the `register_operator` method."
-        )
+        operators = set()
+        for backend in backends:
+            operators |= backend.get_registered_operators(self)
+        return operators
 
     @cached_method()
     def make_operator_no_bc(
         self,
         operator: str | OperatorInfo,
+        *,
+        backend: str | BackendBase = "config",
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator without boundary conditions.
@@ -1290,6 +1163,8 @@ class GridBase(metaclass=ABCMeta):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            backend (str):
+                The backend to use for making the operator
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -1298,12 +1173,21 @@ class GridBase(metaclass=ABCMeta):
             signature (arr: NumericArray, out: NumericArray), so they `out` array need to be
             supplied explicitly.
         """
-        return self._get_operator_info(operator).factory(self, **kwargs)
+        from ..backends import backends
+
+        # determine the operator for the chosen backend
+        operator_info = backends[backend].get_operator_info(self, operator)
+        return operator_info.factory(self, **kwargs)
 
     @cached_method()
     @fill_in_docstring
     def make_operator(
-        self, operator: str | OperatorInfo, bc: BoundariesData, **kwargs
+        self,
+        operator: str | OperatorInfo,
+        bc: BoundariesData,
+        *,
+        backend: str | BackendBase = "config",
+        **kwargs,
     ) -> Callable[..., NumericArray]:
         """Return a compiled function applying an operator with boundary conditions.
 
@@ -1315,6 +1199,8 @@ class GridBase(metaclass=ABCMeta):
             bc (str or list or tuple or dict):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
+            backend (str):
+                The backend to use for making the operator
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -1343,19 +1229,20 @@ class GridBase(metaclass=ABCMeta):
             callable: the function that applies the operator. This function has the
             signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
-        backend = kwargs.get("backend", "numba")  # numba is the default backend
+        from ..backends import backends
 
-        # instantiate the operator
-        operator = self._get_operator_info(operator)
-        operator_raw = operator.factory(self, **kwargs)
+        # determine the operator for the chosen backend
+        backend_impl = backends[backend]
+        operator_info = backend_impl.get_operator_info(self, operator)
+        operator_raw = operator_info.factory(self, **kwargs)
 
         # set the boundary conditions before applying this operator
-        bcs = self.get_boundary_conditions(bc, rank=operator.rank_in)
+        bcs = self.get_boundary_conditions(bc, rank=operator_info.rank_in)
 
         # calculate shapes of the full data
-        shape_in_valid = (self.dim,) * operator.rank_in + self.shape
-        shape_in_full = (self.dim,) * operator.rank_in + self._shape_full
-        shape_out = (self.dim,) * operator.rank_out + self.shape
+        shape_in_valid = (self.dim,) * operator_info.rank_in + self.shape
+        shape_in_full = (self.dim,) * operator_info.rank_in + self._shape_full
+        shape_out = (self.dim,) * operator_info.rank_out + self.shape
 
         # define numpy version of the operator
         def apply_op(
@@ -1383,11 +1270,11 @@ class GridBase(metaclass=ABCMeta):
             # return valid part of the output
             return out
 
-        if backend in {"numpy", "scipy"}:
+        if backend_impl.name in {"numpy", "scipy"}:
             # return the bare operator without the numba-overloaded version
             return apply_op
 
-        elif backend.startswith("numba"):
+        elif backend_impl.name.startswith("numba"):
             # overload `apply_op` with numba-compiled version
             # set_ghost_cells = bcs.make_ghost_cell_setter()
             set_valid_w_bc = self._make_set_valid(bcs=bcs)
@@ -1428,9 +1315,10 @@ class GridBase(metaclass=ABCMeta):
                         arr: NumericArray, out: NumericArray | None = None, args=None
                     ) -> NumericArray:
                         """Applies operator to the data without allocating out."""
+                        assert isinstance(out, np.ndarray)  # help type checker
                         if arr.shape != shape_in_valid:
                             raise ValueError(f"Incompatible shapes of input array")
-                        if out.shape != shape_out:  # type: ignore
+                        if out.shape != shape_out:
                             raise ValueError(f"Incompatible shapes of output array")
 
                         # prepare input with boundary conditions
@@ -1438,10 +1326,10 @@ class GridBase(metaclass=ABCMeta):
                         set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
 
                         # apply operator
-                        operator_raw(arr_full, out)  # type: ignore
+                        operator_raw(arr_full, out)
 
                         # return valid part of the output
-                        return out  # type: ignore
+                        return out
 
                 return apply_op_impl  # type: ignore
 

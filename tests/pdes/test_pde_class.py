@@ -12,6 +12,7 @@ import sympy
 from scipy import stats
 
 from pde import PDE, MemoryStorage, SwiftHohenbergPDE, grids
+from pde.backends import backends
 from pde.fields import FieldCollection, ScalarField, VectorField
 from pde.grids.boundaries.local import BCDataError
 
@@ -150,7 +151,7 @@ def test_custom_operators(rng):
     field = ScalarField.random_normal(grid, rng=rng)
     eq = PDE({"u": "undefined(u)"})
 
-    with pytest.raises(ValueError):
+    with pytest.raises(NotImplementedError):
         eq.evolution_rate(field)
 
     def make_op(state):
@@ -159,13 +160,15 @@ def test_custom_operators(rng):
 
         return op
 
-    grids.UnitGrid.register_operator("undefined", make_op)
+    # register the function with the numba backend
+    backends["numba"].register_operator(grids.UnitGrid, "undefined", make_op)
 
-    eq._cache = {}  # reset cache
+    eq._cache = {}  # reset cache to force recompilation
     res = eq.evolution_rate(field)
     np.testing.assert_allclose(field.data, res.data)
 
-    del grids.UnitGrid._operators["undefined"]  # reset original state
+    # reset original state
+    del backends["numba"]._operators[grids.UnitGrid]["undefined"]
 
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])

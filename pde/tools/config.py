@@ -182,6 +182,12 @@ DEFAULT_CONFIG: list[Parameter] = [
         "If disabled, only the new format using dicts is supported.",
     ),
     Parameter(
+        "default_backend",
+        "numba",
+        str,
+        "Indicate which backend is selected by default.",
+    ),
+    Parameter(
         "numba.debug",
         False,
         bool,
