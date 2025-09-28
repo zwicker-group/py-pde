@@ -25,11 +25,11 @@ Inheritance structure of the classes:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from . import operators  # import all operator modules to register them
+# from . import operators  # import all operator modules to register them
 from .base import registered_operators
 from .boundaries import *
 from .cartesian import CartesianGrid, UnitGrid
 from .cylindrical import CylindricalSymGrid
 from .spherical import PolarSymGrid, SphericalSymGrid
 
-del operators  # remove the name from the namespace
+# del operators  # remove the name from the namespace

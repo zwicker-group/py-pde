@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 
 from pde import CartesianGrid, ScalarField, UnitGrid
+from pde.backends.numba.operators.common import make_derivative
 from pde.grids.boundaries import BoundariesBase, PeriodicityError
-from pde.grids.operators.common import make_derivative
 
 
 def _get_cartesian_grid(dim=2, periodic=True):
