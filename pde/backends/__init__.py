@@ -12,5 +12,6 @@
 
 from .registry import backends  # noqa
 
-# initialize the standard backends
-from . import numba, scipy
+# register the standard backends without loading them
+backends.register_package("pde.backends.numba", "numba")
+backends.register_package("pde.backends.scipy", "scipy")

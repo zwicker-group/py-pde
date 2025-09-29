@@ -45,9 +45,6 @@ class BackendBase(metaclass=ABCMeta):
         # create logger for this specific field class
         cls._logger = _base_logger.getChild(cls.__qualname__)
 
-    @abstractmethod
-    def load_backend(self) -> None: ...
-
     def register_operator(
         self,
         grid_cls: type[GridBase],

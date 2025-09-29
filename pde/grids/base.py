@@ -1133,8 +1133,8 @@ class GridBase(metaclass=ABCMeta):
 
         # get all operators registered on the class
         operators = set()
-        for backend in backends:
-            operators |= backend.get_registered_operators(cls)
+        for name in backends:
+            operators |= backends[name].get_registered_operators(cls)
         return operators
 
     @operators.instancemethod  # type: ignore
@@ -1145,8 +1145,8 @@ class GridBase(metaclass=ABCMeta):
 
         # get all operators registered on the class
         operators = set()
-        for backend in backends:
-            operators |= backend.get_registered_operators(self)
+        for name in backends:
+            operators |= backends[name].get_registered_operators(self)
         return operators
 
     @cached_method()
