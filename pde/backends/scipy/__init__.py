@@ -11,7 +11,7 @@
 from .. import backends
 from .backend import ScipyBackend
 
-# register the scipy backend
+# add the loaded scipy backend to the registry
 scipy_backend = ScipyBackend("scipy")
 backends.add(scipy_backend)
 
