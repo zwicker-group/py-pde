@@ -11,7 +11,7 @@
 from .. import backends
 from .backend import NumbaBackend
 
-# register the numba backend
+# add the loaded numba backend to the registry
 numba_backend = NumbaBackend("numba")
 backends.add(numba_backend)
 
