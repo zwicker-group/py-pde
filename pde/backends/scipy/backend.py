@@ -10,6 +10,3 @@ from ..base import BackendBase
 
 class ScipyBackend(BackendBase):
     """Defines scipy backend."""
-
-    def load_backend(self) -> None:
-        import scipy

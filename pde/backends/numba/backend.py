@@ -16,9 +16,6 @@ from ..base import BackendBase, OperatorInfo
 class NumbaBackend(BackendBase):
     """Defines numba backend."""
 
-    def load_backend(self) -> None:
-        import numba
-
     def get_registered_operators(self, grid_id: GridBase | type[GridBase]) -> set[str]:
         """Returns all operators defined for a grid.
 
