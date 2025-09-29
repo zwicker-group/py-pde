@@ -57,6 +57,11 @@ class GhostCellSetter(Protocol):
         """Set the ghost cells."""
 
 
+class DataSetter(Protocol):
+    def __call__(self, data_full: NumericArray, args=None) -> None:
+        """Set the valid data cells (and potentially BCs)."""
+
+
 class StepperHook(Protocol):
     def __call__(
         self, state_data: NumericArray, t: float, post_step_data: NumericArray

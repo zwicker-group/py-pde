@@ -14,13 +14,12 @@ import math
 import warnings
 from abc import ABCMeta, abstractmethod
 from collections.abc import Generator, Iterator, Sequence
-from typing import TYPE_CHECKING, Any, Callable, Literal, NamedTuple, overload
+from typing import TYPE_CHECKING, Any, Callable, Literal, overload
 
-import numba as nb
 import numpy as np
-from numba.extending import is_jitted, register_jitable
 from numba.extending import overload as nb_overload
-from numpy.typing import ArrayLike, NDArray
+from numba.extending import register_jitable
+from numpy.typing import ArrayLike
 
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
@@ -372,56 +371,9 @@ class GridBase(metaclass=ABCMeta):
                 to have the correct dimensions, which are not checked. If `bcs` are
                 given, a third argument is allowed, which sets arguments for the BCs.
         """
-        num_axes = self.num_axes
+        from ..backends import backends
 
-        @jit
-        def set_valid(data_full: NumericArray, data_valid: NumericArray) -> None:
-            """Set valid part of the data (without ghost cells)
-
-            Args:
-                data_full (:class:`~numpy.ndarray`):
-                    The full array with ghost cells that the data is written to
-                data_valid (:class:`~numpy.ndarray`):
-                    The valid data that is written to `data_full`
-            """
-            if num_axes == 1:
-                data_full[..., 1:-1] = data_valid
-            elif num_axes == 2:
-                data_full[..., 1:-1, 1:-1] = data_valid
-            elif num_axes == 3:
-                data_full[..., 1:-1, 1:-1, 1:-1] = data_valid
-            else:
-                raise NotImplementedError
-
-        if bcs is None:
-            # just set the valid elements and leave ghost cells with arbitrary data_valids
-            return set_valid  # type: ignore
-        else:
-            # set the valid elements and the ghost cells according to boundary condition
-
-            from ..backends import backends
-
-            # determine the operator for the chosen backend
-            set_bcs = backends[backend].make_ghost_cell_setter(bcs)
-
-            @jit
-            def set_valid_bcs(
-                data_full: NumericArray, data_valid: NumericArray, args=None
-            ) -> None:
-                """Set valid part of the data and the ghost cells using BCs.
-
-                Args:
-                    data_full (:class:`~numpy.ndarray`):
-                        The full array with ghost cells that the data is written to
-                    data_valid (:class:`~numpy.ndarray`):
-                        The valid data that is written to `data_full`
-                    args (dict):
-                        Extra arguments affecting the boundary conditions
-                """
-                set_valid(data_full, data_valid)
-                set_bcs(data_full, args=args)
-
-            return set_valid_bcs  # type: ignore
+        return backends[backend].make_data_setter(self, bcs=bcs)
 
     @property
     @abstractmethod
@@ -1245,117 +1197,10 @@ class GridBase(metaclass=ABCMeta):
         # determine the operator for the chosen backend
         backend_impl = backends[backend]
         operator_info = backend_impl.get_operator_info(self, operator)
-        operator_raw = operator_info.factory(self, **kwargs)
 
         # set the boundary conditions before applying this operator
         bcs = self.get_boundary_conditions(bc, rank=operator_info.rank_in)
-
-        # calculate shapes of the full data
-        shape_in_valid = (self.dim,) * operator_info.rank_in + self.shape
-        shape_in_full = (self.dim,) * operator_info.rank_in + self._shape_full
-        shape_out = (self.dim,) * operator_info.rank_out + self.shape
-
-        # define numpy version of the operator
-        def apply_op(
-            arr: NumericArray, out: NumericArray | None = None, args=None
-        ) -> NumericArray:
-            """Set boundary conditions and apply operator."""
-            # check input array
-            if arr.shape != shape_in_valid:
-                raise ValueError(f"Incompatible shapes {arr.shape} != {shape_in_valid}")
-
-            # ensure `out` array is allocated and has the right shape
-            if out is None:
-                out = np.empty(shape_out, dtype=arr.dtype)
-            elif out.shape != shape_out:
-                raise ValueError(f"Incompatible shapes {out.shape} != {shape_out}")
-
-            # prepare input with boundary conditions
-            arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-            arr_full[(...,) + self._idx_valid] = arr
-            bcs.set_ghost_cells(arr_full, args=args)
-
-            # apply operator
-            operator_raw(arr_full, out)
-
-            # return valid part of the output
-            return out
-
-        if backend_impl.name in {"numpy", "scipy"}:
-            # return the bare operator without the numba-overloaded version
-            return apply_op
-
-        elif backend_impl.name.startswith("numba"):
-            # overload `apply_op` with numba-compiled version
-            set_valid_w_bc = self._make_set_valid(bcs=bcs)
-
-            if not is_jitted(operator_raw):
-                operator_raw = jit(operator_raw)
-
-            @nb_overload(apply_op, inline="always")
-            def apply_op_ol(
-                arr: NumericArray, out: NumericArray | None = None, args=None
-            ) -> NumericArray:
-                """Make numba implementation of the operator."""
-                if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                    # need to allocate memory for `out`
-
-                    def apply_op_impl(
-                        arr: NumericArray, out: NumericArray | None = None, args=None
-                    ) -> NumericArray:
-                        """Allocates `out` and applies operator to the data."""
-                        if arr.shape != shape_in_valid:
-                            raise ValueError(f"Incompatible shapes of input array")
-
-                        out = np.empty(shape_out, dtype=arr.dtype)
-                        # prepare input with boundary conditions
-                        arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                        set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
-
-                        # apply operator
-                        operator_raw(arr_full, out)
-
-                        # return valid part of the output
-                        return out
-
-                else:
-                    # reuse provided `out` array
-
-                    def apply_op_impl(
-                        arr: NumericArray, out: NumericArray | None = None, args=None
-                    ) -> NumericArray:
-                        """Applies operator to the data without allocating out."""
-                        assert isinstance(out, np.ndarray)  # help type checker
-                        if arr.shape != shape_in_valid:
-                            raise ValueError(f"Incompatible shapes of input array")
-                        if out.shape != shape_out:
-                            raise ValueError(f"Incompatible shapes of output array")
-
-                        # prepare input with boundary conditions
-                        arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                        set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
-
-                        # apply operator
-                        operator_raw(arr_full, out)
-
-                        # return valid part of the output
-                        return out
-
-                return apply_op_impl  # type: ignore
-
-            @jit
-            def apply_op_compiled(
-                arr: NumericArray, out: NumericArray | None = None, args=None
-            ) -> NumericArray:
-                """Set boundary conditions and apply operator."""
-                return apply_op(arr, out, args)
-
-            # return the compiled versions of the operator
-            return apply_op_compiled  # type: ignore
-
-        else:
-            # simply return the operator if the backend was `numba` or `scipy`
-            raise NotImplementedError(f"Undefined backend '{backend}'")
+        return backend_impl.make_operator(self, operator_info, bcs=bcs)
 
     def slice(self, indices: Sequence[int]) -> GridBase:
         """Return a subgrid of only the specified axes.
