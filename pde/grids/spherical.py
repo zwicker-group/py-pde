@@ -16,7 +16,7 @@ import numpy as np
 
 from ..tools.cache import cached_property
 from ..tools.plotting import plot_on_axes
-from ..tools.typing import NumericArray
+from ..tools.typing import FloatingArray, NumericArray
 from .base import CoordsType, GridBase, _check_shape, discretize_interval
 from .cartesian import CartesianGrid
 from .coordinates import PolarCoordinates, SphericalCoordinates
@@ -181,7 +181,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         avoid_center: bool = False,
         coords: CoordsType = "cartesian",
         rng: np.random.Generator | None = None,
-    ) -> NumericArray:
+    ) -> FloatingArray:
         """Return a random point within the grid.
 
         Note that these points will be uniformly distributed in the volume, implying

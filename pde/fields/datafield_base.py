@@ -25,7 +25,7 @@ from ..tools.misc import Number, number_array
 from ..tools.numba import get_common_numba_dtype, jit, make_array_constructor
 from ..tools.plotting import PlotReference, plot_on_axes
 from ..tools.spectral import CorrelationType, make_correlated_noise
-from ..tools.typing import ArrayLike, NumberOrArray, NumericArray
+from ..tools.typing import ArrayLike, FloatingArray, NumberOrArray, NumericArray
 from .base import FieldBase, RankError
 
 if TYPE_CHECKING:
@@ -593,7 +593,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         *,
         fill: Number | None = None,
         with_ghost_cells: bool = False,
-    ) -> Callable[[NumericArray, NumericArray], NumberOrArray]:
+    ) -> Callable[[FloatingArray, NumericArray], NumberOrArray]:
         r"""Returns a function that can be used to interpolate values.
 
         Args:
@@ -636,7 +636,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         @jit
         def interpolator(
-            point: NumericArray, data: NumericArray | None = None
+            point: FloatingArray, data: NumericArray | None = None
         ) -> NumericArray:
             """Return the interpolated value at the position `point`
 
@@ -680,7 +680,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     @fill_in_docstring
     def interpolate(
         self,
-        point: NumericArray,
+        point: FloatingArray,
         *,
         bc: BoundariesData | None = None,
         fill: Number | None = None,
@@ -748,7 +748,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         raise NotImplementedError(f"Cannot interpolate {self.__class__.__name__}")
 
-    def insert(self, point: NumericArray, amount: ArrayLike) -> None:
+    def insert(self, point: FloatingArray, amount: ArrayLike) -> None:
         """Adds an (integrated) value to the field at an interpolated position.
 
         Args:

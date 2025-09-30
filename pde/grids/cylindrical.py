@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 
 from ..tools.cache import cached_property
-from ..tools.typing import NumericArray
+from ..tools.typing import FloatingArray, NumericArray
 from .base import (
     CoordsType,
     DimensionError,
@@ -219,7 +219,7 @@ class CylindricalSymGrid(GridBase):
         avoid_center: bool = False,
         coords: CoordsType = "cartesian",
         rng: np.random.Generator | None = None,
-    ) -> NumericArray:
+    ) -> FloatingArray:
         """Return a random point within the grid.
 
         Args:
@@ -266,8 +266,8 @@ class CylindricalSymGrid(GridBase):
             raise ValueError(f"Unknown coordinate system `{coords}`")
 
     def difference_vector(
-        self, p1: NumericArray, p2: NumericArray, *, coords: CoordsType = "grid"
-    ) -> NumericArray:
+        self, p1: FloatingArray, p2: FloatingArray, *, coords: CoordsType = "grid"
+    ) -> FloatingArray:
         return self._difference_vector(
             p1, p2, coords=coords, periodic=self.periodic, axes_bounds=self.axes_bounds
         )

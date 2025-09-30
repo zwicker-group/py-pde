@@ -20,7 +20,7 @@ import numba as nb
 import numpy as np
 from numba.extending import is_jitted, register_jitable
 from numba.extending import overload as nb_overload
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
@@ -28,6 +28,7 @@ from ..tools.misc import Number, hybridmethod
 from ..tools.numba import jit
 from ..tools.typing import (
     CellVolume,
+    FloatingArray,
     FloatOrArray,
     NumberOrArray,
     NumericArray,
@@ -79,7 +80,7 @@ def _check_shape(shape: int | Sequence[int]) -> tuple[int, ...]:
 
 def discretize_interval(
     x_min: float, x_max: float, num: int
-) -> tuple[NumericArray, float]:
+) -> tuple[FloatingArray, float]:
     r"""Construct a list of equidistantly placed intervals.
 
     The discretization is defined as
@@ -143,8 +144,8 @@ class GridBase(metaclass=ABCMeta):
     _axes_symmetric: tuple[int, ...] = ()
     _axes_described: tuple[int, ...]
     _axes_bounds: tuple[tuple[float, float], ...]
-    _axes_coords: tuple[NumericArray, ...]
-    _discretization: NumericArray
+    _axes_coords: tuple[FloatingArray, ...]
+    _discretization: FloatingArray
     _periodic: list[bool]
     _shape: tuple[int, ...]
 
@@ -230,7 +231,7 @@ class GridBase(metaclass=ABCMeta):
         return self._axes_bounds
 
     @property
-    def axes_coords(self) -> tuple[NumericArray, ...]:
+    def axes_coords(self) -> tuple[FloatingArray, ...]:
         """tuple: coordinates of the cells for each axis"""
         return self._axes_coords
 
@@ -299,7 +300,7 @@ class GridBase(metaclass=ABCMeta):
         return axis, upper
 
     @property
-    def discretization(self) -> NumericArray:
+    def discretization(self) -> FloatingArray:
         """:class:`numpy.array`: the linear size of a cell along each axis."""
         return self._discretization
 
@@ -514,17 +515,17 @@ class GridBase(metaclass=ABCMeta):
         return "f8[" + ", ".join([":"] * self.num_axes) + "]"
 
     @cached_property()
-    def coordinate_arrays(self) -> tuple[NumericArray, ...]:
+    def coordinate_arrays(self) -> tuple[FloatingArray, ...]:
         """tuple: for each axes: coordinate values for all cells"""
         return tuple(np.meshgrid(*self.axes_coords, indexing="ij"))
 
     @cached_property()
-    def cell_coords(self) -> NumericArray:
+    def cell_coords(self) -> FloatingArray:
         """:class:`~numpy.ndarray`: coordinate values for all axes of each cell."""
         return np.moveaxis(self.coordinate_arrays, 0, -1)  # type: ignore
 
     @cached_property()
-    def cell_volumes(self) -> NumericArray:
+    def cell_volumes(self) -> FloatingArray:
         """:class:`~numpy.ndarray`: volume of each cell."""
         if self.cell_volume_data is None:
             # use the self.c to calculate cell volumes
@@ -548,13 +549,13 @@ class GridBase(metaclass=ABCMeta):
 
     def _difference_vector(
         self,
-        p1: NumericArray,
-        p2: NumericArray,
+        p1: FloatingArray,
+        p2: FloatingArray,
         *,
         coords: CoordsType,
         periodic: Sequence[bool],
         axes_bounds: tuple[tuple[float, float], ...] | None,
-    ) -> NumericArray:
+    ) -> FloatingArray:
         """Return Cartesian vector(s) pointing from p1 to p2.
 
         In case of periodic boundary conditions, the shortest vector is returned.
@@ -590,8 +591,8 @@ class GridBase(metaclass=ABCMeta):
         return diff  # type: ignore
 
     def difference_vector(
-        self, p1: NumericArray, p2: NumericArray, *, coords: CoordsType = "grid"
-    ) -> NumericArray:
+        self, p1: FloatingArray, p2: FloatingArray, *, coords: CoordsType = "grid"
+    ) -> FloatingArray:
         """Return Cartesian vector(s) pointing from p1 to p2.
 
         In case of periodic boundary conditions, the shortest vector is returned.
@@ -614,7 +615,7 @@ class GridBase(metaclass=ABCMeta):
         )
 
     def distance(
-        self, p1: NumericArray, p2: NumericArray, *, coords: CoordsType = "grid"
+        self, p1: FloatingArray, p2: FloatingArray, *, coords: CoordsType = "grid"
     ) -> float:
         """Calculate the distance between two points given in real coordinates.
 
@@ -647,7 +648,7 @@ class GridBase(metaclass=ABCMeta):
 
     def _boundary_coordinates(
         self, axis: int, upper: bool, *, offset: float = 0
-    ) -> NumericArray:
+    ) -> FloatingArray:
         """Get coordinates of points on the boundary.
 
         Args:
@@ -686,7 +687,7 @@ class GridBase(metaclass=ABCMeta):
         # this property should be overwritten when the volume can be calculated directly
         return self.cell_volumes.sum()  # type: ignore
 
-    def point_to_cartesian(self, points: NumericArray) -> NumericArray:
+    def point_to_cartesian(self, points: FloatingArray) -> FloatingArray:
         """Convert coordinates of a point in grid coordinates to Cartesian coordinates.
 
         Args:
@@ -698,7 +699,7 @@ class GridBase(metaclass=ABCMeta):
         """
         return self.c.pos_to_cart(self._coords_full(points))
 
-    def point_from_cartesian(self, points: NumericArray) -> NumericArray:
+    def point_from_cartesian(self, points: FloatingArray) -> FloatingArray:
         """Convert points given in Cartesian coordinates to grid coordinates.
 
         Args:
@@ -711,7 +712,7 @@ class GridBase(metaclass=ABCMeta):
         return self._coords_symmetric(self.c.pos_from_cart(points))
 
     def _vector_to_cartesian(
-        self, points: ArrayLike, components: ArrayLike
+        self, points: FloatingArray, components: ArrayLike
     ) -> NumericArray:
         """Convert the vectors at given points into a Cartesian basis.
 
@@ -745,8 +746,8 @@ class GridBase(metaclass=ABCMeta):
         return np.einsum("j...,ji...->i...", components, rot_mat)  # type: ignore
 
     def normalize_point(
-        self, point: NumericArray, *, reflect: bool = False
-    ) -> NumericArray:
+        self, point: FloatingArray, *, reflect: bool = False
+    ) -> FloatingArray:
         """Normalize grid coordinates by applying periodic boundary conditions.
 
         Here, points are assumed to be specified by the physical values along the
@@ -808,7 +809,7 @@ class GridBase(metaclass=ABCMeta):
 
         return point
 
-    def _coords_symmetric(self, points: NumericArray) -> NumericArray:
+    def _coords_symmetric(self, points: FloatingArray) -> FloatingArray:
         """Return only non-symmetric point coordinates.
 
         Args:
@@ -824,8 +825,8 @@ class GridBase(metaclass=ABCMeta):
         return points[..., self._axes_described]
 
     def _coords_full(
-        self, points: NumericArray, *, value: Literal["min", "max"] | float = 0.0
-    ) -> NumericArray:
+        self, points: FloatingArray, *, value: Literal["min", "max"] | float = 0.0
+    ) -> FloatingArray:
         """Specify point coordinates along symmetric axes on grids.
 
         Args:
@@ -861,8 +862,8 @@ class GridBase(metaclass=ABCMeta):
             return res  # type: ignore
 
     def transform(
-        self, coordinates: NumericArray, source: CoordsType, target: CoordsType
-    ) -> NumericArray:
+        self, coordinates: FloatingArray, source: CoordsType, target: CoordsType
+    ) -> FloatingArray:
         """Converts coordinates from one coordinate system to another.
 
         Supported coordinate systems include the following:
@@ -956,10 +957,10 @@ class GridBase(metaclass=ABCMeta):
 
     def contains_point(
         self,
-        points: NumericArray,
+        points: FloatingArray,
         *,
         coords: Literal["cartesian", "cell", "grid"] = "cartesian",
-    ) -> NumericArray:
+    ) -> NDArray[np.bool]:
         """Check whether the point is contained in the grid.
 
         Args:
@@ -973,11 +974,11 @@ class GridBase(metaclass=ABCMeta):
             the grid
         """
         cell_coords = self.transform(points, source=coords, target="cell")
-        return np.all((cell_coords >= 0) & (cell_coords <= self.shape), axis=-1)  # type: ignore
+        return np.all((cell_coords >= 0) & (cell_coords <= self.shape), axis=-1)
 
     def iter_mirror_points(
-        self, point: NumericArray, with_self: bool = False, only_periodic: bool = True
-    ) -> Generator:
+        self, point: FloatingArray, with_self: bool = False, only_periodic: bool = True
+    ) -> Iterator[FloatingArray]:
         """Generates all mirror points corresponding to `point`
 
         Args:
@@ -1105,7 +1106,7 @@ class GridBase(metaclass=ABCMeta):
         boundary_distance: float = 0,
         coords: CoordsType = "cartesian",
         rng: np.random.Generator | None = None,
-    ) -> NumericArray:
+    ) -> FloatingArray:
         """Return a random point within the grid.
 
         Args:
@@ -1555,7 +1556,7 @@ class GridBase(metaclass=ABCMeta):
     @cached_method()
     def make_normalize_point_compiled(
         self, reflect: bool = True
-    ) -> Callable[[NumericArray], None]:
+    ) -> Callable[[FloatingArray], None]:
         """Return a compiled function that normalizes a point.
 
         Here, the point is assumed to be specified by the physical values along
@@ -1582,7 +1583,7 @@ class GridBase(metaclass=ABCMeta):
         size = bounds[:, 1] - bounds[:, 0]
 
         @jit
-        def normalize_point(point: NumericArray) -> None:
+        def normalize_point(point: FloatingArray) -> None:
             """Helper function normalizing a single point."""
             assert point.ndim == 1  # only support single points
             for i in range(num_axes):
@@ -1730,7 +1731,7 @@ class GridBase(metaclass=ABCMeta):
         fill: Number | None = None,
         with_ghost_cells: bool = False,
         cell_coords: bool = False,
-    ) -> Callable[[NumericArray, NumericArray], NumericArray]:
+    ) -> Callable[[NumericArray, FloatingArray], NumericArray]:
         """Return a compiled function for linear interpolation on the grid.
 
         Args:
@@ -1760,7 +1761,7 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def interpolate_single(
-                data: NumericArray, point: NumericArray
+                data: NumericArray, point: FloatingArray
             ) -> NumberOrArray:
                 """Obtain interpolated value of data at a point.
 
@@ -1792,7 +1793,7 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def interpolate_single(
-                data: NumericArray, point: NumericArray
+                data: NumericArray, point: FloatingArray
             ) -> NumberOrArray:
                 """Obtain interpolated value of data at a point.
 
@@ -1832,7 +1833,7 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def interpolate_single(
-                data: NumericArray, point: NumericArray
+                data: NumericArray, point: FloatingArray
             ) -> NumberOrArray:
                 """Obtain interpolated value of data at a point.
 
@@ -1878,7 +1879,7 @@ class GridBase(metaclass=ABCMeta):
 
     def make_inserter_compiled(
         self, *, with_ghost_cells: bool = False
-    ) -> Callable[[NumericArray, NumericArray, NumberOrArray], None]:
+    ) -> Callable[[NumericArray, FloatingArray, NumberOrArray], None]:
         """Return a compiled function to insert values at interpolated positions.
 
         Args:
@@ -1903,7 +1904,7 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def insert(
-                data: NumericArray, point: NumericArray, amount: NumberOrArray
+                data: NumericArray, point: FloatingArray, amount: NumberOrArray
             ) -> None:
                 """Add an amount to a field at an interpolated position.
 
@@ -1938,7 +1939,7 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def insert(
-                data: NumericArray, point: NumericArray, amount: NumberOrArray
+                data: NumericArray, point: FloatingArray, amount: NumberOrArray
             ) -> None:
                 """Add an amount to a field at an interpolated position.
 
@@ -1985,7 +1986,7 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def insert(
-                data: NumericArray, point: NumericArray, amount: NumberOrArray
+                data: NumericArray, point: FloatingArray, amount: NumberOrArray
             ) -> None:
                 """Add an amount to a field at an interpolated position.
 

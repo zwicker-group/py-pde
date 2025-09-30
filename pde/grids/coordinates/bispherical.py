@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import ArrayLike
 
-from ...tools.typing import NumericArray
+from ...tools.typing import FloatingArray
 from .base import CoordinatesBase
 
 
@@ -35,7 +35,7 @@ class BisphericalCoordinates(CoordinatesBase):
             and self.scale_parameter == other.scale_parameter
         )
 
-    def _pos_to_cart(self, points: NumericArray) -> NumericArray:
+    def _pos_to_cart(self, points: FloatingArray) -> FloatingArray:
         σ, τ, φ = points[..., 0], points[..., 1], points[..., 2]
         denom = np.cosh(τ) - np.cos(σ)
         x = self.scale_parameter * np.sin(σ) / denom * np.cos(φ)
@@ -43,7 +43,7 @@ class BisphericalCoordinates(CoordinatesBase):
         z = self.scale_parameter * np.sinh(τ) / denom
         return np.stack((x, y, z), axis=-1)  # type: ignore
 
-    def _pos_from_cart(self, points: NumericArray) -> NumericArray:
+    def _pos_from_cart(self, points: FloatingArray) -> FloatingArray:
         x, y, z = points[..., 0], points[..., 1], points[..., 2]
         d = np.hypot(x, y)  # denotes the distance from the z-axis
         a = self.scale_parameter
@@ -54,7 +54,7 @@ class BisphericalCoordinates(CoordinatesBase):
         φ = np.arctan2(y, x)
         return np.stack((σ, τ, φ), axis=-1)  # type: ignore
 
-    def _mapping_jacobian(self, points: NumericArray) -> NumericArray:
+    def _mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
         σ, τ, φ = points[..., 0], points[..., 1], points[..., 2]
 
         sinσ = np.sin(σ)
@@ -74,16 +74,16 @@ class BisphericalCoordinates(CoordinatesBase):
             ]
         )
 
-    def _volume_factor(self, points: NumericArray) -> ArrayLike:
+    def _volume_factor(self, points: FloatingArray) -> ArrayLike:
         σ, τ = points[..., 0], points[..., 1]
         return self.scale_parameter**3 * np.sin(σ) * (np.cosh(τ) - np.cos(σ)) ** -3
 
-    def _scale_factors(self, points: NumericArray) -> NumericArray:
+    def _scale_factors(self, points: FloatingArray) -> FloatingArray:
         σ, τ = points[..., 0], points[..., 1]
         sf = self.scale_parameter / (np.cosh(τ) - np.cos(σ))
         return np.array([sf, sf, sf * np.sin(σ)])  # type: ignore
 
-    def _basis_rotation(self, points: NumericArray) -> NumericArray:
+    def _basis_rotation(self, points: FloatingArray) -> FloatingArray:
         σ, τ, φ = points[..., 0], points[..., 1], points[..., 2]
 
         sinσ = np.sin(σ)
