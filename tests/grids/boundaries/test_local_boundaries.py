@@ -132,8 +132,6 @@ def test_virtual_points():
         assert bc.upper == up
         assert bc.get_virtual_point(data) == pytest.approx(val)
         assert not bc.value_is_linked
-        ev = bc.make_virtual_point_evaluator()
-        assert ev(data, (2,) if up else (-1,)) == pytest.approx(val)
 
     # test curvature for y = 4 * x**2
     data = np.array([1, 9])
@@ -159,10 +157,7 @@ def test_virtual_points_linked_data(upper):
     bc.link_value(bc_data)
     assert bc.value_is_linked
     bc_data[:] = 3
-
     assert bc.get_virtual_point(data, point) == pytest.approx(6)
-    ev = bc.make_virtual_point_evaluator()
-    assert ev(data, point) == pytest.approx(6)
 
     # test derivative boundary conditions (wrt to outwards derivative)
     bc = BCBase.from_data(g, 0, upper, {"type": "derivative", "value": bc_data})
@@ -170,10 +165,7 @@ def test_virtual_points_linked_data(upper):
     bc.link_value(bc_data)
     assert bc.value_is_linked
     bc_data[:] = 4
-
     assert bc.get_virtual_point(data, point) == pytest.approx(4)
-    ev = bc.make_virtual_point_evaluator()
-    assert ev(data, point) == pytest.approx(4)
 
     # test derivative boundary conditions (wrt to outwards derivative)
     bc = BCBase.from_data(g, 0, upper, {"type": "mixed", "value": bc_data, "const": 3})
@@ -181,10 +173,7 @@ def test_virtual_points_linked_data(upper):
     bc.link_value(bc_data)
     assert bc.value_is_linked
     bc_data[:] = 4
-
     assert bc.get_virtual_point(data, point) == pytest.approx(1)
-    ev = bc.make_virtual_point_evaluator()
-    assert ev(data, point) == pytest.approx(1)
 
 
 def test_mixed_condition():
@@ -222,16 +211,12 @@ def test_inhomogeneous_bcs_1d():
     assert bc_x.rank == 0
     assert bc_x.axis_coord == 2
     assert bc_x.get_virtual_point(data, (1,)) == pytest.approx(7.0)
-    ev = bc_x.make_virtual_point_evaluator()
-    assert ev(data, (1,)) == pytest.approx(7.0)
 
     # test lower bc
     bc_x = BCBase.from_data(g, 0, False, {"value": "x**2"})
     assert bc_x.rank == 0
     assert bc_x.axis_coord == 0
     assert bc_x.get_virtual_point(data, (0,)) == pytest.approx(-1.0)
-    ev = bc_x.make_virtual_point_evaluator()
-    assert ev(data, (0,)) == pytest.approx(-1.0)
 
 
 def test_inhomogeneous_bcs_2d():
@@ -254,10 +239,6 @@ def test_inhomogeneous_bcs_2d():
     assert bc_x.axis_coord == 2
     assert bc_x.get_virtual_point(data, (1, 0)) == pytest.approx(1.5)
     assert bc_x.get_virtual_point(data, (1, 1)) == pytest.approx(2.5)
-
-    ev = bc_x.make_virtual_point_evaluator()
-    assert ev(data, (1, 0)) == pytest.approx(1.5)
-    assert ev(data, (1, 1)) == pytest.approx(2.5)
 
     # test lower bc
     bc_x = BCBase.from_data(g, 0, False, {"curvature": "y"})
