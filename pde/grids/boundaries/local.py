@@ -234,6 +234,7 @@ def _make_get_arr_1d(
     return register_jitable(inline="always")(get_arr_1d)  # type: ignore
 
 
+# define generic type variable of type BCBase
 TBC = TypeVar("TBC", bound="BCBase")
 
 
@@ -582,17 +583,6 @@ class BCBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        """Returns a function evaluating the value at the virtual support point.
-
-        Returns:
-            function: A function that takes the data array and an index marking
-            the current point, which is assumed to be a virtual point. The
-            result is the data value at this point, which is calculated using
-            the boundary condition.
-        """
-
-    @abstractmethod
     def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         """Set the ghost cell values for this boundary.
 
@@ -717,9 +707,6 @@ class _MPIBC(BCBase):
 
         mpi_recv(data_full[self._idx_write], self._neighbor_id, self._mpi_flag)
 
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        raise NotImplementedError
-
     def make_ghost_cell_sender(self) -> GhostCellSetter:
         """Return function that sends data to set ghost cells for other boundaries."""
         from ...tools.mpi import mpi_send
@@ -822,7 +809,7 @@ class UserBC(BCBase):
             # usual case where set_ghost_cells is called automatically. In our case,
             # won't do anything since we expect the user to call the function manually
             # with the user data provided as the argument.
-            return
+            return None
 
         if any(t in args for t in ["virtual_point", "value", "derivative"]):
             # ghost cells will only be set if any of the above keys were supplied
@@ -855,42 +842,6 @@ class UserBC(BCBase):
             else:
                 raise RuntimeError
         # else: no-op for the default case where BCs are not set by user
-
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-        dx = self.grid.discretization[self.axis]
-
-        def extract_value(values, arr: NumericArray, idx: tuple[int, ...]):
-            """Helper function that extracts the correct value from supplied ones."""
-            if isinstance(values, (nb.types.Number, Number)):
-                # scalar was supplied => simply return it
-                return values
-            elif isinstance(arr, (nb.types.Array, np.ndarray)):
-                # array was supplied => extract value at current position
-                _, _, bc_idx = get_arr_1d(arr, idx)
-                return values[bc_idx]
-            else:
-                raise TypeError("Either a scalar or an array must be supplied")
-
-        @overload(extract_value)
-        def ol_extract_value(values, arr: NumericArray, idx: tuple[int, ...]):
-            """Helper function that extracts the correct value from supplied ones."""
-            if isinstance(values, (nb.types.Number, Number)):
-                # scalar was supplied => simply return it
-                def impl(values, arr: NumericArray, idx: tuple[int, ...]):
-                    return values
-
-            elif isinstance(arr, (nb.types.Array, np.ndarray)):
-                # array was supplied => extract value at current position
-
-                def impl(values, arr: NumericArray, idx: tuple[int, ...]):
-                    _, _, bc_idx = get_arr_1d(arr, idx)
-                    return values[bc_idx]
-
-            else:
-                raise TypeError("Either a scalar or an array must be supplied")
-
-            return impl
 
         @register_jitable
         def virtual_point(arr: NumericArray, idx: tuple[int, ...], args):
@@ -1394,54 +1345,6 @@ class ExpressionBC(BCBase):
         # calculate the virtual points
         data_full[tuple(idx_write)] = self._func(do_jit=False)(values, dx, *coords, t)
 
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        dx = self.grid.discretization[self.axis]
-        num_axes = self.grid.num_axes
-        get_arr_1d = _make_get_arr_1d(num_axes, self.axis)
-        bc_coords = self.grid._boundary_coordinates(axis=self.axis, upper=self.upper)
-        bc_coords = np.moveaxis(bc_coords, -1, 0)  # point coordinates to first axis
-        assert num_axes <= 3
-
-        if self._is_func:
-            warn_if_time_not_set = False
-        else:
-            warn_if_time_not_set = self._func_expression.depends_on("t")
-        func = self._func(do_jit=True)
-
-        @jit
-        def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None) -> float:
-            """Evaluate the virtual point at `idx`"""
-            _, _, bc_idx = get_arr_1d(arr, idx)
-            grid_value = arr[idx]
-            coords = bc_coords[bc_idx]
-
-            # extract time for handling time-dependent BCs
-            if args is None or "t" not in args:
-                if warn_if_time_not_set:
-                    raise RuntimeError(
-                        "Require value for `t` for time-dependent BC. The value must "
-                        "be passed explicitly via `args` when calling a differential "
-                        "operator."
-                    )
-                t = 0.0
-            else:
-                t = float(args["t"])
-
-            if num_axes == 1:
-                return func(grid_value, dx, coords[0], t)  # type: ignore
-            elif num_axes == 2:
-                return func(grid_value, dx, coords[0], coords[1], t)  # type: ignore
-            elif num_axes == 3:
-                return func(grid_value, dx, coords[0], coords[1], coords[2], t)  # type: ignore
-            else:
-                # cheap way to signal a problem
-                return math.nan
-
-        # evaluate the function to force compilation and catch errors early
-        virtual_point(np.zeros([3] * num_axes), (0,) * num_axes, numba_dict(t=0.0))
-
-        return virtual_point  # type: ignore
-
 
 class ExpressionValueBC(ExpressionBC):
     """Represents a boundary whose value is calculated from an expression.
@@ -1928,44 +1831,6 @@ class ConstBC1stOrderBase(ConstBCBase):
             return const + factor * arr_1d[..., index]  # type: ignore
         else:
             return const[bc_idx] + factor[bc_idx] * arr_1d[..., index]  # type: ignore
-
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        normal = self.normal
-        axis = self.axis
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-
-        # calculate necessary constants
-        const, factor, index = self.get_virtual_point_data(compiled=True)
-
-        if self.homogeneous:
-
-            @jit
-            def virtual_point(
-                arr: NumericArray, idx: tuple[int, ...], args=None
-            ) -> float:
-                """Evaluate the virtual point at `idx`"""
-                arr_1d, _, _ = get_arr_1d(arr, idx)
-                if normal:
-                    val_field = arr_1d[..., axis, index]
-                else:
-                    val_field = arr_1d[..., index]
-                return const() + factor() * val_field  # type: ignore
-
-        else:
-
-            @jit
-            def virtual_point(
-                arr: NumericArray, idx: tuple[int, ...], args=None
-            ) -> float:
-                """Evaluate the virtual point at `idx`"""
-                arr_1d, _, bc_idx = get_arr_1d(arr, idx)
-                if normal:
-                    val_field = arr_1d[..., axis, index]
-                else:
-                    val_field = arr_1d[..., index]
-                return const()[bc_idx] + factor()[bc_idx] * val_field  # type: ignore
-
-        return virtual_point  # type: ignore
 
     def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         # calculate necessary constants
@@ -2454,50 +2319,6 @@ class ConstBC2ndOrderBase(ConstBCBase):
                 + data[1][bc_idx] * arr_1d[..., data[2]]
                 + data[3][bc_idx] * arr_1d[..., data[4]]
             )
-
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        normal = self.normal
-        axis = self.axis
-        size = self.grid.shape[self.axis]
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-
-        if size < 2:
-            raise ValueError(
-                f"Need two support points along axis {self.axis} to apply conditions"
-            )
-
-        # calculate necessary constants
-        data = self.get_virtual_point_data()
-
-        if self.homogeneous:
-
-            @register_jitable
-            def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None):
-                """Evaluate the virtual point at `idx`"""
-                arr_1d, _, _ = get_arr_1d(arr, idx)
-                if normal:
-                    val1 = arr_1d[..., axis, data[2]]
-                    val2 = arr_1d[..., axis, data[4]]
-                else:
-                    val1 = arr_1d[..., data[2]]
-                    val2 = arr_1d[..., data[4]]
-                return data[0] + data[1] * val1 + data[3] * val2
-
-        else:
-
-            @register_jitable
-            def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None):
-                """Evaluate the virtual point at `idx`"""
-                arr_1d, _, bc_idx = get_arr_1d(arr, idx)
-                if normal:
-                    val1 = arr_1d[..., axis, data[2]]
-                    val2 = arr_1d[..., axis, data[4]]
-                else:
-                    val1 = arr_1d[..., data[2]]
-                    val2 = arr_1d[..., data[4]]
-                return data[0][bc_idx] + data[1][bc_idx] * val1 + data[3][bc_idx] * val2
-
-        return virtual_point  # type: ignore
 
     def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         # calculate necessary constants
