@@ -348,6 +348,23 @@ def test_expression_consts():
     np.testing.assert_allclose(expr(np.array([2, 3])), np.array([3, 5]))
     np.testing.assert_allclose(expr.get_compiled()(np.array([2, 3])), np.array([3, 5]))
 
+    expr = ScalarExpression("a * b", consts={"a": np.array([1, 2])})
+    dexpr_da = expr.differentiate("b")
+    np.testing.assert_allclose(dexpr_da(np.array([2, 3])), np.array([1, 2]))
+    dexpr = expr.derivatives
+    assert dexpr.shape == (1,)
+    np.testing.assert_allclose(dexpr(np.array([2, 3])), np.array([[1, 2]]))
+
+
+def test_tensor_expression_consts():
+    """Test the usage of consts in TensorExpression."""
+    e = TensorExpression("[a, a*b]", consts={"b": 5})
+    assert e[0](2) == 2
+    assert e[1](2) == 10
+    d1 = e.differentiate("a")
+    assert d1[0](2) == 1
+    assert d1[1](2) == 5
+
 
 def test_evaluate_func_scalar():
     """Test the evaluate function with scalar fields."""
