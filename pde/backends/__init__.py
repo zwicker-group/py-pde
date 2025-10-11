@@ -11,6 +11,10 @@
 """
 
 from .registry import backends  # noqa
+from .numpy import NumpyBackend
+
+# register the default backend
+backends.add(NumpyBackend("numpy"))
 
 # register the standard backends without loading them
 backends.register_package("pde.backends.numba", "numba")

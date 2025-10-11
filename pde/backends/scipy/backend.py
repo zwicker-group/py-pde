@@ -5,8 +5,8 @@
 
 from __future__ import annotations
 
-from ..base import BackendBase
+from ..numpy import NumpyBackend
 
 
-class ScipyBackend(BackendBase):
+class ScipyBackend(NumpyBackend):
     """Defines scipy backend."""

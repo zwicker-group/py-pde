@@ -12,9 +12,7 @@ from abc import ABCMeta, abstractmethod
 from inspect import isabstract
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
-import numba as nb
 import numpy as np
-from numba.extending import overload, register_jitable
 from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
@@ -22,7 +20,7 @@ from ..grids.boundaries.axes import BoundariesData
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
-from ..tools.numba import get_common_numba_dtype, jit, make_array_constructor
+from ..tools.numba import jit, make_array_constructor
 from ..tools.plotting import PlotReference, plot_on_axes
 from ..tools.spectral import CorrelationType, make_correlated_noise
 from ..tools.typing import ArrayLike, FloatingArray, NumberOrArray, NumericArray
@@ -990,166 +988,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written.
         """
-        dim = self.grid.dim
-        num_axes = self.grid.num_axes
+        from ..backends import backends
 
-        @register_jitable
-        def maybe_conj(arr: NumericArray) -> NumericArray:
-            """Helper function implementing optional conjugation."""
-            return arr.conjugate() if conjugate else arr
-
-        def dot(
-            a: NumericArray, b: NumericArray, out: NumericArray | None = None
-        ) -> NumericArray:
-            """Numpy implementation to calculate dot product between two fields."""
-            rank_a = a.ndim - num_axes
-            rank_b = b.ndim - num_axes
-            if rank_a < 1 or rank_b < 1:
-                raise TypeError("Fields in dot product must have rank >= 1")
-            if a.shape[rank_a:] != b.shape[rank_b:]:
-                raise ValueError("Shapes of fields are not compatible for dot product")
-
-            if rank_a == 1 and rank_b == 1:  # result is scalar field
-                return np.einsum("i...,i...->...", a, maybe_conj(b), out=out)
-
-            elif rank_a == 2 and rank_b == 1:  # result is vector field
-                return np.einsum("ij...,j...->i...", a, maybe_conj(b), out=out)
-
-            elif rank_a == 1 and rank_b == 2:  # result is vector field
-                return np.einsum("i...,ij...->j...", a, maybe_conj(b), out=out)
-
-            elif rank_a == 2 and rank_b == 2:  # result is tensor-2 field
-                return np.einsum("ij...,jk...->ik...", a, maybe_conj(b), out=out)
-
-            else:
-                raise TypeError(f"Unsupported shapes ({a.shape}, {b.shape})")
-
-        if backend == "numpy":
-            # return the bare dot operator without the numba-overloaded version
-            return dot
-
-        elif backend == "numba":
-            # overload `dot` and return a compiled version
-
-            def get_rank(arr: nb.types.Type | nb.types.Optional) -> int:
-                """Determine rank of field with type `arr`"""
-                arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
-                if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
-                    raise nb.errors.TypingError(
-                        f"Dot argument must be array, not  {arr_typ.__class__}"
-                    )
-                rank = arr_typ.ndim - num_axes
-                if rank < 1:
-                    raise nb.NumbaTypeError(
-                        f"Rank={rank} too small for dot product. Use a normal product "
-                        "instead."
-                    )
-                return rank  # type: ignore
-
-            @overload(dot, inline="always")
-            def dot_ol(
-                a: NumericArray, b: NumericArray, out: NumericArray | None = None
-            ) -> NumericArray:
-                """Numba implementation to calculate dot product between two fields."""
-                # get (and check) rank of the input arrays
-                rank_a = get_rank(a)
-                rank_b = get_rank(b)
-
-                if rank_a == 1 and rank_b == 1:  # result is scalar field
-
-                    @register_jitable
-                    def calc(
-                        a: NumericArray, b: NumericArray, out: NumericArray
-                    ) -> None:
-                        out[:] = a[0] * maybe_conj(b[0])
-                        for j in range(1, dim):
-                            out[:] += a[j] * maybe_conj(b[j])
-
-                elif rank_a == 2 and rank_b == 1:  # result is vector field
-
-                    @register_jitable
-                    def calc(
-                        a: NumericArray, b: NumericArray, out: NumericArray
-                    ) -> None:
-                        for i in range(dim):
-                            out[i] = a[i, 0] * maybe_conj(b[0])
-                            for j in range(1, dim):
-                                out[i] += a[i, j] * maybe_conj(b[j])
-
-                elif rank_a == 1 and rank_b == 2:  # result is vector field
-
-                    @register_jitable
-                    def calc(
-                        a: NumericArray, b: NumericArray, out: NumericArray
-                    ) -> None:
-                        for i in range(dim):
-                            out[i] = a[0] * maybe_conj(b[0, i])
-                            for j in range(1, dim):
-                                out[i] += a[j] * maybe_conj(b[j, i])
-
-                elif rank_a == 2 and rank_b == 2:  # result is tensor-2 field
-
-                    @register_jitable
-                    def calc(
-                        a: NumericArray, b: NumericArray, out: NumericArray
-                    ) -> None:
-                        for i in range(dim):
-                            for j in range(dim):
-                                out[i, j] = a[i, 0] * maybe_conj(b[0, j])
-                                for k in range(1, dim):
-                                    out[i, j] += a[i, k] * maybe_conj(b[k, j])
-
-                else:
-                    raise NotImplementedError("Inner product for these ranks")
-
-                if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                    # function is called without `out` -> allocate memory
-                    rank_out = rank_a + rank_b - 2
-                    a_shape = (dim,) * rank_a + self.grid.shape
-                    b_shape = (dim,) * rank_b + self.grid.shape
-                    out_shape = (dim,) * rank_out + self.grid.shape
-                    dtype = get_common_numba_dtype(a, b)
-
-                    def dot_impl(
-                        a: NumericArray,
-                        b: NumericArray,
-                        out: NumericArray | None = None,
-                    ) -> NumericArray:
-                        """Helper function allocating output array."""
-                        assert a.shape == a_shape
-                        assert b.shape == b_shape
-                        out = np.empty(out_shape, dtype=dtype)
-                        calc(a, b, out)
-                        return out
-
-                else:
-                    # function is called with `out` argument -> reuse `out` array
-
-                    def dot_impl(
-                        a: NumericArray,
-                        b: NumericArray,
-                        out: NumericArray | None = None,
-                    ) -> NumericArray:
-                        """Helper function without allocating output array."""
-                        assert a.shape == a_shape
-                        assert b.shape == b_shape
-                        assert out.shape == out_shape  # type: ignore
-                        calc(a, b, out)
-                        return out  # type: ignore
-
-                return dot_impl  # type: ignore
-
-            @jit
-            def dot_compiled(
-                a: NumericArray, b: NumericArray, out: NumericArray | None = None
-            ) -> NumericArray:
-                """Numba implementation to calculate dot product between two fields."""
-                return dot(a, b, out)
-
-            return dot_compiled  # type: ignore
-
-        else:
-            raise ValueError(f"Unsupported backend `{backend}")
+        return backends[backend].make_inner_prod_operator(self, conjugate=conjugate)
 
     def smooth(
         self: TDataField,

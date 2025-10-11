@@ -10,17 +10,18 @@ from typing import Callable
 
 import numba as nb
 import numpy as np
-from numba.extending import is_jitted
+from numba.extending import is_jitted, register_jitable
 from numba.extending import overload as nb_overload
 
+from ...fields.datafield_base import DataFieldBase
 from ...grids.base import GridBase
 from ...grids.boundaries.axes import BoundariesBase
-from ...tools.numba import jit
+from ...tools.numba import get_common_numba_dtype, jit
 from ...tools.typing import DataSetter, GhostCellSetter, NumericArray
-from ..base import BackendBase, OperatorInfo
+from ..numpy import NumpyBackend, OperatorInfo
 
 
-class NumbaBackend(BackendBase):
+class NumbaBackend(NumpyBackend):
     """Defines numba backend."""
 
     def get_registered_operators(self, grid_id: GridBase | type[GridBase]) -> set[str]:
@@ -329,3 +330,139 @@ class NumbaBackend(BackendBase):
 
         # return the compiled versions of the operator
         return apply_op_compiled  # type: ignore
+
+    def make_inner_prod_operator(
+        self, field: DataFieldBase, *, conjugate: bool = True
+    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+        """Return operator calculating the dot product between two fields.
+
+        This supports both products between two vectors as well as products
+        between a vector and a tensor.
+
+        Args:
+            conjugate (bool):
+                Whether to use the complex conjugate for the second operand
+
+        Returns:
+            function that takes two instance of :class:`~numpy.ndarray`, which contain
+            the discretized data of the two operands. An optional third argument can
+            specify the output array to which the result is written.
+        """
+        dot = super().make_inner_prod_operator(field, conjugate=conjugate)
+
+        dim = field.grid.dim
+        num_axes = field.grid.num_axes
+
+        @register_jitable
+        def maybe_conj(arr: NumericArray) -> NumericArray:
+            """Helper function implementing optional conjugation."""
+            return arr.conjugate() if conjugate else arr
+
+        def get_rank(arr: nb.types.Type | nb.types.Optional) -> int:
+            """Determine rank of field with type `arr`"""
+            arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
+            if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
+                raise nb.errors.TypingError(
+                    f"Dot argument must be array, not  {arr_typ.__class__}"
+                )
+            rank = arr_typ.ndim - num_axes
+            if rank < 1:
+                raise nb.NumbaTypeError(
+                    f"Rank={rank} too small for dot product. Use a normal product "
+                    "instead."
+                )
+            return rank  # type: ignore
+
+        @nb_overload(dot, inline="always")
+        def dot_ol(
+            a: NumericArray, b: NumericArray, out: NumericArray | None = None
+        ) -> NumericArray:
+            """Numba implementation to calculate dot product between two fields."""
+            # get (and check) rank of the input arrays
+            rank_a = get_rank(a)
+            rank_b = get_rank(b)
+
+            if rank_a == 1 and rank_b == 1:  # result is scalar field
+
+                @register_jitable
+                def calc(a: NumericArray, b: NumericArray, out: NumericArray) -> None:
+                    out[:] = a[0] * maybe_conj(b[0])
+                    for j in range(1, dim):
+                        out[:] += a[j] * maybe_conj(b[j])
+
+            elif rank_a == 2 and rank_b == 1:  # result is vector field
+
+                @register_jitable
+                def calc(a: NumericArray, b: NumericArray, out: NumericArray) -> None:
+                    for i in range(dim):
+                        out[i] = a[i, 0] * maybe_conj(b[0])
+                        for j in range(1, dim):
+                            out[i] += a[i, j] * maybe_conj(b[j])
+
+            elif rank_a == 1 and rank_b == 2:  # result is vector field
+
+                @register_jitable
+                def calc(a: NumericArray, b: NumericArray, out: NumericArray) -> None:
+                    for i in range(dim):
+                        out[i] = a[0] * maybe_conj(b[0, i])
+                        for j in range(1, dim):
+                            out[i] += a[j] * maybe_conj(b[j, i])
+
+            elif rank_a == 2 and rank_b == 2:  # result is tensor-2 field
+
+                @register_jitable
+                def calc(a: NumericArray, b: NumericArray, out: NumericArray) -> None:
+                    for i in range(dim):
+                        for j in range(dim):
+                            out[i, j] = a[i, 0] * maybe_conj(b[0, j])
+                            for k in range(1, dim):
+                                out[i, j] += a[i, k] * maybe_conj(b[k, j])
+
+            else:
+                raise NotImplementedError("Inner product for these ranks")
+
+            if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
+                # function is called without `out` -> allocate memory
+                rank_out = rank_a + rank_b - 2
+                a_shape = (dim,) * rank_a + field.grid.shape
+                b_shape = (dim,) * rank_b + field.grid.shape
+                out_shape = (dim,) * rank_out + field.grid.shape
+                dtype = get_common_numba_dtype(a, b)
+
+                def dot_impl(
+                    a: NumericArray,
+                    b: NumericArray,
+                    out: NumericArray | None = None,
+                ) -> NumericArray:
+                    """Helper function allocating output array."""
+                    assert a.shape == a_shape
+                    assert b.shape == b_shape
+                    out = np.empty(out_shape, dtype=dtype)
+                    calc(a, b, out)
+                    return out
+
+            else:
+                # function is called with `out` argument -> reuse `out` array
+
+                def dot_impl(
+                    a: NumericArray,
+                    b: NumericArray,
+                    out: NumericArray | None = None,
+                ) -> NumericArray:
+                    """Helper function without allocating output array."""
+                    assert a.shape == a_shape
+                    assert b.shape == b_shape
+                    assert out.shape == out_shape  # type: ignore
+                    calc(a, b, out)
+                    return out  # type: ignore
+
+            return dot_impl  # type: ignore
+
+        @jit
+        def dot_compiled(
+            a: NumericArray, b: NumericArray, out: NumericArray | None = None
+        ) -> NumericArray:
+            """Numba implementation to calculate dot product between two fields."""
+            return dot(a, b, out)
+
+        return dot_compiled  # type: ignore
