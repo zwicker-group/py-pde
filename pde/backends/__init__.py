@@ -11,7 +11,7 @@
 """
 
 from .registry import backends  # noqa
-from .numpy import NumpyBackend
+from .numpy.backend import NumpyBackend
 
 # register the default backend
 backends.add(NumpyBackend("numpy"))

@@ -20,7 +20,6 @@ from ..grids.boundaries.axes import BoundariesData
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
-from ..tools.numba import jit, make_array_constructor
 from ..tools.plotting import PlotReference, plot_on_axes
 from ..tools.spectral import CorrelationType, make_correlated_noise
 from ..tools.typing import ArrayLike, FloatingArray, NumberOrArray, NumericArray
@@ -591,6 +590,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         *,
         fill: Number | None = None,
         with_ghost_cells: bool = False,
+        backend: Literal["numba"] = "numba",
     ) -> Callable[[FloatingArray, NumericArray], NumberOrArray]:
         r"""Returns a function that can be used to interpolate values.
 
@@ -603,77 +603,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Flag indicating that the interpolator should work on the full data array
                 that includes values for the ghost points. If this is the case, the
                 boundaries are not checked and the coordinates are used as is.
+            backend (str):
+                The name of the backend to use to implement this operator.
 
         Returns:
             A function which returns interpolated values when called with arbitrary
             positions within the space of the grid.
         """
-        grid = self.grid
-        num_axes = self.grid.num_axes
-        data_shape = self.data_shape
+        from ..backends import backends
 
-        # convert `fill` to dtype of data
-        if fill is not None:
-            if self.rank == 0:
-                fill = self.data.dtype.type(fill)  # type: ignore
-            else:
-                fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)
-
-        # create the method to interpolate data at a single point
-        interpolate_single = grid._make_interpolator_compiled(
-            fill=fill, with_ghost_cells=with_ghost_cells
+        return backends[backend].make_interpolator(
+            self, fill=fill, with_ghost_cells=with_ghost_cells
         )
-
-        # provide a method to access the current data of the field
-        if with_ghost_cells:
-            get_data_array = make_array_constructor(self._data_full)
-        else:
-            get_data_array = make_array_constructor(self.data)
-
-        dim_error_msg = f"Dimension of point does not match axes count {num_axes}"
-
-        @jit
-        def interpolator(
-            point: FloatingArray, data: NumericArray | None = None
-        ) -> NumericArray:
-            """Return the interpolated value at the position `point`
-
-            Args:
-                point (:class:`~numpy.ndarray`):
-                    The list of points. This point coordinates should be given along the
-                    last axis, i.e., the shape should be `(..., num_axes)`.
-                data (:class:`~numpy.ndarray`, optional):
-                    The discretized field values. If omitted, the data of the current
-                    field is used, which should be the default. However, this option can
-                    be useful to interpolate other fields defined on the same grid
-                    without recreating the interpolator. If a data array is supplied, it
-                    needs to be the full data if `with_ghost_cells == True`, and
-                    otherwise only the valid data.
-
-            Returns:
-                :class:`~numpy.ndarray`: The interpolated values at the points
-            """
-            # check input
-            point = np.atleast_1d(point)
-            if point.shape[-1] != num_axes:
-                raise DimensionError(dim_error_msg)
-            point_shape = point.shape[:-1]
-
-            if data is None:
-                # reconstruct data field from memory address
-                data = get_data_array()
-
-            # interpolate at every valid point
-            out = np.empty(data_shape + point_shape, dtype=data.dtype)
-            for idx in np.ndindex(*point_shape):
-                out[(...,) + idx] = interpolate_single(data, point[idx])
-
-            return out  # type: ignore
-
-        # store a reference to the data so it is not garbage collected too early
-        interpolator._data = self.data
-
-        return interpolator  # type: ignore
 
     @fill_in_docstring
     def interpolate(
