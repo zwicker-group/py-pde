@@ -119,7 +119,7 @@ class NumbaBackend(BackendBase):
             sets the ghost cells of the full data, potentially using additional
             information in `args` (e.g., the time `t` during solving a PDE)
         """
-        from ._boundaries import make_axes_ghost_cell_setter
+        from .boundaries.axes import make_axes_ghost_cell_setter
 
         return make_axes_ghost_cell_setter(boundaries)
 

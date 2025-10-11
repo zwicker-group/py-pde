@@ -6,121 +6,33 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
 from numbers import Number
+from typing import Callable
 
 import numba as nb
 import numpy as np
 from numba.extending import overload, register_jitable
 
-from ...grids.boundaries.axes import BoundariesBase, BoundariesList, BoundariesSetter
-from ...grids.boundaries.axis import BoundaryAxisBase
-from ...grids.boundaries.local import (
+from ....grids.boundaries.local import (
     BCBase,
     ConstBC1stOrderBase,
     ConstBC2ndOrderBase,
+    CurvatureBC,
+    DirichletBC,
     ExpressionBC,
+    MixedBC,
+    NeumannBC,
     UserBC,
+    _PeriodicBC,
 )
-from ...tools.numba import jit, numba_dict
-from ...tools.typing import GhostCellSetter, NumericArray, VirtualPointEvaluator
-from .utils import make_get_arr_1d
-
-
-def make_axes_ghost_cell_setter(boundaries: BoundariesBase) -> GhostCellSetter:
-    """Return function that sets the ghost cells on a full array.
-
-    Args:
-        boundaries (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
-            Defines the boundary conditions for a particular grid, for which the setter
-            should be defined.
-
-    Returns:
-        Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-        sets the ghost cells of the full data, potentially using additional
-        information in `args` (e.g., the time `t` during solving a PDE)
-    """
-    if isinstance(boundaries, BoundariesList):
-        ghost_cell_setters = tuple(
-            make_axis_ghost_cell_setter(bc_axis) for bc_axis in boundaries
-        )
-
-        # TODO: use numba.literal_unroll
-        # # get the setters for all axes
-        #
-        # from pde.tools.numba import jit
-        #
-        # @jit
-        # def set_ghost_cells(data_full: NumericArray, args=None) -> None:
-        #     for f in nb.literal_unroll(ghost_cell_setters):
-        #         f(data_full, args=args)
-        #
-        # return set_ghost_cells
-
-        def chain(
-            fs: Sequence[GhostCellSetter], inner: GhostCellSetter | None = None
-        ) -> GhostCellSetter:
-            """Helper function composing setters of all axes recursively."""
-
-            first, rest = fs[0], fs[1:]
-
-            if inner is None:
-
-                @register_jitable
-                def wrap(data_full: NumericArray, args=None) -> None:
-                    first(data_full, args=args)
-
-            else:
-
-                @register_jitable
-                def wrap(data_full: NumericArray, args=None) -> None:
-                    inner(data_full, args=args)
-                    first(data_full, args=args)
-
-            if rest:
-                return chain(rest, wrap)
-            else:
-                return wrap  # type: ignore
-
-        return chain(ghost_cell_setters)
-
-    elif isinstance(boundaries, BoundariesSetter):
-        return jit(boundaries._setter)  # type: ignore
-
-    else:
-        raise NotImplementedError("Cannot handle boundaries {boundaries.__class__}")
-
-
-def make_axis_ghost_cell_setter(bc_axis: BoundaryAxisBase) -> GhostCellSetter:
-    """Return function that sets the ghost cells for a particular axis.
-
-    Args:
-        bc_axis (:class:`~pde.grids.boundaries.axis.BoundaryAxisBase`):
-            Defines the boundary conditions for a particular axis, for which the setter
-            should be defined.
-
-    Returns:
-        Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-        sets the ghost cells of the full data, potentially using additional
-        information in `args` (e.g., the time `t` during solving a PDE)
-    """
-    # get the functions that handle the data
-    ghost_cell_sender_low = make_local_ghost_cell_setter(bc_axis.low)
-    ghost_cell_sender_high = make_local_ghost_cell_setter(bc_axis.high)
-    ghost_cell_setter_low = make_local_ghost_cell_setter(bc_axis.low)
-    ghost_cell_setter_high = make_local_ghost_cell_setter(bc_axis.high)
-
-    @register_jitable
-    def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-        """Helper function setting the conditions on all axes."""
-        # send boundary information to other nodes if using MPI
-        ghost_cell_sender_low(data_full, args=args)
-        ghost_cell_sender_high(data_full, args=args)
-        # set the actual ghost cells
-        ghost_cell_setter_high(data_full, args=args)
-        ghost_cell_setter_low(data_full, args=args)
-
-    return ghost_cell_setter  # type: ignore
+from ....tools.numba import address_as_void_pointer, jit, numba_dict
+from ....tools.typing import (
+    GhostCellSetter,
+    NumberOrArray,
+    NumericArray,
+    VirtualPointEvaluator,
+)
+from ..utils import make_get_arr_1d
 
 
 def make_local_ghost_cell_setter(bc: BCBase) -> GhostCellSetter:
@@ -284,8 +196,8 @@ def _make_user_virtual_point_evaluator(bc: UserBC) -> VirtualPointEvaluator:
 
     Args:
         bc (:class:`~pde.grids.boundaries.local.UserBC`):
-            Defines the boundary conditions for a particular side, for which the setter
-            should be defined.
+            Defines the boundary conditions for a particular side, for which the virtual
+            point evaluator should be defined.
 
     Returns:
         function: A function that takes the data array and an index marking the current
@@ -356,8 +268,8 @@ def _make_expression_virtual_point_evaluator(bc: ExpressionBC) -> VirtualPointEv
 
     Args:
         bc (:class:`~pde.grids.boundaries.local.ExpressionBC`):
-            Defines the boundary conditions for a particular side, for which the setter
-            should be defined.
+            Defines the boundary conditions for a particular side, for which the virtual
+            point evaluator should be defined.
 
     Returns:
         function: A function that takes the data array and an index marking the current
@@ -412,6 +324,191 @@ def _make_expression_virtual_point_evaluator(bc: ExpressionBC) -> VirtualPointEv
     return virtual_point  # type: ignore
 
 
+def _make_value_getter(bc: ConstBC1stOrderBase) -> Callable[[], NumericArray]:
+    """Return a compiled function for obtaining the value.
+
+    Args:
+        bc (:class:`~pde.grids.boundaries.local.ConstBC1stOrderBase`):
+            Defines the boundary conditions for a particular side, for which the value
+            getter should be defined.
+
+    Note:
+        This should only be used in numba compiled functions that need to
+        support boundary values that can be changed after the function has
+        been compiled. In essence, the helper function created here serves
+        to get around the compile-time constants that are otherwise created.
+
+    Warning:
+        The returned function has a hard-coded reference to the memory
+        address of the value error, which must thus be maintained in memory.
+        If the address of bc.value changes, a new function needs to be
+        created by calling this factory function again.
+    """
+    # obtain details about the array
+    mem_addr = bc.value.ctypes.data
+    shape = bc.value.shape
+    dtype = bc.value.dtype
+
+    # Note that we tried using register_jitable here, but this lead to
+    # problems with address_as_void_pointer
+
+    @nb.njit(nb.typeof(bc._value)(), inline="always")
+    def get_value() -> NumericArray:
+        """Helper function returning the linked array."""
+        return nb.carray(address_as_void_pointer(mem_addr), shape, dtype)  # type: ignore
+
+    # keep a reference to the array to prevent garbage collection
+    get_value._value_ref = bc._value
+
+    return get_value  # type: ignore
+
+
+def _get_virtual_point_data_1storder(bc: ConstBC1stOrderBase):
+    """Return data suitable for calculating virtual points.
+
+    Args:
+        bc (:class:`~pde.grids.boundaries.local.ConstBC1stOrderBase`):
+            Defines the boundary conditions for a particular side, for which the virtual
+            point data getter should be defined.
+
+    Returns:
+        tuple: the data structure associated with this virtual point
+    """
+    if isinstance(bc, _PeriodicBC):
+        index = 0 if bc.upper else bc.grid.shape[bc.axis] - 1
+        value: NumberOrArray = -1 if bc.flip_sign else 1
+        const = np.array(0)
+        factor = np.array(value)
+
+        @register_jitable(inline="always")
+        def const_func():
+            return const
+
+        @register_jitable(inline="always")
+        def factor_func():
+            return factor
+
+    elif isinstance(bc, DirichletBC):
+        const = 2 * bc.value
+        index = bc.grid.shape[bc.axis] - 1 if bc.upper else 0
+
+        # return boundary data such that dynamically calculated values can
+        # be used in numba compiled code. This is a work-around since numpy
+        # arrays are copied into closures, making them compile-time
+        # constants
+
+        const = np.array(const)
+        factor = np.full_like(const, -1)
+
+        if bc.value_is_linked:
+            value_func = _make_value_getter(bc)
+
+            @register_jitable(inline="always")
+            def const_func():
+                return 2 * value_func()
+
+        else:
+
+            @register_jitable(inline="always")
+            def const_func():
+                return const
+
+        @register_jitable(inline="always")
+        def factor_func():
+            return factor
+
+    elif isinstance(bc, NeumannBC):
+        dx = bc.grid.discretization[bc.axis]
+
+        const = dx * bc.value
+        index = bc.grid.shape[bc.axis] - 1 if bc.upper else 0
+
+        # return boundary data such that dynamically calculated values can
+        # be used in numba compiled code. This is a work-around since numpy
+        # arrays are copied into closures, making them compile-time
+        # constants
+
+        const = np.array(const)
+        factor = np.ones_like(const)
+
+        if bc.value_is_linked:
+            value_func = _make_value_getter(bc)
+
+            @register_jitable(inline="always")
+            def const_func():
+                return dx * value_func()
+
+        else:
+
+            @register_jitable(inline="always")
+            def const_func():
+                return const
+
+        @register_jitable(inline="always")
+        def factor_func():
+            return factor
+
+    elif isinstance(bc, MixedBC):
+        dx = bc.grid.discretization[bc.axis]
+        with np.errstate(invalid="ignore"):
+            const = np.asarray(2 * dx * bc.const / (2 + dx * bc.value))
+            factor = np.asarray((2 - dx * bc.value) / (2 + dx * bc.value))
+
+        # correct at places of infinite values
+        const[~np.isfinite(factor)] = 0
+        factor[~np.isfinite(factor)] = -1
+
+        index = bc.grid.shape[bc.axis] - 1 if bc.upper else 0
+
+        # return boundary data such that dynamically calculated values can
+        # be used in numba compiled code. This is a work-around since numpy
+        # arrays are copied into closures, making them compile-time
+        # constants
+        if bc.value_is_linked:
+            const_val = np.array(bc.const)
+            value_func = _make_value_getter(bc)
+
+            @register_jitable(inline="always")
+            def const_func():
+                value = value_func()
+                const = np.empty_like(value)
+                for i in range(value.size):
+                    val = value.flat[i]
+                    if np.isinf(val):
+                        const.flat[i] = 0
+                    else:
+                        const.flat[i] = 2 * dx * const_val / (2 + dx * val)
+                return const
+
+            @register_jitable(inline="always")
+            def factor_func():
+                value = value_func()
+                factor = np.empty_like(value)
+                for i in range(value.size):
+                    val = value.flat[i]
+                    if np.isinf(val):
+                        factor.flat[i] = -1
+                    else:
+                        factor.flat[i] = (2 - dx * val) / (2 + dx * val)
+                return factor
+
+        else:
+            const = np.array(const)
+            factor = np.array(factor)
+
+            @register_jitable(inline="always")
+            def const_func():
+                return const
+
+            @register_jitable(inline="always")
+            def factor_func():
+                return factor
+    else:
+        raise TypeError(f"Unsupported BC {bc}")
+
+    return (const_func, factor_func, index)
+
+
 def _make_const1storder_virtual_point_evaluator(
     bc: ConstBC1stOrderBase,
 ) -> VirtualPointEvaluator:
@@ -432,7 +529,7 @@ def _make_const1storder_virtual_point_evaluator(
     get_arr_1d = make_get_arr_1d(bc.grid.num_axes, bc.axis)
 
     # calculate necessary constants
-    const, factor, index = bc.get_virtual_point_data(compiled=True)
+    const, factor, index = _get_virtual_point_data_1storder(bc)
 
     if bc.homogeneous:
 
@@ -461,6 +558,39 @@ def _make_const1storder_virtual_point_evaluator(
     return virtual_point  # type: ignore
 
 
+def _get_virtual_point_data_2ndorder(bc: ConstBC2ndOrderBase):
+    """Return data suitable for calculating virtual points.
+
+    Args:
+        bc (:class:`~pde.grids.boundaries.local.ConstBC2ndOrderBase`):
+            Defines the boundary conditions for a particular side, for which the virtual
+            point data getter should be defined.
+
+    Returns:
+        tuple: the data structure associated with this virtual point
+    """
+    if isinstance(bc, CurvatureBC):
+        size = bc.grid.shape[bc.axis]
+        dx = bc.grid.discretization[bc.axis]
+
+        if size < 2:
+            raise RuntimeError(
+                "Need at least 2 support points to use curvature boundary condition"
+            )
+
+        value = np.asarray(bc.value * dx**2)
+        f1 = np.full_like(value, 2.0)
+        f2 = np.full_like(value, -1.0)
+        if bc.upper:
+            i1, i2 = size - 1, size - 2
+        else:
+            i1, i2 = 0, 1
+        return (value, f1, i1, f2, i2)
+
+    else:
+        raise TypeError(f"Unsupported BC {bc}")
+
+
 def _make_const2ndorder_virtual_point_evaluator(
     bc: ConstBC2ndOrderBase,
 ) -> VirtualPointEvaluator:
@@ -487,7 +617,7 @@ def _make_const2ndorder_virtual_point_evaluator(
         )
 
     # calculate necessary constants
-    data = bc.get_virtual_point_data()
+    data = _get_virtual_point_data_2ndorder(bc)
 
     if bc.homogeneous:
 

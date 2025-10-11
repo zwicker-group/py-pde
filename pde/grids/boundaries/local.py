@@ -1720,52 +1720,13 @@ class ConstBCBase(BCBase):
             value=self.value,
         )
 
-    def _make_value_getter(self) -> Callable[[], NumericArray]:
-        """Return a (compiled) function for obtaining the value.
-
-        Note:
-            This should only be used in numba compiled functions that need to
-            support boundary values that can be changed after the function has
-            been compiled. In essence, the helper function created here serves
-            to get around the compile-time constants that are otherwise created.
-
-        Warning:
-            The returned function has a hard-coded reference to the memory
-            address of the value error, which must thus be maintained in memory.
-            If the address of self.value changes, a new function needs to be
-            created by calling this factory function again.
-        """
-        # obtain details about the array
-        mem_addr = self.value.ctypes.data
-        shape = self.value.shape
-        dtype = self.value.dtype
-
-        # Note that we tried using register_jitable here, but this lead to
-        # problems with address_as_void_pointer
-
-        @nb.njit(nb.typeof(self._value)(), inline="always")
-        def get_value() -> NumericArray:
-            """Helper function returning the linked array."""
-            return nb.carray(address_as_void_pointer(mem_addr), shape, dtype)  # type: ignore
-
-        # keep a reference to the array to prevent garbage collection
-        get_value._value_ref = self._value
-
-        return get_value  # type: ignore
-
 
 class ConstBC1stOrderBase(ConstBCBase):
     """Represents a single boundary in an BoundaryPair instance."""
 
     @abstractmethod
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         """Return data suitable for calculating virtual points.
-
-        Args:
-            compiled (bool):
-                Flag indicating whether a compiled version is required, which
-                automatically takes updated values into account when it is used
-                in numba-compiled code.
 
         Returns:
             tuple: the data structure associated with this virtual point
@@ -1932,25 +1893,10 @@ class _PeriodicBC(ConstBC1stOrderBase):
         else:
             return f"{field_name}({axis_name}={self.axis_coord}) = {field_name}({axis_name}={other_coord})"
 
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         index = 0 if self.upper else self.grid.shape[self.axis] - 1
         value = -1 if self.flip_sign else 1
-
-        if not compiled:
-            return (0.0, value, index)
-        else:
-            const = np.array(0)
-            factor = np.array(value)
-
-            @register_jitable(inline="always")
-            def const_func():
-                return const
-
-            @register_jitable(inline="always")
-            def factor_func():
-                return factor
-
-            return (const_func, factor_func, index)
+        return (0.0, value, index)
 
 
 class DirichletBC(ConstBC1stOrderBase):
@@ -1964,40 +1910,11 @@ class DirichletBC(ConstBC1stOrderBase):
         field = self._field_repr(field_name)
         return f"{field} = {self.value}   @ {axis_name}={self.axis_coord}"
 
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         const: NumberOrArray = 2 * self.value
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
-
-        if not compiled:
-            factor = -np.ones_like(const)
-            return (const, factor, index)
-        else:
-            # return boundary data such that dynamically calculated values can
-            # be used in numba compiled code. This is a work-around since numpy
-            # arrays are copied into closures, making them compile-time
-            # constants
-
-            const = np.array(const)
-            factor = np.full_like(const, -1)
-
-            if self.value_is_linked:
-                value = self._make_value_getter()
-
-                @register_jitable(inline="always")
-                def const_func():
-                    return 2 * value()
-
-            else:
-
-                @register_jitable(inline="always")
-                def const_func():
-                    return const
-
-            @register_jitable(inline="always")
-            def factor_func():
-                return factor
-
-            return (const_func, factor_func, index)
+        factor = -np.ones_like(const)
+        return (const, factor, index)
 
 
 class NeumannBC(ConstBC1stOrderBase):
@@ -2013,42 +1930,12 @@ class NeumannBC(ConstBC1stOrderBase):
         deriv = f"∂{self._field_repr(field_name)}/∂{axis_name}"
         return f"{sign}{deriv} = {self.value}   @ {axis_name}={self.axis_coord}"
 
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         dx = self.grid.discretization[self.axis]
-
         const = dx * self.value
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
-
-        if not compiled:
-            factor = np.ones_like(const)
-            return (const, factor, index)
-        else:
-            # return boundary data such that dynamically calculated values can
-            # be used in numba compiled code. This is a work-around since numpy
-            # arrays are copied into closures, making them compile-time
-            # constants
-
-            const = np.array(const)
-            factor = np.ones_like(const)
-
-            if self.value_is_linked:
-                value = self._make_value_getter()
-
-                @register_jitable(inline="always")
-                def const_func():
-                    return dx * value()
-
-            else:
-
-                @register_jitable(inline="always")
-                def const_func():
-                    return const
-
-            @register_jitable(inline="always")
-            def factor_func():
-                return factor
-
-            return (const_func, factor_func, index)
+        factor = np.ones_like(const)
+        return (const, factor, index)
 
 
 class MixedBC(ConstBC1stOrderBase):
@@ -2174,7 +2061,7 @@ class MixedBC(ConstBC1stOrderBase):
         deriv = f"∂{field_repr}/∂{axis_name}"
         return f"{sign}{deriv} + {self.value} * {field_repr} = {self.const}   @ {axis_name}={self.axis_coord}"
 
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         # calculate values assuming finite factor
         dx = self.grid.discretization[self.axis]
         with np.errstate(invalid="ignore"):
@@ -2184,57 +2071,8 @@ class MixedBC(ConstBC1stOrderBase):
         # correct at places of infinite values
         const[~np.isfinite(factor)] = 0
         factor[~np.isfinite(factor)] = -1
-
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
-
-        if not compiled:
-            return (const, factor, index)
-
-        # return boundary data such that dynamically calculated values can
-        # be used in numba compiled code. This is a work-around since numpy
-        # arrays are copied into closures, making them compile-time
-        # constants
-        if self.value_is_linked:
-            const_val = np.array(self.const)
-            value_func = self._make_value_getter()
-
-            @register_jitable(inline="always")
-            def const_func():
-                value = value_func()
-                const = np.empty_like(value)
-                for i in range(value.size):
-                    val = value.flat[i]
-                    if np.isinf(val):
-                        const.flat[i] = 0
-                    else:
-                        const.flat[i] = 2 * dx * const_val / (2 + dx * val)
-                return const
-
-            @register_jitable(inline="always")
-            def factor_func():
-                value = value_func()
-                factor = np.empty_like(value)
-                for i in range(value.size):
-                    val = value.flat[i]
-                    if np.isinf(val):
-                        factor.flat[i] = -1
-                    else:
-                        factor.flat[i] = (2 - dx * val) / (2 + dx * val)
-                return factor
-
-        else:
-            const = np.array(const)
-            factor = np.array(factor)
-
-            @register_jitable(inline="always")
-            def const_func():
-                return const
-
-            @register_jitable(inline="always")
-            def factor_func():
-                return factor
-
-        return (const_func, factor_func, index)
+        return (const, factor, index)
 
 
 class ConstBC2ndOrderBase(ConstBCBase):
