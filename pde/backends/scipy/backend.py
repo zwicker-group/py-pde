@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from ..numpy import NumpyBackend
+from ..numpy.backend import NumpyBackend
 
 
 class ScipyBackend(NumpyBackend):

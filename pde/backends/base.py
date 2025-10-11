@@ -16,7 +16,15 @@ import numpy as np
 from ..fields.datafield_base import DataFieldBase
 from ..grids.base import GridBase
 from ..grids.boundaries.axes import BoundariesBase
-from ..tools.typing import DataSetter, GhostCellSetter, NumericArray, OperatorFactory
+from ..tools.typing import (
+    DataSetter,
+    FloatingArray,
+    GhostCellSetter,
+    Number,
+    NumberOrArray,
+    NumericArray,
+    OperatorFactory,
+)
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
@@ -235,6 +243,8 @@ class BackendBase(ABC):
         between a vector and a tensor.
 
         Args:
+            field (:class:`~pde.fields.datafield_base.DataFieldBase`):
+                Field for which the inner product is defined
             conjugate (bool):
                 Whether to use the complex conjugate for the second operand
 
@@ -242,5 +252,32 @@ class BackendBase(ABC):
             function that takes two instance of :class:`~numpy.ndarray`, which contain
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written.
+        """
+        raise NotImplementedError
+
+    def make_interpolator(
+        self,
+        field: DataFieldBase,
+        *,
+        fill: Number | None = None,
+        with_ghost_cells: bool = False,
+    ) -> Callable[[FloatingArray, NumericArray], NumberOrArray]:
+        r"""Returns a function that can be used to interpolate values.
+
+        Args:
+            field (:class:`~pde.fields.datafield_base.DataFieldBase`):
+                Field for which the interpolator is defined
+            fill (Number, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
+            with_ghost_cells (bool):
+                Flag indicating that the interpolator should work on the full data array
+                that includes values for the ghost points. If this is the case, the
+                boundaries are not checked and the coordinates are used as is.
+
+        Returns:
+            A function which returns interpolated values when called with arbitrary
+            positions within the space of the grid.
         """
         raise NotImplementedError

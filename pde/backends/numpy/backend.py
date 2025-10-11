@@ -9,11 +9,11 @@ from typing import Any, Callable
 
 import numpy as np
 
-from ..fields.datafield_base import DataFieldBase
-from ..grids.base import GridBase
-from ..grids.boundaries.axes import BoundariesBase
-from ..tools.typing import DataSetter, GhostCellSetter, NumericArray
-from .base import BackendBase, OperatorInfo
+from ...fields.datafield_base import DataFieldBase
+from ...grids.base import GridBase
+from ...grids.boundaries.axes import BoundariesBase
+from ...tools.typing import DataSetter, GhostCellSetter, NumericArray
+from ..base import BackendBase, OperatorInfo
 
 
 class NumpyBackend(BackendBase):
@@ -188,6 +188,8 @@ class NumpyBackend(BackendBase):
         between a vector and a tensor.
 
         Args:
+            field (:class:`~pde.fields.datafield_base.DataFieldBase`):
+                Field for which the inner product is defined
             conjugate (bool):
                 Whether to use the complex conjugate for the second operand
 

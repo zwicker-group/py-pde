@@ -14,11 +14,18 @@ from numba.extending import is_jitted, register_jitable
 from numba.extending import overload as nb_overload
 
 from ...fields.datafield_base import DataFieldBase
-from ...grids.base import GridBase
+from ...grids.base import DimensionError, GridBase
 from ...grids.boundaries.axes import BoundariesBase
-from ...tools.numba import get_common_numba_dtype, jit
-from ...tools.typing import DataSetter, GhostCellSetter, NumericArray
-from ..numpy import NumpyBackend, OperatorInfo
+from ...tools.numba import get_common_numba_dtype, jit, make_array_constructor
+from ...tools.typing import (
+    DataSetter,
+    FloatingArray,
+    GhostCellSetter,
+    Number,
+    NumberOrArray,
+    NumericArray,
+)
+from ..numpy.backend import NumpyBackend, OperatorInfo
 
 
 class NumbaBackend(NumpyBackend):
@@ -340,6 +347,8 @@ class NumbaBackend(NumpyBackend):
         between a vector and a tensor.
 
         Args:
+            field (:class:`~pde.fields.datafield_base.DataFieldBase`):
+                Field for which the inner product is defined
             conjugate (bool):
                 Whether to use the complex conjugate for the second operand
 
@@ -466,3 +475,95 @@ class NumbaBackend(NumpyBackend):
             return dot(a, b, out)
 
         return dot_compiled  # type: ignore
+
+    def make_interpolator(
+        self,
+        field: DataFieldBase,
+        *,
+        fill: Number | None = None,
+        with_ghost_cells: bool = False,
+    ) -> Callable[[FloatingArray, NumericArray], NumberOrArray]:
+        r"""Returns a function that can be used to interpolate values.
+
+        Args:
+            field (:class:`~pde.fields.datafield_base.DataFieldBase`):
+                Field for which the interpolator is defined
+            fill (Number, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
+            with_ghost_cells (bool):
+                Flag indicating that the interpolator should work on the full data array
+                that includes values for the ghost points. If this is the case, the
+                boundaries are not checked and the coordinates are used as is.
+
+        Returns:
+            A function which returns interpolated values when called with arbitrary
+            positions within the space of the grid.
+        """
+        grid = field.grid
+        num_axes = field.grid.num_axes
+        data_shape = field.data_shape
+
+        # convert `fill` to dtype of data
+        if fill is not None:
+            if field.rank == 0:
+                fill = field.data.dtype.type(fill)  # type: ignore
+            else:
+                fill = np.broadcast_to(fill, field.data_shape).astype(field.data.dtype)
+
+        # create the method to interpolate data at a single point
+        interpolate_single = grid._make_interpolator_compiled(
+            fill=fill, with_ghost_cells=with_ghost_cells
+        )
+
+        # provide a method to access the current data of the field
+        if with_ghost_cells:
+            get_data_array = make_array_constructor(field._data_full)
+        else:
+            get_data_array = make_array_constructor(field.data)
+
+        dim_error_msg = f"Dimension of point does not match axes count {num_axes}"
+
+        @jit
+        def interpolator(
+            point: FloatingArray, data: NumericArray | None = None
+        ) -> NumericArray:
+            """Return the interpolated value at the position `point`
+
+            Args:
+                point (:class:`~numpy.ndarray`):
+                    The list of points. This point coordinates should be given along the
+                    last axis, i.e., the shape should be `(..., num_axes)`.
+                data (:class:`~numpy.ndarray`, optional):
+                    The discretized field values. If omitted, the data of the current
+                    field is used, which should be the default. However, this option can
+                    be useful to interpolate other fields defined on the same grid
+                    without recreating the interpolator. If a data array is supplied, it
+                    needs to be the full data if `with_ghost_cells == True`, and
+                    otherwise only the valid data.
+
+            Returns:
+                :class:`~numpy.ndarray`: The interpolated values at the points
+            """
+            # check input
+            point = np.atleast_1d(point)
+            if point.shape[-1] != num_axes:
+                raise DimensionError(dim_error_msg)
+            point_shape = point.shape[:-1]
+
+            if data is None:
+                # reconstruct data field from memory address
+                data = get_data_array()
+
+            # interpolate at every valid point
+            out = np.empty(data_shape + point_shape, dtype=data.dtype)
+            for idx in np.ndindex(*point_shape):
+                out[(...,) + idx] = interpolate_single(data, point[idx])
+
+            return out  # type: ignore
+
+        # store a reference to the data so it is not garbage collected too early
+        interpolator._data = field.data
+
+        return interpolator  # type: ignore
