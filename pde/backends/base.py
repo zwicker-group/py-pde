@@ -7,12 +7,13 @@ from __future__ import annotations
 
 import inspect
 import logging
-from abc import ABCMeta
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Any, Callable, NamedTuple
 
 import numpy as np
 
+from ..fields.datafield_base import DataFieldBase
 from ..grids.base import GridBase
 from ..grids.boundaries.axes import BoundariesBase
 from ..tools.typing import DataSetter, GhostCellSetter, NumericArray, OperatorFactory
@@ -30,13 +31,13 @@ class OperatorInfo(NamedTuple):
     name: str = ""  # attach a unique name to help caching
 
 
-class BackendBase(metaclass=ABCMeta):
-    """Abstract base class for describing backends."""
+class BackendBase(ABC):
+    """Basic backend from which all other backends inherit."""
 
     _operators: dict[type[GridBase], dict[str, OperatorInfo]]
     _logger: logging.Logger  # logger instance to output information
 
-    def __init__(self, name: str):
+    def __init__(self, name: str = "numpy"):
         self.name = name
         self._operators = defaultdict(dict)
 
@@ -150,6 +151,7 @@ class BackendBase(metaclass=ABCMeta):
         # throw an error since operator was not found
         raise NotImplementedError(f"Operator '{operator}' is not defined.")
 
+    @abstractmethod
     def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
 
@@ -164,12 +166,7 @@ class BackendBase(metaclass=ABCMeta):
             information in `args` (e.g., the time `t` during solving a PDE)
         """
 
-        def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-            """Default implementation that simply uses the python interface."""
-            boundaries.set_ghost_cells(data_full, *args)
-
-        return ghost_cell_setter
-
+    @abstractmethod
     def make_data_setter(
         self, grid: GridBase, bcs: BoundariesBase | None = None
     ) -> DataSetter:
@@ -189,53 +186,6 @@ class BackendBase(metaclass=ABCMeta):
                 to have the correct dimensions, which are not checked. If `bcs` are
                 given, a third argument is allowed, which sets arguments for the BCs.
         """
-        num_axes = grid.num_axes
-
-        def set_valid(
-            data_full: NumericArray, data_valid: NumericArray, args=None
-        ) -> None:
-            """Set valid part of the data (without ghost cells)
-
-            Args:
-                data_full (:class:`~numpy.ndarray`):
-                    The full array with ghost cells that the data is written to
-                data_valid (:class:`~numpy.ndarray`):
-                    The valid data that is written to `data_full`
-            """
-            if num_axes == 1:
-                data_full[..., 1:-1] = data_valid
-            elif num_axes == 2:
-                data_full[..., 1:-1, 1:-1] = data_valid
-            elif num_axes == 3:
-                data_full[..., 1:-1, 1:-1, 1:-1] = data_valid
-            else:
-                raise NotImplementedError
-
-        if bcs is None:
-            # just set the valid elements and leave ghost cells with arbitrary values
-            return set_valid  # type: ignore
-
-        else:
-            # set the valid elements and the ghost cells according to boundary condition
-            set_bcs = self.make_ghost_cell_setter(bcs)
-
-            def set_valid_bcs(
-                data_full: NumericArray, data_valid: NumericArray, args=None
-            ) -> None:
-                """Set valid part of the data and the ghost cells using BCs.
-
-                Args:
-                    data_full (:class:`~numpy.ndarray`):
-                        The full array with ghost cells that the data is written to
-                    data_valid (:class:`~numpy.ndarray`):
-                        The valid data that is written to `data_full`
-                    args (dict):
-                        Extra arguments affecting the boundary conditions
-                """
-                set_valid(data_full, data_valid)
-                set_bcs(data_full, args=args)
-
-            return set_valid_bcs  # type: ignore
 
     def make_operator(
         self,
@@ -274,38 +224,23 @@ class BackendBase(metaclass=ABCMeta):
             callable: the function that applies the operator. This function has the
             signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
-        # determine the operator for the chosen backend
-        operator_info = self.get_operator_info(grid, operator)
-        operator_raw = operator_info.factory(grid, **kwargs)
+        raise NotImplementedError
 
-        # calculate shapes of the full data
-        shape_in_valid = (grid.dim,) * operator_info.rank_in + grid.shape
-        shape_in_full = (grid.dim,) * operator_info.rank_in + grid._shape_full
-        shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
+    def make_inner_prod_operator(
+        self, field: DataFieldBase, *, conjugate: bool = True
+    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+        """Return operator calculating the dot product between two fields.
 
-        def apply_operator(
-            arr: NumericArray, out: NumericArray | None = None, args=None
-        ) -> NumericArray:
-            """Set boundary conditions and apply operator."""
-            # check input array
-            if arr.shape != shape_in_valid:
-                raise ValueError(f"Incompatible shapes {arr.shape} != {shape_in_valid}")
+        This supports both products between two vectors as well as products
+        between a vector and a tensor.
 
-            # ensure `out` array is allocated and has the right shape
-            if out is None:
-                out = np.empty(shape_out, dtype=arr.dtype)
-            elif out.shape != shape_out:
-                raise ValueError(f"Incompatible shapes {out.shape} != {shape_out}")
+        Args:
+            conjugate (bool):
+                Whether to use the complex conjugate for the second operand
 
-            # prepare input with boundary conditions
-            arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-            arr_full[(...,) + grid._idx_valid] = arr
-            bcs.set_ghost_cells(arr_full, args=args)
-
-            # apply operator
-            operator_raw(arr_full, out)
-
-            # return valid part of the output
-            return out
-
-        return apply_operator
+        Returns:
+            function that takes two instance of :class:`~numpy.ndarray`, which contain
+            the discretized data of the two operands. An optional third argument can
+            specify the output array to which the result is written.
+        """
+        raise NotImplementedError
