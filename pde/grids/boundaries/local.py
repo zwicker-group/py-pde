@@ -59,20 +59,18 @@ boundary.
 from __future__ import annotations
 
 import logging
-import math
 import os
 import warnings
 from abc import ABCMeta, abstractmethod
-from numbers import Number
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar, Union
 
 import numba as nb
 import numpy as np
-from numba.extending import overload, register_jitable
+from numba.extending import register_jitable
 
 from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring
-from ...tools.numba import address_as_void_pointer, jit, numba_dict
+from ...tools.numba import address_as_void_pointer, jit
 from ...tools.typing import (
     GhostCellSetter,
     NumberOrArray,
@@ -146,92 +144,6 @@ def _get_arr_1d(
         raise NotImplementedError
 
     return arr_1d, i, bc_idx
-
-
-def _make_get_arr_1d(
-    dim: int, axis: int
-) -> Callable[[NumericArray, tuple[int, ...]], tuple[NumericArray, int, tuple]]:
-    """Create function that extracts a 1d array at a given position.
-
-    Args:
-        dim (int):
-            The dimension of the space, i.e., the number of axes in the supplied array
-        axis (int):
-            The axis that is returned as the 1d array
-
-    Returns:
-        function: A numba compiled function that takes the full array `arr` and
-        an index `idx` (a tuple of `dim` integers) specifying the point where
-        the 1d array is extract. The function returns a tuple (arr_1d, i, bc_i),
-        where `arr_1d` is the 1d array, `i` is the index `i` into this array
-        marking the current point and `bc_i` are the remaining components of
-        `idx`, which locate the point in the orthogonal directions.
-        Consequently, `i = idx[axis]` and `arr[..., idx] == arr_1d[..., i]`.
-    """
-    assert 0 <= axis < dim
-    ResultType = tuple[NumericArray, int, tuple]
-
-    # extract the correct indices
-    if dim == 1:
-
-        def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
-            """Extract the 1d array along axis at point idx."""
-            i = idx[0]
-            bc_idx: tuple = (...,)
-            arr_1d = arr
-            return arr_1d, i, bc_idx
-
-    elif dim == 2:
-        if axis == 0:
-
-            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                i, y = idx
-                bc_idx = (..., y)
-                arr_1d = arr[..., :, y]
-                return arr_1d, i, bc_idx
-
-        elif axis == 1:
-
-            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                x, i = idx
-                bc_idx = (..., x)
-                arr_1d = arr[..., x, :]
-                return arr_1d, i, bc_idx
-
-    elif dim == 3:
-        if axis == 0:
-
-            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                i, y, z = idx
-                bc_idx = (..., y, z)
-                arr_1d = arr[..., :, y, z]
-                return arr_1d, i, bc_idx
-
-        elif axis == 1:
-
-            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                x, i, z = idx
-                bc_idx = (..., x, z)
-                arr_1d = arr[..., x, :, z]
-                return arr_1d, i, bc_idx
-
-        elif axis == 2:
-
-            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                x, y, i = idx
-                bc_idx = (..., x, y)
-                arr_1d = arr[..., x, y, :]
-                return arr_1d, i, bc_idx
-
-    else:
-        raise NotImplementedError
-
-    return register_jitable(inline="always")(get_arr_1d)  # type: ignore
 
 
 # define generic type variable of type BCBase
@@ -811,7 +723,7 @@ class UserBC(BCBase):
             # usual case where set_ghost_cells is called automatically. In our case,
             # won't do anything since we expect the user to call the function manually
             # with the user data provided as the argument.
-            return None
+            return
 
         if any(t in args for t in ["virtual_point", "value", "derivative"]):
             # ghost cells will only be set if any of the above keys were supplied
@@ -844,29 +756,6 @@ class UserBC(BCBase):
             else:
                 raise RuntimeError
         # else: no-op for the default case where BCs are not set by user
-
-        @register_jitable
-        def virtual_point(arr: NumericArray, idx: tuple[int, ...], args):
-            """Evaluate the virtual point at `idx`"""
-            if "virtual_point" in args:
-                # set the virtual point directly
-                return extract_value(args["virtual_point"], arr, idx)
-
-            elif "value" in args:
-                # set the value at the boundary
-                value = extract_value(args["value"], arr, idx)
-                return 2 * value - arr[idx]
-
-            elif "derivative" in args:
-                # set the outward derivative at the boundary
-                value = extract_value(args["derivative"], arr, idx)
-                return dx * value + arr[idx]
-
-            else:
-                # no-op for the default case where BCs are not set by user
-                return math.nan
-
-        return virtual_point  # type: ignore
 
 
 ExpressionBCTargetType = Literal["value", "derivative", "mixed", "virtual_point"]

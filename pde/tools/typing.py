@@ -21,6 +21,7 @@ Number = Union[Real, complex, np.number]  # any number, including complex number
 NumericArray = np.ndarray[Any, np.dtype[np.number]]  # array of numbers (incl complex)
 NumberOrArray = Union[Number, NumericArray]  # number or array of numbers (incl complex)
 # a floating number or an array of floating (no integers and no complex numbers)
+FloatingArray = np.ndarray[Any, np.dtype[np.floating]]
 FloatOrArray = Union[float, np.ndarray[Any, np.dtype[np.floating]]]
 
 # miscellaneous types:

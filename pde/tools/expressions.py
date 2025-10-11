@@ -714,6 +714,7 @@ class ScalarExpression(ExpressionBase):
             signature=self.vars,
             allow_indexed=self.allow_indexed,
             user_funcs=self.user_funcs,
+            consts=self.consts,
         )
 
     @cached_property()
@@ -732,7 +733,10 @@ class ScalarExpression(ExpressionBase):
 
         grad = sympy.Array([self._sympy_expr.diff(sympy.Symbol(v)) for v in self.vars])
         return TensorExpression(
-            sympy.simplify(grad), signature=self.vars, user_funcs=self.user_funcs
+            sympy.simplify(grad),
+            signature=self.vars,
+            user_funcs=self.user_funcs,
+            consts=self.consts,
         )
 
 
@@ -788,6 +792,10 @@ class TensorExpression(ExpressionBase):
                 user_funcs = expression.user_funcs
             else:
                 user_funcs.update(expression.user_funcs)
+            if consts is None:
+                consts = expression.consts
+            else:
+                consts.update(expression.consts)
 
         elif isinstance(expression, (np.ndarray, list, tuple)):
             # expression is a constant array
@@ -834,11 +842,17 @@ class TensorExpression(ExpressionBase):
         expr = self._sympy_expr[index]
         if isinstance(expr, sympy.Array):
             return TensorExpression(
-                expr, signature=self.vars, user_funcs=self.user_funcs
+                expr,
+                signature=self.vars,
+                user_funcs=self.user_funcs,
+                consts=self.consts,
             )
         else:
             return ScalarExpression(
-                expr, signature=self.vars, user_funcs=self.user_funcs
+                expr,
+                signature=self.vars,
+                user_funcs=self.user_funcs,
+                consts=self.consts,
             )
 
     @property
@@ -870,7 +884,9 @@ class TensorExpression(ExpressionBase):
             derivative = np.zeros(self.shape)
         else:
             derivative = self._sympy_expr.diff(sympy.Symbol(var))
-        return TensorExpression(derivative, self.vars, user_funcs=self.user_funcs)
+        return TensorExpression(
+            derivative, self.vars, user_funcs=self.user_funcs, consts=self.consts
+        )
 
     @cached_property()
     def derivatives(self) -> TensorExpression:
@@ -885,7 +901,9 @@ class TensorExpression(ExpressionBase):
             dx = sympy.Array([sympy.Symbol(s) for s in self.vars])
             derivatives = sympy.derive_by_array(self._sympy_expr, dx)
 
-        return TensorExpression(derivatives, self.vars, user_funcs=self.user_funcs)
+        return TensorExpression(
+            derivatives, self.vars, user_funcs=self.user_funcs, consts=self.consts
+        )
 
     def get_compiled_array(
         self, single_arg: bool = True
