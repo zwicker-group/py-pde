@@ -140,6 +140,7 @@ class BackendBase:
             f"Operator '{operator}' is not defined for backend {self.name}"
         )
 
+    @abstractmethod
     def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
 
