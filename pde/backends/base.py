@@ -255,6 +255,26 @@ class BackendBase(ABC):
         """
         raise NotImplementedError
 
+    def make_outer_prod_operator(
+        self, field: DataFieldBase
+    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+        """Return operator calculating the outer product between two fields.
+
+        This supports typically only supports products between two vector fields.
+
+        Args:
+            field (:class:`~pde.fields.datafield_base.DataFieldBase`):
+                Field for which the outer product is defined
+            conjugate (bool):
+                Whether to use the complex conjugate for the second operand
+
+        Returns:
+            function that takes two instance of :class:`~numpy.ndarray`, which contain
+            the discretized data of the two operands. An optional third argument can
+            specify the output array to which the result is written.
+        """
+        raise NotImplementedError
+
     def make_interpolator(
         self,
         field: DataFieldBase,

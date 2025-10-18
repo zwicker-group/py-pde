@@ -9,7 +9,7 @@ from typing import Any, Callable
 
 import numpy as np
 
-from ...fields.datafield_base import DataFieldBase
+from ...fields import DataFieldBase, VectorField
 from ...grids.base import GridBase
 from ...grids.boundaries.axes import BoundariesBase
 from ...tools.typing import DataSetter, GhostCellSetter, NumericArray
@@ -230,3 +230,32 @@ class NumpyBackend(BackendBase):
                 raise TypeError(f"Unsupported shapes ({a.shape}, {b.shape})")
 
         return dot
+
+    def make_outer_prod_operator(
+        self, field: DataFieldBase
+    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+        """Return operator calculating the outer product between two fields.
+
+        This supports typically only supports products between two vector fields.
+
+        Args:
+            field (:class:`~pde.fields.datafield_base.DataFieldBase`):
+                Field for which the outer product is defined
+            conjugate (bool):
+                Whether to use the complex conjugate for the second operand
+
+        Returns:
+            function that takes two instance of :class:`~numpy.ndarray`, which contain
+            the discretized data of the two operands. An optional third argument can
+            specify the output array to which the result is written.
+        """
+        if not isinstance(field, VectorField):
+            raise TypeError("Can only define outer product between vector fields")
+
+        def outer(
+            a: NumericArray, b: NumericArray, out: NumericArray | None = None
+        ) -> NumericArray:
+            """Calculate the outer product using numpy."""
+            return np.einsum("i...,j...->ij...", a, b, out=out)
+
+        return outer

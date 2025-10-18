@@ -13,7 +13,7 @@ import numpy as np
 from numba.extending import is_jitted, register_jitable
 from numba.extending import overload as nb_overload
 
-from ...fields.datafield_base import DataFieldBase
+from ...fields import DataFieldBase, VectorField
 from ...grids.base import DimensionError, GridBase
 from ...grids.boundaries.axes import BoundariesBase
 from ...tools.numba import get_common_numba_dtype, jit, make_array_constructor
@@ -475,6 +475,108 @@ class NumbaBackend(NumpyBackend):
             return dot(a, b, out)
 
         return dot_compiled  # type: ignore
+
+    def make_outer_prod_operator(
+        self, field: DataFieldBase
+    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+        """Return operator calculating the outer product between two fields.
+
+        This supports typically only supports products between two vector fields.
+
+        Args:
+            field (:class:`~pde.fields.datafield_base.DataFieldBase`):
+                Field for which the outer product is defined
+            conjugate (bool):
+                Whether to use the complex conjugate for the second operand
+
+        Returns:
+            function that takes two instance of :class:`~numpy.ndarray`, which contain
+            the discretized data of the two operands. An optional third argument can
+            specify the output array to which the result is written.
+        """
+        if not isinstance(field, VectorField):
+            raise TypeError("Can only define outer product between vector fields")
+
+        def outer(
+            a: NumericArray, b: NumericArray, out: NumericArray | None = None
+        ) -> NumericArray:
+            """Calculate the outer product using numpy."""
+            return np.einsum("i...,j...->ij...", a, b, out=out)
+
+        # overload `outer` with a numba-compiled version
+
+        dim = field.grid.dim
+        num_axes = field.grid.num_axes
+
+        def check_rank(arr: nb.types.Type | nb.types.Optional) -> None:
+            """Determine rank of field with type `arr`"""
+            arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
+            if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
+                raise nb.errors.TypingError(
+                    f"Arguments must be array, not  {arr_typ.__class__}"
+                )
+            assert arr_typ.ndim == 1 + num_axes
+
+        # create the inner function calculating the outer product
+        @register_jitable
+        def calc(a: NumericArray, b: NumericArray, out: NumericArray) -> NumericArray:
+            """Calculate outer product between fields `a` and `b`"""
+            for i in range(dim):
+                for j in range(dim):
+                    out[i, j, :] = a[i] * b[j]
+            return out
+
+        @nb_overload(outer, inline="always")
+        def outer_ol(
+            a: NumericArray, b: NumericArray, out: NumericArray | None = None
+        ) -> NumericArray:
+            """Numba implementation to calculate outer product between two fields."""
+            # get (and check) rank of the input arrays
+            check_rank(a)
+            check_rank(b)
+            in_shape = (dim,) + field.grid.shape
+            out_shape = (dim, dim) + field.grid.shape
+
+            if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
+                # function is called without `out` -> allocate memory
+                dtype = get_common_numba_dtype(a, b)
+
+                def outer_impl(
+                    a: NumericArray,
+                    b: NumericArray,
+                    out: NumericArray | None = None,
+                ) -> NumericArray:
+                    """Helper function allocating output array."""
+                    assert a.shape == b.shape == in_shape
+                    out = np.empty(out_shape, dtype=dtype)
+                    calc(a, b, out)
+                    return out
+
+            else:
+                # function is called with `out` argument -> reuse `out` array
+
+                def outer_impl(
+                    a: NumericArray,
+                    b: NumericArray,
+                    out: NumericArray | None = None,
+                ) -> NumericArray:
+                    """Helper function without allocating output array."""
+                    # check input
+                    assert a.shape == b.shape == in_shape
+                    assert out.shape == out_shape  # type: ignore
+                    calc(a, b, out)
+                    return out  # type: ignore
+
+            return outer_impl  # type: ignore
+
+        @jit
+        def outer_compiled(
+            a: NumericArray, b: NumericArray, out: NumericArray | None = None
+        ) -> NumericArray:
+            """Numba implementation to calculate outer product between two fields."""
+            return outer(a, b, out)
+
+        return outer_compiled  # type: ignore
 
     def make_interpolator(
         self,
