@@ -9,9 +9,8 @@ from typing import Callable
 
 import numpy as np
 
-from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
-from ..tools.typing import BackendType, NumericArray
+from ..tools.typing import BackendType, NumericArray, TField
 from .base import SolverBase
 
 
@@ -44,8 +43,8 @@ class ScipySolver(SolverBase):
         self.solver_params = kwargs
 
     def make_stepper(
-        self, state: FieldBase, dt: float | None = None
-    ) -> Callable[[FieldBase, float, float], float]:
+        self, state: TField, dt: float | None = None
+    ) -> Callable[[TField, float, float], float]:
         """Return a stepper function.
 
         Args:
@@ -84,7 +83,7 @@ class ScipySolver(SolverBase):
                 raise RuntimeError("Encountered Not-A-Number (NaN) in evolution")
             return y  # type: ignore
 
-        def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
+        def stepper(state: TField, t_start: float, t_end: float) -> float:
             """Use scipy.integrate.odeint to advance `state` from `t_start` to
             `t_end`"""
             if dt is not None:

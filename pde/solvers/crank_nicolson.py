@@ -10,9 +10,8 @@ from typing import Callable
 import numba as nb
 import numpy as np
 
-from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
-from ..tools.typing import BackendType, NumericArray
+from ..tools.typing import BackendType, NumericArray, TField
 from .base import ConvergenceError, SolverBase
 
 
@@ -54,7 +53,7 @@ class CrankNicolsonSolver(SolverBase):
         self.explicit_fraction = explicit_fraction
 
     def _make_single_step_fixed_dt(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], None]:
         """Return a function doing a single step with an implicit Euler scheme.
 

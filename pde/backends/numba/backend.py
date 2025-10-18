@@ -14,8 +14,8 @@ from numba.extending import is_jitted, register_jitable
 from numba.extending import overload as nb_overload
 
 from ...fields import DataFieldBase, VectorField
-from ...grids.base import DimensionError, GridBase
-from ...grids.boundaries.axes import BoundariesBase
+from ...grids import BoundariesBase, DimensionError, GridBase
+from ...pdes import PDEBase
 from ...tools.numba import get_common_numba_dtype, jit, make_array_constructor
 from ...tools.typing import (
     DataSetter,
@@ -24,6 +24,7 @@ from ...tools.typing import (
     Number,
     NumberOrArray,
     NumericArray,
+    TField,
 )
 from ..numpy.backend import NumpyBackend, OperatorInfo
 
@@ -669,3 +670,36 @@ class NumbaBackend(NumpyBackend):
         interpolator._data = field.data
 
         return interpolator  # type: ignore
+
+    def make_pde_rhs(
+        self, eq: PDEBase, state: TField, **kwargs
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Return a function for evaluating the right hand side of the PDE.
+
+        Args:
+            eq (:class:`~pde.pdes.base.PDEBase`):
+                The object describing the differential equation
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which information can be extracted
+
+        Returns:
+            Function returning deterministic part of the right hand side of the PDE
+        """
+        return eq._make_pde_rhs_numba_cached(state, **kwargs)
+
+    def make_sde_rhs(
+        self, eq: PDEBase, state: TField, **kwargs
+    ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
+        """Return a function for evaluating the right hand side of the SDE.
+
+        Args:
+            eq (:class:`~pde.pdes.base.PDEBase`):
+                The object describing the differential equation
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which information can be extracted
+
+        Returns:
+            Function returning deterministic part of the right hand side of the PDE
+            together with a noise realization.
+        """
+        return eq._make_sde_rhs_numba_cached(state, **kwargs)

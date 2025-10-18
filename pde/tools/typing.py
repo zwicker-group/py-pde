@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Protocol, Union
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, Union
 
 import numpy as np
 from numpy.typing import ArrayLike
 
 if TYPE_CHECKING:
+    from ..fields import DataFieldBase, FieldCollection
     from ..grids.base import GridBase
 
 # types for single numbers:
@@ -26,6 +27,7 @@ FloatOrArray = Union[float, np.ndarray[Any, np.dtype[np.floating]]]
 
 # miscellaneous types:
 BackendType = Literal["auto", "numpy", "numba"]
+TField = TypeVar("TField", "FieldCollection", "DataFieldBase", covariant=True)
 
 
 class OperatorType(Protocol):

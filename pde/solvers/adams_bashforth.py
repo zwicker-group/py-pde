@@ -10,9 +10,8 @@ from typing import Any, Callable
 import numba as nb
 import numpy as np
 
-from ..fields.base import FieldBase
 from ..tools.numba import jit
-from ..tools.typing import NumericArray
+from ..tools.typing import NumericArray, TField
 from .base import SolverBase
 
 
@@ -22,7 +21,7 @@ class AdamsBashforthSolver(SolverBase):
     name = "adams–bashforth"
 
     def _make_fixed_stepper(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float, int, Any], float]:
         """Return a stepper function using an explicit scheme with fixed time steps.
 

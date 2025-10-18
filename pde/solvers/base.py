@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import logging
 import warnings
-from abc import ABCMeta
 from inspect import isabstract
 from typing import Any, Callable
 
@@ -18,12 +17,11 @@ import numba as nb
 import numpy as np
 from numba.extending import register_jitable
 
-from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.misc import classproperty
 from ..tools.numba import is_jitted, jit
-from ..tools.typing import BackendType, NumericArray, StepperHook
+from ..tools.typing import BackendType, NumericArray, StepperHook, TField
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for solvers."""
@@ -129,7 +127,8 @@ class SolverBase:
     @property
     def _compiled(self) -> bool:
         """bool: indicates whether functions need to be compiled"""
-        return self.backend == "numba" and not nb.config.DISABLE_JIT
+        jit_enabled = not nb.config.DISABLE_JIT
+        return jit_enabled and self.backend != "numpy"
 
     def _make_error_synchronizer(
         self, operator: int | str = "MAX"
@@ -161,7 +160,7 @@ class SolverBase:
 
         return synchronize_errors  # type: ignore
 
-    def _make_post_step_hook(self, state: FieldBase) -> StepperHook:
+    def _make_post_step_hook(self, state: TField) -> StepperHook:
         """Create a function that calls the post-step hook of the PDE.
 
         A no-op function is returned if :attr:`SolverBase._use_post_step_hook` is
@@ -209,10 +208,10 @@ class SolverBase:
             post_step_hook = jit(sig_hook)(post_step_hook)
             self._logger.debug("Compiled post-step hook")
 
-        return post_step_hook
+        return post_step_hook  # type: ignore
 
     def _make_pde_rhs(
-        self, state: FieldBase, backend: BackendType = "auto"
+        self, state: TField, backend: BackendType = "auto"
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Obtain a function for evaluating the right hand side.
 
@@ -239,7 +238,7 @@ class SolverBase:
                 "Cannot create a deterministic stepper for a stochastic equation"
             )
 
-        rhs = self.pde.make_pde_rhs(state, backend=backend)  # type: ignore
+        rhs = self.pde.make_pde_rhs(state, backend=backend)
 
         if hasattr(rhs, "_backend"):
             self.info["backend"] = rhs._backend
@@ -251,7 +250,7 @@ class SolverBase:
         return rhs
 
     def _make_sde_rhs(
-        self, state: FieldBase, backend: str = "auto"
+        self, state: TField, backend: str = "auto"
     ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
         """Obtain a function for evaluating the right hand side.
 
@@ -285,7 +284,7 @@ class SolverBase:
         return rhs
 
     def _make_single_step_fixed_dt(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], None]:
         """Return a function doing a single step with a fixed time step.
 
@@ -299,7 +298,7 @@ class SolverBase:
         raise NotImplementedError("Fixed stepper has not been defined")
 
     def _make_fixed_stepper(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float, int, Any], float]:
         """Return a stepper function using an explicit scheme with fixed time steps.
 
@@ -341,8 +340,8 @@ class SolverBase:
         return fixed_stepper
 
     def make_stepper(
-        self, state: FieldBase, dt: float | None = None
-    ) -> Callable[[FieldBase, float, float], float]:
+        self, state: TField, dt: float | None = None
+    ) -> Callable[[TField, float, float], float]:
         """Return a stepper function using an explicit scheme.
 
         Args:
@@ -380,7 +379,7 @@ class SolverBase:
         # We don't access self.pde directly since we might want to reuse the solver
         # infrastructure for more general cases where a PDE is not defined.
 
-        def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
+        def wrapped_stepper(state: TField, t_start: float, t_end: float) -> float:
             """Advance `state` from `t_start` to `t_end` using fixed steps."""
             # retrieve last post_step_data and continue with this
             post_step_data = self.info["post_step_data"]
@@ -480,7 +479,7 @@ class AdaptiveSolverBase(SolverBase):
         return adjust_dt
 
     def _make_single_step_variable_dt(
-        self, state: FieldBase
+        self, state: TField
     ) -> Callable[[NumericArray, float, float], NumericArray]:
         """Return a function doing a single step with a variable time step.
 
@@ -503,7 +502,7 @@ class AdaptiveSolverBase(SolverBase):
         return single_step
 
     def _make_single_step_error_estimate(
-        self, state: FieldBase
+        self, state: TField
     ) -> Callable[[NumericArray, float, float], tuple[NumericArray, float]]:
         """Make a stepper that also estimates the error.
 
@@ -539,7 +538,7 @@ class AdaptiveSolverBase(SolverBase):
         return single_step_error_estimate
 
     def _make_adaptive_stepper(
-        self, state: FieldBase
+        self, state: TField
     ) -> Callable[
         [NumericArray, float, float, float, OnlineStatistics | None, Any],
         tuple[float, float, int],
@@ -628,8 +627,8 @@ class AdaptiveSolverBase(SolverBase):
         return adaptive_stepper
 
     def make_stepper(
-        self, state: FieldBase, dt: float | None = None
-    ) -> Callable[[FieldBase, float, float], float]:
+        self, state: TField, dt: float | None = None
+    ) -> Callable[[TField, float, float], float]:
         """Return a stepper function using an explicit scheme.
 
         Args:
@@ -670,7 +669,7 @@ class AdaptiveSolverBase(SolverBase):
         self.info["stochastic"] = getattr(self.pde, "is_sde", False)
         self.info["post_step_data"] = self._post_step_data_init
 
-        def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
+        def wrapped_stepper(state: TField, t_start: float, t_end: float) -> float:
             """Advance `state` from `t_start` to `t_end` using adaptive steps."""
             nonlocal dt_float  # `dt_float` stores value for the next call
             # retrieve last post_step_data and continue with this

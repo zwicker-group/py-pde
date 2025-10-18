@@ -8,10 +8,11 @@ from __future__ import annotations
 import datetime
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 from .. import __version__
 from ..tools.numba import JIT_COUNT
+from ..tools.typing import TField
 from ..trackers.base import (
     FinishedSimulation,
     TrackerCollection,
@@ -26,7 +27,6 @@ _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger for controller."""
 
 TRangeType = Union[float, tuple[float, float]]
-TState = TypeVar("TState", bound="FieldBase")
 
 
 class Controller:
@@ -143,7 +143,7 @@ class Controller:
 
         return _handle_stop_iteration
 
-    def _run_main_process(self, state: TState, dt: float | None = None) -> None:
+    def _run_main_process(self, state: TField, dt: float | None = None) -> None:
         """Run the main part of the simulation.
 
         This is either a serial run or the main node of an MPI run. Diagnostic
@@ -273,7 +273,7 @@ class Controller:
                 profiler["solver"],
             )
 
-    def _run_client_process(self, state: TState, dt: float | None = None) -> None:
+    def _run_client_process(self, state: TField, dt: float | None = None) -> None:
         """Run the simulation on client nodes during an MPI run.
 
         This function just loops the stepper advancing the sub field of the current node
@@ -304,7 +304,7 @@ class Controller:
         while t < t_end:
             t = stepper(state, t, t_end)
 
-    def _run_serial(self, state: TState, dt: float | None = None) -> TState:
+    def _run_serial(self, state: TField, dt: float | None = None) -> TField:
         """Run the simulation in serial mode.
 
         Diagnostic information about the solver are available in the
@@ -325,7 +325,7 @@ class Controller:
         self._run_main_process(state, dt)
         return state
 
-    def _run_parallel(self, state: TState, dt: float | None = None) -> TState | None:
+    def _run_parallel(self, state: TField, dt: float | None = None) -> TField | None:
         """Run the simulation in MPI mode.
 
         Diagnostic information about the solver are available in the
@@ -376,7 +376,7 @@ class Controller:
             else:
                 return None  # do not return anything in client processes
 
-    def run(self, initial_state: TState, dt: float | None = None) -> TState | None:
+    def run(self, initial_state: TField, dt: float | None = None) -> TField | None:
         """Run the simulation.
 
         Diagnostic information about the solver are available in the
@@ -400,7 +400,7 @@ class Controller:
         # copy the initial state to not modify the supplied one
         if getattr(self.solver, "pde", None) and self.solver.pde.complex_valued:
             _logger.info("Convert state to complex numbers")
-            state: TState = initial_state.copy(dtype=complex)
+            state: TField = initial_state.copy(dtype=complex)
         else:
             state = initial_state.copy()
 
