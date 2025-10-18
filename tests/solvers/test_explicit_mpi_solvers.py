@@ -80,6 +80,7 @@ def test_stochastic_mpi_solvers(backend, rng):
         assert not solver2.info["dt_adaptive"]
 
 
+@pytest.mark.slow
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_multiple_pdes_mpi(backend, rng):
