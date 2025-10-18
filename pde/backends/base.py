@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import inspect
 import logging
-from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Any, Callable, NamedTuple
 
@@ -39,7 +38,7 @@ class OperatorInfo(NamedTuple):
     name: str = ""  # attach a unique name to help caching
 
 
-class BackendBase(ABC):
+class BackendBase:
     """Basic backend from which all other backends inherit."""
 
     _operators: dict[type[GridBase], dict[str, OperatorInfo]]
@@ -157,9 +156,10 @@ class BackendBase(ABC):
                 return self._operators[cls][operator]
 
         # throw an error since operator was not found
-        raise NotImplementedError(f"Operator '{operator}' is not defined.")
+        raise NotImplementedError(
+            f"Operator '{operator}' is not defined for backend {self.name}"
+        )
 
-    @abstractmethod
     def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
 
@@ -173,8 +173,10 @@ class BackendBase(ABC):
             sets the ghost cells of the full data, potentially using additional
             information in `args` (e.g., the time `t` during solving a PDE)
         """
+        raise NotImplementedError(
+            f"Ghost cell setter not defined for backend {self.name}"
+        )
 
-    @abstractmethod
     def make_data_setter(
         self, grid: GridBase, bcs: BoundariesBase | None = None
     ) -> DataSetter:
@@ -194,6 +196,7 @@ class BackendBase(ABC):
                 to have the correct dimensions, which are not checked. If `bcs` are
                 given, a third argument is allowed, which sets arguments for the BCs.
         """
+        raise NotImplementedError(f"Data setter not defined for backend {self.name}")
 
     def make_operator(
         self,
@@ -232,7 +235,7 @@ class BackendBase(ABC):
             callable: the function that applies the operator. This function has the
             signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
-        raise NotImplementedError
+        raise NotImplementedError(f"Operators not defined for backend {self.name}")
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
@@ -253,7 +256,7 @@ class BackendBase(ABC):
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written.
         """
-        raise NotImplementedError
+        raise NotImplementedError(f"Inner product not defined for backend {self.name}")
 
     def make_outer_prod_operator(
         self, field: DataFieldBase
@@ -273,7 +276,7 @@ class BackendBase(ABC):
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written.
         """
-        raise NotImplementedError
+        raise NotImplementedError(f"Outer product not defined for backend {self.name}")
 
     def make_interpolator(
         self,
@@ -300,7 +303,7 @@ class BackendBase(ABC):
             A function which returns interpolated values when called with arbitrary
             positions within the space of the grid.
         """
-        raise NotImplementedError
+        raise NotImplementedError(f"Interpolator not defined for backend {self.name}")
 
     def make_pde_rhs(
         self, eq: PDEBase, state: TField, **kwargs
