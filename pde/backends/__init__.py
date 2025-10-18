@@ -5,15 +5,18 @@
 
    ~registry.BackendRegistry
    ~numba.backend.NumbaBackend
+   ~numpy.backend.NumpyBackend
    ~scipy.backend.ScipyBackend
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .registry import backends  # noqa
+# load the registry, which manages the backends
+from .registry import backends  # noqa: I001
+
+# load and register the default backend
 from .numpy.backend import NumpyBackend
 
-# register the default backend
 backends.add(NumpyBackend("numpy"))
 
 # register the standard backends without loading them
