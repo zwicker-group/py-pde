@@ -26,15 +26,8 @@ Inheritance structure of the classes:
 """
 
 from .base import DimensionError, GridBase
+from .base import DimensionError, GridBase
 from .boundaries import *
 from .cartesian import CartesianGrid, UnitGrid
 from .cylindrical import CylindricalSymGrid
 from .spherical import PolarSymGrid, SphericalSymGrid
-
-__all__ = [
-    "CartesianGrid",
-    "CylindricalSymGrid",
-    "PolarSymGrid",
-    "SphericalSymGrid",
-    "UnitGrid",
-]
