@@ -9,10 +9,9 @@ from typing import Callable, Literal
 
 import numpy as np
 
-from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
-from ..tools.typing import BackendType
+from ..tools.typing import BackendType, TField
 from .explicit import ExplicitSolver
 
 
@@ -122,8 +121,8 @@ class ExplicitMPISolver(ExplicitSolver):
         return mpi.parallel_run
 
     def make_stepper(
-        self, state: FieldBase, dt=None
-    ) -> Callable[[FieldBase, float, float], float]:
+        self, state: TField, dt=None
+    ) -> Callable[[TField, float, float], float]:
         """Return a stepper function using an explicit scheme.
 
         Args:
@@ -178,9 +177,7 @@ class ExplicitMPISolver(ExplicitSolver):
             adaptive_stepper = self._make_adaptive_stepper(sub_state)
             self.info["post_step_data"] = self._post_step_data_init
 
-            def wrapped_stepper(
-                state: FieldBase, t_start: float, t_end: float
-            ) -> float:
+            def wrapped_stepper(state: TField, t_start: float, t_end: float) -> float:
                 """Advance `state` from `t_start` to `t_end` using adaptive steps."""
                 nonlocal dt  # `dt` stores value for the next call
 
@@ -224,9 +221,7 @@ class ExplicitMPISolver(ExplicitSolver):
             fixed_stepper = self._make_fixed_stepper(sub_state, dt)
             self.info["post_step_data"] = self._post_step_data_init
 
-            def wrapped_stepper(
-                state: FieldBase, t_start: float, t_end: float
-            ) -> float:
+            def wrapped_stepper(state: TField, t_start: float, t_end: float) -> float:  # type: ignore
                 """Advance `state` from `t_start` to `t_end` using fixed steps."""
                 # retrieve last post_step_data and continue with this
                 post_step_data = self.info["post_step_data"]

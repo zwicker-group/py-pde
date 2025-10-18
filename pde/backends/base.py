@@ -11,11 +11,10 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Any, Callable, NamedTuple
 
-import numpy as np
-
-from ..fields.datafield_base import DataFieldBase
+from ..fields import DataFieldBase
+from ..grids import BoundariesBase
 from ..grids.base import GridBase
-from ..grids.boundaries.axes import BoundariesBase
+from ..pdes.base import PDEBase
 from ..tools.typing import (
     DataSetter,
     FloatingArray,
@@ -24,6 +23,7 @@ from ..tools.typing import (
     NumberOrArray,
     NumericArray,
     OperatorFactory,
+    TField,
 )
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
@@ -301,3 +301,40 @@ class BackendBase(ABC):
             positions within the space of the grid.
         """
         raise NotImplementedError
+
+    def make_pde_rhs(
+        self, eq: PDEBase, state: TField, **kwargs
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Return a function for evaluating the right hand side of the PDE.
+
+        Args:
+            eq (:class:`~pde.pdes.base.PDEBase`):
+                The object describing the differential equation
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which information can be extracted
+
+        Returns:
+            Function returning deterministic part of the right hand side of the PDE
+        """
+        raise NotImplementedError(
+            f"PDE right hand side not defined for backend {self.name}"
+        )
+
+    def make_sde_rhs(
+        self, eq: PDEBase, state: TField, **kwargs
+    ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
+        """Return a function for evaluating the right hand side of the SDE.
+
+        Args:
+            eq (:class:`~pde.pdes.base.PDEBase`):
+                The object describing the differential equation
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which information can be extracted
+
+        Returns:
+            Function returning deterministic part of the right hand side of the PDE
+            together with a noise realization.
+        """
+        raise NotImplementedError(
+            f"SDE right hand side not defined for backend {self.name}"
+        )

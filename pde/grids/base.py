@@ -6,14 +6,13 @@
 from __future__ import annotations
 
 import functools
-import inspect
 import itertools
 import json
 import logging
 import math
 import warnings
 from abc import ABCMeta, abstractmethod
-from collections.abc import Generator, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any, Callable, Literal, overload
 
 import numpy as np
@@ -31,7 +30,6 @@ from ..tools.typing import (
     FloatOrArray,
     NumberOrArray,
     NumericArray,
-    OperatorFactory,
     OperatorType,
 )
 from .coordinates import CoordinatesBase, DimensionError

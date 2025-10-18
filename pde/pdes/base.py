@@ -16,7 +16,7 @@ from ..fields import FieldCollection
 from ..fields.base import FieldBase
 from ..fields.datafield_base import DataFieldBase
 from ..tools.numba import jit
-from ..tools.typing import ArrayLike, NumericArray, StepperHook
+from ..tools.typing import ArrayLike, NumericArray, StepperHook, TField
 from ..trackers.base import TrackerCollectionDataType
 
 if TYPE_CHECKING:
@@ -25,8 +25,6 @@ if TYPE_CHECKING:
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for PDEs."""
-
-TState = TypeVar("TState", FieldCollection, DataFieldBase)
 
 
 class PDEBase(metaclass=ABCMeta):
@@ -171,7 +169,7 @@ class PDEBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def evolution_rate(self, state: TState, t: float = 0) -> TState:
+    def evolution_rate(self, state: TField, t: float = 0) -> TField:
         """Evaluate the right hand side of the PDE.
 
         Args:
@@ -198,7 +196,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def check_rhs_consistency(
         self,
-        state: TState,
+        state: TField,
         t: float = 0,
         *,
         tol: float = 1e-7,
@@ -248,7 +246,7 @@ class PDEBase(metaclass=ABCMeta):
         )
 
     def _make_pde_rhs_numba_cached(
-        self, state: TState, **kwargs
+        self, state: TField, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function for evaluating the right hand side.
 
@@ -293,7 +291,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def make_pde_rhs(
         self,
-        state: TState,
+        state: TField,
         backend: Literal["auto", "numpy", "numba"] = "auto",
         **kwargs,
     ) -> Callable[[NumericArray, float], NumericArray]:
@@ -310,45 +308,24 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             callable: Function determining the right hand side of the PDE
         """
+        from ..backends import backends
+
         if backend == "auto":
             try:
                 rhs = self._make_pde_rhs_numba_cached(state, **kwargs)
             except NotImplementedError:
                 backend = "numpy"
             else:
-                rhs._backend = "numba"  # type: ignore
+                backend = "numba"
 
-        if backend == "numpy":
-            # this will be called if backend was chosen explicitly or if it was set to
-            # "auto" and the numba compilation is not available
-            state = state.copy()  # save this exact state for the closure
-
-            def evolution_rate_numpy(
-                state_data: NumericArray, t: float
-            ) -> NumericArray:
-                """Evaluate the rhs given only a state without the grid."""
-                state.data = state_data
-                return self.evolution_rate(state, t, **kwargs).data
-
-            rhs = evolution_rate_numpy
-            rhs._backend = "numpy"  # type: ignore
-
-        elif backend == "numba":
-            # this will not be called if backend is "auto" and numba compilation worked
-            rhs = self._make_pde_rhs_numba_cached(state, **kwargs)
-            rhs._backend = "numba"  # type: ignore
-
-        elif backend != "auto":
-            raise ValueError(
-                f"Unknown backend `{backend}`. Possible values are ['auto', 'numpy', "
-                "'numba']"
-            )
-
-        return rhs
+        backend_obj = backends[backend]
+        pde_rhs = backend_obj.make_pde_rhs(self, state, **kwargs)
+        pde_rhs._backend = backend_obj.name  # type: ignore
+        return pde_rhs
 
     def noise_realization(
-        self, state: TState, t: float = 0, *, label: str = "Noise realization"
-    ) -> TState:
+        self, state: TField, t: float = 0, *, label: str = "Noise realization"
+    ) -> TField:
         """Returns a realization for the noise.
 
         Args:
@@ -363,7 +340,7 @@ class PDEBase(metaclass=ABCMeta):
             :class:`~pde.fields.ScalarField`:
             Scalar field describing the evolution rate of the PDE
         """
-        result: TState
+        result: TField
         if self.is_sde:
             if isinstance(state, FieldCollection):
                 # multiple fields with potentially different noise strengths
@@ -405,7 +382,7 @@ class PDEBase(metaclass=ABCMeta):
         return result
 
     def _make_noise_realization_numba(
-        self, state: TState, **kwargs
+        self, state: TField, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the noise term of the PDE.
 
@@ -471,7 +448,7 @@ class PDEBase(metaclass=ABCMeta):
         return noise_realization  # type: ignore
 
     def _make_sde_rhs_numba(
-        self, state: TState, **kwargs
+        self, state: TField, **kwargs
     ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
         """Return a function for evaluating the noise term of the PDE.
 
@@ -496,7 +473,7 @@ class PDEBase(metaclass=ABCMeta):
         return sde_rhs  # type: ignore
 
     def _make_sde_rhs_numba_cached(
-        self, state: TState, **kwargs
+        self, state: TField, **kwargs
     ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
         """Create a compiled function for evaluating the noise term of the PDE.
 
@@ -528,7 +505,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def make_sde_rhs(
         self,
-        state: TState,
+        state: TField,
         backend: Literal["auto", "numpy", "numba"] = "auto",
         **kwargs,
     ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
@@ -580,7 +557,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def solve(
         self,
-        state: TState,
+        state: TField,
         t_range: TRangeType,
         dt: float | None = None,
         tracker: TrackerCollectionDataType = "auto",
@@ -588,7 +565,7 @@ class PDEBase(metaclass=ABCMeta):
         solver: str | SolverBase = "explicit",
         ret_info: bool = False,
         **kwargs,
-    ) -> None | TState | tuple[TState | None, dict[str, Any]]:
+    ) -> None | TField | tuple[TField | None, dict[str, Any]]:
         """Solves the partial differential equation.
 
         The method constructs a suitable solver (:class:`~pde.solvers.base.SolverBase`)

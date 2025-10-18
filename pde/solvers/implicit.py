@@ -10,9 +10,8 @@ from typing import Callable
 import numba as nb
 import numpy as np
 
-from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
-from ..tools.typing import BackendType, NumericArray
+from ..tools.typing import BackendType, NumericArray, TField
 from .base import ConvergenceError, SolverBase
 
 
@@ -47,7 +46,7 @@ class ImplicitSolver(SolverBase):
         self.maxerror = maxerror
 
     def _make_single_step_fixed_dt_deterministic(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], None]:
         """Return a function doing a deterministic step with an implicit Euler scheme.
 
@@ -113,7 +112,7 @@ class ImplicitSolver(SolverBase):
         return implicit_step
 
     def _make_single_step_fixed_dt_stochastic(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], None]:
         """Return a function doing a step for a SDE with an implicit Euler scheme.
 
@@ -128,7 +127,7 @@ class ImplicitSolver(SolverBase):
         self.info["scheme"] = "implicit-euler-maruyama"
         self.info["stochastic"] = True
 
-        rhs = self.pde.make_pde_rhs(state, backend=self.backend)  # type: ignore
+        rhs = self.pde.make_pde_rhs(state, backend=self.backend)
         rhs_sde = self._make_sde_rhs(state, backend=self.backend)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
@@ -184,7 +183,7 @@ class ImplicitSolver(SolverBase):
         return implicit_step
 
     def _make_single_step_fixed_dt(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], None]:
         """Return a function doing a single step with an implicit Euler scheme.
 

@@ -165,6 +165,7 @@ def test_adaptive_solver_nan(scheme):
         1,
         dt=0.1,
         solver="explicit",
+        backend="numpy",
         scheme=scheme,
         tracker=None,
         adaptive=True,

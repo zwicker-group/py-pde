@@ -10,11 +10,10 @@ from typing import Any, Callable, Literal
 import numba as nb
 import numpy as np
 
-from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.numba import jit
-from ..tools.typing import BackendType, NumericArray
+from ..tools.typing import BackendType, NumericArray, TField
 from .base import AdaptiveSolverBase
 
 
@@ -55,7 +54,7 @@ class ExplicitSolver(AdaptiveSolverBase):
         self.scheme = scheme
 
     def _make_single_step_fixed_euler(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], None]:
         """Make a simple Euler stepper with fixed time step.
 
@@ -99,7 +98,7 @@ class ExplicitSolver(AdaptiveSolverBase):
         return stepper
 
     def _make_single_step_rk45(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], None]:
         """Make function doing a single explicit Runge-Kutta step of order 5(4)
 
@@ -135,7 +134,7 @@ class ExplicitSolver(AdaptiveSolverBase):
         return stepper
 
     def _make_single_step_fixed_dt(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], None]:
         """Return a function doing a single step with a fixed time step.
 
@@ -155,7 +154,7 @@ class ExplicitSolver(AdaptiveSolverBase):
             raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
 
     def _make_adaptive_euler_stepper(
-        self, state: FieldBase
+        self, state: TField
     ) -> Callable[
         [NumericArray, float, float, float, OnlineStatistics | None, Any],
         tuple[float, float, int],
@@ -270,7 +269,7 @@ class ExplicitSolver(AdaptiveSolverBase):
         return adaptive_stepper
 
     def _make_single_step_error_estimate_rkf(
-        self, state: FieldBase
+        self, state: TField
     ) -> Callable[[NumericArray, float, float], tuple[NumericArray, float]]:
         """Make an adaptive stepper using the explicit Runge-Kutta-Fehlberg method.
 
@@ -356,7 +355,7 @@ class ExplicitSolver(AdaptiveSolverBase):
         return stepper
 
     def _make_single_step_error_estimate(
-        self, state: FieldBase
+        self, state: TField
     ) -> Callable[[NumericArray, float, float], tuple[NumericArray, float]]:
         """Make a stepper that also estimates the error.
 
@@ -374,7 +373,7 @@ class ExplicitSolver(AdaptiveSolverBase):
             raise ValueError(f"Adaptive scheme `{self.scheme}` is not supported")
 
     def _make_adaptive_stepper(
-        self, state: FieldBase
+        self, state: TField
     ) -> Callable[
         [NumericArray, float, float, float, OnlineStatistics | None, Any],
         tuple[float, float, int],

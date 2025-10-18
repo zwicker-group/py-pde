@@ -9,10 +9,10 @@ from typing import Any, Callable
 
 import numpy as np
 
-from ...fields import DataFieldBase, VectorField
-from ...grids.base import GridBase
-from ...grids.boundaries.axes import BoundariesBase
-from ...tools.typing import DataSetter, GhostCellSetter, NumericArray
+from ...fields import DataFieldBase, FieldBase, VectorField
+from ...grids import BoundariesBase, GridBase
+from ...pdes import PDEBase
+from ...tools.typing import DataSetter, GhostCellSetter, NumericArray, TField
 from ..base import BackendBase, OperatorInfo
 
 
@@ -259,3 +259,27 @@ class NumpyBackend(BackendBase):
             return np.einsum("i...,j...->ij...", a, b, out=out)
 
         return outer
+
+    def make_pde_rhs(
+        self, eq: PDEBase, state: TField, **kwargs
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Return a function for evaluating the right hand side of the PDE.
+
+        Args:
+            eq (:class:`~pde.pdes.base.PDEBase`):
+                The object describing the differential equation
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which information can be extracted
+
+        Returns:
+            Function returning deterministic part of the right hand side of the PDE
+        """
+        state = state.copy()  # save this exact state for the closure
+
+        def pde_rhs(state_data: NumericArray, t: float) -> NumericArray:
+            """Evaluate the rhs given only a state without the grid."""
+            state.data = state_data
+            return eq.evolution_rate(state, t, **kwargs).data
+
+        pde_rhs._backend = "numpy"  # type: ignore
+        return pde_rhs

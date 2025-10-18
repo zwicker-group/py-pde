@@ -23,10 +23,10 @@ from ..fields.datafield_base import DataFieldBase
 from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
-from ..pdes.base import PDEBase, TState
+from ..pdes.base import PDEBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
-from ..tools.typing import ArrayLike, NumberOrArray, NumericArray, StepperHook
+from ..tools.typing import ArrayLike, NumberOrArray, NumericArray, StepperHook, TField
 
 if TYPE_CHECKING:
     import sympy
@@ -379,7 +379,7 @@ class PDE(PDEBase):
         return rhs_func
 
     def _prepare_cache(
-        self, state: TState, backend: Literal["numpy", "numba"] = "numpy"
+        self, state: TField, backend: Literal["numpy", "numba"] = "numpy"
     ) -> dict[str, Any]:
         """Prepare the expression by setting internal variables in the cache.
 
@@ -504,7 +504,7 @@ class PDE(PDEBase):
         cache["state_attributes"] = state.attributes
         return cache
 
-    def evolution_rate(self, state: TState, t: float = 0.0) -> TState:
+    def evolution_rate(self, state: TField, t: float = 0.0) -> TField:
         """Evaluate the right hand side of the PDE.
 
         Args:
@@ -634,7 +634,7 @@ class PDE(PDEBase):
         return chain()
 
     def _make_pde_rhs_numba(  # type: ignore
-        self, state: TState, **kwargs
+        self, state: TField, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
