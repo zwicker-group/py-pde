@@ -210,6 +210,29 @@ class SolverBase:
 
         return post_step_hook  # type: ignore
 
+    def _check_backend(self, rhs: Callable) -> None:
+        """Helper function that checks the backend requested by the rhs."""
+        # check whether the rhs has specified a particular backend
+        if hasattr(rhs, "_backend"):
+            self.info["backend"] = rhs._backend
+        elif is_jitted(rhs):
+            self.info["backend"] = "numba"
+        else:
+            self.info["backend"] = "undetermined"
+
+        if self.backend != self.info["backend"]:
+            if self.backend == "auto":
+                # solver did not care about a backend, so we simply use the solver one
+                self.backend = self.info["backend"]
+            else:
+                # there is a mismatch, which we need to report
+                self._logger.warning(
+                    "The PDE class requested a different backend (%s) than the solver "
+                    "(%s), which might lead to incompatibilities",
+                    self.backend,
+                    self.info["backend"],
+                )
+
     def _make_pde_rhs(
         self, state: TField, backend: BackendType = "auto"
     ) -> Callable[[NumericArray, float], NumericArray]:
@@ -239,14 +262,7 @@ class SolverBase:
             )
 
         rhs = self.pde.make_pde_rhs(state, backend=backend)
-
-        if hasattr(rhs, "_backend"):
-            self.info["backend"] = rhs._backend
-        elif is_jitted(rhs):
-            self.info["backend"] = "numba"
-        else:
-            self.info["backend"] = "undetermined"
-
+        self._check_backend(rhs)
         return rhs
 
     def _make_sde_rhs(
@@ -273,14 +289,7 @@ class SolverBase:
             applicable) a realization of the associated noise.
         """
         rhs = self.pde.make_sde_rhs(state, backend=backend)  # type: ignore
-
-        if hasattr(rhs, "_backend"):
-            self.info["backend"] = rhs._backend
-        elif is_jitted(rhs):
-            self.info["backend"] = "numba"
-        else:
-            self.info["backend"] = "undetermined"
-
+        self._check_backend(rhs)
         return rhs
 
     def _make_single_step_fixed_dt(

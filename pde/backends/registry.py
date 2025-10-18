@@ -12,7 +12,15 @@ from collections.abc import Iterator
 from .. import config
 from .base import BackendBase
 
-_RESERVED_NAMES = {"default", "auto", "config", "none", "best"}
+_RESERVED_NAMES = {
+    "auto",
+    "best",
+    "config",
+    "default",
+    "none",
+    "undetermined",
+    "unknown",
+}
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger instance."""
 
@@ -36,7 +44,7 @@ class BackendRegistry:
                 Name of the backend
         """
         if name in _RESERVED_NAMES:
-            _logger.warning("Reserved name `%s` should not be used.", name)
+            _logger.warning("Reserved backend name `%s` should not be used.", name)
         if name in self._backends:
             if isinstance(self._backends[name], str):
                 _logger.info("Redefining backend `%s`", name)
@@ -56,7 +64,9 @@ class BackendRegistry:
                 Implementation of the backend
         """
         if backend.name in _RESERVED_NAMES:
-            _logger.warning("Reserved name `%s` should not be used.", backend.name)
+            _logger.warning(
+                "Reserved backend name `%s` should not be used.", backend.name
+            )
         if backend.name in self._backends:
             _logger.info("Reloading backend `%s`", backend.name)
         self._backends[backend.name] = backend
