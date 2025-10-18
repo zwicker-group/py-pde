@@ -37,6 +37,7 @@ def test_pde_complex_bcs_mpi(dim, backend, rng):
         assert res is None
 
 
+@pytest.mark.slow
 @pytest.mark.multiprocessing
 def test_pde_vector_mpi(rng):
     """Test PDE with a single vector field using multiprocessing."""

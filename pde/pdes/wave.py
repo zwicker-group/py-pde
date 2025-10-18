@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from typing import Callable
 
-import numba as nb
 import numpy as np
 
 from ..fields import FieldCollection, ScalarField
@@ -117,6 +116,8 @@ class WavePDE(PDEBase):
             instance of :class:`~numpy.ndarray` of the state data and the time to
             obtained an instance of :class:`~numpy.ndarray` giving the evolution rate.
         """
+        import numba as nb
+
         arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)
 

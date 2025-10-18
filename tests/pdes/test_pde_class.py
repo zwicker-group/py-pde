@@ -72,6 +72,7 @@ def test_pde_scalar(rng):
     np.testing.assert_allclose(res_a.data, res_b.data)
 
 
+@pytest.mark.slow
 def test_pde_vector(rng):
     """Test PDE with a single vector field."""
     eq = PDE({"u": "vector_laplace(u) + exp(-t)"})

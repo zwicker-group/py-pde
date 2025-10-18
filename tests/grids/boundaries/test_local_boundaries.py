@@ -245,6 +245,7 @@ def test_inhomogeneous_bcs_2d():
     assert bc_x.axis_coord == 0
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("expr", ["1", "x + y**2"])
 def test_expression_bc_setting_value(expr, rng):
     """Test boundary conditions that use an expression."""
@@ -576,6 +577,7 @@ def test_expression_bc_user_func_nojit(dim):
     np.testing.assert_allclose(res.data, 1)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_expression_bc_user_expr_nojit(dim):
     """Test user expressions in boundary expressions that cannot be compiled."""
