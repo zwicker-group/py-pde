@@ -30,3 +30,11 @@ from .boundaries import *
 from .cartesian import CartesianGrid, UnitGrid
 from .cylindrical import CylindricalSymGrid
 from .spherical import PolarSymGrid, SphericalSymGrid
+
+__all__ = [
+    "CartesianGrid",
+    "CylindricalSymGrid",
+    "PolarSymGrid",
+    "SphericalSymGrid",
+    "UnitGrid",
+]

@@ -12,11 +12,17 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import contextlib
-
+from .base import StorageBase
 from .file import FileStorage
 from .memory import MemoryStorage, get_memory_storage
 from .movie import MovieStorage
 
-with contextlib.suppress(ImportError):
+__all__ = ["FileStorage", "MemoryStorage", "MovieStorage"]
+
+# try importing modelrunner, which is optional
+try:
     from .modelrunner import ModelrunnerStorage
+except ImportError:
+    pass
+else:
+    __all__.append("ModelrunnerStorage")

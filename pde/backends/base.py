@@ -11,9 +11,9 @@ from collections import defaultdict
 from typing import Any, Callable, NamedTuple
 
 from ..fields import DataFieldBase
-from ..grids import BoundariesBase
-from ..grids.base import GridBase
+from ..grids import BoundariesBase, GridBase
 from ..pdes.base import PDEBase
+from ..solvers.base import SolverBase
 from ..tools.typing import (
     DataSetter,
     FloatingArray,

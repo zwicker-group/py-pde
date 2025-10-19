@@ -385,3 +385,13 @@ def parse_interrupt(data: InterruptData) -> InterruptsBase:
     else:
         # anything else we cannot handle
         raise TypeError(f"Cannot parse interrupt data `{data}`")
+
+
+__all__ = [
+    "FixedInterrupts",
+    "ConstantInterrupts",
+    "LogarithmicInterrupts",
+    "GeometricInterrupts",
+    "RealtimeInterrupts",
+    "parse_interrupt",
+]
