@@ -5,55 +5,23 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Callable, Literal
 
-import numba as nb
 import numpy as np
 
 from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
-from ..tools.numba import jit
-from ..tools.typing import BackendType, NumericArray, TField
+from ..tools.typing import NumericArray, TField
 from .base import AdaptiveSolverBase
 
 
-class ExplicitSolver(AdaptiveSolverBase):
-    """Various explicit PDE solvers."""
+class EulerSolver(AdaptiveSolverBase):
+    """Explicit Euler solver."""
 
-    name = "explicit"
+    name = "euler"
 
-    def __init__(
-        self,
-        pde: PDEBase,
-        scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
-        *,
-        backend: BackendType = "auto",
-        adaptive: bool = False,
-        tolerance: float = 1e-4,
-    ):
-        """
-        Args:
-            pde (:class:`~pde.pdes.base.PDEBase`):
-                The partial differential equation that should be solved
-            scheme (str):
-                Defines the explicit scheme to use. Supported values are 'euler' and
-                'runge-kutta' (or 'rk' for short).
-            backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
-            adaptive (bool):
-                When enabled, the time step is adjusted during the simulation using the
-                error tolerance set with `tolerance`.
-            tolerance (float):
-                The error tolerance used in adaptive time stepping. This is used in
-                adaptive time stepping to choose a time step which is small enough so
-                the truncation error of a single step is below `tolerance`.
-        """
-        super().__init__(pde, backend=backend, adaptive=adaptive, tolerance=tolerance)
-        self.scheme = scheme
-
-    def _make_single_step_fixed_euler(
+    def _make_single_step_fixed_dt(
         self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], None]:
         """Make a simple Euler stepper with fixed time step.
@@ -97,63 +65,7 @@ class ExplicitSolver(AdaptiveSolverBase):
 
         return stepper
 
-    def _make_single_step_rk45(
-        self, state: TField, dt: float
-    ) -> Callable[[NumericArray, float], None]:
-        """Make function doing a single explicit Runge-Kutta step of order 5(4)
-
-        Args:
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-            dt (float):
-                Time step of the explicit stepping.
-
-        Returns:
-            Function that can be called to advance the `state` from time `t_start` to
-            time `t_end`. The function call signature is `(state: numpy.ndarray,
-            t_start: float, steps: int)`
-        """
-        if self.pde.is_sde:
-            raise RuntimeError("Runge-Kutta stepper does not support stochasticity")
-
-        # obtain functions determining how the PDE is evolved
-        rhs = self._make_pde_rhs(state, backend=self.backend)
-
-        def stepper(state_data: NumericArray, t: float) -> None:
-            """Compiled inner loop for speed."""
-            # calculate the intermediate values in Runge-Kutta
-            k1 = dt * rhs(state_data, t)
-            k2 = dt * rhs(state_data + 0.5 * k1, t + 0.5 * dt)
-            k3 = dt * rhs(state_data + 0.5 * k2, t + 0.5 * dt)
-            k4 = dt * rhs(state_data + k3, t + dt)
-
-            state_data += (k1 + 2 * k2 + 2 * k3 + k4) / 6
-
-        self._logger.info("Init explicit Runge-Kutta-45 stepper with dt=%g", dt)
-        return stepper
-
-    def _make_single_step_fixed_dt(
-        self, state: TField, dt: float
-    ) -> Callable[[NumericArray, float], None]:
-        """Return a function doing a single step with a fixed time step.
-
-        Args:
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-            dt (float):
-                Time step of the explicit stepping.
-        """
-        self.info["scheme"] = self.scheme
-        if self.scheme == "euler":
-            return self._make_single_step_fixed_euler(state, dt)
-        elif self.scheme in {"runge-kutta", "rk", "rk45"}:
-            return self._make_single_step_rk45(state, dt)
-        else:
-            raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
-
-    def _make_adaptive_euler_stepper(
+    def _make_adaptive_stepper(
         self, state: TField
     ) -> Callable[
         [NumericArray, float, float, float, OnlineStatistics | None, Any],
@@ -253,22 +165,52 @@ class ExplicitSolver(AdaptiveSolverBase):
 
             return t, dt_opt, steps
 
-        if self._compiled:
-            # compile inner stepper
-            sig_adaptive = (
-                nb.typeof(state.data),
-                nb.double,
-                nb.double,
-                nb.double,
-                nb.typeof(self.info["dt_statistics"]),
-                self._post_step_data_type,
-            )
-            adaptive_stepper = jit(sig_adaptive)(adaptive_stepper)
-
         self._logger.info("Init adaptive Euler stepper")
         return adaptive_stepper
 
-    def _make_single_step_error_estimate_rkf(
+
+class RungeKuttaSolver(AdaptiveSolverBase):
+    """Explicit Runge-Kutta PDE solver of order 5(4)."""
+
+    name = "runge-kutta"
+
+    def _make_single_step_fixed_dt(
+        self, state: TField, dt: float
+    ) -> Callable[[NumericArray, float], None]:
+        """Make function doing a single explicit Runge-Kutta step of order 5(4)
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step of the explicit stepping.
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, steps: int)`
+        """
+        if self.pde.is_sde:
+            raise RuntimeError("Runge-Kutta stepper does not support stochasticity")
+
+        # obtain functions determining how the PDE is evolved
+        rhs = self._make_pde_rhs(state, backend=self.backend)
+
+        def stepper(state_data: NumericArray, t: float) -> None:
+            """Compiled inner loop for speed."""
+            # calculate the intermediate values in Runge-Kutta
+            k1 = dt * rhs(state_data, t)
+            k2 = dt * rhs(state_data + 0.5 * k1, t + 0.5 * dt)
+            k3 = dt * rhs(state_data + 0.5 * k2, t + 0.5 * dt)
+            k4 = dt * rhs(state_data + k3, t + dt)
+
+            state_data += (k1 + 2 * k2 + 2 * k3 + k4) / 6
+
+        self._logger.info("Init explicit Runge-Kutta-45 stepper with dt=%g", dt)
+        return stepper
+
+    def _make_single_step_error_estimate(
         self, state: TField
     ) -> Callable[[NumericArray, float, float], tuple[NumericArray, float]]:
         """Make an adaptive stepper using the explicit Runge-Kutta-Fehlberg method.
@@ -354,41 +296,44 @@ class ExplicitSolver(AdaptiveSolverBase):
         self._logger.info("Init adaptive Runge-Kutta-Fehlberg stepper")
         return stepper
 
-    def _make_single_step_error_estimate(
-        self, state: TField
-    ) -> Callable[[NumericArray, float, float], tuple[NumericArray, float]]:
-        """Make a stepper that also estimates the error.
 
-        Args:
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
+class ExplicitSolver(AdaptiveSolverBase):
+    """Various explicit PDE solvers."""
+
+    name = "explicit"
+
+    def __new__(
+        cls,
+        pde: PDEBase,
+        scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
+        **kwargs,
+    ):
         """
-        self.info["scheme"] = self.scheme
-        if self.scheme in {"runge-kutta", "rk", "rk45"}:
-            return self._make_single_step_error_estimate_rkf(state)
-        else:
-            # Note that the Euler scheme is implemented separately to use detailed
-            # optimizations; see method `_make_adaptive_euler_stepper`
-            raise ValueError(f"Adaptive scheme `{self.scheme}` is not supported")
-
-    def _make_adaptive_stepper(
-        self, state: TField
-    ) -> Callable[
-        [NumericArray, float, float, float, OnlineStatistics | None, Any],
-        tuple[float, float, int],
-    ]:
-        """Return a stepper function using an explicit scheme with fixed time steps.
-
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
+            pde (:class:`~pde.pdes.base.PDEBase`):
+                The partial differential equation that should be solved
+            scheme (str):
+                Defines the explicit scheme to use. Supported values are 'euler' and
+                'runge-kutta' (or 'rk' for short).
+            backend (str):
+                Determines how the function is created. Accepted  values are 'numpy` and
+                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
+                backend.
+            adaptive (bool):
+                When enabled, the time step is adjusted during the simulation using the
+                error tolerance set with `tolerance`.
+            tolerance (float):
+                The error tolerance used in adaptive time stepping. This is used in
+                adaptive time stepping to choose a time step which is small enough so
+                the truncation error of a single step is below `tolerance`.
         """
-        self.info["scheme"] = self.scheme
-        if self.scheme == "euler":
-            return self._make_adaptive_euler_stepper(state)
-        elif self.scheme in {"runge-kutta", "rk", "rk45"}:
-            return super()._make_adaptive_stepper(state)
+        # deprecated since 2025-11-01
+        warnings.warn(
+            "`ExplicitSolver` is deprecated. Use `EulerSolver` or `RungeKuttaSolver`."
+        )
+        if scheme == "euler":
+            return EulerSolver(pde=pde, **kwargs)
+        elif scheme in {"rk", "rk45", "runge-kutta"}:
+            return RungeKuttaSolver(pde=pde, **kwargs)
         else:
-            raise ValueError(f"Adaptive scheme `{self.scheme}` is not supported")
+            raise ValueError(f"Scheme `{scheme}` is not supported")

@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import functools
-from typing import Callable
+from typing import Callable, Literal
 
 import numba as nb
 import numpy as np
@@ -16,6 +16,7 @@ from numba.extending import overload as nb_overload
 from ...fields import DataFieldBase, VectorField
 from ...grids import BoundariesBase, DimensionError, GridBase
 from ...pdes import PDEBase
+from ...solvers import AdaptiveSolverBase, SolverBase
 from ...tools.numba import get_common_numba_dtype, jit, make_array_constructor
 from ...tools.typing import (
     DataSetter,
@@ -703,3 +704,38 @@ class NumbaBackend(NumpyBackend):
             together with a noise realization.
         """
         return eq._make_sde_rhs_numba_cached(state, **kwargs)
+
+    def make_inner_stepper(
+        self,
+        solver: SolverBase,
+        stepper_style: Literal["fixed", "adaptive"],
+        state: TField,
+        dt: float,
+    ) -> Callable:
+        """Return a stepper function using an explicit scheme.
+
+        Args:
+            solver (:class:`~pde.solvers.base.SolverBase`):
+                The solver instance, which determines how the stepper is constructed
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        assert solver.backend == "numba"
+
+        from .solvers import make_adaptive_stepper, make_fixed_stepper
+
+        if stepper_style == "fixed":
+            return make_fixed_stepper(solver, state, dt=dt)
+        elif stepper_style == "adaptive":
+            assert isinstance(solver, AdaptiveSolverBase)
+            return make_adaptive_stepper(solver, state)
+        else:
+            raise NotImplementedError

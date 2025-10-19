@@ -13,14 +13,13 @@ from pde.tools import mpi
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 @pytest.mark.parametrize(
-    "scheme, adaptive, decomposition",
+    "adaptive, decomposition",
     [
-        ("euler", False, "auto"),
-        ("euler", True, [1, -1]),
-        ("runge-kutta", True, [-1, 1]),
+        (False, "auto"),
+        (True, [1, -1]),
     ],
 )
-def test_simple_pde_mpi(backend, scheme, adaptive, decomposition, rng):
+def test_simple_pde_mpi(backend, adaptive, decomposition, rng):
     """Test setting boundary conditions using numba."""
     grid = UnitGrid([8, 8], periodic=[True, False])
 
@@ -32,7 +31,6 @@ def test_simple_pde_mpi(backend, scheme, adaptive, decomposition, rng):
         "t_range": 1.01,
         "dt": 0.1,
         "adaptive": adaptive,
-        "scheme": scheme,
         "tracker": None,
         "ret_info": True,
     }

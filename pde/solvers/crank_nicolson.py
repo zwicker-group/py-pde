@@ -68,7 +68,6 @@ class CrankNicolsonSolver(SolverBase):
             raise RuntimeError("Cannot use implicit stepper with stochastic equation")
 
         self.info["function_evaluations"] = 0
-        self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
 
         rhs = self._make_pde_rhs(state, backend=self.backend)
@@ -108,14 +107,13 @@ class CrankNicolsonSolver(SolverBase):
                     # fix point iteration converged
                     break
             else:
-                with nb.objmode:
-                    self._logger.warning(
-                        "Crank-Nicolson step did not converge after %d iterations "
-                        "at t=%g (error=%g)",
-                        maxiter,
-                        t,
-                        err,
-                    )
+                # self._logger.warning(
+                #     "Crank-Nicolson step did not converge after %d iterations "
+                #     "at t=%g (error=%g)",
+                #     maxiter,
+                #     t,
+                #     err,
+                # )
                 raise ConvergenceError("Crank-Nicolson step did not converge.")
             nfev += n + 2
 

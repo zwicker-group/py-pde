@@ -8,7 +8,7 @@ from __future__ import annotations
 import inspect
 import logging
 from collections import defaultdict
-from typing import Any, Callable, NamedTuple
+from typing import Any, Callable, Literal, NamedTuple
 
 from ..fields import DataFieldBase
 from ..grids import BoundariesBase, GridBase
@@ -342,9 +342,13 @@ class BackendBase:
             f"SDE right hand side not defined for backend {self.name}"
         )
 
-    def make_stepper(
-        self, solver: SolverBase, state: TField, dt: float | None = None
-    ) -> Callable[[TField, float, float], float]:
+    def make_inner_stepper(
+        self,
+        solver: SolverBase,
+        stepper_style: Literal["fixed", "adaptive"],
+        state: TField,
+        dt: float,
+    ) -> Callable:
         """Return a stepper function using an explicit scheme.
 
         Args:
@@ -353,8 +357,8 @@ class BackendBase:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            dt (float):
-                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+            stepper_style (str):
+                Determines how the stepper is expected to work
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to

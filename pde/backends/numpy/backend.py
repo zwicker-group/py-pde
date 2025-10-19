@@ -5,14 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 import numpy as np
 
 from ...fields import DataFieldBase, VectorField
 from ...grids import BoundariesBase, GridBase
 from ...pdes import PDEBase
-from ...solvers import SolverBase
+from ...solvers import AdaptiveSolverBase, SolverBase
 from ...tools.typing import DataSetter, GhostCellSetter, NumericArray, TField
 from ..base import BackendBase, OperatorInfo
 
@@ -285,9 +285,13 @@ class NumpyBackend(BackendBase):
         pde_rhs._backend = "numpy"  # type: ignore
         return pde_rhs
 
-    def make_stepper(
-        self, solver: SolverBase, state: TField, dt: float | None = None
-    ) -> Callable[[TField, float, float], float]:
+    def make_inner_stepper(
+        self,
+        solver: SolverBase,
+        stepper_style: Literal["fixed", "adaptive"],
+        state: TField,
+        dt: float,
+    ) -> Callable:
         """Return a stepper function using an explicit scheme.
 
         Args:
@@ -304,4 +308,13 @@ class NumpyBackend(BackendBase):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
-        return solver.make_stepper(state, dt=dt)
+        assert solver.backend == "numpy"
+        if stepper_style == "fixed":
+            return solver._make_fixed_stepper(state, dt)
+        elif stepper_style == "adaptive":
+            assert isinstance(solver, AdaptiveSolverBase)
+            return solver._make_adaptive_stepper(state)
+        else:
+            raise NotImplementedError(
+                f"Numpy backend cannot handle stepper style {stepper_style}"
+            )

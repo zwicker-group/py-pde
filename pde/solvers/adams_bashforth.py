@@ -7,10 +7,8 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-import numba as nb
 import numpy as np
 
-from ..tools.numba import jit
 from ..tools.typing import NumericArray, TField
 from .base import SolverBase
 
@@ -50,10 +48,6 @@ class AdamsBashforthSolver(SolverBase):
         # allocate memory to store the state of the previous time step
         state_prev = np.empty_like(state.data)
         init_state_prev = True
-
-        if self._compiled:
-            sig_single_step = (nb.typeof(state.data), nb.double, nb.typeof(state_prev))
-            single_step = jit(sig_single_step)(single_step)
 
         def fixed_stepper(
             state_data: NumericArray, t_start: float, steps: int, post_step_data

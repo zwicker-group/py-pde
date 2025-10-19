@@ -45,7 +45,7 @@ def test_inhomogeneous_bcs_2():
     grid = CartesianGrid([[0, 1], [0, 1]], [8, 8], periodic=False)
     state = ScalarField(grid)
     eq = DiffusionPDE(bc={"value": "x + y"})
-    sol = eq.solve(state, t_range=1e1, dt=1e-3, tracker=None)
+    sol = eq.solve(state, t_range=1e1, dt=1e-3, backend="numba", tracker=None)
     expect = ScalarField.from_expression(grid, "x + y")
     np.testing.assert_almost_equal(sol.data, expect.data)
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 import datetime
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Callable, Union
+from typing import Any, Callable, Union
 
 from .. import __version__
 from ..tools.numba import JIT_COUNT
@@ -19,9 +19,6 @@ from ..trackers.base import (
     TrackerCollectionDataType,
 )
 from .base import SolverBase
-
-if TYPE_CHECKING:
-    from ..fields.base import FieldBase
 
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger for controller."""
