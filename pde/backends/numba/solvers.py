@@ -176,16 +176,6 @@ def _make_adaptive_stepper_general(
     tolerance = solver.tolerance
     dt_min = solver.dt_min
 
-    signature_stepper = (
-        nb.typeof(state.data),
-        nb.double,
-        nb.double,
-        nb.double,
-        nb.typeof(solver.info["dt_statistics"]),
-        nb.typeof(solver._post_step_data_init),
-    )
-
-    @jit(signature_stepper)
     def adaptive_stepper(
         state_data: NumericArray,
         t_start: float,
@@ -227,6 +217,19 @@ def _make_adaptive_stepper_general(
 
         return t, dt_opt, steps
 
+    if not nb.config.DISABLE_JIT:
+        # do the compilation only when JIT is actually being done. This might be
+        # disabled for debugging numba code or for determining test coverage
+        signature_stepper = (
+            nb.typeof(state.data),
+            nb.double,
+            nb.double,
+            nb.double,
+            nb.typeof(solver.info["dt_statistics"]),
+            nb.typeof(solver._post_step_data_init),
+        )
+        adaptive_stepper = jit(signature_stepper)(adaptive_stepper)
+
     solver._logger.info("Initialized adaptive stepper")
     return adaptive_stepper  # type: ignore
 
@@ -249,15 +252,19 @@ def _make_adaptive_stepper_euler(
         t_start: float, t_end: float)`
     """
     stepper = solver._make_adaptive_stepper(state)
-    signature = (
-        nb.typeof(state.data),
-        nb.double,
-        nb.double,
-        nb.double,
-        nb.typeof(solver.info["dt_statistics"]),
-        nb.typeof(solver._post_step_data_init),
-    )
-    return jit(signature)(stepper)  # type: ignore
+    if nb.config.DISABLE_JIT:
+        # this can be useful to debug numba implementations and for test coverage checks
+        return stepper
+    else:
+        signature = (
+            nb.typeof(state.data),
+            nb.double,
+            nb.double,
+            nb.double,
+            nb.typeof(solver.info["dt_statistics"]),
+            nb.typeof(solver._post_step_data_init),
+        )
+        return jit(signature)(stepper)  # type: ignore
 
 
 def make_adaptive_stepper(
