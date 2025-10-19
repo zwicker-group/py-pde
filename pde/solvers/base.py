@@ -13,14 +13,13 @@ import warnings
 from inspect import isabstract
 from typing import TYPE_CHECKING, Any, Callable, Union
 
-import numba as nb
 import numpy as np
 from numba.extending import register_jitable
 
 from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.misc import classproperty
-from ..tools.numba import is_jitted, jit
+from ..tools.numba import is_jitted
 from ..tools.typing import BackendType, NumericArray, StepperHook, TField
 
 if TYPE_CHECKING:
@@ -205,12 +204,6 @@ class SolverBase:
 
         return self.__backend_obj
 
-    @property
-    def _compiled(self) -> bool:
-        """bool: indicates whether functions need to be compiled"""
-        jit_enabled = not nb.config.DISABLE_JIT
-        return jit_enabled and self.backend != "numpy"
-
     def _make_error_synchronizer(
         self, operator: int | str = "MAX"
     ) -> Callable[[float], float]:
@@ -282,12 +275,6 @@ class SolverBase:
         else:
             # ensure that the initial values is a mutable array
             self._post_step_data_init = np.array(self._post_step_data_init, copy=True)
-
-        self._post_step_data_type = nb.typeof(self._post_step_data_init)
-        if self._compiled:
-            sig_hook = (nb.typeof(state.data), nb.float64, self._post_step_data_type)
-            post_step_hook = jit(sig_hook)(post_step_hook)
-            self._logger.debug("Compiled post-step hook")
 
         return post_step_hook  # type: ignore
 
@@ -498,54 +485,6 @@ class AdaptiveSolverBase(SolverBase):
         self.adaptive = adaptive
         self.tolerance = tolerance
 
-    def _make_dt_adjuster(self) -> Callable[[float, float], float]:
-        """Return a function that can be used to adjust time steps."""
-        dt_min = self.dt_min
-        dt_min_nan_err = f"Encountered NaN even though dt < {dt_min}"
-        dt_min_err = f"Time step below {dt_min}"
-        dt_max = self.dt_max
-
-        def adjust_dt(dt: float, error_rel: float) -> float:
-            """Helper function that adjust the time step.
-
-            The goal is to keep the relative error `error_rel` close to 1.
-
-            Args:
-                dt (float): Current time step
-                error_rel (float): Current (normalized) error estimate
-
-            Returns:
-                float: Time step of the next iteration
-            """
-            # adjust the time step
-            if error_rel < 0.00057665:
-                # error was very small => maximal increase in dt
-                # The constant on the right hand side of the comparison is chosen to
-                # agree with the equation for adjusting dt below
-                dt *= 4.0
-            elif np.isnan(error_rel):
-                # state contained NaN => decrease time step strongly
-                dt *= 0.25
-            else:
-                # otherwise, adjust time step according to error
-                dt *= max(0.9 * error_rel**-0.2, 0.1)
-
-            # limit time step to permissible bracket
-            if dt > dt_max:
-                dt = dt_max
-            elif dt < dt_min:
-                if np.isnan(error_rel):
-                    raise RuntimeError(dt_min_nan_err)
-                else:
-                    raise RuntimeError(dt_min_err)
-
-            return dt
-
-        if self._compiled:
-            adjust_dt = jit((nb.double, nb.double))(adjust_dt)
-
-        return adjust_dt
-
     def _make_single_step_variable_dt(
         self, state: TField
     ) -> Callable[[NumericArray, float, float], NumericArray]:
@@ -583,9 +522,6 @@ class AdaptiveSolverBase(SolverBase):
             raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
 
         single_step = self._make_single_step_variable_dt(state)
-        if self._compiled:
-            sig_single_step = (nb.typeof(state.data), nb.double, nb.double)
-            single_step = jit(sig_single_step)(single_step)
 
         def single_step_error_estimate(
             state_data: NumericArray, t: float, dt: float
@@ -605,13 +541,18 @@ class AdaptiveSolverBase(SolverBase):
 
         return single_step_error_estimate
 
-    def _make_adaptive_stepper(self, state: TField) -> AdaptiveStepperType:
+    def _make_adaptive_stepper(
+        self, state: TField, *, adjust_dt: Callable[[float, float], float] | None = None
+    ) -> AdaptiveStepperType:
         """Make an adaptive Euler stepper.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
+            adjust_dt (callable or None):
+                A function that is used to adjust the time step. The function takes the
+                current time step and a relative error and returns an adjusted time step.
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
@@ -624,14 +565,10 @@ class AdaptiveSolverBase(SolverBase):
         sync_errors = self._make_error_synchronizer()
 
         # obtain auxiliary functions
-        adjust_dt = self._make_dt_adjuster()
+        if adjust_dt is None:
+            adjust_dt = _make_dt_adjuster(self.dt_min, self.dt_max)
         tolerance = self.tolerance
         dt_min = self.dt_min
-
-        if self._compiled:
-            # compile paired stepper
-            sig_stepper = (nb.typeof(state.data), nb.double, nb.double)
-            single_step_error = jit(sig_stepper)(single_step_error)
 
         def adaptive_stepper(
             state_data: NumericArray,
@@ -673,18 +610,6 @@ class AdaptiveSolverBase(SolverBase):
                     break  # return to the controller
 
             return t, dt_opt, steps
-
-        if self._compiled:
-            # compile inner stepper
-            sig_adaptive = (
-                nb.typeof(state.data),
-                nb.double,
-                nb.double,
-                nb.double,
-                nb.typeof(self.info["dt_statistics"]),
-                self._post_step_data_type,
-            )
-            adaptive_stepper = jit(sig_adaptive)(adaptive_stepper)
 
         self._logger.info("Initialized adaptive stepper")
         return adaptive_stepper
@@ -754,3 +679,68 @@ class AdaptiveSolverBase(SolverBase):
             return t_last
 
         return wrapped_stepper
+
+
+def _make_dt_adjuster(dt_min: float, dt_max: float) -> Callable[[float, float], float]:
+    """Return a function that can be used to adjust time steps.
+
+    The returned function adjust_dt(dt, error_rel) adjusts the current time step
+    `dt` based on the normalized error estimate `error_rel` with the goal of
+    keeping `error_rel` close to 1.
+
+    Behavior:
+    - If the error is very small the time step is increased (up to a factor 4).
+    - If the error is NaN the time step is reduced strongly.
+    - Otherwise the time step is scaled according to error_rel**-0.2 with a
+      conservative lower bound for the scaling factor.
+    - The adjusted time step is clamped to the interval [dt_min, dt_max].
+    - If the adjusted time step falls below dt_min a RuntimeError is raised.
+
+    Args:
+        dt_min (float): Minimal allowed time step.
+        dt_max (float): Maximal allowed time step.
+
+    Returns:
+        Callable[[float, float], float]:
+            Function that takes (dt, error_rel) and returns the adjusted dt.
+    """
+    dt_min_nan_err = f"Encountered NaN even though dt < {dt_min}"
+    dt_min_err = f"Time step below {dt_min}"
+
+    def adjust_dt(dt: float, error_rel: float) -> float:
+        """Helper function that adjust the time step.
+
+        The goal is to keep the relative error `error_rel` close to 1.
+
+        Args:
+            dt (float): Current time step
+            error_rel (float): Current (normalized) error estimate
+
+        Returns:
+            float: Time step of the next iteration
+        """
+        # adjust the time step
+        if error_rel < 0.00057665:
+            # error was very small => maximal increase in dt
+            # The constant on the right hand side of the comparison is chosen to
+            # agree with the equation for adjusting dt below
+            dt *= 4.0
+        elif np.isnan(error_rel):
+            # state contained NaN => decrease time step strongly
+            dt *= 0.25
+        else:
+            # otherwise, adjust time step according to error
+            dt *= max(0.9 * error_rel**-0.2, 0.1)
+
+        # limit time step to permissible bracket
+        if dt > dt_max:
+            dt = dt_max
+        elif dt < dt_min:
+            if np.isnan(error_rel):
+                raise RuntimeError(dt_min_nan_err)
+            else:
+                raise RuntimeError(dt_min_err)
+
+        return dt
+
+    return adjust_dt

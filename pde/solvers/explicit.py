@@ -12,8 +12,8 @@ import numpy as np
 
 from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
-from ..tools.typing import NumericArray, TField
-from .base import AdaptiveSolverBase
+from ..tools.typing import NumericArray, StepperHook, TField
+from .base import AdaptiveSolverBase, AdaptiveStepperType, _make_dt_adjuster
 
 
 class EulerSolver(AdaptiveSolverBase):
@@ -66,17 +66,23 @@ class EulerSolver(AdaptiveSolverBase):
         return stepper
 
     def _make_adaptive_stepper(
-        self, state: TField
-    ) -> Callable[
-        [NumericArray, float, float, float, OnlineStatistics | None, Any],
-        tuple[float, float, int],
-    ]:
+        self,
+        state: TField,
+        *,
+        post_step_hook: StepperHook | None = None,
+        adjust_dt: Callable[[float, float], float] | None = None,
+    ) -> AdaptiveStepperType:
         """Make an adaptive Euler stepper.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
+            post_step_hook (callable or None):
+                A function that runs the post_step_hook
+            adjust_dt (callable or None):
+                A function that is used to adjust the time step. The function takes the
+                current time step and a relative error and returns an adjusted time step.
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
@@ -92,11 +98,13 @@ class EulerSolver(AdaptiveSolverBase):
 
         # obtain functions determining how the PDE is evolved
         rhs_pde = self._make_pde_rhs(state, backend=self.backend)
-        post_step_hook = self._make_post_step_hook(state)
+        if post_step_hook is None:
+            post_step_hook = self._make_post_step_hook(state)
 
         # obtain auxiliary functions
         sync_errors = self._make_error_synchronizer()
-        adjust_dt = self._make_dt_adjuster()
+        if adjust_dt is None:
+            adjust_dt = _make_dt_adjuster(self.dt_min, self.dt_max)
         tolerance = self.tolerance
         dt_min = self.dt_min
 

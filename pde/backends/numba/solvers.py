@@ -16,12 +16,58 @@ from ...solvers.base import (
     AdaptiveStepperType,
     FixedStepperType,
     SolverBase,
+    _make_dt_adjuster,
 )
 from ...tools.math import OnlineStatistics
 from ...tools.numba import jit
-from ...tools.typing import NumericArray, TField
+from ...tools.typing import NumericArray, StepperHook, TField
 
 SingleStepType = Callable[[NumericArray, float], None]
+
+
+def _make_post_step_hook(solver: SolverBase, state: TField) -> StepperHook:
+    """Create a callable that executes the PDE's post-step hook.
+
+    The returned function calls the post-step hook provided by the PDE (if any)
+    after each completed time step. If the PDE implements make_post_step_hook,
+    this method attempts to obtain both the hook function and an initial value
+    for the hook's mutable data by calling
+    ``post_step_hook, post_step_data_init = self.pde.make_post_step_hook(state)``.
+    The initial data is stored on the solver instance as ``self._post_step_data_init``
+    (copied to ensure mutability) and will be passed to the hook when the stepper
+    is executed.
+
+    If no hook is provided by the PDE (i.e., ``make_post_step_hook`` raises
+    :class:`NotImplementedError`) or if the solver's ``_use_post_step_hook`` flag
+    is ``False``, a no-op hook is returned and ``self._post_step_data_init`` is set
+    to ``None``.
+
+    The hook returned by this method always conforms to the signature
+    ``(state_data: numpy.ndarray, t: float, post_step_data: numpy.ndarray) -> None``
+    and is suitable for JIT compilation where supported.
+
+    Args:
+        solver (:class:`~pde.solvers.base.SolverBase`):
+            The solver instance, which determines how the hook is constructed
+        state (:class:`~pde.fields.base.FieldBase`):
+            Example field providing the array shape and grid information required
+            by the PDE when constructing the post-step hook.
+
+    Returns:
+        callable:
+            A function that invokes the PDE's post-step hook (or a no-op) with the
+            signature described above.
+    """
+    # get uncompiled post_step_hook
+    post_step_hook = solver._make_post_step_hook(state)
+
+    # compile post_step_hook
+    post_step_data_type = nb.typeof(solver._post_step_data_init)
+    signature_hook = (nb.typeof(state.data), nb.float64, post_step_data_type)
+    post_step_hook = jit(signature_hook)(post_step_hook)
+
+    solver._logger.debug("Compiled post-step hook")
+    return post_step_hook  # type: ignore
 
 
 def _make_fixed_stepper(
@@ -42,7 +88,7 @@ def _make_fixed_stepper(
     single_step = solver._make_single_step_fixed_dt(state, dt)
     single_step_signature = (nb.typeof(state.data), nb.double)
     single_step = jit(single_step_signature)(single_step)
-    post_step_hook = solver._make_post_step_hook(state)
+    post_step_hook = _make_post_step_hook(solver, state)
 
     # provide compiled function doing all steps
     fixed_stepper_signature = (
@@ -86,7 +132,7 @@ def _make_adams_bashforth_stepper(
         raise NotImplementedError
 
     rhs_pde = solver._make_pde_rhs(state, backend=solver.backend)
-    post_step_hook = solver._make_post_step_hook(state)
+    post_step_hook = _make_post_step_hook(solver, state)
     sig_single_step = (nb.typeof(state.data), nb.double, nb.typeof(state.data))
 
     @jit(sig_single_step)
@@ -168,11 +214,12 @@ def _make_adaptive_stepper_general(
     single_step_error = solver._make_single_step_error_estimate(state)
     signature_single_step = (nb.typeof(state.data), nb.double, nb.double)
     single_step_error = jit(signature_single_step)(single_step_error)
-    post_step_hook = solver._make_post_step_hook(state)
+    post_step_hook = _make_post_step_hook(solver, state)
     sync_errors = solver._make_error_synchronizer()
 
     # obtain auxiliary functions
-    adjust_dt = solver._make_dt_adjuster()
+    signature = (nb.double, nb.double)
+    adjust_dt = jit(signature)(_make_dt_adjuster(solver.dt_min, solver.dt_max))
     tolerance = solver.tolerance
     dt_min = solver.dt_min
 
@@ -231,7 +278,7 @@ def _make_adaptive_stepper_general(
         adaptive_stepper = jit(signature_stepper)(adaptive_stepper)
 
     solver._logger.info("Initialized adaptive stepper")
-    return adaptive_stepper  # type: ignore
+    return adaptive_stepper
 
 
 def _make_adaptive_stepper_euler(
@@ -251,11 +298,21 @@ def _make_adaptive_stepper_euler(
         time `t_end`. The function call signature is `(state: numpy.ndarray,
         t_start: float, t_end: float)`
     """
-    stepper = solver._make_adaptive_stepper(state)
     if nb.config.DISABLE_JIT:
         # this can be useful to debug numba implementations and for test coverage checks
-        return stepper
+        return solver._make_adaptive_stepper(state)
     else:
+        # create compiled function for adjusting the time step
+        adjust_dt = _make_dt_adjuster(solver.dt_min, solver.dt_max)
+        adjust_signature = (nb.double, nb.double)
+        adjust_dt = jit(adjust_signature)(adjust_dt)
+
+        # create the adaptive stepper and compile it
+        stepper = solver._make_adaptive_stepper(
+            state,
+            post_step_hook=_make_post_step_hook(solver, state),
+            adjust_dt=adjust_dt,
+        )
         signature = (
             nb.typeof(state.data),
             nb.double,

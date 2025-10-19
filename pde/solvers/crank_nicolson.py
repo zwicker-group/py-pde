@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from typing import Callable
 
-import numba as nb
 import numpy as np
 
 from ..pdes.base import PDEBase
