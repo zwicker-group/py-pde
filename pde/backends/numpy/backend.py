@@ -9,9 +9,10 @@ from typing import Any, Callable
 
 import numpy as np
 
-from ...fields import DataFieldBase, FieldBase, VectorField
+from ...fields import DataFieldBase, VectorField
 from ...grids import BoundariesBase, GridBase
 from ...pdes import PDEBase
+from ...solvers import SolverBase
 from ...tools.typing import DataSetter, GhostCellSetter, NumericArray, TField
 from ..base import BackendBase, OperatorInfo
 
@@ -283,3 +284,24 @@ class NumpyBackend(BackendBase):
 
         pde_rhs._backend = "numpy"  # type: ignore
         return pde_rhs
+
+    def make_stepper(
+        self, solver: SolverBase, state: TField, dt: float | None = None
+    ) -> Callable[[TField, float, float], float]:
+        """Return a stepper function using an explicit scheme.
+
+        Args:
+            solver (:class:`~pde.solvers.base.SolverBase`):
+                The solver instance, which determines how the stepper is constructed
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        return solver.make_stepper(state, dt=dt)
