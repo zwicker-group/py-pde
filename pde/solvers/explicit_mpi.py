@@ -1,5 +1,7 @@
 """Defines an explicit solver using multiprocessing via MPI.
 
+TODO: Implement this not as a separate solver but as a separate numba-mpi backend
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -12,10 +14,11 @@ import numpy as np
 from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.typing import BackendType, TField
-from .explicit import ExplicitSolver
+from .base import AdaptiveStepperType, FixedStepperType
+from .explicit import EulerSolver
 
 
-class ExplicitMPISolver(ExplicitSolver):
+class ExplicitMPISolver(EulerSolver):
     """Various explicit PDE solve using MPI.
 
     Warning:
@@ -75,7 +78,7 @@ class ExplicitMPISolver(ExplicitSolver):
     def __init__(
         self,
         pde: PDEBase,
-        scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
+        # scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
         decomposition: Literal["auto"] | int | list[int] = "auto",
         *,
         backend: BackendType = "auto",
@@ -86,9 +89,6 @@ class ExplicitMPISolver(ExplicitSolver):
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
-            scheme (str):
-                Defines the explicit scheme to use. Supported values are 'euler' and
-                'runge-kutta' (or 'rk' for short).
             decomposition (list of ints):
                 Number of subdivision in each direction. Should be a list of length
                 `grid.num_axes` specifying the number of nodes for this axis. If one
@@ -108,9 +108,7 @@ class ExplicitMPISolver(ExplicitSolver):
                 the truncation error of a single step is below `tolerance`.
         """
         pde._mpi_synchronization = self._mpi_synchronization
-        super().__init__(
-            pde, scheme=scheme, backend=backend, adaptive=adaptive, tolerance=tolerance
-        )
+        super().__init__(pde, backend=backend, adaptive=adaptive, tolerance=tolerance)
         self.decomposition = decomposition
 
     @property
@@ -164,7 +162,6 @@ class ExplicitMPISolver(ExplicitSolver):
         self.info["steps"] = 0
         self.info["stochastic"] = getattr(self.pde, "is_sde", False)
         self.info["use_mpi"] = True
-        self.info["scheme"] = self.scheme
 
         # decompose the state into multiple cells
         self.mesh = GridMesh.from_grid(state.grid, self.decomposition)
@@ -174,7 +171,11 @@ class ExplicitMPISolver(ExplicitSolver):
         if self.adaptive:
             # create stepper with adaptive steps
             self.info["dt_statistics"] = OnlineStatistics()
-            adaptive_stepper = self._make_adaptive_stepper(sub_state)
+            adaptive_stepper: AdaptiveStepperType = (
+                self._backend_obj.make_inner_stepper(
+                    solver=self, stepper_style="adaptive", state=sub_state, dt=dt
+                )
+            )
             self.info["post_step_data"] = self._post_step_data_init
 
             def wrapped_stepper(state: TField, t_start: float, t_end: float) -> float:
@@ -218,7 +219,9 @@ class ExplicitMPISolver(ExplicitSolver):
 
         else:
             # create stepper with fixed steps
-            fixed_stepper = self._make_fixed_stepper(sub_state, dt)
+            fixed_stepper: FixedStepperType = self._backend_obj.make_inner_stepper(
+                solver=self, stepper_style="fixed", state=sub_state, dt=dt
+            )
             self.info["post_step_data"] = self._post_step_data_init
 
             def wrapped_stepper(state: TField, t_start: float, t_end: float) -> float:  # type: ignore
@@ -227,7 +230,7 @@ class ExplicitMPISolver(ExplicitSolver):
                 post_step_data = self.info["post_step_data"]
 
                 # calculate number of steps (which is at least 1)
-                steps = max(1, int(np.ceil((t_end - t_start) / dt)))
+                steps = max(1, int(round((t_end - t_start) / dt)))
 
                 # distribute the number of steps and the field to all nodes
                 steps = self.mesh.broadcast(steps)

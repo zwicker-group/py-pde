@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from typing import Callable
 
-import numba as nb
 import numpy as np
 
 from ..pdes.base import PDEBase
@@ -97,14 +96,14 @@ class ImplicitSolver(SolverBase):
                     # fix point iteration converged
                     break
             else:
-                with nb.objmode:
-                    self._logger.warning(
-                        "Implicit Euler step did not converge after %d iterations "
-                        "at t=%g (error=%g)",
-                        maxiter,
-                        t,
-                        err,
-                    )
+                # with nb.objmode:
+                #     self._logger.warning(
+                #         "Implicit Euler step did not converge after %d iterations "
+                #         "at t=%g (error=%g)",
+                #         maxiter,
+                #         t,
+                #         err,
+                #     )
                 raise ConvergenceError("Implicit Euler step did not converge.")
             nfev += n + 1
 
@@ -166,14 +165,14 @@ class ImplicitSolver(SolverBase):
                     # fix point iteration converged
                     break
             else:
-                with nb.objmode:
-                    self._logger.warning(
-                        "Semi-implicit Euler-Maruyama step did not converge after %d "
-                        "iterations at t=%g (error=%g)",
-                        maxiter,
-                        t,
-                        err,
-                    )
+                # with nb.objmode:
+                #     self._logger.warning(
+                #         "Semi-implicit Euler-Maruyama step did not converge after %d "
+                #         "iterations at t=%g (error=%g)",
+                #         maxiter,
+                #         t,
+                #         err,
+                #     )
                 raise ConvergenceError(
                     "Semi-implicit Euler-Maruyama step did not converge."
                 )

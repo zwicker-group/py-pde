@@ -16,7 +16,7 @@ from ..fields import FieldCollection
 from ..fields.base import FieldBase
 from ..fields.datafield_base import DataFieldBase
 from ..tools.numba import jit
-from ..tools.typing import ArrayLike, NumericArray, StepperHook, TField
+from ..tools.typing import ArrayLike, BackendType, NumericArray, StepperHook, TField
 from ..trackers.base import TrackerCollectionDataType
 
 if TYPE_CHECKING:
@@ -308,7 +308,7 @@ class PDEBase(metaclass=ABCMeta):
     def make_pde_rhs(
         self,
         state: TField,
-        backend: Literal["auto", "numpy", "numba"] = "auto",
+        backend: BackendType = "auto",
         **kwargs,
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
@@ -522,7 +522,7 @@ class PDEBase(metaclass=ABCMeta):
     def make_sde_rhs(
         self,
         state: TField,
-        backend: Literal["auto", "numpy", "numba"] = "auto",
+        backend: BackendType = "auto",
         **kwargs,
     ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
         """Return a function for evaluating the right hand side of the SDE.
@@ -578,7 +578,8 @@ class PDEBase(metaclass=ABCMeta):
         dt: float | None = None,
         tracker: TrackerCollectionDataType = "auto",
         *,
-        solver: str | SolverBase = "explicit",
+        backend: BackendType = "auto",
+        solver: str | SolverBase = "euler",
         ret_info: bool = False,
         **kwargs,
     ) -> None | TField | tuple[TField | None, dict[str, Any]]:
@@ -615,6 +616,9 @@ class PDEBase(metaclass=ABCMeta):
                 defined in :mod:`~pde.trackers`, where all options are explained in
                 detail. In particular, the time points where the tracker analyzes data
                 can be chosen when creating a tracker object explicitly.
+            backend (str):
+                Determines how the function is created. Accepted values are 'numpy' and
+                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
             solver (:class:`~pde.solvers.base.SolverBase` or str):
                 Specifies the method for solving the differential equation. This can
                 either be an instance of :class:`~pde.solvers.base.SolverBase` or a
@@ -628,11 +632,8 @@ class PDEBase(metaclass=ABCMeta):
                 as the :attr:`~PDEBase.diagnostics` attribute.
             **kwargs:
                 Additional keyword arguments are forwarded to the solver class chosen
-                with the `solver` argument. In particular,
-                :class:`~pde.solvers.explicit.ExplicitSolver` supports several `schemes`
-                and an adaptive stepper can be enabled using :code:`adaptive=True`.
-                Conversely, :class:`~pde.solvers.ScipySolver` accepts the additional
-                arguments of :func:`scipy.integrate.solve_ivp`.
+                with the `solver` argument. In particular, adaptive stepper can often be
+                enabled using :code:`adaptive=True`.
 
         Returns:
             :class:`~pde.fields.base.FieldBase`:
@@ -646,16 +647,18 @@ class PDEBase(metaclass=ABCMeta):
 
         # create solver instance
         if callable(solver):
-            solver_obj = solver(pde=self, **kwargs)
+            solver_obj = solver(pde=self, backend=backend, **kwargs)
             if not isinstance(solver_obj, SolverBase):
                 self._logger.warning("Solver is not an instance of `SolverBase`.")
 
         elif isinstance(solver, str):
-            if dt is None and solver == "explicit":
+            if solver in {"euler", "explicit", "explicit_mpi", "runge-kutta"}:
                 # Use an adaptive solver in the default case of an explicit solver
-                # when no time step is specified
-                kwargs.setdefault("adaptive", True)
-            solver_obj = SolverBase.from_name(solver, pde=self, **kwargs)
+                # when no time step is specified and use a fixed time step otherwise
+                kwargs.setdefault("adaptive", dt is None)
+            solver_obj = SolverBase.from_name(
+                solver, pde=self, backend=backend, **kwargs
+            )
 
         elif isinstance(solver, SolverBase):
             raise TypeError("`solver` must be a class not an instance")

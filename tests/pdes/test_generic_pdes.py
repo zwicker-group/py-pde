@@ -58,7 +58,7 @@ def test_pde_consistency_test(rng):
     eq = TestPDE()
     state = ScalarField.random_uniform(UnitGrid([4]), rng=rng)
     with pytest.raises(AssertionError):
-        eq.solve(state, t_range=5, tracker=None)
+        eq.solve(state, t_range=5, backend="numba", tracker=None)
 
 
 def test_pde_automatic_adaptive_solver():

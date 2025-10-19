@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import warnings
 from inspect import isabstract
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 import numba as nb
 import numpy as np
@@ -33,6 +33,13 @@ _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 
 class ConvergenceError(RuntimeError):
     """Indicates that an implicit step did not converge."""
+
+
+FixedStepperType = Callable[[NumericArray, float, int, Any], float]
+AdaptiveStepperType = Callable[
+    [NumericArray, float, float, float, Union[OnlineStatistics, None], Any],
+    tuple[float, float, int],
+]
 
 
 class SolverBase:
@@ -143,7 +150,7 @@ class SolverBase:
 
     @backend.setter
     def backend(self, value: BackendBase | BackendType) -> None:
-        """sets a new backend for the solver
+        """Sets a new backend for the solver.
 
         This setter tries to ensure consistency and make sure that backends are not
         changed after the object has been loaded (i.e., after _backend_obj has been
@@ -371,9 +378,7 @@ class SolverBase:
         """
         raise NotImplementedError("Fixed stepper has not been defined")
 
-    def _make_fixed_stepper(
-        self, state: TField, dt: float
-    ) -> Callable[[NumericArray, float, int, Any], float]:
+    def _make_fixed_stepper(self, state: TField, dt: float) -> FixedStepperType:
         """Return a stepper function using an explicit scheme with fixed time steps.
 
         Args:
@@ -386,10 +391,6 @@ class SolverBase:
         single_step = self._make_single_step_fixed_dt(state, dt)
         post_step_hook = self._make_post_step_hook(state)
 
-        if self._compiled:
-            sig_single_step = (nb.typeof(state.data), nb.double)
-            single_step = jit(sig_single_step)(single_step)
-
         def fixed_stepper(
             state_data: NumericArray, t_start: float, steps: int, post_step_data
         ) -> float:
@@ -401,15 +402,6 @@ class SolverBase:
                 post_step_hook(state_data, t, post_step_data)
 
             return t + dt
-
-        if self._compiled:
-            sig_fixed = (
-                nb.typeof(state.data),
-                nb.double,
-                nb.int_,
-                self._post_step_data_type,
-            )
-            fixed_stepper = jit(sig_fixed)(fixed_stepper)
 
         return fixed_stepper
 
@@ -443,7 +435,9 @@ class SolverBase:
         dt_float = float(dt)  # explicit casting to help type checking
 
         # create stepper with fixed steps
-        fixed_stepper = self._make_fixed_stepper(state, dt_float)
+        fixed_stepper: FixedStepperType = self._backend_obj.make_inner_stepper(
+            solver=self, stepper_style="fixed", state=state, dt=dt_float
+        )
 
         self.info["dt"] = dt_float
         self.info["dt_adaptive"] = False
@@ -481,7 +475,7 @@ class AdaptiveSolverBase(SolverBase):
         pde: PDEBase,
         *,
         backend: BackendType = "auto",
-        adaptive: bool = True,
+        adaptive: bool = False,
         tolerance: float = 1e-4,
     ):
         """
@@ -611,12 +605,7 @@ class AdaptiveSolverBase(SolverBase):
 
         return single_step_error_estimate
 
-    def _make_adaptive_stepper(
-        self, state: TField
-    ) -> Callable[
-        [NumericArray, float, float, float, OnlineStatistics | None, Any],
-        tuple[float, float, int],
-    ]:
+    def _make_adaptive_stepper(self, state: TField) -> AdaptiveStepperType:
         """Make an adaptive Euler stepper.
 
         Args:
@@ -660,7 +649,7 @@ class AdaptiveSolverBase(SolverBase):
                 # use a smaller (but not too small) time step if close to t_end
                 dt_step = max(min(dt_opt, t_end - t), dt_min)
 
-                # two different steppings to estimate errors
+                # try two different step sizes to estimate errors
                 new_state, error = single_step_error(state_data, t, dt_step)
 
                 error_rel = error / tolerance  # normalize error to given tolerance
@@ -735,7 +724,10 @@ class AdaptiveSolverBase(SolverBase):
 
         # create stepper with adaptive steps
         self.info["dt_statistics"] = OnlineStatistics()
-        adaptive_stepper = self._make_adaptive_stepper(state)
+        # create stepper with fixed steps
+        adaptive_stepper: AdaptiveStepperType = self._backend_obj.make_inner_stepper(
+            solver=self, stepper_style="adaptive", state=state, dt=dt_float
+        )
 
         self.info["dt"] = dt_float
         self.info["dt_adaptive"] = True

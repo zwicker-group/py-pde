@@ -4,7 +4,8 @@
    :nosignatures:
 
    ~controller.Controller
-   ~explicit.ExplicitSolver
+   ~explicit.EulerSolve
+   ~explicit.RungeKuttaSolver
    ~explicit_mpi.ExplicitMPISolver
    ~implicit.ImplicitSolver
    ~crank_nicolson.CrankNicolsonSolver
@@ -16,9 +17,11 @@
 Inheritance structure of the classes:
 
 
-.. inheritance-diagram:: adams_bashforth.AdamsBashforthSolver
+.. inheritance-diagram::
+        adams_bashforth.AdamsBashforthSolver
         crank_nicolson.CrankNicolsonSolver
-        explicit.ExplicitSolver
+        explicit.EulerSolver
+        explicit.RungeKuttaSolver
         implicit.ImplicitSolver
         scipy.ScipySolver
         explicit_mpi.ExplicitMPISolver
@@ -31,7 +34,7 @@ from .adams_bashforth import AdamsBashforthSolver
 from .base import AdaptiveSolverBase, SolverBase
 from .controller import Controller
 from .crank_nicolson import CrankNicolsonSolver
-from .explicit import ExplicitSolver
+from .explicit import EulerSolver, ExplicitSolver, RungeKuttaSolver
 from .implicit import ImplicitSolver
 from .scipy import ScipySolver
 
@@ -56,6 +59,8 @@ def registered_solvers() -> list[str]:
 __all__ = [
     "Controller",
     "ExplicitSolver",
+    "EulerSolver",
+    "RungeKuttaSolver",
     "ImplicitSolver",
     "CrankNicolsonSolver",
     "AdamsBashforthSolver",
