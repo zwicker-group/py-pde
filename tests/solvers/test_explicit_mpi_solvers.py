@@ -93,7 +93,6 @@ def test_multiple_pdes_mpi(backend, rng):
         "t_range": 1.01,
         "dt": 0.1,
         "adaptive": True,
-        "scheme": "euler",
         "tracker": None,
         "ret_info": True,
     }
