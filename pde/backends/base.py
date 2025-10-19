@@ -341,3 +341,24 @@ class BackendBase:
         raise NotImplementedError(
             f"SDE right hand side not defined for backend {self.name}"
         )
+
+    def make_stepper(
+        self, solver: SolverBase, state: TField, dt: float | None = None
+    ) -> Callable[[TField, float, float], float]:
+        """Return a stepper function using an explicit scheme.
+
+        Args:
+            solver (:class:`~pde.solvers.base.SolverBase`):
+                The solver instance, which determines how the stepper is constructed
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        raise NotImplementedError(f"Steppers are not defined for backend {self.name}")

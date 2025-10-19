@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import warnings
 from inspect import isabstract
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import numba as nb
 import numpy as np
@@ -22,6 +22,10 @@ from ..tools.math import OnlineStatistics
 from ..tools.misc import classproperty
 from ..tools.numba import is_jitted, jit
 from ..tools.typing import BackendType, NumericArray, StepperHook, TField
+
+if TYPE_CHECKING:
+    from ..backends.base import BackendBase
+
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for solvers."""
@@ -49,22 +53,30 @@ class SolverBase:
     """dict: dictionary of all inheriting classes"""
 
     _logger: logging.Logger
+    _backend_name: BackendType
+    __backend_obj: BackendBase | None
 
-    def __init__(self, pde: PDEBase, *, backend: BackendType = "auto"):
+    def __init__(self, pde: PDEBase, *, backend: BackendBase | BackendType = "auto"):
         """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
-            backend (str):
+            backend (str or :class:`~pde.backends.base.BackendBase`):
                 Determines how the function is created. Accepted  values are 'numpy` and
                 'numba'. Alternatively, 'auto' lets the code decide for the most optimal
                 backend.
         """
         self.pde = pde
-        self.backend = backend
         self.info: dict[str, Any] = {"class": self.__class__.__name__}
         if self.pde:
             self.info["pde_class"] = self.pde.__class__.__name__
+        if isinstance(backend, str):
+            self._backend_name = backend
+            self.__backend_obj = None
+        else:
+            # assume that `backend` is of type BackendBase
+            self._backend_name = backend.name  # type: ignore
+            self.__backend_obj = backend
 
     def __init_subclass__(cls, **kwargs):
         """Initialize class-level attributes of subclasses."""
@@ -123,6 +135,68 @@ class SolverBase:
     def registered_solvers(cls) -> list[str]:
         """list of str: the names of the registered solvers"""
         return sorted(cls._subclasses.keys())
+
+    @property
+    def backend(self) -> BackendType:
+        """str: The name of the backend used for this solver."""
+        return self._backend_name
+
+    @backend.setter
+    def backend(self, value: BackendBase | BackendType) -> None:
+        """sets a new backend for the solver
+
+        This setter tries to ensure consistency and make sure that backends are not
+        changed after the object has been loaded (i.e., after _backend_obj has been
+        accessed). The method also raises a warning when the backend is changed (except
+        if it was set to `auto` before). This allows solvers to react flexibly to
+        changes in the backend, e.g., demanded by the PDE implementation.
+
+        Args:
+            value:
+                The backend object or name
+        """
+        # determine the name of the new backend
+        if isinstance(value, str):
+            new_backend = value
+        else:
+            # assume value is of type BackendBase
+            new_backend = value.name  # type: ignore
+
+        # check whether the new name contradicts the old backend name
+        if self._backend_name in {"auto", new_backend}:
+            pass  # nothing to do
+        else:
+            self._logger.warning(
+                "Changing the backend of the solver from `%s` to `%s`",
+                self._backend_name,
+                new_backend,
+            )
+
+        # check whether the new backend contradicts the old backend object
+        if self.__backend_obj is not None and self.__backend_obj.name != new_backend:
+            raise TypeError(
+                "Tried changing the loaded backend of the solver from `%s` to `%s`",
+                self.__backend_obj.name,
+                new_backend,
+            )
+
+        # set the new backend
+        self._backend_name = new_backend
+        if not isinstance(value, str):
+            self.__backend_obj = value
+
+    @property
+    def _backend_obj(self) -> BackendBase:
+        """:class:`~pde.backends.base.BackendBase`: The backend used for this solver."""
+        if self.__backend_obj is None:
+            from ..backends import backends
+
+            if self._backend_name == "auto":
+                self._backend_name = "numpy"  # conservative fall-back
+
+            self.__backend_obj = backends[self._backend_name]
+
+        return self.__backend_obj
 
     @property
     def _compiled(self) -> bool:
@@ -220,18 +294,9 @@ class SolverBase:
         else:
             self.info["backend"] = "undetermined"
 
-        if self.backend != self.info["backend"]:
-            if self.backend == "auto":
-                # solver did not care about a backend, so we simply use the solver one
-                self.backend = self.info["backend"]
-            else:
-                # there is a mismatch, which we need to report
-                self._logger.warning(
-                    "The PDE class requested a different backend (%s) than the solver "
-                    "(%s), which might lead to incompatibilities",
-                    self.backend,
-                    self.info["backend"],
-                )
+        # adjust the backend of the solver to the one requested by the PDE
+        if self.info["backend"] != "undetermined":
+            self.backend = self.info["backend"]
 
     def _make_pde_rhs(
         self, state: TField, backend: BackendType = "auto"
