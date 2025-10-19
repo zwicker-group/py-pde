@@ -18,3 +18,12 @@ from .cartesian import CartesianCoordinates
 from .cylindrical import CylindricalCoordinates
 from .polar import PolarCoordinates
 from .spherical import SphericalCoordinates
+
+__all__ = [
+    "BipolarCoordinates",
+    "BisphericalCoordinates",
+    "CartesianCoordinates",
+    "CylindricalCoordinates",
+    "PolarCoordinates",
+    "SphericalCoordinates",
+]

@@ -49,11 +49,5 @@ In particular, interrupts can be specified conveniently using
 
 from .base import get_named_trackers
 from .interactive import InteractivePlotTracker
-from .interrupts import (
-    ConstantInterrupts,
-    FixedInterrupts,
-    LogarithmicInterrupts,
-    RealtimeInterrupts,
-    parse_interrupt,
-)
+from .interrupts import *
 from .trackers import *

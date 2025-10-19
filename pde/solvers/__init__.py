@@ -28,6 +28,7 @@ Inheritance structure of the classes:
 """
 
 from .adams_bashforth import AdamsBashforthSolver
+from .base import AdaptiveSolverBase, SolverBase
 from .controller import Controller
 from .crank_nicolson import CrankNicolsonSolver
 from .explicit import ExplicitSolver

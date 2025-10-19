@@ -1,5 +1,4 @@
-"""The py-pde package provides classes and methods for solving partial differential
-equations."""
+"""The py-pde package provides tools for solving partial differential equations."""
 
 # determine the package version
 try:
@@ -23,7 +22,7 @@ config = Config()  # initialize the default configuration
 
 import contextlib
 
-# import all other modules that should occupy the main name space
+# import most common classes into main name space
 from .fields import *
 from .grids import *
 from .pdes import *
@@ -32,6 +31,7 @@ from .storage import *
 from .trackers import *
 from .visualization import *
 
+# try registering the hooks that allow py-modelrunner to store fields from py-pde
 with contextlib.suppress(ImportError):
     from .tools.modelrunner import *
 
