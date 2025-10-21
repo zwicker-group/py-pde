@@ -25,10 +25,10 @@ from ....grids.spherical import SphericalSymGrid
 from ....tools.docstrings import fill_in_docstring
 from ....tools.numba import jit
 from ....tools.typing import NumericArray, OperatorType
-from .. import numba_backend
+from ...registry import backends
 
 
-@numba_backend.register_operator(SphericalSymGrid, "laplace", rank_in=0, rank_out=0)
+@backends.register_operator("numba", SphericalSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(
     grid: SphericalSymGrid, *, conservative: bool | None = None
@@ -91,7 +91,9 @@ def make_laplace(
     return laplace  # type: ignore
 
 
-@numba_backend.register_operator(SphericalSymGrid, "gradient", rank_in=0, rank_out=1)
+@backends.register_operator(
+    "numba", SphericalSymGrid, "gradient", rank_in=0, rank_out=1
+)
 @fill_in_docstring
 def make_gradient(
     grid: SphericalSymGrid,
@@ -138,8 +140,8 @@ def make_gradient(
     return gradient  # type: ignore
 
 
-@numba_backend.register_operator(
-    SphericalSymGrid, "gradient_squared", rank_in=0, rank_out=0
+@backends.register_operator(
+    "numba", SphericalSymGrid, "gradient_squared", rank_in=0, rank_out=0
 )
 @fill_in_docstring
 def make_gradient_squared(
@@ -191,7 +193,9 @@ def make_gradient_squared(
     return gradient_squared  # type: ignore
 
 
-@numba_backend.register_operator(SphericalSymGrid, "divergence", rank_in=1, rank_out=0)
+@backends.register_operator(
+    "numba", SphericalSymGrid, "divergence", rank_in=1, rank_out=0
+)
 @fill_in_docstring
 def make_divergence(
     grid: SphericalSymGrid,
@@ -296,8 +300,8 @@ def make_divergence(
     return divergence  # type: ignore
 
 
-@numba_backend.register_operator(
-    SphericalSymGrid, "vector_gradient", rank_in=1, rank_out=2
+@backends.register_operator(
+    "numba", SphericalSymGrid, "vector_gradient", rank_in=1, rank_out=2
 )
 @fill_in_docstring
 def make_vector_gradient(
@@ -379,8 +383,8 @@ def make_vector_gradient(
     return vector_gradient  # type: ignore
 
 
-@numba_backend.register_operator(
-    SphericalSymGrid, "tensor_divergence", rank_in=2, rank_out=1
+@backends.register_operator(
+    "numba", SphericalSymGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
 @fill_in_docstring
 def make_tensor_divergence(
@@ -493,8 +497,8 @@ def make_tensor_divergence(
     return tensor_divergence  # type: ignore
 
 
-@numba_backend.register_operator(
-    SphericalSymGrid, "tensor_double_divergence", rank_in=2, rank_out=0
+@backends.register_operator(
+    "numba", SphericalSymGrid, "tensor_double_divergence", rank_in=2, rank_out=0
 )
 @fill_in_docstring
 def make_tensor_double_divergence(

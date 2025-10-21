@@ -7,9 +7,13 @@ from __future__ import annotations
 
 import importlib
 import logging
+from collections import defaultdict
 from collections.abc import Iterator
+from typing import Any
 
 from .. import config
+from ..grids import GridBase
+from ..tools.typing import OperatorFactory, OperatorInfo
 from .base import BackendBase
 
 _RESERVED_NAMES = {
@@ -30,9 +34,14 @@ class BackendRegistry:
 
     _backends: dict[str, str | BackendBase]
     """dict: all backends, either as a reference to a package or as an object"""
+    _hooks: dict[str, dict[str, dict[str, Any]]]
+    """dict: all hooks registered for all backends"""
+    _operators: dict[str, dict[type[GridBase], dict[str, OperatorInfo]]]
+    """dict: all operators registered for all backends"""
 
     def __init__(self):
         self._backends = {}
+        self._operators = defaultdict(lambda: defaultdict(dict))
 
     def register_package(self, package_path: str, name: str) -> None:
         """Register a backend python package (without loading it yet)
@@ -58,8 +67,6 @@ class BackendRegistry:
         This object can replace a previously registered python package.
 
         Args:
-            name (str):
-                Name of the backend
             backend (:class:`~pde.backends.base.BackendBase`):
                 Implementation of the backend
         """
@@ -106,6 +113,71 @@ class BackendRegistry:
     def __iter__(self) -> Iterator[str]:
         """Iterate over the defined backends."""
         return self._backends.keys().__iter__()
+
+    # def register_hook(self, backend:str, hook:str, identifier:Any)->None
+    #     """_summary_
+    #     """
+
+    def register_operator(
+        self,
+        backend: str,
+        grid_cls: type[GridBase],
+        name: str,
+        factory_func: OperatorFactory | None = None,
+        *,
+        rank_in: int = 0,
+        rank_out: int = 0,
+    ):
+        """Register an operator for a particular grid.
+
+        Example:
+            The method can either be used directly:
+
+            .. code-block:: python
+
+                backends.register_operator("numba", grid_cls, "operator", make_operator)
+
+            or as a decorator for the factory function:
+
+            .. code-block:: python
+
+                @backend.register_operator("numba", grid_cls, "operator")
+                def make_operator(grid: GridBase): ...
+
+        Args:
+            backend (str):
+                Name of the backend for which we register the option
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the operator is defined
+            name (str):
+                The name of the operator to register
+            factory_func (callable):
+                A function with signature ``(grid: GridBase, **kwargs)``, which takes
+                a grid object and optional keyword arguments and returns an
+                implementation of the given operator. This implementation is a function
+                that takes a :class:`~numpy.ndarray` of discretized values as arguments
+                and returns the resulting discretized data in a :class:`~numpy.ndarray`
+                after applying the operator.
+            rank_in (int):
+                The rank of the input field for the operator
+            rank_out (int):
+                The rank of the field that is returned by the operator
+        """
+
+        def register_operator(factor_func_arg: OperatorFactory):
+            """Helper function to register the operator."""
+            self._operators[backend][grid_cls][name] = OperatorInfo(
+                factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out, name=name
+            )
+            return factor_func_arg
+
+        if factory_func is None:
+            # method is used as a decorator, so return the helper function
+            return register_operator
+        else:
+            # method is used directly
+            register_operator(factory_func)
+            return None
 
 
 # initiate the backend registry – there should only be one instance of this class

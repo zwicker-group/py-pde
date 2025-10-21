@@ -11,7 +11,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-# load the registry, which manages the backends
+# load the registry, which manages all backends
 from .registry import backends  # noqa: I001
 
 # load and register the default backend

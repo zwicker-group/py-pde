@@ -728,7 +728,7 @@ class NumbaBackend(NumpyBackend):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
-        assert solver.backend == "numba"
+        assert solver.backend == self.name
 
         from .solvers import make_adaptive_stepper, make_fixed_stepper
 
