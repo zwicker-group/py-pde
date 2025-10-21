@@ -7,8 +7,7 @@ from __future__ import annotations
 
 import inspect
 import logging
-from collections import defaultdict
-from typing import Any, Callable, Literal, NamedTuple
+from typing import Any, Callable, Literal
 
 from ..fields import DataFieldBase
 from ..grids import BoundariesBase, GridBase
@@ -22,6 +21,7 @@ from ..tools.typing import (
     NumberOrArray,
     NumericArray,
     OperatorFactory,
+    OperatorInfo,
     TField,
 )
 
@@ -29,24 +29,13 @@ _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
 
 
-class OperatorInfo(NamedTuple):
-    """Stores information about an operator."""
-
-    factory: OperatorFactory
-    rank_in: int
-    rank_out: int
-    name: str = ""  # attach a unique name to help caching
-
-
 class BackendBase:
     """Basic backend from which all other backends inherit."""
 
-    _operators: dict[type[GridBase], dict[str, OperatorInfo]]
     _logger: logging.Logger  # logger instance to output information
 
     def __init__(self, name: str = "numpy"):
         self.name = name
-        self._operators = defaultdict(dict)
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Initialize class-level attributes of subclasses."""
@@ -59,8 +48,7 @@ class BackendBase:
         grid_cls: type[GridBase],
         name: str,
         factory_func: OperatorFactory | None = None,
-        rank_in: int = 0,
-        rank_out: int = 0,
+        **kwargs,
     ):
         """Register an operator for a particular grid.
 
@@ -95,21 +83,9 @@ class BackendBase:
             rank_out (int):
                 The rank of the field that is returned by the operator
         """
+        from .registry import backends
 
-        def register_operator(factor_func_arg: OperatorFactory):
-            """Helper function to register the operator."""
-            self._operators[grid_cls][name] = OperatorInfo(
-                factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out, name=name
-            )
-            return factor_func_arg
-
-        if factory_func is None:
-            # method is used as a decorator, so return the helper function
-            return register_operator
-        else:
-            # method is used directly
-            register_operator(factory_func)
-            return None
+        backends.register_operator(self.name, grid_cls, name, factory_func, **kwargs)
 
     def get_registered_operators(self, grid_id: GridBase | type[GridBase]) -> set[str]:
         """Returns all operators defined for a grid.
@@ -118,6 +94,8 @@ class BackendBase:
             grid (:class:`~pde.grid.base.GridBase` or its type):
                 Grid for which the operator need to be returned
         """
+        from . import backends
+
         grid_cls = grid_id if inspect.isclass(grid_id) else grid_id.__class__
 
         # get all operators registered on the class
@@ -125,7 +103,7 @@ class BackendBase:
         # add all custom defined operators
         classes = inspect.getmro(grid_cls)[:-1]  # type: ignore
         for cls in classes:
-            operators |= set(self._operators[cls].keys())
+            operators |= set(backends._operators[self.name][cls].keys())
 
         return operators
 
@@ -149,11 +127,13 @@ class BackendBase:
             return operator
         assert isinstance(operator, str)
 
+        from . import backends
+
         # look for defined operators on all parent grid classes (except `object`)
         classes = inspect.getmro(grid.__class__)[:-1]
         for cls in classes:
-            if operator in self._operators[cls]:
-                return self._operators[cls][operator]
+            if operator in backends._operators[self.name][cls]:
+                return backends._operators[self.name][cls][operator]
 
         # throw an error since operator was not found
         raise NotImplementedError(

@@ -23,7 +23,7 @@ import numpy as np
 from ....grids.boundaries.axes import BoundariesList
 from ....grids.cartesian import CartesianGrid
 from ....tools.typing import NumericArray, OperatorType
-from .. import scipy_backend
+from ...registry import backends
 from .common import make_general_poisson_solver, uniform_discretization
 
 
@@ -250,7 +250,7 @@ def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray
     return result
 
 
-@scipy_backend.register_operator(CartesianGrid, "laplace", rank_in=0, rank_out=0)
+@backends.register_operator("scipy", CartesianGrid, "laplace", rank_in=0, rank_out=0)
 def make_laplace(grid: CartesianGrid, **kwargs) -> OperatorType:
     """Make a Laplace operator using the scipy module.
 
@@ -278,7 +278,7 @@ def make_laplace(grid: CartesianGrid, **kwargs) -> OperatorType:
     return laplace
 
 
-@scipy_backend.register_operator(CartesianGrid, "gradient", rank_in=0, rank_out=1)
+@backends.register_operator("scipy", CartesianGrid, "gradient", rank_in=0, rank_out=1)
 def make_gradient(
     grid: CartesianGrid,
     *,
@@ -328,7 +328,7 @@ def make_gradient(
     return gradient
 
 
-@scipy_backend.register_operator(CartesianGrid, "divergence", rank_in=1, rank_out=0)
+@backends.register_operator("scipy", CartesianGrid, "divergence", rank_in=1, rank_out=0)
 def make_divergence(
     grid: CartesianGrid,
     *,
@@ -406,8 +406,8 @@ def _vectorize_operator(
     return vectorized_operator
 
 
-@scipy_backend.register_operator(
-    CartesianGrid, "vector_gradient", rank_in=1, rank_out=2
+@backends.register_operator(
+    "scipy", CartesianGrid, "vector_gradient", rank_in=1, rank_out=2
 )
 def make_vector_gradient(
     grid: CartesianGrid,
@@ -433,7 +433,9 @@ def make_vector_gradient(
     return _vectorize_operator(make_gradient, grid, method=method)
 
 
-@scipy_backend.register_operator(CartesianGrid, "vector_laplace", rank_in=1, rank_out=1)
+@backends.register_operator(
+    "scipy", CartesianGrid, "vector_laplace", rank_in=1, rank_out=1
+)
 def make_vector_laplace(grid: CartesianGrid) -> OperatorType:
     """Make a vector Laplacian on a Cartesian grid.
 
@@ -449,8 +451,8 @@ def make_vector_laplace(grid: CartesianGrid) -> OperatorType:
     return _vectorize_operator(make_laplace, grid)
 
 
-@scipy_backend.register_operator(
-    CartesianGrid, "tensor_divergence", rank_in=2, rank_out=1
+@backends.register_operator(
+    "scipy", CartesianGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
 def make_tensor_divergence(
     grid: CartesianGrid,
@@ -474,7 +476,9 @@ def make_tensor_divergence(
     return _vectorize_operator(make_divergence, grid, method=method)
 
 
-@scipy_backend.register_operator(CartesianGrid, "poisson_solver", rank_in=0, rank_out=0)
+@backends.register_operator(
+    "scipy", CartesianGrid, "poisson_solver", rank_in=0, rank_out=0
+)
 def make_poisson_solver(
     bcs: BoundariesList, *, method: Literal["auto", "scipy"] = "auto"
 ) -> OperatorType:

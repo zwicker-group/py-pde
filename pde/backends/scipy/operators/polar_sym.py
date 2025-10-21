@@ -16,7 +16,7 @@ from ....grids.boundaries.axes import BoundariesList
 from ....grids.spherical import PolarSymGrid
 from ....tools.docstrings import fill_in_docstring
 from ....tools.typing import NumericArray, OperatorType
-from .. import scipy_backend
+from ...registry import backends
 from .common import make_general_poisson_solver
 
 
@@ -77,7 +77,9 @@ def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray
     return matrix, vector
 
 
-@scipy_backend.register_operator(PolarSymGrid, "poisson_solver", rank_in=0, rank_out=0)
+@backends.register_operator(
+    "scipy", PolarSymGrid, "poisson_solver", rank_in=0, rank_out=0
+)
 @fill_in_docstring
 def make_poisson_solver(
     bcs: BoundariesList, *, method: Literal["auto", "scipy"] = "auto"

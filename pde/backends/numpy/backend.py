@@ -308,7 +308,7 @@ class NumpyBackend(BackendBase):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
-        assert solver.backend == "numpy"
+        assert solver.backend == self.name
         if stepper_style == "fixed":
             return solver._make_fixed_stepper(state, dt)
         elif stepper_style == "adaptive":

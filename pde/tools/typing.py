@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar, Union
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -28,6 +28,15 @@ FloatOrArray = Union[float, np.ndarray[Any, np.dtype[np.floating]]]
 # miscellaneous types:
 BackendType = Literal["auto", "numpy", "numba"]
 TField = TypeVar("TField", "FieldCollection", "DataFieldBase", covariant=True)
+
+
+class OperatorInfo(NamedTuple):
+    """Stores information about an operator."""
+
+    factory: OperatorFactory
+    rank_in: int
+    rank_out: int
+    name: str = ""  # attach a unique name to help caching
 
 
 class OperatorType(Protocol):
