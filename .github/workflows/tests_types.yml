@@ -1,6 +1,9 @@
 name: "Static type checking"
 
-on: [push]
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
 
 jobs:
   test_types:

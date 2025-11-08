@@ -1,6 +1,9 @@
 name: "Serial tests"
 
-on: [push]
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
 
 jobs:
   serial_tests:

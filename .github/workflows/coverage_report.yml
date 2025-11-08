@@ -1,6 +1,9 @@
 name: "Generate coverage report"
 
-on: [push]
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
 
 jobs:
   coverage_report:
