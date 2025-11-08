@@ -1,6 +1,9 @@
 name: "Check documentation"
 
-on: [push]
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
 
 jobs:
   docs:
