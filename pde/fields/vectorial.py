@@ -281,8 +281,7 @@ class VectorField(DataFieldBase):
         Returns:
             function that takes two instance of :class:`~numpy.ndarray`, which contain
             the discretized data of the two operands. An optional third argument can
-            specify the output array to which the result is written. Note that the
-            returned function is jitted with numba for speed.
+            specify the output array to which the result is written.
         """
         from ..backends import backends
 
