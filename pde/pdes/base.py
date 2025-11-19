@@ -240,12 +240,28 @@ class PDEBase(metaclass=ABCMeta):
         # compare the two implementations
         msg = (
             "The numba compiled implementation of the right hand side is not "
-            "compatible with the numpy implementation. This check can be disabled "
-            "by setting the class attribute `check_implementation` to `False`."
+            "compatible with the numpy implementation. Additional information is "
+            "available in `diagnostics['check']`. This check can be disabled by "
+            "setting the class attribute `check_implementation` to `False`."
         )
-        np.testing.assert_allclose(
-            res_numba, res_numpy, err_msg=msg, rtol=tol, atol=tol, equal_nan=True
-        )
+        try:
+            np.testing.assert_allclose(
+                res_numba, res_numpy, err_msg=msg, rtol=tol, atol=tol, equal_nan=True
+            )
+        except AssertionError:
+            # convert the two right hand sides into respective fields
+            field_rhs_numpy = state.copy(label="RHS, numpy")
+            field_rhs_numpy.data = res_numpy
+            field_rhs_numba = state.copy(label="RHS, numba")
+            field_rhs_numba.data = res_numba
+            # store diagnostic information for debugging
+            self.diagnostics["check"] = {
+                "state": state,
+                "rhs_numpy": field_rhs_numpy,
+                "rhs_numba": field_rhs_numba,
+            }
+            # re-raise the exception
+            raise
 
     def _make_pde_rhs_numba_cached(
         self, state: TState, **kwargs
