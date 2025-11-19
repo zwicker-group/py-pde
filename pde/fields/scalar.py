@@ -209,8 +209,6 @@ class ScalarField(DataFieldBase):
                 Optional scalar field to which the  result is written.
             label (str, optional):
                 Name of the returned field
-            backend (str):
-                The backend (e.g., 'numba' or 'scipy') used for this operator.
 
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the Laplacian of the field

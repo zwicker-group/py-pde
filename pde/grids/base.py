@@ -463,6 +463,11 @@ class GridBase(metaclass=ABCMeta):
     @property
     def numba_type(self) -> str:
         """str: represents type of the grid data in numba signatures"""
+        # deprecated since 2025-11-19
+        warnings.warn(
+            "`numba_type` property is deprecated. Use the method `get_grid_numba_type` in the numba backend instead",
+            DeprecationWarning,
+        )
         return "f8[" + ", ".join([":"] * self.num_axes) + "]"
 
     @cached_property()
