@@ -114,10 +114,6 @@ class BackendRegistry:
         """Iterate over the defined backends."""
         return self._backends.keys().__iter__()
 
-    # def register_hook(self, backend:str, hook:str, identifier:Any)->None
-    #     """_summary_
-    #     """
-
     def register_operator(
         self,
         backend: str,

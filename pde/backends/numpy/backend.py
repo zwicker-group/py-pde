@@ -136,9 +136,7 @@ class NumpyBackend(BackendBase):
 
         The function also accepts an optional parameter `args`, which is forwarded to
         `set_ghost_cells`. This allows setting boundary conditions based on external
-        parameters, like time. Note that since the returned operator will always be
-        compiled by Numba, the arguments need to be compatible with Numba. The
-        following example shows how to pass the current time `t`:
+        parameters, like time.
 
         Returns:
             callable: the function that applies the operator. This function has the
