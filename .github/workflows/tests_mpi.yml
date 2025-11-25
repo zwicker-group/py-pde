@@ -13,7 +13,7 @@ jobs:
           - os: "ubuntu-latest"
             mpi: "openmpi"
           - os: "macos-15"
-            mpi: "intelmpi"
+            mpi: "openmpi"
           - os: "windows-latest"
             mpi: "msmpi"
     runs-on: ${{ matrix.os }}
@@ -33,7 +33,7 @@ jobs:
         mpi: ${{ matrix.mpi }}
 
     - if: ${{ matrix.os == 'macos-15' }}
-      run: echo DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/lib:/usr/lib:$DYLD_FALLBACK_LIBRARY_PATH" >> $GITHUB_ENV        
+      run: echo DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/lib:/usr/lib:$DYLD_FALLBACK_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Install dependencies
       run: |
