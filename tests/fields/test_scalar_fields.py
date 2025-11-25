@@ -593,3 +593,31 @@ def test_field_corner_interpolation_3d():
         ]
     )
     np.testing.assert_allclose(f._data_full, expect)
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        {"vmin": "symmetric"},
+        {"vmax": "symmetric"},
+        {"norm": "centered"},
+        {"norm": "symmetric"},
+    ],
+)
+def test_plot_symmetric(args, rng):
+    """Test symmetric plotting."""
+    grid = UnitGrid([3, 3])
+
+    # first plot
+    field = ScalarField.random_uniform(grid, rng=rng)
+    ref = field.plot(**args)
+    cbar = ref.ax.images[0].colorbar
+    cbar_max = cbar.vmax
+    assert cbar.vmin == pytest.approx(-cbar_max)  # colors are symmetric
+
+    # update plot
+    field = ScalarField.random_uniform(grid, rng=rng)
+    field._update_image_plot(ref)
+    cbar = ref.ax.images[0].colorbar
+    assert cbar.vmax != pytest.approx(cbar_max)  # colors have changed
+    assert cbar.vmin == pytest.approx(-cbar.vmax)  # colors are symmetric

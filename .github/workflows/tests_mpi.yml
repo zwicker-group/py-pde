@@ -12,8 +12,8 @@ jobs:
         include:
           - os: "ubuntu-latest"
             mpi: "openmpi"
-          - os: "macos-13"
-            mpi: "mpich"
+          - os: "macos-15"
+            mpi: "openmpi"
           - os: "windows-latest"
             mpi: "msmpi"
     runs-on: ${{ matrix.os }}
@@ -31,6 +31,9 @@ jobs:
       uses: mpi4py/setup-mpi@v1
       with:
         mpi: ${{ matrix.mpi }}
+
+    - if: ${{ matrix.os == 'macos-15' }}
+      run: echo DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/lib:/usr/lib:$DYLD_FALLBACK_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Install dependencies
       run: |
