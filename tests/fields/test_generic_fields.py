@@ -10,7 +10,7 @@ from scipy import ndimage
 from fixtures.fields import iter_fields, iter_grids
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from pde.fields.base import FieldBase
-from pde.fields.datafield_base import DataFieldBase
+from pde.fields.datafield_base import DataFieldBase, _symmetrize_vmin_vmax
 from pde.grids import (
     CartesianGrid,
     CylindricalSymGrid,
@@ -618,3 +618,21 @@ def test_field_modelrunner_storage(field, tmp_path):
 
     with open_storage(path, mode="read") as storage:
         assert storage["field"] == field
+
+
+def test_symmetrize_vmin_vmax():
+    """Test the _symmetrize_vmin_vmax function."""
+    assert _symmetrize_vmin_vmax(-1, 2) == (-1, 2)
+    assert _symmetrize_vmin_vmax(-1, "symmetric") == (-1, 1)
+    assert _symmetrize_vmin_vmax("symmetric", 2) == (-2, 2)
+
+    assert _symmetrize_vmin_vmax("symmetric", None, [-3, 2]) == (-3, 3)
+    assert _symmetrize_vmin_vmax(None, "symmetric", [-3, 2]) == (-3, 3)
+    assert _symmetrize_vmin_vmax("symmetric", "symmetric", [-3, 2]) == (-3, 3)
+
+    assert _symmetrize_vmin_vmax(-1, None, [-3, 2]) == (-1, None)
+    assert _symmetrize_vmin_vmax(None, 2, [-3, 2]) == (None, 2)
+    assert _symmetrize_vmin_vmax(None, None, [-3, 2]) == (None, None)
+
+    with pytest.raises(TypeError):
+        _symmetrize_vmin_vmax("symmetric", "symmetric")

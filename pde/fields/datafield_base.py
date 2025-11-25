@@ -1135,8 +1135,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             \**kwargs:
                 Additional keyword arguments that affect the image. Non-Cartesian grids
                 might support `performance_goal` to influence how an image is created
-                from raw data. Finally, remaining arguments are passed to
-                :func:`matplotlib.pyplot.imshow` to affect the appearance.
+                from raw data. `vmin` and `vmax` support the special option `symmetric`
+                to enforce a symmetric color scale. A similar result can also be
+                achieved by passing `norm = "centered"`. Finally, remaining arguments
+                are passed to :func:`matplotlib.pyplot.imshow` to affect the appearance.
 
         Returns:
             :class:`PlotReference`: Instance that contains information to update
@@ -1149,10 +1151,20 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 data_kws[arg] = kwargs.pop(arg)
         data = self.get_image_data(scalar, transpose, **data_kws)
 
-        # plot the image
+        # determine plot parameters
         kwargs.setdefault("origin", "lower")
         kwargs.setdefault("interpolation", "none")
-        axes_image = ax.imshow(data["data"].T, extent=data["extent"], **kwargs)
+        args = kwargs.copy()  # allow modifications in vmin and vmax
+        args["vmin"], args["vmax"] = _symmetrize_vmin_vmax(
+            args.get("vmin"), args.get("vmax"), data["data"]
+        )
+        if args.get("norm") in {"centered", "symmetric"}:
+            from matplotlib.colors import CenteredNorm
+
+            args["norm"] = CenteredNorm()
+
+        # plot the image
+        axes_image = ax.imshow(data["data"].T, extent=data["extent"], **args)
 
         # set some default properties
         ax.set_xlabel(data["label_x"])
@@ -1189,8 +1201,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         reference.element.set_data(data["data"].T)
 
         # adjust the colorbar limits
-        vmin = p["vmin"] if "vmin" in p else data["data"].min()
-        vmax = p["vmax"] if "vmax" in p else data["data"].max()
+        vmin, vmax = _symmetrize_vmin_vmax(p.get("vmin"), p.get("vmax"), data["data"])
+        if vmin is None:
+            vmin = data["data"].min()
+        if vmax is None:
+            vmax = data["data"].max()
         reference.element.set_clim(vmin, vmax)
 
     def _plot_vector(
@@ -1425,3 +1440,50 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         name = "Field" if self.label is None else self.label
         return {name: self._get_napari_layer_data(**kwargs)}
+
+
+def _symmetrize_vmin_vmax(
+    vmin: float | Literal["symmetric"] | None,
+    vmax: float | Literal["symmetric"] | None,
+    data: ArrayLike | None = None,
+) -> tuple[float | None, float | None]:
+    """Symmetrize the limits of a colormap around zero.
+
+    This function adjusts the minimum and maximum values used for a colormap to ensure
+    they are symmetric around zero when requested. This is useful for visualizing data
+    where positive and negative values should be represented with equal visual weight.
+
+    The special value "symmetric" for either `vmin` or `vmax` triggers symmetrization:
+    - If `vmin == "symmetric"`, it is set to the negative of `vmax` (or the negative
+      of the maximum absolute value in the data if `vmax` is not specified).
+    - If `vmax == "symmetric"`, it is set to the negative of `vmin` (or the maximum
+      absolute value in the data if `vmin` is not specified).
+
+    Args:
+        vmin (float, None, or "symmetric"):
+            The minimum value for the colormap. If "symmetric", it is set to mirror
+            `vmax` around zero. If `None`, no lower limit is enforced.
+        vmax (float, None, or "symmetric"):
+            The maximum value for the colormap. If "symmetric", it is set to mirror
+            `vmin` around zero. If `None`, no upper limit is enforced.
+        data (:class:`~numpy.ndarray`):
+            The data array whose values are used to determine symmetric limits when
+            needed.
+
+    Returns:
+        tuple of float or None: The adjusted `(vmin, vmax)` values for the colormap.
+    """
+    if vmin == "symmetric":
+        # the lower boundary should mirror the upper boundary
+        if vmax == "symmetric" or vmax is None:
+            vmax = np.abs(data).max()
+        vmin = -vmax if vmax >= 0 else None  # type: ignore
+
+    elif vmax == "symmetric":
+        # the upper boundary should mirror the lower boundary
+        if vmin is None:
+            vmin = -np.abs(data).max()
+        vmax = -vmin if vmin <= 0 else None  # type: ignore
+
+    # set the values if they are numeric
+    return vmin, vmax  # type: ignore
