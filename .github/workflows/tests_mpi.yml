@@ -12,7 +12,7 @@ jobs:
         include:
           - os: "ubuntu-latest"
             mpi: "openmpi"
-          - os: "macos-13"
+          - os: "macos-15"
             mpi: "mpich"
           - os: "windows-latest"
             mpi: "msmpi"
