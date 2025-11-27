@@ -481,7 +481,7 @@ def test_expression_repl(rng):
 
 
 def test_expression_signature_consts():
-    """test the combination of specifying a signature and a constant"""
+    """Test the combination of specifying a signature and a constant."""
     e = ScalarExpression("a * c", signature=["a", "b"], consts={"c": 3})
     assert e(2, 2) == 6
     assert e.depends_on("a")
