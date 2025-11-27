@@ -20,9 +20,11 @@ import numpy as np
 from .typing import NumberOrArray, NumericArray
 
 try:
+    from pyfftw.interfaces.numpy_fft import ifftn as np_ifftn
     from pyfftw.interfaces.numpy_fft import irfftn as np_irfftn
     from pyfftw.interfaces.numpy_fft import rfftn as np_rfftn
 except ImportError:
+    from numpy.fft import ifftn as np_ifftn
     from numpy.fft import irfftn as np_irfftn
     from numpy.fft import rfftn as np_rfftn
 
@@ -36,6 +38,7 @@ def _make_isotropic_correlated_noise(
     corr_spectrum: Callable[[NumericArray], NumericArray],
     *,
     discretization: NumberOrArray = 1.0,
+    real_fft: bool = False,
     rng: np.random.Generator | None = None,
 ) -> Callable[[], NumericArray]:
     r"""Return a function creating an array of random values with spatial correlations.
@@ -55,6 +58,10 @@ def _make_isotropic_correlated_noise(
         discretization (float or list of floats):
             Discretization along each dimension. A uniform discretization in each
             direction can be indicated by a single number.
+        real_fft (bool):
+            Flag indicating whether the correlated noise is created using a real Fourier
+            transform or a complex Fourier transform. This choice can have subtle
+            effects on the normalization and on the execution speed.
         rng (:class:`~numpy.random.Generator`):
             Random number generator (default: :func:`~numpy.random.default_rng()`)
 
@@ -70,7 +77,7 @@ def _make_isotropic_correlated_noise(
     # prepare wave vectors
     k2s = np.array(0)
     for i in range(dim):
-        if i == dim - 1:
+        if real_fft and i == dim - 1:
             k = np.fft.rfftfreq(shape[i], dx_arr[i])
         else:
             k = np.fft.fftfreq(shape[i], dx_arr[i])
@@ -78,20 +85,40 @@ def _make_isotropic_correlated_noise(
 
     # scaling of all modes with k != 0
     k2s.flat[0] = 1
-    scaling = np.sqrt(corr_spectrum(k2s))
-    scaling.flat[0] = 0
-    scaling /= scaling.mean()  # normalize scaling to correct the variance
 
-    def noise_corr() -> NumericArray:
-        """Return array of correlated noise."""
-        # initialize uncorrelated random field
-        arr: NumericArray = rng.normal(size=shape)
-        # forward transform to frequency space
-        arr = np_rfftn(arr, s=shape, axes=range(dim))
-        # scale frequency according to transformed correlation function
-        arr *= scaling
-        # backward transform to return to real space
-        return np_irfftn(arr, s=shape, axes=range(dim))  # type: ignore
+    if real_fft:
+        # use a real FFT to calculate the noise correlation
+        scaling = np.sqrt(corr_spectrum(k2s))
+        scaling.flat[0] = 0
+        scaling /= scaling.mean()  # normalize scaling to correct the variance
+
+        def noise_corr() -> NumericArray:
+            """Return array of correlated noise."""
+            # initialize uncorrelated random field
+            arr: NumericArray = rng.normal(size=shape)
+            # forward transform to frequency space
+            arr = np_rfftn(arr, s=shape, axes=range(dim))
+            # scale frequency according to transformed correlation function
+            arr *= scaling
+            # backward transform to return to real space
+            return np_irfftn(arr, s=shape, axes=range(dim))  # type: ignore
+
+    else:
+        # use a complex FFT to calculate the noise correlation
+        S_k = corr_spectrum(k2s)
+        S_k.flat[0] = 0
+        S_k = S_k / np.sum(S_k) * (np.prod(shape) ** 2)
+        scaling = np.sqrt(S_k)
+
+        def noise_corr() -> NumericArray:
+            """Return array of correlated noise."""
+            # initialize uncorrelated random field
+            arr: NumericArray = rng.normal(size=shape) + 1j * rng.normal(size=shape)
+
+            # scale frequency according to transformed correlation function
+            arr *= scaling
+            # backward transform to return to real space
+            return np_ifftn(arr, s=shape, axes=range(dim)).real  # type: ignore
 
     return noise_corr
 
@@ -167,6 +194,7 @@ def make_correlated_noise(
     if correlation == "none" or correlation == "delta":
         # no correlation
         corr_spectrum = None
+        real_fft = True
 
     elif correlation == "gaussian":
         # gaussian correlation function with length scale `length_scale`
@@ -179,6 +207,8 @@ def make_correlated_noise(
                 """Fourier transform of a Gaussian function."""
                 return np.exp(-0.5 * length_scale**2 * k2s)
 
+        real_fft = True
+
     elif correlation == "power law":
         # power law correlation function with `exponent`
         exponent = kwargs.pop("exponent", 0)
@@ -190,6 +220,8 @@ def make_correlated_noise(
                 """Fourier transform of a power law."""
                 return k2s ** (exponent / 4)
 
+        real_fft = False
+
     elif correlation == "cosine":
         # cosine correlation function with a dominant mode scale `length_scale`
         length_scale = kwargs.pop("length_scale", 1)
@@ -199,6 +231,8 @@ def make_correlated_noise(
         def corr_spectrum(k2s):
             """Fourier transform of a function that has a dominant harmonic mode."""
             return np.exp(-sharpness2 * (length_scale * np.sqrt(k2s) - 1) ** 2)
+
+        real_fft = False
 
     else:
         raise ValueError(f"Unknown correlation `{correlation}`")
@@ -216,7 +250,11 @@ def make_correlated_noise(
 
     else:
         return _make_isotropic_correlated_noise(
-            shape, corr_spectrum=corr_spectrum, discretization=discretization, rng=rng
+            shape,
+            corr_spectrum=corr_spectrum,
+            discretization=discretization,
+            real_fft=real_fft,
+            rng=rng,
         )
 
 
