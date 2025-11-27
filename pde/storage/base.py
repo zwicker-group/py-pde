@@ -187,7 +187,7 @@ class StorageBase(metaclass=ABCMeta):
                 else:
                     self._logger.warning(
                         "`grid` attribute was not stored. Available attributes: %s",
-                        ", ".join(sorted(attrs.keys())),
+                        ", ".join(sorted(attrs)),
                     )
 
             else:

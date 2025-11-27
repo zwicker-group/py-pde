@@ -474,9 +474,7 @@ class BCBase(metaclass=ABCMeta):
             )
 
         else:
-            raise BCDataError(
-                f"Boundary conditions `{str(list(data.keys()))}` are not supported."
-            )
+            raise BCDataError(f"Boundary conditions `{list(data)}` are not supported.")
 
     @classmethod
     def from_data(

@@ -244,7 +244,7 @@ class FieldBase(metaclass=ABCMeta):
 
             elif len(fp) == 1:
                 # a single field is stored in the data
-                dataset = fp[list(fp.keys())[0]]  # retrieve only dataset
+                dataset = fp[list(fp)[0]]  # retrieve only dataset
                 obj = cls._from_hdf_dataset(dataset)  # type: ignore
 
             else:

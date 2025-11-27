@@ -283,7 +283,7 @@ class BoundaryPair(BoundaryAxisBase):
                 d_high = data_copy.pop("high")
                 high = BCBase.from_data(grid, axis, upper=True, data=d_high, rank=rank)
                 if data_copy:
-                    raise BCDataError(f"Data items {data_copy.keys()} were not used.")
+                    raise BCDataError(f"Data items {list(data_copy)} were not used.")
             else:
                 # one condition for both sides
                 low = BCBase.from_data(grid, axis, upper=False, data=data, rank=rank)

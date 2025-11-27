@@ -73,7 +73,7 @@ class TrackerBase(metaclass=ABCMeta):
             try:
                 tracker_cls = cls._subclasses[data]
             except KeyError as err:
-                trackers = sorted(cls._subclasses.keys())
+                trackers = sorted(cls._subclasses)
                 raise ValueError(f"Tracker `{data}` is not in {trackers}") from err
             return tracker_cls(**kwargs)
         else:
