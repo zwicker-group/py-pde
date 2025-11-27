@@ -478,3 +478,16 @@ def test_expression_repl(rng):
     assert e(4) == 8
     assert e.differentiate("σ").value == 0
     assert e.differentiate("sigma").value == 2
+
+
+def test_expression_signature_consts():
+    """test the combination of specifying a signature and a constant"""
+    e = ScalarExpression("a * c", signature=["a", "b"], consts={"c": 3})
+    assert e(2, 2) == 6
+    assert e.depends_on("a")
+    assert not e.depends_on("c")
+    assert e.differentiate("a")(6, 7) == 3
+
+    e = ScalarExpression("a * c", signature=["a", "b"], consts={"c": np.arange(3)})
+    np.testing.assert_allclose(e(1, 2), np.arange(3))
+    np.testing.assert_allclose(e.differentiate("a")(6, 7), np.arange(3))
