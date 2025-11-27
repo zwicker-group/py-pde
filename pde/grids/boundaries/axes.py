@@ -32,7 +32,7 @@ BoundariesData = Union[
     BoundaryPairData, Sequence[BoundaryPairData], Callable, "BoundariesBase"
 ]
 
-BC_LOCAL_KEYS = ["type", "value"] + list(BCBase._conditions.keys())
+BC_LOCAL_KEYS = ["type", "value"] + list(BCBase._conditions)
 
 
 def _is_local_bc_data(data: dict[str, Any]) -> bool:
@@ -201,7 +201,7 @@ class BoundariesList(BoundariesBase):
 
         # warn if some keys were left over
         if data:
-            _logger.warning("Didn't use BC data from %s", list(data.keys()))
+            _logger.warning("Didn't use BC data from %s", list(data))
         # find boundary conditions that have not been specified
         bcs_unspecified = []
         for ax, bc_ax in enumerate(bc_data):

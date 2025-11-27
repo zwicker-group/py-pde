@@ -96,7 +96,7 @@ def _make_isotropic_correlated_noise(
     return noise_corr
 
 
-CorrelationType = Literal["none", "gaussian", "power law", "cosine"]
+CorrelationType = Literal["none", "delta", "gaussian", "power law", "cosine"]
 
 
 def make_correlated_noise(
@@ -164,7 +164,7 @@ def make_correlated_noise(
     """
     rng = np.random.default_rng(rng)
 
-    if correlation == "none":
+    if correlation == "none" or correlation == "delta":
         # no correlation
         corr_spectrum = None
 
@@ -204,7 +204,7 @@ def make_correlated_noise(
         raise ValueError(f"Unknown correlation `{correlation}`")
 
     if kwargs:
-        _logger.warning("Unused arguments: %s", kwargs.keys())
+        _logger.warning("Unused arguments: %s", list(kwargs))
 
     if corr_spectrum is None:
         # fast case of uncorrelated white noise

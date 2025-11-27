@@ -161,7 +161,7 @@ class CartesianGrid(GridBase):
             periodic=state_copy.pop("periodic"),
         )
         if state_copy:
-            raise ValueError(f"State items {state_copy.keys()} were not used")
+            raise ValueError(f"State items {list(state_copy)} were not used")
         return obj
 
     @classmethod
@@ -504,7 +504,7 @@ class UnitGrid(CartesianGrid):
         state_copy = state.copy()
         obj = cls(shape=state_copy.pop("shape"), periodic=state_copy.pop("periodic"))
         if state_copy:
-            raise ValueError(f"State items {state_copy.keys()} were not used")
+            raise ValueError(f"State items {list(state_copy)} were not used")
         return obj
 
     def to_cartesian(self) -> CartesianGrid:

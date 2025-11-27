@@ -116,7 +116,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         state_copy = state.copy()
         obj = cls(radius=state_copy.pop("radius"), shape=state_copy.pop("shape"))
         if state_copy:
-            raise ValueError(f"State items {state_copy.keys()} were not used")
+            raise ValueError(f"State items {list(state_copy)} were not used")
         return obj
 
     @classmethod

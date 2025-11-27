@@ -127,7 +127,7 @@ class SolverBase:
             # solver was not registered
             solvers = (
                 f"'{solver}'"
-                for solver in sorted(cls._subclasses.keys())
+                for solver in sorted(cls._subclasses)
                 if not solver.endswith("Solver")
             )
             raise ValueError(
@@ -140,7 +140,7 @@ class SolverBase:
     @classproperty
     def registered_solvers(cls) -> list[str]:
         """list of str: the names of the registered solvers"""
-        return sorted(cls._subclasses.keys())
+        return sorted(cls._subclasses)
 
     @property
     def backend(self) -> BackendType:
