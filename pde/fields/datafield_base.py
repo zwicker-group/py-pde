@@ -1036,7 +1036,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                         f"Rank={rank} too small for dot product. Use a normal product "
                         "instead."
                     )
-                return rank  # type: ignore
+                return rank
 
             @overload(dot, inline="always")
             def dot_ol(
