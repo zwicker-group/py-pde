@@ -99,7 +99,7 @@ def test_mixed_boundary_condition(rng):
 
 
 @pytest.mark.parametrize(
-    "cond,is_value",
+    ("cond", "is_value"),
     [
         ("auto_periodic_neumann", False),
         ("auto_periodic_dirichlet", True),

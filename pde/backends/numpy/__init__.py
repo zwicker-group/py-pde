@@ -8,4 +8,4 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .backend import NumpyBackend
+from .backend import NumpyBackend  # noqa: F401

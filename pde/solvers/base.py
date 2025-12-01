@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING, Any, Callable, Union
 import numpy as np
 from numba.extending import register_jitable
 
-from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.misc import classproperty
 from ..tools.numba import is_jitted
@@ -24,6 +23,7 @@ from ..tools.typing import BackendType, NumericArray, StepperHook, TField
 
 if TYPE_CHECKING:
     from ..backends.base import BackendBase
+    from ..pdes.base import PDEBase
 
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
@@ -94,7 +94,7 @@ class SolverBase:
         # register all subclasses to reconstruct them later
         if not isabstract(cls):
             if cls.__name__ in cls._subclasses:
-                warnings.warn(f"Redefining class {cls.__name__}")
+                warnings.warn(f"Redefining class {cls.__name__}", stacklevel=2)
             cls._subclasses[cls.__name__] = cls
         if hasattr(cls, "name") and cls.name:
             if cls.name in cls._subclasses:
@@ -180,8 +180,9 @@ class SolverBase:
 
         # check whether the new backend contradicts the old backend object
         if self.__backend_obj is not None and self.__backend_obj.name != new_backend:
+            msg = "Tried changing the loaded backend of the solver from `%s` to `%s`"
             raise TypeError(
-                "Tried changing the loaded backend of the solver from `%s` to `%s`",
+                msg,
                 self.__backend_obj.name,
                 new_backend,
             )
@@ -316,9 +317,8 @@ class SolverBase:
             applicable) a realization of the associated noise.
         """
         if getattr(self.pde, "is_sde", False):
-            raise RuntimeError(
-                "Cannot create a deterministic stepper for a stochastic equation"
-            )
+            msg = "Cannot create a deterministic stepper for a stochastic equation"
+            raise RuntimeError(msg)
 
         rhs = self.pde.make_pde_rhs(state, backend=backend)
         self._check_backend(rhs)
@@ -363,7 +363,8 @@ class SolverBase:
             dt (float):
                 Time step of the explicit stepping.
         """
-        raise NotImplementedError("Fixed stepper has not been defined")
+        msg = "Fixed stepper has not been defined"
+        raise NotImplementedError(msg)
 
     def _make_fixed_stepper(self, state: TField, dt: float) -> FixedStepperType:
         """Return a stepper function using an explicit scheme with fixed time steps.
@@ -439,7 +440,7 @@ class SolverBase:
             # retrieve last post_step_data and continue with this
             post_step_data = self.info["post_step_data"]
             # calculate number of steps that lead to an end time closest to t_end
-            steps = max(1, int(round((t_end - t_start) / dt_float)))
+            steps = max(1, round((t_end - t_start) / dt_float))
             # call the stepper with fixed time steps
             t_last = fixed_stepper(state.data, t_start, steps, post_step_data)
             # keep some stats and data
@@ -519,7 +520,8 @@ class AdaptiveSolverBase(SolverBase):
                 be extracted
         """
         if getattr(self.pde, "is_sde", False):
-            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
+            msg = "Cannot use adaptive stepper with stochastic equation"
+            raise RuntimeError(msg)
 
         single_step = self._make_single_step_variable_dt(state)
 
@@ -552,7 +554,7 @@ class AdaptiveSolverBase(SolverBase):
                 be extracted
             adjust_dt (callable or None):
                 A function that is used to adjust the time step. The function takes the
-                current time step and a relative error and returns an adjusted time step.
+                current time step and a relative error and returns an adjusted time step
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
@@ -638,7 +640,8 @@ class AdaptiveSolverBase(SolverBase):
 
         if getattr(self.pde, "is_sde", False):
             # adaptive steppers cannot deal with stochastic PDEs
-            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
+            msg = "Cannot use adaptive stepper with stochastic equation"
+            raise RuntimeError(msg)
 
         # Support `None` as a default value, so the controller can signal that
         # the solver should use a default time step.
@@ -738,8 +741,7 @@ def _make_dt_adjuster(dt_min: float, dt_max: float) -> Callable[[float, float], 
         elif dt < dt_min:
             if np.isnan(error_rel):
                 raise RuntimeError(dt_min_nan_err)
-            else:
-                raise RuntimeError(dt_min_err)
+            raise RuntimeError(dt_min_err)
 
         return dt
 

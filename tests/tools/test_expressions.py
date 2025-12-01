@@ -308,7 +308,7 @@ def test_complex_expression():
 
 
 @pytest.mark.parametrize(
-    "expression, value",
+    ("expression", "value"),
     [("Heaviside(x)", 0.5), ("Heaviside(x, 0.75)", 0.75), ("heaviside(x, 0.75)", 0.75)],
 )
 def test_expression_heaviside(expression, value):

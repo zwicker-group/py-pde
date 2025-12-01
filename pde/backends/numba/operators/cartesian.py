@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numba as nb
 import numpy as np
@@ -25,8 +25,10 @@ from .... import config
 from ....grids.cartesian import CartesianGrid
 from ....tools.misc import module_available
 from ....tools.numba import jit
-from ....tools.typing import NumericArray, OperatorType
 from ...registry import backends
+
+if TYPE_CHECKING:
+    from ....tools.typing import NumericArray, OperatorType
 
 
 def make_corner_point_setter_2d(grid: CartesianGrid) -> Callable[[NumericArray], None]:
@@ -99,8 +101,8 @@ def _make_laplace_numba_2d(
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         corner_weight (float):
-            Weighting factor for the corner points of the stencil. If `None`, the value
-            is read from the configuration option `operators.cartesian_laplacian_2d_corner_weight`.
+            Weighting factor for corner points of stencil. If `None`, value is read from
+            the configuration option `operators.cartesian_laplacian_2d_corner_weight`.
             The standard value is zero, which corresponds to the traditional 5-point
             stencil. Typical alternative choices are 1/2 (Oono-Puri stencil) and 1/3
             (Patra-Karttunen or Mehrstellen stencil); see
@@ -236,8 +238,7 @@ def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorType:
 
             return laplace_real
 
-        else:
-            return laplace_impl
+        return laplace_impl
 
     @jit
     def laplace(arr: NumericArray, out: NumericArray) -> None:
@@ -281,8 +282,7 @@ def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorType:
 
             return laplace_real
 
-        else:
-            return laplace_impl
+        return laplace_impl
 
     @jit
     def laplace(arr: NumericArray, out: NumericArray) -> None:
@@ -318,25 +318,20 @@ def make_laplace(
         # use spectral versions of the operators
         if dim == 1:
             return _make_laplace_numba_spectral_1d(grid, **kwargs)
-        elif dim == 2:
+        if dim == 2:
             return _make_laplace_numba_spectral_2d(grid, **kwargs)
-        else:
-            raise NotImplementedError(
-                f"Numba spectral Laplace operator not implemented for {dim:d} dimensions"
-            )
+        msg = f"Numba spectral Laplace operator not implemented for {dim:d} dimensions"
+        raise NotImplementedError(msg)
 
-    else:
-        # use finite-difference operators
-        if dim == 1:
-            return _make_laplace_numba_1d(grid, **kwargs)
-        elif dim == 2:
-            return _make_laplace_numba_2d(grid, **kwargs)
-        elif dim == 3:
-            return _make_laplace_numba_3d(grid, **kwargs)
-        else:
-            raise NotImplementedError(
-                f"Numba Laplace operator not implemented for {dim:d} dimensions"
-            )
+    # use finite-difference operators
+    if dim == 1:
+        return _make_laplace_numba_1d(grid, **kwargs)
+    if dim == 2:
+        return _make_laplace_numba_2d(grid, **kwargs)
+    if dim == 3:
+        return _make_laplace_numba_3d(grid, **kwargs)
+    msg = f"Numba Laplace operator not implemented for {dim:d} dimensions"
+    raise NotImplementedError(msg)
 
 
 def _make_gradient_numba_1d(
@@ -355,7 +350,8 @@ def _make_gradient_numba_1d(
         A function that can be applied to an array of values
     """
     if method not in {"central", "forward", "backward"}:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     dim_x = grid.shape[0]
     dx = grid.discretization[0]
@@ -395,7 +391,8 @@ def _make_gradient_numba_2d(
     elif method in {"forward", "backward"}:
         scale_x, scale_y = 1 / grid.discretization
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
@@ -439,7 +436,8 @@ def _make_gradient_numba_3d(
     elif method in {"forward", "backward"}:
         scale_x, scale_y, scale_z = 1 / grid.discretization
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y * dim_z >= config["numba.multithreading_threshold"]
@@ -506,14 +504,12 @@ def make_gradient(
 
     if dim == 1:
         return _make_gradient_numba_1d(grid, method=method)
-    elif dim == 2:
+    if dim == 2:
         return _make_gradient_numba_2d(grid, method=method)
-    elif dim == 3:
+    if dim == 3:
         return _make_gradient_numba_3d(grid, method=method)
-    else:
-        raise NotImplementedError(
-            f"Numba gradient operator not implemented for dimension {dim}"
-        )
+    msg = f"Numba gradient operator not implemented for dimension {dim}"
+    raise NotImplementedError(msg)
 
 
 def _make_gradient_squared_numba_1d(
@@ -703,14 +699,12 @@ def make_gradient_squared(grid: CartesianGrid, *, central: bool = True) -> Opera
 
     if dim == 1:
         return _make_gradient_squared_numba_1d(grid, central=central)
-    elif dim == 2:
+    if dim == 2:
         return _make_gradient_squared_numba_2d(grid, central=central)
-    elif dim == 3:
+    if dim == 3:
         return _make_gradient_squared_numba_3d(grid, central=central)
-    else:
-        raise NotImplementedError(
-            f"Squared gradient operator is not implemented for dimension {dim}"
-        )
+    msg = f"Squared gradient operator is not implemented for dimension {dim}"
+    raise NotImplementedError(msg)
 
 
 def _make_divergence_numba_1d(
@@ -729,7 +723,8 @@ def _make_divergence_numba_1d(
         A function that can be applied to an array of values
     """
     if method not in {"central", "forward", "backward"}:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
     dim_x = grid.shape[0]
     dx = grid.discretization[0]
 
@@ -768,7 +763,8 @@ def _make_divergence_numba_2d(
     elif method in {"forward", "backward"}:
         scale_x, scale_y = 1 / grid.discretization
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
@@ -813,7 +809,8 @@ def _make_divergence_numba_3d(
     elif method in {"forward", "backward"}:
         scale_x, scale_y, scale_z = 1 / grid.discretization
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y * dim_z >= config["numba.multithreading_threshold"]
@@ -867,14 +864,12 @@ def make_divergence(
 
     if dim == 1:
         return _make_divergence_numba_1d(grid, method=method)
-    elif dim == 2:
+    if dim == 2:
         return _make_divergence_numba_2d(grid, method=method)
-    elif dim == 3:
+    if dim == 3:
         return _make_divergence_numba_3d(grid, method=method)
-    else:
-        raise NotImplementedError(
-            f"Numba divergence operator not implemented for dimension {dim}"
-        )
+    msg = f"Numba divergence operator not implemented for dimension {dim}"
+    raise NotImplementedError(msg)
 
 
 def _vectorize_operator(
@@ -967,10 +962,10 @@ def make_tensor_divergence(
 
 
 __all__ = [
-    "make_laplace",
-    "make_gradient",
     "make_divergence",
+    "make_gradient",
+    "make_laplace",
+    "make_tensor_divergence",
     "make_vector_gradient",
     "make_vector_laplace",
-    "make_tensor_divergence",
 ]

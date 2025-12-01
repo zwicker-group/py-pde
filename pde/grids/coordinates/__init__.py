@@ -11,7 +11,7 @@
     ~spherical.SphericalCoordinates
 """
 
-from .base import CoordinatesBase, DimensionError
+from .base import CoordinatesBase, DimensionError  # noqa: F401
 from .bipolar import BipolarCoordinates
 from .bispherical import BisphericalCoordinates
 from .cartesian import CartesianCoordinates

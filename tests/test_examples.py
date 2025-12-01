@@ -81,7 +81,8 @@ def test_jupyter_notebooks(path, tmp_path):
     import notebook as jupyter_notebook
 
     if int(jupyter_notebook.__version__.split(".")[0]) < 7:
-        raise RuntimeError("Jupyter notebooks must be at least version 7")
+        msg = "Jupyter notebooks must be at least version 7"
+        raise RuntimeError(msg)
 
     if path.name.startswith("_"):
         pytest.skip("Skip examples starting with an underscore")

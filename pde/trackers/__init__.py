@@ -47,7 +47,7 @@ In particular, interrupts can be specified conveniently using
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .base import get_named_trackers
-from .interactive import InteractivePlotTracker
-from .interrupts import *
-from .trackers import *
+from .base import get_named_trackers  # noqa: F401
+from .interactive import InteractivePlotTracker  # noqa: F401
+from .interrupts import *  # noqa: F403
+from .trackers import *  # noqa: F403

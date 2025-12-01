@@ -21,14 +21,14 @@ import collections
 import functools
 import logging
 import numbers
-from collections.abc import Iterable
 from hashlib import sha1
-from typing import Callable, Literal, TypeVar
+from typing import TYPE_CHECKING, Callable, Literal, TypeVar
 
 import numpy as np
 from scipy import sparse
 
-from .typing import NumericArray
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 TFunc = TypeVar("TFunc", bound="Callable")
 
@@ -246,7 +246,8 @@ def make_serializer(method: SerializerMethod) -> Callable:
 
         return lambda s: yaml.dump(s).encode("utf-8")
 
-    raise ValueError(f"Unknown serialization method `{method}`")
+    msg = f"Unknown serialization method `{method}`"
+    raise ValueError(msg)
 
 
 def make_unserializer(method: SerializerMethod) -> Callable:
@@ -287,7 +288,8 @@ def make_unserializer(method: SerializerMethod) -> Callable:
 
         return yaml.unsafe_load
 
-    raise ValueError(f"Unknown serialization method `{method}`")
+    msg = f"Unknown serialization method `{method}`"
+    raise ValueError(msg)
 
 
 class DictFiniteCapacity(collections.OrderedDict):
@@ -484,13 +486,13 @@ class _class_cache:
         # check whether the decorator has been applied correctly
         if callable(factory):
             class_name = self.__class__.__name__
-            raise ValueError(
+            msg = (
                 f"Missing function call. Call this decorator as {class_name}() instead "
                 f"of {class_name}"
             )
+            raise TypeError(msg)
 
-        else:
-            self.factory = factory
+        self.factory = factory
 
     def _get_clear_cache_method(self):
         """Return a method that can be attached to classes to clear the cache of the

@@ -12,13 +12,14 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numba as nb
 import numpy as np
 from numba.experimental import jitclass
 
-from .typing import ArrayLike, NumericArray
+if TYPE_CHECKING:
+    from .typing import ArrayLike, NumericArray
 
 
 class SmoothData1D:
@@ -46,7 +47,8 @@ class SmoothData1D:
         self.x = np.ravel(x)
         self.y = np.ravel(y)
         if self.x.shape != self.y.shape:
-            raise ValueError("`x` and `y` must have equal number of elements")
+            msg = "`x` and `y` must have equal number of elements"
+            raise ValueError(msg)
 
         # only take finite values
         idx = np.isfinite(self.y)
@@ -152,8 +154,7 @@ class OnlineStatistics:
         DDOF = 0
         if self.count <= DDOF:
             return math.nan
-        else:
-            return self._mean2 / (self.count - DDOF)
+        return self._mean2 / (self.count - DDOF)
 
     @property
     def std(self) -> float:

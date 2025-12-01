@@ -7,12 +7,13 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 
-from ....grids.base import GridBase
-from ....tools.typing import NumericArray, OperatorType
+if TYPE_CHECKING:
+    from ....grids.base import GridBase
+    from ....tools.typing import NumericArray, OperatorType
 
 
 def uniform_discretization(grid: GridBase) -> float:
@@ -31,8 +32,8 @@ def uniform_discretization(grid: GridBase) -> float:
     dx_mean = np.mean(grid.discretization)
     if np.allclose(grid.discretization, dx_mean):
         return float(dx_mean)
-    else:
-        raise RuntimeError("Grid discretization is not uniform")
+    msg = "Grid discretization is not uniform"
+    raise RuntimeError(msg)
 
 
 def make_laplace_from_matrix(
@@ -93,7 +94,8 @@ def make_general_poisson_solver(
     logger = logging.getLogger(__name__)
 
     if method not in {"auto", "scipy"}:
-        raise ValueError(f"Method {method} is not available")
+        msg = f"Method {method} is not available"
+        raise ValueError(msg)
 
     # prepare the matrix representing the operator
     mat = matrix.tocsc()
@@ -136,9 +138,8 @@ def make_general_poisson_solver(
             result = sparse.linalg.lsmr(mat, rhs)[0]
             if not np.allclose(mat.dot(result), rhs, rtol=1e-5, atol=1e-5):
                 residual = np.linalg.norm(mat.dot(result) - rhs)
-                raise RuntimeError(
-                    f"Poisson problem could not be solved (Residual: {residual})"
-                )
+                msg = f"Poisson problem could not be solved (Residual: {residual})"
+                raise RuntimeError(msg)
             logger.info("Solved Poisson problem with sparse.linalg.lsmr")
 
         # convert the result to the correct format

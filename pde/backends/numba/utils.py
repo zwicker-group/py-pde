@@ -5,12 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from numba.extending import register_jitable
 
-from ...grids.base import GridBase
 from ...tools.typing import NumericArray
+
+if TYPE_CHECKING:
+    from ...grids.base import GridBase
 
 
 def make_get_arr_1d(

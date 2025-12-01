@@ -8,39 +8,42 @@ reading and writing movies.
 
 from __future__ import annotations
 
-import io
 import json
 import shlex
-import types
 import warnings
-from collections.abc import Iterator, Sequence
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numpy as np
 from matplotlib.colors import Normalize
-from numpy.typing import ArrayLike
 
 from ..fields import FieldCollection
-from ..fields.base import FieldBase
-from ..fields.datafield_base import DataFieldBase
 from ..tools import ffmpeg as FFmpeg
 from ..tools.cache import cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..tools.parse_duration import parse_duration
-from ..tools.typing import NumericArray
 from ..trackers.interrupts import ConstantInterrupts, InterruptData, parse_interrupt
 from .base import InfoDict, StorageBase, StorageTracker, WriteModeType
+
+if TYPE_CHECKING:
+    import io
+    import types
+    from collections.abc import Iterator, Sequence
+
+    from numpy.typing import ArrayLike
+
+    from ..fields.base import FieldBase
+    from ..fields.datafield_base import DataFieldBase
+    from ..tools.typing import NumericArray
 
 
 def _get_limits(value: float | ArrayLike, dim: int) -> NumericArray:
     """Helper function creating sequence of length `dim` from input."""
     if np.isscalar(value):
         return np.full(dim, value, dtype=float)  # type: ignore
-    else:
-        return np.asarray(value)[:dim].astype(float)  # type: ignore
+    return np.asarray(value)[:dim].astype(float)  # type: ignore
 
 
 def _import_ffmpeg() -> types.ModuleType:
@@ -61,10 +64,13 @@ def _import_ffmpeg() -> types.ModuleType:
                 warnings.warn(
                     f"Expected `ffmpeg-python` package, but found `{name}`",
                     ImportWarning,
+                    stacklevel=2,
                 )
         elif len(packages) > 1:
             warnings.warn(
-                f"Expected `ffmpeg-python` package, but found {packages}", ImportWarning
+                f"Expected `ffmpeg-python` package, but found {packages}",
+                ImportWarning,
+                stacklevel=2,
             )
 
     # import package
@@ -153,7 +159,8 @@ class MovieStorage(StorageBase):
                 be useful to get additional information about the encoding.
         """
         if not module_available("ffmpeg"):
-            raise ModuleNotFoundError("`MovieStorage` needs `ffmpeg-python` package")
+            msg = "`MovieStorage` needs `ffmpeg-python` package"
+            raise ModuleNotFoundError(msg)
 
         super().__init__(info=info, write_mode=write_mode)
         self.filename = Path(filename)
@@ -218,7 +225,8 @@ class MovieStorage(StorageBase):
 
         path = Path(self.filename)
         if not path.exists():
-            raise OSError(f"File `{path}` does not exist")
+            msg = f"File `{path}` does not exist"
+            raise OSError(msg)
         info = ffmpeg.probe(path)
 
         # sanity checks on the video
@@ -251,7 +259,8 @@ class MovieStorage(StorageBase):
                 fps = Fraction(stream.get("avg_frame_rate", None))
                 duration = parse_duration(stream.get("tags", {}).get("DURATION"))
             except TypeError as err:
-                raise RuntimeError("Frame count could not be read from video") from err
+                msg = "Frame count could not be read from video"
+                raise RuntimeError(msg) from err
             else:
                 self.info["num_frames"] = int(duration.total_seconds() * float(fps))
         self.info["width"] = stream["width"]
@@ -261,7 +270,8 @@ class MovieStorage(StorageBase):
             if video_format is None:
                 video_format = stream.get("pix_fmt")
             if video_format is None:
-                raise RuntimeError("Could not determine video format from file")
+                msg = "Could not determine video format from file"
+                raise RuntimeError(msg)
         else:
             video_format = self.video_format
         try:
@@ -317,9 +327,11 @@ class MovieStorage(StorageBase):
         ffmpeg = _import_ffmpeg()  # lazy loading so it's not a hard dependence
 
         if self._is_writing:
-            raise RuntimeError(f"{self.__class__.__name__} is already in writing mode")
+            msg = f"{self.__class__.__name__} is already in writing mode"
+            raise RuntimeError(msg)
         if self._ffmpeg is not None:
-            raise RuntimeError("ffmpeg process already started")
+            msg = "ffmpeg process already started"
+            raise RuntimeError(msg)
 
         # delete data if truncation is requested. This is for instance necessary
         # to remove older data with incompatible data_shape
@@ -329,7 +341,8 @@ class MovieStorage(StorageBase):
             self.clear()
             self.write_mode = "append"  # do not truncate in subsequent calls
         elif self.write_mode == "append":
-            raise NotImplementedError("Appending to movies is not possible")
+            msg = "Appending to movies is not possible"
+            raise NotImplementedError(msg)
 
         # initialize the writing, setting current data shape
         super().start_writing(field, info=info)
@@ -343,23 +356,26 @@ class MovieStorage(StorageBase):
         elif self._grid.num_axes == 2:
             width, height = field.grid.shape
         else:
-            raise RuntimeError("Cannot use grid with more than two axes")
+            msg = "Cannot use grid with more than two axes"
+            raise RuntimeError(msg)
 
         # get color channel information
         if self.video_format == "auto":
             channels = field._data_flat.shape[0]
             video_format = FFmpeg.find_format(channels, self.bits_per_channel)
             if video_format is None:
-                raise RuntimeError(
+                msg = (
                     f"Could not find a video format with {channels} channels and "
                     f"{self.bits_per_channel} bits per channel."
                 )
+                raise RuntimeError(msg)
             self.info["video_format"] = video_format
         else:
             self.info["video_format"] = self.video_format
         self._format = FFmpeg.formats[self.info["video_format"]]
         if field.is_complex:
-            raise NotImplementedError("MovieStorage does not support complex values")
+            msg = "MovieStorage does not support complex values"
+            raise NotImplementedError(msg)
         self._frame_shape = (width, height, self._format.channels)
 
         # set up the normalization
@@ -392,7 +408,7 @@ class MovieStorage(StorageBase):
         self._ffmpeg = f_output.run_async(pipe_stdin=True)  # start process
 
         if self.write_times:
-            self._times_file = self._filename_times.open("w")  # noqa: SIM115
+            self._times_file = self._filename_times.open("w")
 
         self.info["num_frames"] = 0
         self._warned_normalization = False
@@ -435,7 +451,7 @@ class MovieStorage(StorageBase):
         if grid_dim > 2:
             raise NotImplementedError
         if grid_dim == 1:
-            data = data.reshape(data.shape + (1,))
+            data = data.reshape((*data.shape, 1))
         # check spatial dimensions
         assert data.ndim >= 2
         assert data.shape[-2:] == self._frame_shape[:2]
@@ -443,10 +459,10 @@ class MovieStorage(StorageBase):
         # ensure the data has the shape extra_dim x width x height
         # where `extra_dim` are separated fields or capture the rank of the field
         if data.ndim == 2:
-            data = data.reshape((1,) + data.shape)  # explicitly scalar data
+            data = data.reshape((1, *data.shape))  # explicitly scalar data
         elif data.ndim > 3:
             # collapse first dimensions, so we have three in total
-            data = data.reshape((-1,) + data.shape[-2:])
+            data = data.reshape((-1, *data.shape[-2:]))
         assert len(self._frame_shape) == data.ndim == 3
         assert len(self._norms) == data.shape[0]  # same non-spatial dimension
 
@@ -550,7 +566,7 @@ class MovieStorage(StorageBase):
         it = self._iter_data()  # get the iterator of all data
         first_frame = next(it)  # get the first frame to obtain necessary information
         # allocate memory for all data
-        data = np.empty((len(self),) + first_frame.shape, dtype=first_frame.dtype)
+        data = np.empty((len(self), *first_frame.shape), dtype=first_frame.dtype)
         data[0] = first_frame  # set the first frame
         for i, frame_data in enumerate(it, 1):  # set all subsequent frames
             data[i] = frame_data
@@ -575,7 +591,8 @@ class MovieStorage(StorageBase):
             t_index += len(self)
 
         if not 0 <= t_index < len(self):
-            raise IndexError("Time index out of range")
+            msg = "Time index out of range"
+            raise IndexError(msg)
 
         if "width" not in self.info:
             self._read_metadata()
@@ -596,7 +613,8 @@ class MovieStorage(StorageBase):
         )
         read_bytes, _ = f_output.run(capture_stdout=True)
         if not read_bytes:
-            raise OSError("Could not read any data")
+            msg = "Could not read any data"
+            raise OSError(msg)
         frame = np.frombuffer(read_bytes, self._format.dtype).reshape(frame_shape)
 
         for i, norm in enumerate(self._norms):

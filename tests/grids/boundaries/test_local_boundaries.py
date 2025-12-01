@@ -315,7 +315,7 @@ def test_expression_bc_setting_derivative(expr, rng):
         np.testing.assert_almost_equal(f_ref._data_full, f2._data_full)
 
 
-@pytest.mark.parametrize("value_expr, const_expr", [("1", "1"), ("x", "y**2")])
+@pytest.mark.parametrize(("value_expr", "const_expr"), [("1", "1"), ("x", "y**2")])
 def test_expression_bc_setting_mixed(value_expr, const_expr, rng):
     """Test boundary conditions that use an expression."""
     grid = CartesianGrid([[0, 1], [0, 1]], 4)

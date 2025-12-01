@@ -165,7 +165,7 @@ def test_gradient_cart(ndim, method, periodic, rng):
     field = ScalarField.random_uniform(bcs.grid, rng=rng)
     res1 = field.gradient(bcs, backend="scipy", method=method).data
     res2 = field.gradient(bcs, backend="numba", method=method).data
-    assert res1.shape == (ndim,) + bcs.grid.shape
+    assert res1.shape == (ndim, *bcs.grid.shape)
     np.testing.assert_allclose(res1, res2)
 
 
@@ -188,7 +188,7 @@ def test_vector_gradient(ndim, rng):
     field = VectorField.random_uniform(bcs.grid, rng=rng)
     res1 = field.gradient(bcs, backend="scipy").data
     res2 = field.gradient(bcs, backend="numba").data
-    assert res1.shape == (ndim, ndim) + bcs.grid.shape
+    assert res1.shape == (ndim, ndim, *bcs.grid.shape)
     np.testing.assert_allclose(res1, res2)
 
 
@@ -199,7 +199,7 @@ def test_vector_laplace_cart(ndim, rng):
     field = VectorField.random_uniform(bcs.grid, rng=rng)
     res1 = field.laplace(bcs, backend="scipy").data
     res2 = field.laplace(bcs, backend="numba").data
-    assert res1.shape == (ndim,) + bcs.grid.shape
+    assert res1.shape == (ndim, *bcs.grid.shape)
     np.testing.assert_allclose(res1, res2)
 
 
@@ -210,7 +210,7 @@ def test_tensor_divergence_cart(ndim, rng):
     field = Tensor2Field.random_uniform(bcs.grid, rng=rng)
     res1 = field.divergence(bcs, backend="scipy").data
     res2 = field.divergence(bcs, backend="numba").data
-    assert res1.shape == (ndim,) + bcs.grid.shape
+    assert res1.shape == (ndim, *bcs.grid.shape)
     np.testing.assert_allclose(res1, res2)
 
 

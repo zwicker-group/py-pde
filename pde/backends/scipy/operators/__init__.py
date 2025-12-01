@@ -12,4 +12,4 @@ methods defined on fields and grids.
    spherical_sym
 """
 
-from . import cartesian, cylindrical_sym, polar_sym, spherical_sym
+from . import cartesian, cylindrical_sym, polar_sym, spherical_sym  # noqa: F401

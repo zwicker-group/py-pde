@@ -8,15 +8,18 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-from numpy.typing import DTypeLike
 
-from ..fields.base import FieldBase
 from ..tools.misc import ensure_directory_exists, hdf_write_attributes
-from ..tools.typing import NumericArray
 from .base import InfoDict, StorageBase, WriteModeType
+
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from ..fields.base import FieldBase
+    from ..tools.typing import NumericArray
 
 
 class FileStorage(StorageBase):
@@ -94,12 +97,12 @@ class FileStorage(StorageBase):
         """str: the state that the file is currently in"""
         if self._file is None:
             return "closed"
-        elif self._file.mode == "r":
+        if self._file.mode == "r":
             return "reading"
-        elif self._file.mode == "r+":
+        if self._file.mode == "r+":
             return "writing"
-        else:
-            raise NotImplementedError(f"Do not understand mode `{self._file.mode}")
+        msg = f"Do not understand mode `{self._file.mode}"
+        raise NotImplementedError(msg)
 
     def close(self) -> None:
         """Close the currently opened file."""
@@ -129,21 +132,20 @@ class FileStorage(StorageBase):
             dtype: The data type of the dataset
         """
         if self.compression:
-            kwargs = {"chunks": (1,) + shape, "compression": "gzip"}
+            kwargs = {"chunks": (1, *shape), "compression": "gzip"}
         else:
             kwargs = {}
 
         if self._max_length:
-            shape = (self._max_length,) + shape
+            shape = (self._max_length, *shape)
             return self._file.create_dataset(name, shape=shape, dtype=dtype, **kwargs)
-        else:
-            return self._file.create_dataset(
-                name,
-                shape=(0,) + shape,
-                dtype=dtype,
-                maxshape=(None,) + shape,
-                **kwargs,
-            )
+        return self._file.create_dataset(
+            name,
+            shape=(0, *shape),
+            dtype=dtype,
+            maxshape=(None, *shape),
+            **kwargs,
+        )
 
     def _open(
         self,
@@ -195,9 +197,8 @@ class FileStorage(StorageBase):
             if state in ["appending", "writing"]:
                 return  # we are already in a mode where we can append data
             if self.keep_opened and self._is_writing:
-                raise RuntimeError(
-                    "Currently writing data, so mode cannot be switched."
-                )
+                msg = "Currently writing data, so mode cannot be switched."
+                raise RuntimeError(msg)
             self.close()
 
             # open file for reading or appending
@@ -230,7 +231,8 @@ class FileStorage(StorageBase):
         elif mode == "writing":
             # open file for writing data; delete potentially present data
             if self._is_writing:
-                raise RuntimeError("Currently writing data, so mode cannot be switched")
+                msg = "Currently writing data, so mode cannot be switched"
+                raise RuntimeError(msg)
             if self._file:
                 self.close()
             else:
@@ -249,7 +251,8 @@ class FileStorage(StorageBase):
             self.close()
 
         else:
-            raise RuntimeError(f"Mode `{mode}` not implemented")
+            msg = f"Mode `{mode}` not implemented"
+            raise RuntimeError(msg)
 
     def __len__(self):
         """Return the number of stored items, i.e., time steps."""
@@ -261,9 +264,8 @@ class FileStorage(StorageBase):
 
         if self._data_length is None:
             return length
-        else:
-            # size of stored data is smaller since preallocation was used
-            return min(length, self._data_length)
+        # size of stored data is smaller since preallocation was used
+        return min(length, self._data_length)
 
     @property
     def times(self):
@@ -327,7 +329,8 @@ class FileStorage(StorageBase):
                 Supplies extra information that is stored in the storage
         """
         if self._is_writing:
-            raise RuntimeError(f"{self.__class__.__name__} is already in writing mode")
+            msg = f"{self.__class__.__name__} is already in writing mode"
+            raise RuntimeError(msg)
 
         # delete data if truncation is requested. This is for instance necessary
         # to remove older data with incompatible data_shape
@@ -350,13 +353,15 @@ class FileStorage(StorageBase):
             self._open("appending", info)
 
         elif self.write_mode == "readonly":
-            raise RuntimeError("Cannot write in read-only mode")
+            msg = "Cannot write in read-only mode"
+            raise RuntimeError(msg)
 
         else:
-            raise ValueError(
+            msg = (
                 f"Unknown write mode `{self.write_mode}`. Possible values are "
                 "`truncate_once`, `truncate`, and `append`"
             )
+            raise ValueError(msg)
 
         if not self.keep_opened:
             # store extra information as attributes
@@ -373,10 +378,11 @@ class FileStorage(StorageBase):
         """
         if self.keep_opened:
             if not self._is_writing or self._data_length is None:
-                raise RuntimeError(
+                msg = (
                     "Writing not initialized. Call "
                     f"`{self.__class__.__name__}.start_writing`"
                 )
+                raise RuntimeError(msg)
 
         else:
             # need to reopen the file
@@ -384,7 +390,7 @@ class FileStorage(StorageBase):
 
         # write the new data
         if self._data_length >= len(self._data):
-            self._data.resize((self._data_length + 1,) + self.data_shape)
+            self._data.resize((self._data_length + 1, *self.data_shape))
         self._data[self._data_length] = data
 
         # write the new time

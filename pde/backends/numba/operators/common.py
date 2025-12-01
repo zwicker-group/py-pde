@@ -5,11 +5,13 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
-from ....grids.base import GridBase
 from ....tools.numba import jit
-from ....tools.typing import NumericArray, OperatorType
+
+if TYPE_CHECKING:
+    from ....grids.base import GridBase
+    from ....tools.typing import NumericArray, OperatorType
 
 
 def make_derivative(
@@ -34,7 +36,8 @@ def make_derivative(
         derivatives at the valid (interior) grid points.
     """
     if method not in {"central", "forward", "backward"}:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     shape = grid.shape
     num_axes = len(shape)
@@ -47,7 +50,8 @@ def make_derivative(
     elif axis == 2:
         di, dj, dk = 0, 0, 1
     else:
-        raise NotImplementedError(f"Derivative for {axis:d} dimensions")
+        msg = f"Derivative for {axis:d} dimensions"
+        raise NotImplementedError(msg)
 
     if num_axes == 1:
 
@@ -96,9 +100,8 @@ def make_derivative(
                             out[i - 1, j - 1, k - 1] = (arr[i, j, k] - arr_l) / dx
 
     else:
-        raise NotImplementedError(
-            f"Numba derivative operator not implemented for {num_axes:d} axes"
-        )
+        msg = f"Numba derivative operator not implemented for {num_axes:d} axes"
+        raise NotImplementedError(msg)
 
     return diff  # type: ignore
 
@@ -128,7 +131,8 @@ def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorType:
     elif axis == 2:
         di, dj, dk = 0, 0, 1
     else:
-        raise NotImplementedError(f"Derivative for {axis:d} dimensions")
+        msg = f"Derivative for {axis:d} dimensions"
+        raise NotImplementedError(msg)
 
     if num_axes == 1:
 
@@ -164,8 +168,7 @@ def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorType:
                         ) * scale
 
     else:
-        raise NotImplementedError(
-            f"Numba derivative operator not implemented for {num_axes:d} axes"
-        )
+        msg = f"Numba derivative operator not implemented for {num_axes:d} axes"
+        raise NotImplementedError(msg)
 
     return diff  # type: ignore

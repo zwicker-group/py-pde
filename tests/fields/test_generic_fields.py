@@ -49,16 +49,15 @@ def test_interpolation_natural(grid, field_class, rng):
     def get_point():
         if isinstance(grid, CartesianGrid):
             return grid.get_random_point(boundary_distance=0.5, coords="grid", rng=rng)
-        else:
-            return grid.get_random_point(
-                boundary_distance=1, avoid_center=True, coords="grid", rng=rng
-            )
+        return grid.get_random_point(
+            boundary_distance=1, avoid_center=True, coords="grid", rng=rng
+        )
 
     # interpolate at cell center
     c = (1,) * len(grid.axes)
     p = f.grid.cell_coords[c]
     val = f.interpolate(p)
-    np.testing.assert_allclose(val, f.data[(Ellipsis,) + c], err_msg=msg)
+    np.testing.assert_allclose(val, f.data[(Ellipsis, *c)], err_msg=msg)
 
 
 @pytest.mark.parametrize("num", [1, 3])
@@ -67,7 +66,7 @@ def test_shapes_nfields(num, grid, rng):
     """Test single component field."""
     fields = [ScalarField.random_uniform(grid, rng=rng) for _ in range(num)]
     field = FieldCollection(fields)
-    data_shape = (num,) + grid.shape
+    data_shape = (num, *grid.shape)
     np.testing.assert_equal(field.data.shape, data_shape)
     for pf_single in field:
         np.testing.assert_equal(pf_single.data.shape, grid.shape)
@@ -197,7 +196,7 @@ def test_data_managment(field_class):
     np.testing.assert_allclose(c.data, 6)
 
     # nested collections
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TypeError):
         FieldCollection([c])
 
 

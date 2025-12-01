@@ -5,12 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 
-from ..tools.typing import NumericArray, TField
 from .base import SolverBase
+
+if TYPE_CHECKING:
+    from ..tools.typing import NumericArray, TField
 
 
 class AdamsBashforthSolver(SolverBase):

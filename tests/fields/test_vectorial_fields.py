@@ -14,8 +14,8 @@ from pde.tools.misc import module_available
 def test_vectors_basic():
     """Test some vector fields."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
-    v1 = VectorField(grid, np.full((2,) + grid.shape, 1))
-    v2 = VectorField(grid, np.full((2,) + grid.shape, 2))
+    v1 = VectorField(grid, np.full((2, *grid.shape), 1))
+    v2 = VectorField(grid, np.full((2, *grid.shape), 2))
     np.testing.assert_allclose(v1.average, (1, 1))
     assert np.allclose(v1.magnitude, np.sqrt(2))
 
@@ -256,7 +256,7 @@ def test_interactive_vector_plotting(rng):
 def test_complex_vectors(rng):
     """Test some complex vector fields."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
-    shape = (2, 2) + grid.shape
+    shape = (2, 2, *grid.shape)
     numbers = rng.random(shape) + rng.random(shape) * 1j
     v1 = VectorField(grid, numbers[0])
     v2 = VectorField(grid, numbers[1])

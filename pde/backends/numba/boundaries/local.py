@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import math
 from numbers import Number
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import numba as nb
 import numpy as np
@@ -26,13 +26,15 @@ from ....grids.boundaries.local import (
     _PeriodicBC,
 )
 from ....tools.numba import address_as_void_pointer, jit, numba_dict
-from ....tools.typing import (
-    GhostCellSetter,
-    NumberOrArray,
-    NumericArray,
-    VirtualPointEvaluator,
-)
 from ..utils import make_get_arr_1d
+
+if TYPE_CHECKING:
+    from ....tools.typing import (
+        GhostCellSetter,
+        NumberOrArray,
+        NumericArray,
+        VirtualPointEvaluator,
+    )
 
 
 def make_local_ghost_cell_setter(bc: BCBase) -> GhostCellSetter:
@@ -144,7 +146,8 @@ def make_local_ghost_cell_setter(bc: BCBase) -> GhostCellSetter:
                             data_full[..., i + 1, j + 1, vp_idx] = val
 
     else:
-        raise NotImplementedError("Too many axes")
+        msg = "Too many axes"
+        raise NotImplementedError(msg)
 
     if isinstance(bc, UserBC):
         # the (pretty uncommon) UserBC needs a special check, which we add here
@@ -161,9 +164,8 @@ def make_local_ghost_cell_setter(bc: BCBase) -> GhostCellSetter:
             # else: no-op for the default case where BCs are not set by user
 
         return ghost_cell_setter_wrapped  # type: ignore
-    else:
-        # the standard case just uses the ghost_cell_setter as defined above
-        return ghost_cell_setter  # type: ignore
+    # the standard case just uses the ghost_cell_setter as defined above
+    return ghost_cell_setter  # type: ignore
 
 
 def make_virtual_point_evaluator(bc: BCBase) -> VirtualPointEvaluator:
@@ -181,14 +183,14 @@ def make_virtual_point_evaluator(bc: BCBase) -> VirtualPointEvaluator:
     """
     if isinstance(bc, UserBC):
         return _make_user_virtual_point_evaluator(bc)
-    elif isinstance(bc, ExpressionBC):
+    if isinstance(bc, ExpressionBC):
         return _make_expression_virtual_point_evaluator(bc)
-    elif isinstance(bc, ConstBC2ndOrderBase):
+    if isinstance(bc, ConstBC2ndOrderBase):
         return _make_const2ndorder_virtual_point_evaluator(bc)
-    elif isinstance(bc, ConstBC1stOrderBase):
+    if isinstance(bc, ConstBC1stOrderBase):
         return _make_const1storder_virtual_point_evaluator(bc)
-    else:
-        raise NotImplementedError("Cannot handle local boundary {bc.__class__}")
+    msg = "Cannot handle local boundary {bc.__class__}"
+    raise NotImplementedError(msg)
 
 
 def _make_user_virtual_point_evaluator(bc: UserBC) -> VirtualPointEvaluator:
@@ -212,12 +214,12 @@ def _make_user_virtual_point_evaluator(bc: UserBC) -> VirtualPointEvaluator:
         if isinstance(values, (nb.types.Number, Number)):
             # scalar was supplied => simply return it
             return values
-        elif isinstance(arr, (nb.types.Array, np.ndarray)):
+        if isinstance(arr, (nb.types.Array, np.ndarray)):
             # array was supplied => extract value at current position
             _, _, bc_idx = get_arr_1d(arr, idx)
             return values[bc_idx]
-        else:
-            raise TypeError("Either a scalar or an array must be supplied")
+        msg = "Either a scalar or an array must be supplied"
+        raise TypeError(msg)
 
     @overload(extract_value)
     def ol_extract_value(values, arr: NumericArray, idx: tuple[int, ...]):
@@ -235,7 +237,8 @@ def _make_user_virtual_point_evaluator(bc: UserBC) -> VirtualPointEvaluator:
                 return values[bc_idx]
 
         else:
-            raise TypeError("Either a scalar or an array must be supplied")
+            msg = "Either a scalar or an array must be supplied"
+            raise TypeError(msg)
 
         return impl
 
@@ -246,19 +249,18 @@ def _make_user_virtual_point_evaluator(bc: UserBC) -> VirtualPointEvaluator:
             # set the virtual point directly
             return extract_value(args["virtual_point"], arr, idx)
 
-        elif "value" in args:
+        if "value" in args:
             # set the value at the boundary
             value = extract_value(args["value"], arr, idx)
             return 2 * value - arr[idx]
 
-        elif "derivative" in args:
+        if "derivative" in args:
             # set the outward derivative at the boundary
             value = extract_value(args["derivative"], arr, idx)
             return dx * value + arr[idx]
 
-        else:
-            # no-op for the default case where BCs are not set by user
-            return math.nan
+        # no-op for the default case where BCs are not set by user
+        return math.nan
 
     return virtual_point  # type: ignore
 
@@ -299,24 +301,24 @@ def _make_expression_virtual_point_evaluator(bc: ExpressionBC) -> VirtualPointEv
         # extract time for handling time-dependent BCs
         if args is None or "t" not in args:
             if warn_if_time_not_set:
-                raise RuntimeError(
+                msg = (
                     "Require value for `t` for time-dependent BC. The value must "
                     "be passed explicitly via `args` when calling a differential "
                     "operator."
                 )
+                raise RuntimeError(msg)
             t = 0.0
         else:
             t = float(args["t"])
 
         if num_axes == 1:
             return func(grid_value, dx, coords[0], t)  # type: ignore
-        elif num_axes == 2:
+        if num_axes == 2:
             return func(grid_value, dx, coords[0], coords[1], t)  # type: ignore
-        elif num_axes == 3:
+        if num_axes == 3:
             return func(grid_value, dx, coords[0], coords[1], coords[2], t)  # type: ignore
-        else:
-            # cheap way to signal a problem
-            return math.nan
+        # cheap way to signal a problem
+        return math.nan
 
     # evaluate the function to force compilation and catch errors early
     virtual_point(np.zeros([3] * num_axes), (0,) * num_axes, numba_dict(t=0.0))
@@ -504,7 +506,8 @@ def _get_virtual_point_data_1storder(bc: ConstBC1stOrderBase):
             def factor_func():
                 return factor
     else:
-        raise TypeError(f"Unsupported BC {bc}")
+        msg = f"Unsupported BC {bc}"
+        raise TypeError(msg)
 
     return (const_func, factor_func, index)
 
@@ -574,9 +577,8 @@ def _get_virtual_point_data_2ndorder(bc: ConstBC2ndOrderBase):
         dx = bc.grid.discretization[bc.axis]
 
         if size < 2:
-            raise RuntimeError(
-                "Need at least 2 support points to use curvature boundary condition"
-            )
+            msg = "Need at least 2 support points to use curvature boundary condition"
+            raise RuntimeError(msg)
 
         value = np.asarray(bc.value * dx**2)
         f1 = np.full_like(value, 2.0)
@@ -587,8 +589,8 @@ def _get_virtual_point_data_2ndorder(bc: ConstBC2ndOrderBase):
             i1, i2 = 0, 1
         return (value, f1, i1, f2, i2)
 
-    else:
-        raise TypeError(f"Unsupported BC {bc}")
+    msg = f"Unsupported BC {bc}"
+    raise TypeError(msg)
 
 
 def _make_const2ndorder_virtual_point_evaluator(
@@ -612,9 +614,8 @@ def _make_const2ndorder_virtual_point_evaluator(
     get_arr_1d = make_get_arr_1d(bc.grid.num_axes, bc.axis)
 
     if size < 2:
-        raise ValueError(
-            f"Need two support points along axis {bc.axis} to apply conditions"
-        )
+        msg = f"Need two support points along axis {bc.axis} to apply conditions"
+        raise ValueError(msg)
 
     # calculate necessary constants
     data = _get_virtual_point_data_2ndorder(bc)

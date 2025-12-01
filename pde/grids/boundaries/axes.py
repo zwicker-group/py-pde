@@ -17,13 +17,15 @@ import itertools
 import logging
 import warnings
 from collections.abc import Iterator, Sequence
-from typing import Any, Callable, Union
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 from ... import config
-from ...tools.typing import GhostCellSetter, NumericArray
 from ..base import GridBase, PeriodicityError
 from .axis import BoundaryAxisBase, BoundaryPairData, get_boundary_axis
 from .local import BCBase, BCDataError, BoundaryData
+
+if TYPE_CHECKING:
+    from ...tools.typing import GhostCellSetter, NumericArray
 
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger instance."""
@@ -32,7 +34,7 @@ BoundariesData = Union[
     BoundaryPairData, Sequence[BoundaryPairData], Callable, "BoundariesBase"
 ]
 
-BC_LOCAL_KEYS = ["type", "value"] + list(BCBase._conditions)
+BC_LOCAL_KEYS = ["type", "value", *list(BCBase._conditions)]
 
 
 def _is_local_bc_data(data: dict[str, Any]) -> bool:
@@ -82,8 +84,7 @@ class BoundariesBase:
         # best guess based on the data:
         if callable(data):
             return BoundariesSetter.from_data(data)
-        else:
-            return BoundariesList.from_data(data, **kwargs)
+        return BoundariesList.from_data(data, **kwargs)
 
     @classmethod
     def get_help(cls) -> str:
@@ -102,29 +103,32 @@ class BoundariesList(BoundariesBase):
     def __init__(self, boundaries: list[BoundaryAxisBase]):
         """Initialize with a list of boundaries."""
         if len(boundaries) == 0:
-            raise BCDataError("List of boundaries must not be empty")
+            msg = "List of boundaries must not be empty"
+            raise BCDataError(msg)
 
         # extract grid
         self.grid = boundaries[0].grid
 
         # check dimension
         if len(boundaries) != self.grid.num_axes:
-            raise BCDataError(f"Need boundary conditions for {self.grid.num_axes} axes")
+            msg = f"Need boundary conditions for {self.grid.num_axes} axes"
+            raise BCDataError(msg)
 
         # check consistency
         for axis, boundary in enumerate(boundaries):
             if boundary.grid != self.grid:
-                raise BCDataError("BoundariesList are not defined on the same grid")
+                msg = "BoundariesList are not defined on the same grid"
+                raise BCDataError(msg)
             if boundary.axis != axis:
-                raise BCDataError(
-                    "BoundariesList need to be ordered like the respective axes"
-                )
+                msg = "BoundariesList need to be ordered like the respective axes"
+                raise BCDataError(msg)
             if boundary.periodic != self.grid.periodic[axis]:
-                raise PeriodicityError(
+                msg = (
                     "Periodicity specified in the boundaries conditions is not "
                     f"compatible with the grid ({boundary.periodic} != "
                     f"{self.grid.periodic[axis]} for axis {axis})"
                 )
+                raise PeriodicityError(msg)
 
         # create the list of boundaries
         self._axes: list[BoundaryAxisBase] = boundaries
@@ -148,6 +152,7 @@ class BoundariesList(BoundariesBase):
             warnings.warn(
                 "Deprecated format for boundary conditions. " + cls.get_help(),
                 DeprecationWarning,
+                stacklevel=2,
             )
             return [
                 get_boundary_axis(grid, i, data, rank=rank)
@@ -174,7 +179,8 @@ class BoundariesList(BoundariesBase):
             for ext in ["", "-", "+"]:  # iterate all variants
                 if pattern + ext in data:
                     if repl + ext in data:
-                        raise KeyError(f"Key `{repl + ext}` is specified twice")
+                        msg = f"Key `{repl + ext}` is specified twice"
+                        raise KeyError(msg)
                     data[repl + ext] = data.pop(pattern + ext)
 
         # check specific boundary conditions for all axes
@@ -243,24 +249,27 @@ class BoundariesList(BoundariesBase):
                 # idea is that users only create boundary conditions for the full grid
                 # and that the splitting onto subgrids is only done once, automatically,
                 # and without involving calls to `from_data`
-                raise ValueError("Cannot create MPI subgrid BC from data")
+                msg = "Cannot create MPI subgrid BC from data"
+                raise ValueError(msg)
 
             if data.grid != grid:
-                raise ValueError(
+                msg = (
                     "The grid of the supplied boundary condition is incompatible with "
                     f"the current grid ({data.grid!r} != {grid!r})"
                 )
+                raise ValueError(msg)
             data.check_value_rank(rank)
             return data
 
-        elif isinstance(data, BoundariesBase):
+        if isinstance(data, BoundariesBase):
             # data seems to be given as another base class, which indicates problems
-            raise TypeError(
+            msg = (
                 "Can only use type `BoundariesList`. Use `BoundariesBase.from_data` "
                 "for more general data."
             )
+            raise TypeError(msg)
 
-        elif isinstance(data, str):
+        if isinstance(data, str):
             # a string implies the same boundary condition for all axes
 
             if data.startswith("auto_periodic_"):
@@ -289,6 +298,7 @@ class BoundariesList(BoundariesBase):
             warnings.warn(
                 "Deprecated format for boundary conditions. " + cls.get_help(),
                 DeprecationWarning,
+                stacklevel=2,
             )
             if len(data) == grid.num_axes:
                 # assume that data is given for each boundary
@@ -376,13 +386,11 @@ class BoundariesList(BoundariesBase):
             # assume that the index is a known identifier
             if index in self.grid.axes:
                 return self._axes[self.grid.axes.index(index)]
-            else:
-                axis, upper = self.grid._get_boundary_index(index)
-                return self._axes[axis][upper]
+            axis, upper = self.grid._get_boundary_index(index)
+            return self._axes[axis][upper]
 
-        else:
-            # handle all other cases, in particular integer indices
-            return self._axes[index]
+        # handle all other cases, in particular integer indices
+        return self._axes[index]
 
     def __setitem__(self, index, data) -> None:
         """Set specific boundary conditions.
@@ -413,12 +421,12 @@ class BoundariesList(BoundariesBase):
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition."""
         result: list[str] = []
-        for b in self._axes:
-            try:
+        try:
+            for b in self._axes:
                 result.extend(b.get_mathematical_representation(field_name))
-            except NotImplementedError:
-                axis_name = self.grid.axes[b.axis]
-                result.append(f"Representation not implemented for axis {axis_name}")
+        except NotImplementedError:
+            axis_name = self.grid.axes[b.axis]
+            result.append(f"Representation not implemented for axis {axis_name}")
 
         return "\n".join(result)
 
@@ -462,9 +470,10 @@ class BoundariesList(BoundariesBase):
                     ) / 3
 
             elif self.grid.num_axes > 3:
-                raise NotImplementedError(
+                msg = (
                     f"Can't interpolate corners for grid with {self.grid.num_axes} axes"
                 )
+                raise NotImplementedError(msg)
 
 
 class BoundariesSetter(BoundariesBase):
@@ -506,11 +515,12 @@ class BoundariesSetter(BoundariesBase):
             # boundaries are already in the correct format
             return data
 
-        elif isinstance(data, BoundariesBase):
-            raise TypeError(
+        if isinstance(data, BoundariesBase):
+            msg = (
                 "Can only use type `BoundariesSetter`. Use `BoundariesBase.from_data` "
                 "for more general data."
             )
+            raise TypeError(msg)
 
         return BoundariesSetter(data)
 

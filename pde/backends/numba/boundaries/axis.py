@@ -5,11 +5,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from numba.extending import register_jitable
 
-from ....grids.boundaries.axis import BoundaryAxisBase
-from ....tools.typing import GhostCellSetter, NumericArray
 from .local import make_local_ghost_cell_setter
+
+if TYPE_CHECKING:
+    from ....grids.boundaries.axis import BoundaryAxisBase
+    from ....tools.typing import GhostCellSetter, NumericArray
 
 
 def make_axis_ghost_cell_setter(bc_axis: BoundaryAxisBase) -> GhostCellSetter:

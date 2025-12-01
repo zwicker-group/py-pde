@@ -16,7 +16,7 @@ r"""This module implements differential operators on spherical grids.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -24,8 +24,10 @@ from .... import config
 from ....grids.spherical import SphericalSymGrid
 from ....tools.docstrings import fill_in_docstring
 from ....tools.numba import jit
-from ....tools.typing import NumericArray, OperatorType
 from ...registry import backends
+
+if TYPE_CHECKING:
+    from ....tools.typing import NumericArray, OperatorType
 
 
 @backends.register_operator("numba", SphericalSymGrid, "laplace", rank_in=0, rank_out=0)
@@ -123,7 +125,8 @@ def make_gradient(
     elif method in {"forward", "backward"}:
         scale_r = 1 / grid.discretization[0]
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     @jit
     def gradient(arr: NumericArray, out: NumericArray) -> None:
@@ -344,7 +347,8 @@ def make_vector_gradient(
     elif method in {"forward", "backward"}:
         scale_r = 1 / grid.discretization[0]
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     @jit
     def vector_gradient(arr: NumericArray, out: NumericArray) -> None:
@@ -443,9 +447,9 @@ def make_tensor_divergence(
 
             # check inputs
             if safe:
-                # the following conditions need to be met. Otherwise, the vector resulting
-                # from the divergence might contain components that cannot be expressed in
-                # spherically symmetric coordinates
+                # the following conditions need to be met. Otherwise, the vector
+                # resulting from the divergence might contain components that cannot be
+                # expressed in spherically symmetric coordinates
                 assert np.all(arr_φr[1:-1] == 0)
                 assert np.all(arr_rφ[1:-1] == 0)
                 assert np.all(arr_rθ[1:-1] == 0)
@@ -476,9 +480,9 @@ def make_tensor_divergence(
 
             # check inputs
             if safe:
-                # the following conditions need to be met. Otherwise, the vector resulting
-                # from the divergence might contain components that cannot be expressed in
-                # spherically symmetric coordinates
+                # the following conditions need to be met. Otherwise, the vector
+                # resulting from the divergence might contain components that cannot be
+                # expressed in spherically symmetric coordinates
                 assert np.all(arr_rθ[1:-1] == 0)
                 assert np.all(arr_θθ[1:-1] == arr_φφ[1:-1])
                 assert np.all(arr_φθ[1:-1] == -arr_θφ[1:-1])

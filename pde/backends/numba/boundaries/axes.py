@@ -5,14 +5,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from numba.extending import register_jitable
 
 from ....grids.boundaries.axes import BoundariesBase, BoundariesList, BoundariesSetter
 from ....tools.numba import jit
-from ....tools.typing import GhostCellSetter, NumericArray
 from .axis import make_axis_ghost_cell_setter
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ....tools.typing import GhostCellSetter, NumericArray
 
 
 def make_axes_ghost_cell_setter(boundaries: BoundariesBase) -> GhostCellSetter:
@@ -67,13 +71,12 @@ def make_axes_ghost_cell_setter(boundaries: BoundariesBase) -> GhostCellSetter:
 
             if rest:
                 return chain(rest, wrap)
-            else:
-                return wrap  # type: ignore
+            return wrap  # type: ignore
 
         return chain(ghost_cell_setters)
 
-    elif isinstance(boundaries, BoundariesSetter):
+    if isinstance(boundaries, BoundariesSetter):
         return jit(boundaries._setter)  # type: ignore
 
-    else:
-        raise NotImplementedError("Cannot handle boundaries {boundaries.__class__}")
+    msg = "Cannot handle boundaries {boundaries.__class__}"
+    raise NotImplementedError(msg)

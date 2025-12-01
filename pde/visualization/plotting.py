@@ -18,14 +18,12 @@ import logging
 import math
 import time
 import warnings
-from typing import Any, Callable, Literal, Union
+from typing import TYPE_CHECKING, Any, Callable, Literal, Union
 
 import numpy as np
 
 from ..fields import FieldCollection
 from ..fields.base import FieldBase
-from ..fields.datafield_base import DataFieldBase
-from ..storage.base import StorageBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..tools.output import display_progress
@@ -36,7 +34,11 @@ from ..tools.plotting import (
     plot_on_axes,
     plot_on_figure,
 )
-from ..tools.typing import NumericArray
+
+if TYPE_CHECKING:
+    from ..fields.datafield_base import DataFieldBase
+    from ..storage.base import StorageBase
+    from ..tools.typing import NumericArray
 
 _logger = logging.getLogger(__name__)
 ScaleData = Union[str, float, tuple[float, float]]
@@ -97,17 +99,20 @@ def extract_field(
         if isinstance(fields, FieldCollection):
             field = fields[source]
         else:
-            raise TypeError(
+            msg = (
                 f"Cannot extract component {source} from instance of "
                 f"{fields.__class__.__name__}"
             )
+            raise TypeError(msg)
 
     if isinstance(field, FieldCollection):
-        raise RuntimeError("Extract field is a collection")
+        msg = "Extract field is a collection"
+        raise TypeError(msg)
 
     # test whether the rank is as expected
     if check_rank is not None and field.rank != check_rank:  # type: ignore
-        raise RuntimeError(f"Rank of extracted field is not {check_rank}")
+        msg = f"Rank of extracted field is not {check_rank}"
+        raise RuntimeError(msg)
 
     return field  # type: ignore
 
@@ -207,7 +212,8 @@ class ScalarFieldPlot:
         """
         fields = storage[0]
         if not isinstance(fields, FieldBase):
-            raise RuntimeError("Storage must contain fields")
+            msg = "Storage must contain fields"
+            raise TypeError(msg)
 
         # prepare the data that needs to be plotted
         quantities = cls._prepare_quantities(fields, quantities=quantities, scale=scale)
@@ -396,7 +402,8 @@ class ScalarFieldPlot:
                 changed.
         """
         if not isinstance(fields, FieldBase):
-            raise TypeError("`fields` must be of type FieldBase")
+            msg = "`fields` must be of type FieldBase"
+            raise TypeError(msg)
 
         if title:
             self.sup_title.set_text(title)
@@ -524,7 +531,8 @@ def plot_magnitudes(
     if quantities is None:
         fields = storage[0]
         if not isinstance(fields, FieldBase):
-            raise TypeError("`fields` must be of type FieldBase")
+            msg = "`fields` must be of type FieldBase"
+            raise TypeError(msg)
         if fields.label:
             label_base = fields.label
         else:
@@ -574,8 +582,8 @@ def plot_magnitudes(
             check_complex = False  # only warn once
 
         # actually plot the data
-        (l,) = ax.plot(times, np.real(d["values"]), **kwargs)
-        lines.append(l)
+        (line,) = ax.plot(times, np.real(d["values"]), **kwargs)
+        lines.append(line)
 
     ax.set_xlabel("Time")
     if len(data) == 1:
@@ -692,7 +700,8 @@ def plot_kymograph(
         :class:`~pde.tools.plotting.PlotReference`: The reference to the plot
     """
     if len(storage) == 0:
-        raise RuntimeError("Storage is empty")
+        msg = "Storage is empty"
+        raise RuntimeError(msg)
     line_data_args: dict[str, Any] = {"scalar": scalar, "extract": extract}
 
     if storage.has_collection:
@@ -711,7 +720,7 @@ def plot_kymograph(
 
     # prepare the image data for one kymograph
     image = []
-    for _, field in storage.items():
+    for _, field in storage.items():  # noqa: PERF102
         img_data = field.get_line_data(**line_data_args)
         image.append(img_data["data_y"])
 
@@ -766,7 +775,8 @@ def plot_kymographs(
         all plots
     """
     if len(storage) == 0:
-        raise RuntimeError("Storage is empty")
+        msg = "Storage is empty"
+        raise RuntimeError(msg)
     line_data_args = {"scalar": scalar, "extract": extract}
     if storage.has_collection:
         num_fields = len(storage[0])  # type: ignore
@@ -775,7 +785,7 @@ def plot_kymographs(
 
     # prepare the image data for one kymograph
     images = []
-    for _, field in storage.items():
+    for _, field in storage.items():  # noqa: PERF102
         if storage.has_collection:
             image_lines = []
             for f_id in range(num_fields):
@@ -835,14 +845,17 @@ def plot_interactive(
             Extra arguments passed to the plotting function
     """
     if not module_available("napari"):
-        raise ImportError("Require the `napari` module for interactive plotting")
+        msg = "Require the `napari` module for interactive plotting"
+        raise ImportError(msg)
 
     if len(storage) < 1:
-        raise ValueError("Storage is empty")
+        msg = "Storage is empty"
+        raise ValueError(msg)
 
     grid = storage.grid
     if grid is None:
-        raise RuntimeError("Storage did not contain information about the grid")
+        msg = "Storage did not contain information about the grid"
+        raise RuntimeError(msg)
 
     # collect data from all time points
     timecourse: dict[str, list[NumericArray]] = {}
@@ -866,12 +879,13 @@ def plot_interactive(
                 length_scale = grid.volume ** (1 / grid.dim)
                 dt = length_scale / len(storage)
             else:
-                raise ValueError(f"Unknown time scaling `{time_scaling}`")
+                msg = f"Unknown time scaling `{time_scaling}`"
+                raise ValueError(msg)
             field_data["scale"] = np.r_[dt, field_data["scale"]]
 
     if viewer_args is None:
         viewer_args = {}
-    viewer_args.setdefault("axis_labels", ["Time"] + grid.axes)
+    viewer_args.setdefault("axis_labels", ["Time", *grid.axes])
 
     # actually display the data using napari
     with napari_viewer(grid, **viewer_args) as viewer:

@@ -13,15 +13,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
 import numpy as np
-from numpy.typing import DTypeLike
+from typing_extensions import Self
 
-from ..grids.base import GridBase
 from ..tools.plotting import napari_add_layers, napari_viewer
-from ..tools.typing import NumberOrArray, NumericArray
 
 if TYPE_CHECKING:
-    from .scalar import ScalarField
+    from numpy.typing import DTypeLike
 
+    from ..grids.base import GridBase
+    from ..tools.typing import NumberOrArray, NumericArray
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for fields."""
@@ -73,7 +73,7 @@ class FieldBase(metaclass=ABCMeta):
         # register all subclasses to reconstruct them later
         if cls is not FieldBase:
             if cls.__name__ in cls._subclasses:
-                warnings.warn(f"Redefining class {cls.__name__}")
+                warnings.warn(f"Redefining class {cls.__name__}", stacklevel=2)
             cls._subclasses[cls.__name__] = cls
 
     def __getstate__(self) -> dict[str, Any]:
@@ -123,7 +123,8 @@ class FieldBase(metaclass=ABCMeta):
                 is supplied all data points get the same value.
         """
         if not self.writeable:
-            raise ValueError("assignment destination is read-only")
+            msg = "assignment destination is read-only"
+            raise ValueError(msg)
 
         if np.isscalar(value):
             # supplied value is a scalar
@@ -132,15 +133,17 @@ class FieldBase(metaclass=ABCMeta):
         elif isinstance(value, np.ndarray):
             # check the shape of the supplied array
             if value.shape[-self.grid.num_axes :] != self.grid._shape_full:
-                raise ValueError(
+                msg = (
                     f"Supplied data has wrong shape: {value.shape} is not compatible "
                     f"with {self.grid._shape_full}"
                 )
+                raise ValueError(msg)
             # actually set the data
             self.__data_full = value
 
         else:
-            raise TypeError(f"Cannot set field values to {value}")
+            msg = f"Cannot set field values to {value}"
+            raise TypeError(msg)
 
         # set reference to valid data
         self._data_valid = self.__data_full[self._idx_valid]
@@ -183,7 +186,8 @@ class FieldBase(metaclass=ABCMeta):
         if value is None or isinstance(value, str):
             self._label = value
         else:
-            raise TypeError("Label must be a string or None")
+            msg = "Label must be a string or None"
+            raise TypeError(msg)
 
     @classmethod
     def from_state(
@@ -204,7 +208,8 @@ class FieldBase(metaclass=ABCMeta):
         class_name = attributes.pop("class")
 
         if class_name == cls.__name__:
-            raise RuntimeError(f"Cannot reconstruct abstract class `{class_name}`")
+            msg = f"Cannot reconstruct abstract class `{class_name}`"
+            raise RuntimeError(msg)
 
         # call possibly overwritten classmethod from subclass
         return cls._subclasses[class_name].from_state(attributes, data)
@@ -244,14 +249,15 @@ class FieldBase(metaclass=ABCMeta):
 
             elif len(fp) == 1:
                 # a single field is stored in the data
-                dataset = fp[list(fp)[0]]  # retrieve only dataset
+                dataset = fp[next(iter(fp))]  # retrieve only dataset
                 obj = cls._from_hdf_dataset(dataset)  # type: ignore
 
             else:
-                raise RuntimeError(
+                msg = (
                     "Multiple data fields were found in the file but no "
                     "`FieldCollection` is expected."
                 )
+                raise RuntimeError(msg)
         return obj
 
     @classmethod
@@ -312,7 +318,8 @@ class FieldBase(metaclass=ABCMeta):
             self._write_to_image(filename, **kwargs)
 
         else:
-            raise ValueError(f"Do not know how to save data to `*{extension}`")
+            msg = f"Do not know how to save data to `*{extension}`"
+            raise ValueError(msg)
 
     def _write_hdf_dataset(self, hdf_path, key: str = "data") -> None:
         """Write data to a given hdf5 path `hdf_path`"""
@@ -329,7 +336,8 @@ class FieldBase(metaclass=ABCMeta):
         Args:
             filename (str): The path to the image that will be created
         """
-        raise NotImplementedError(f"Cannot save {self.__class__.__name__} as an image")
+        msg = f"Cannot save {self.__class__.__name__} as an image"
+        raise NotImplementedError(msg)
 
     @abstractmethod
     def copy(
@@ -366,11 +374,13 @@ class FieldBase(metaclass=ABCMeta):
         is_scalar = accept_scalar and isinstance(other, ScalarField)
         class_compatible = self.__class__ == other.__class__ or is_scalar
         if not class_compatible:
-            raise TypeError(f"Fields {self} and {other} are incompatible")
+            msg = f"Fields {self} and {other} are incompatible"
+            raise TypeError(msg)
 
         # check whether the associated grids are identical
         if not self.grid.compatible_with(other.grid):
-            raise ValueError(f"Grids {self.grid} and {other.grid} are incompatible")
+            msg = f"Grids {self.grid} and {other.grid} are incompatible"
+            raise ValueError(msg)
 
     @property
     def dtype(self) -> DTypeLike:
@@ -421,7 +431,8 @@ class FieldBase(metaclass=ABCMeta):
         class_name = json.loads(attributes["class"])
 
         if class_name == cls.__name__:
-            raise RuntimeError(f"Cannot reconstruct abstract class `{class_name}`")
+            msg = f"Cannot reconstruct abstract class `{class_name}`"
+            raise RuntimeError(msg)
 
         # call possibly overwritten classmethod from subclass
         return cls._subclasses[class_name].unserialize_attributes(attributes)
@@ -432,7 +443,7 @@ class FieldBase(metaclass=ABCMeta):
             return NotImplemented
         return self.grid == other.grid and np.array_equal(self.data, other.data)
 
-    def _unary_operation(self: TField, op: Callable) -> TField:
+    def _unary_operation(self, op: Callable) -> Self:
         """Perform an unary operation on this field.
 
         Args:
@@ -445,16 +456,16 @@ class FieldBase(metaclass=ABCMeta):
         return self.__class__(grid=self.grid, data=op(self.data), label=self.label)
 
     @property
-    def real(self: TField) -> TField:
+    def real(self) -> Self:
         """:class:`FieldBase`: Real part of the field."""
         return self._unary_operation(np.real)
 
     @property
-    def imag(self: TField) -> TField:
+    def imag(self) -> Self:
         """:class:`FieldBase`: Imaginary part of the field."""
         return self._unary_operation(np.imag)
 
-    def conjugate(self: TField) -> TField:
+    def conjugate(self) -> Self:
         """Returns complex conjugate of the field.
 
         Returns:
@@ -498,7 +509,8 @@ class FieldBase(metaclass=ABCMeta):
             if scalar_second:
                 # right operator must be a scalar or scalar field
                 if not isinstance(other, ScalarField):
-                    raise TypeError("Right operator must be a scalar field")
+                    msg = "Right operator must be a scalar field"
+                    raise TypeError(msg)
                 self.grid.assert_grid_compatible(other.grid)
                 result: FieldBase = self.copy(dtype=dtype)
 
@@ -523,8 +535,8 @@ class FieldBase(metaclass=ABCMeta):
         return result
 
     def _binary_operation_inplace(
-        self: TField, other, op_inplace: Callable, scalar_second: bool = True
-    ) -> TField:
+        self, other, op_inplace: Callable, scalar_second: bool = True
+    ) -> Self:
         """Perform an in-place binary operation between this field and `other`
 
         Args:
@@ -545,7 +557,8 @@ class FieldBase(metaclass=ABCMeta):
             if scalar_second:
                 # right operator must be a scalar
                 if not isinstance(other, ScalarField):
-                    raise TypeError("Right operator must be a scalar field")
+                    msg = "Right operator must be a scalar field"
+                    raise TypeError(msg)
                 self.grid.assert_grid_compatible(other.grid)
             else:
                 # left operator is tensor and right one might be anything
@@ -566,7 +579,7 @@ class FieldBase(metaclass=ABCMeta):
 
     __radd__ = __add__
 
-    def __iadd__(self: TField, other) -> TField:
+    def __iadd__(self, other) -> Self:
         """Add `other` to the current field."""
         return self._binary_operation_inplace(other, np.add, scalar_second=False)
 
@@ -580,7 +593,7 @@ class FieldBase(metaclass=ABCMeta):
             other, lambda x, y, out: np.subtract(y, x, out=out), scalar_second=False
         )
 
-    def __isub__(self: TField, other) -> TField:
+    def __isub__(self, other) -> Self:
         """Add `other` to the current field."""
         return self._binary_operation_inplace(other, np.subtract, scalar_second=False)
 
@@ -590,7 +603,7 @@ class FieldBase(metaclass=ABCMeta):
 
     __rmul__ = __mul__
 
-    def __imul__(self: TField, other) -> TField:
+    def __imul__(self, other) -> Self:
         """Multiply field by value."""
         return self._binary_operation_inplace(other, np.multiply, scalar_second=False)
 
@@ -606,31 +619,33 @@ class FieldBase(metaclass=ABCMeta):
 
         return self._binary_operation(other, rdivision, scalar_second=True)
 
-    def __itruediv__(self: TField, other) -> TField:
+    def __itruediv__(self, other) -> Self:
         """Divide field by value."""
         return self._binary_operation_inplace(other, np.true_divide, scalar_second=True)
 
     def __pow__(self, exponent: float) -> FieldBase:
         """Raise data of the field to a certain power."""
         if not np.isscalar(exponent):
-            raise NotImplementedError("Only scalar exponents are supported")
+            msg = "Only scalar exponents are supported"
+            raise NotImplementedError(msg)
         return self._binary_operation(exponent, np.power, scalar_second=True)
 
-    def __ipow__(self: TField, exponent: float) -> TField:
+    def __ipow__(self, exponent: float) -> Self:
         """Raise data of the field to a certain power in-place."""
         if not np.isscalar(exponent):
-            raise NotImplementedError("Only scalar exponents are supported")
+            msg = "Only scalar exponents are supported"
+            raise NotImplementedError(msg)
         self.data **= exponent
         return self
 
     def apply(
-        self: TField,
+        self,
         func: Callable | str,
-        out: TField | None = None,
+        out: Self | None = None,
         *,
         label: str | None = None,
         evaluate_args: dict[str, Any] | None = None,
-    ) -> TField:
+    ) -> Self:
         """Applies a function/expression to the data and returns it as a field.
 
         Args:
@@ -667,7 +682,8 @@ class FieldBase(metaclass=ABCMeta):
             elif isinstance(self, FieldCollection):
                 result = evaluate(func, self, **evaluate_args)
             else:
-                raise TypeError("self must be DataFieldBase or FieldCollection")
+                msg = "self must be DataFieldBase or FieldCollection"
+                raise TypeError(msg)
 
             if out is None:
                 out = result  # type: ignore
@@ -684,10 +700,12 @@ class FieldBase(metaclass=ABCMeta):
             out.data[...] = func(self.data)
 
         else:
-            raise TypeError("`func` must be string or callable")
+            msg = "`func` must be string or callable"
+            raise TypeError(msg)
 
         if not isinstance(out, FieldBase):
-            raise TypeError("`out` must be of type `FieldBase`")
+            msg = "`out` must be of type `FieldBase`"
+            raise TypeError(msg)
         if label:
             out.label = label
         return out
@@ -753,16 +771,15 @@ class FieldBase(metaclass=ABCMeta):
             viewer_args = {}
 
         if self.grid.num_axes == 1:
-            raise RuntimeError(
-                "Interactive plotting needs at least 2 spatial dimensions"
-            )
+            msg = "Interactive plotting needs at least 2 spatial dimensions"
+            raise RuntimeError(msg)
 
         with napari_viewer(self.grid, **viewer_args) as viewer:
             napari_add_layers(viewer, self._get_napari_data(**kwargs))
 
     def split_mpi(
-        self: TField, decomposition: Literal["auto"] | int | list[int] = "auto"
-    ) -> TField:
+        self, decomposition: Literal["auto"] | int | list[int] = "auto"
+    ) -> Self:
         """Splits the field onto subgrids in an MPI run.
 
         In a normal serial simulation, the method simply returns the field itself. In
@@ -788,7 +805,8 @@ class FieldBase(metaclass=ABCMeta):
         if not mpi.parallel_run:
             return self
         if self.grid._mesh is not None:
-            raise RuntimeError("Cannot split an already split field")
+            msg = "Cannot split an already split field"
+            raise RuntimeError(msg)
 
         # create the grid mesh using the decomposition information
         mesh = GridMesh.from_grid(self.grid, decomposition)

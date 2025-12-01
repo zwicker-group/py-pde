@@ -7,7 +7,8 @@ Boundary conditions
 
 The mathematical details of boundary conditions for partial differential equations are
 treated in more detail in the
-:download:`documentation document </../methods/boundary_discretization/boundary_discretization.pdf>`.
+:download:`documentation document
+</../methods/boundary_discretization/boundary_discretization.pdf>`.
 Since the :mod:`pde` package only supports orthogonal grids, boundary conditions
 generally need to be applied at both ends of each axis.
 Consequently, methods expecting boundary conditions typically receive a dictionary of
@@ -185,9 +186,9 @@ The details of the classes are explained below:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from ..base import DomainError, PeriodicityError
-from .axes import BoundariesBase, BoundariesList, set_default_bc
-from .local import (
+from ..base import DomainError, PeriodicityError  # noqa: F401
+from .axes import BoundariesBase, BoundariesList, set_default_bc  # noqa: F401
+from .local import (  # noqa: F401
     registered_boundary_condition_classes,
     registered_boundary_condition_names,
 )

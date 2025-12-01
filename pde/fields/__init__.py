@@ -21,9 +21,9 @@ The details of the classes are explained below:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .base import FieldBase
+from .base import FieldBase  # noqa: F401
 from .collection import FieldCollection
-from .datafield_base import DataFieldBase
+from .datafield_base import DataFieldBase  # noqa: F401
 from .scalar import ScalarField
 from .tensorial import Tensor2Field
 from .vectorial import VectorField

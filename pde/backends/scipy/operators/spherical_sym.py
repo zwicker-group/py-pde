@@ -10,16 +10,18 @@ r"""This module implements differential operators on spherical grids.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
-from ....grids.boundaries.axes import BoundariesList
 from ....grids.spherical import SphericalSymGrid
 from ....tools.docstrings import fill_in_docstring
-from ....tools.typing import NumericArray, OperatorType
 from ...registry import backends
 from .common import make_general_poisson_solver
+
+if TYPE_CHECKING:
+    from ....grids.boundaries.axes import BoundariesList
+    from ....tools.typing import NumericArray, OperatorType
 
 
 @fill_in_docstring

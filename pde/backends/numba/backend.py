@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import functools
-from typing import Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numba as nb
 import numpy as np
@@ -15,19 +15,21 @@ from numba.extending import overload as nb_overload
 
 from ...fields import DataFieldBase, VectorField
 from ...grids import BoundariesBase, DimensionError, GridBase
-from ...pdes import PDEBase
 from ...solvers import AdaptiveSolverBase, SolverBase
 from ...tools.numba import get_common_numba_dtype, jit, make_array_constructor
-from ...tools.typing import (
-    DataSetter,
-    FloatingArray,
-    GhostCellSetter,
-    Number,
-    NumberOrArray,
-    NumericArray,
-    TField,
-)
 from ..numpy.backend import NumpyBackend, OperatorInfo
+
+if TYPE_CHECKING:
+    from ...pdes import PDEBase
+    from ...tools.typing import (
+        DataSetter,
+        FloatingArray,
+        GhostCellSetter,
+        Number,
+        NumberOrArray,
+        NumericArray,
+        TField,
+    )
 
 
 class NumbaBackend(NumpyBackend):
@@ -101,8 +103,8 @@ class NumbaBackend(NumpyBackend):
                 )
                 return OperatorInfo(factory, rank_in=0, rank_out=0, name=operator)
 
-            elif operator.startswith("d2_d") and operator.endswith("2"):
-                # create a special operator that takes a second derivative along one axis
+            if operator.startswith("d2_d") and operator.endswith("2"):
+                # create a special operator taking a second derivative along one axis
                 from .operators.common import make_derivative2
 
                 axis_id = grid.axes.index(operator[len("d2_d") : -1])
@@ -111,10 +113,11 @@ class NumbaBackend(NumpyBackend):
 
         # throw an informative error since operator was not found
         op_list = ", ".join(sorted(self.get_registered_operators(grid)))
-        raise NotImplementedError(
+        msg = (
             f"'{operator}' is not one of the defined operators ({op_list}). Custom "
             "operators can be added using the `register_operator` method."
         )
+        raise NotImplementedError(msg)
 
     def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
@@ -178,28 +181,27 @@ class NumbaBackend(NumpyBackend):
             # just set the valid elements and leave ghost cells with arbitrary values
             return set_valid  # type: ignore
 
-        else:
-            # set the valid elements and the ghost cells according to boundary condition
-            set_bcs = self.make_ghost_cell_setter(bcs)
+        # set the valid elements and the ghost cells according to boundary condition
+        set_bcs = self.make_ghost_cell_setter(bcs)
 
-            @jit
-            def set_valid_bcs(
-                data_full: NumericArray, data_valid: NumericArray, args=None
-            ) -> None:
-                """Set valid part of the data and the ghost cells using BCs.
+        @jit
+        def set_valid_bcs(
+            data_full: NumericArray, data_valid: NumericArray, args=None
+        ) -> None:
+            """Set valid part of the data and the ghost cells using BCs.
 
-                Args:
-                    data_full (:class:`~numpy.ndarray`):
-                        The full array with ghost cells that the data is written to
-                    data_valid (:class:`~numpy.ndarray`):
-                        The valid data that is written to `data_full`
-                    args (dict):
-                        Extra arguments affecting the boundary conditions
-                """
-                set_valid(data_full, data_valid)
-                set_bcs(data_full, args=args)
+            Args:
+                data_full (:class:`~numpy.ndarray`):
+                    The full array with ghost cells that the data is written to
+                data_valid (:class:`~numpy.ndarray`):
+                    The valid data that is written to `data_full`
+                args (dict):
+                    Extra arguments affecting the boundary conditions
+            """
+            set_valid(data_full, data_valid)
+            set_bcs(data_full, args=args)
 
-            return set_valid_bcs  # type: ignore
+        return set_valid_bcs  # type: ignore
 
     def make_operator(
         self,
@@ -254,17 +256,19 @@ class NumbaBackend(NumpyBackend):
             """Set boundary conditions and apply operator."""
             # check input array
             if arr.shape != shape_in_valid:
-                raise ValueError(f"Incompatible shapes {arr.shape} != {shape_in_valid}")
+                msg = f"Incompatible shapes {arr.shape} != {shape_in_valid}"
+                raise ValueError(msg)
 
             # ensure `out` array is allocated and has the right shape
             if out is None:
                 out = np.empty(shape_out, dtype=arr.dtype)
             elif out.shape != shape_out:
-                raise ValueError(f"Incompatible shapes {out.shape} != {shape_out}")
+                msg = f"Incompatible shapes {out.shape} != {shape_out}"
+                raise ValueError(msg)
 
             # prepare input with boundary conditions
             arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-            arr_full[(...,) + grid._idx_valid] = arr
+            arr_full[(..., *grid._idx_valid)] = arr
             bcs.set_ghost_cells(arr_full, args=args)
 
             # apply operator
@@ -292,7 +296,8 @@ class NumbaBackend(NumpyBackend):
                 ) -> NumericArray:
                     """Allocates `out` and applies operator to the data."""
                     if arr.shape != shape_in_valid:
-                        raise ValueError(f"Incompatible shapes of input array")
+                        msg = "Incompatible shapes of input array"
+                        raise ValueError(msg)
 
                     out = np.empty(shape_out, dtype=arr.dtype)
                     # prepare input with boundary conditions
@@ -314,9 +319,11 @@ class NumbaBackend(NumpyBackend):
                     """Applies operator to the data without allocating out."""
                     assert isinstance(out, np.ndarray)  # help type checker
                     if arr.shape != shape_in_valid:
-                        raise ValueError(f"Incompatible shapes of input array")
+                        msg = "Incompatible shapes of input array"
+                        raise ValueError(msg)
                     if out.shape != shape_out:
-                        raise ValueError(f"Incompatible shapes of output array")
+                        msg = "Incompatible shapes of output array"
+                        raise ValueError(msg)
 
                     # prepare input with boundary conditions
                     arr_full = np.empty(shape_in_full, dtype=arr.dtype)
@@ -373,15 +380,15 @@ class NumbaBackend(NumpyBackend):
             """Determine rank of field with type `arr`"""
             arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
             if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
-                raise nb.errors.TypingError(
-                    f"Dot argument must be array, not  {arr_typ.__class__}"
-                )
+                msg = f"Dot argument must be array, not  {arr_typ.__class__}"
+                raise nb.errors.TypingError(msg)
             rank = arr_typ.ndim - num_axes
             if rank < 1:
-                raise nb.NumbaTypeError(
+                msg = (
                     f"Rank={rank} too small for dot product. Use a normal product "
                     "instead."
                 )
+                raise nb.NumbaTypeError(msg)
             return rank
 
         @nb_overload(dot, inline="always")
@@ -430,7 +437,8 @@ class NumbaBackend(NumpyBackend):
                                 out[i, j] += a[i, k] * maybe_conj(b[k, j])
 
             else:
-                raise NotImplementedError("Inner product for these ranks")
+                msg = "Inner product for these ranks"
+                raise NotImplementedError(msg)
 
             if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                 # function is called without `out` -> allocate memory
@@ -497,7 +505,8 @@ class NumbaBackend(NumpyBackend):
             specify the output array to which the result is written.
         """
         if not isinstance(field, VectorField):
-            raise TypeError("Can only define outer product between vector fields")
+            msg = "Can only define outer product between vector fields"
+            raise TypeError(msg)
 
         def outer(
             a: NumericArray, b: NumericArray, out: NumericArray | None = None
@@ -514,9 +523,8 @@ class NumbaBackend(NumpyBackend):
             """Determine rank of field with type `arr`"""
             arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
             if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
-                raise nb.errors.TypingError(
-                    f"Arguments must be array, not  {arr_typ.__class__}"
-                )
+                msg = f"Arguments must be array, not  {arr_typ.__class__}"
+                raise nb.errors.TypingError(msg)
             assert arr_typ.ndim == 1 + num_axes
 
         # create the inner function calculating the outer product
@@ -536,8 +544,8 @@ class NumbaBackend(NumpyBackend):
             # get (and check) rank of the input arrays
             check_rank(a)
             check_rank(b)
-            in_shape = (dim,) + field.grid.shape
-            out_shape = (dim, dim) + field.grid.shape
+            in_shape = (dim, *field.grid.shape)
+            out_shape = (dim, dim, *field.grid.shape)
 
             if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                 # function is called without `out` -> allocate memory
@@ -663,7 +671,7 @@ class NumbaBackend(NumpyBackend):
             # interpolate at every valid point
             out = np.empty(data_shape + point_shape, dtype=data.dtype)
             for idx in np.ndindex(*point_shape):
-                out[(...,) + idx] = interpolate_single(data, point[idx])
+                out[(..., *idx)] = interpolate_single(data, point[idx])
 
             return out  # type: ignore
 
@@ -734,8 +742,7 @@ class NumbaBackend(NumpyBackend):
 
         if stepper_style == "fixed":
             return make_fixed_stepper(solver, state, dt=dt)
-        elif stepper_style == "adaptive":
+        if stepper_style == "adaptive":
             assert isinstance(solver, AdaptiveSolverBase)
             return make_adaptive_stepper(solver, state)
-        else:
-            raise NotImplementedError
+        raise NotImplementedError

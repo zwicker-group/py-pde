@@ -5,16 +5,18 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numpy as np
 
 from ...fields import DataFieldBase, VectorField
-from ...grids import BoundariesBase, GridBase
-from ...pdes import PDEBase
 from ...solvers import AdaptiveSolverBase, SolverBase
-from ...tools.typing import DataSetter, GhostCellSetter, NumericArray, TField
 from ..base import BackendBase, OperatorInfo
+
+if TYPE_CHECKING:
+    from ...grids import BoundariesBase, GridBase
+    from ...pdes import PDEBase
+    from ...tools.typing import DataSetter, GhostCellSetter, NumericArray, TField
 
 
 class NumpyBackend(BackendBase):
@@ -85,27 +87,26 @@ class NumpyBackend(BackendBase):
             # just set the valid elements and leave ghost cells with arbitrary values
             return set_valid  # type: ignore
 
-        else:
-            # set the valid elements and the ghost cells according to boundary condition
-            set_bcs = self.make_ghost_cell_setter(bcs)
+        # set the valid elements and the ghost cells according to boundary condition
+        set_bcs = self.make_ghost_cell_setter(bcs)
 
-            def set_valid_bcs(
-                data_full: NumericArray, data_valid: NumericArray, args=None
-            ) -> None:
-                """Set valid part of the data and the ghost cells using BCs.
+        def set_valid_bcs(
+            data_full: NumericArray, data_valid: NumericArray, args=None
+        ) -> None:
+            """Set valid part of the data and the ghost cells using BCs.
 
-                Args:
-                    data_full (:class:`~numpy.ndarray`):
-                        The full array with ghost cells that the data is written to
-                    data_valid (:class:`~numpy.ndarray`):
-                        The valid data that is written to `data_full`
-                    args (dict):
-                        Extra arguments affecting the boundary conditions
-                """
-                set_valid(data_full, data_valid)
-                set_bcs(data_full, args=args)
+            Args:
+                data_full (:class:`~numpy.ndarray`):
+                    The full array with ghost cells that the data is written to
+                data_valid (:class:`~numpy.ndarray`):
+                    The valid data that is written to `data_full`
+                args (dict):
+                    Extra arguments affecting the boundary conditions
+            """
+            set_valid(data_full, data_valid)
+            set_bcs(data_full, args=args)
 
-            return set_valid_bcs  # type: ignore
+        return set_valid_bcs  # type: ignore
 
     def make_operator(
         self,
@@ -157,17 +158,19 @@ class NumpyBackend(BackendBase):
             """Set boundary conditions and apply operator."""
             # check input array
             if arr.shape != shape_in_valid:
-                raise ValueError(f"Incompatible shapes {arr.shape} != {shape_in_valid}")
+                msg = f"Incompatible shapes {arr.shape} != {shape_in_valid}"
+                raise ValueError(msg)
 
             # ensure `out` array is allocated and has the right shape
             if out is None:
                 out = np.empty(shape_out, dtype=arr.dtype)
             elif out.shape != shape_out:
-                raise ValueError(f"Incompatible shapes {out.shape} != {shape_out}")
+                msg = f"Incompatible shapes {out.shape} != {shape_out}"
+                raise ValueError(msg)
 
             # prepare input with boundary conditions
             arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-            arr_full[(...,) + grid._idx_valid] = arr
+            arr_full[(..., *grid._idx_valid)] = arr
             bcs.set_ghost_cells(arr_full, args=args)
 
             # apply operator
@@ -206,9 +209,11 @@ class NumpyBackend(BackendBase):
             rank_a = a.ndim - num_axes
             rank_b = b.ndim - num_axes
             if rank_a < 1 or rank_b < 1:
-                raise TypeError("Fields in dot product must have rank >= 1")
+                msg = "Fields in dot product must have rank >= 1"
+                raise TypeError(msg)
             if a.shape[rank_a:] != b.shape[rank_b:]:
-                raise ValueError("Shapes of fields are not compatible for dot product")
+                msg = "Shapes of fields are not compatible for dot product"
+                raise ValueError(msg)
 
             if conjugate:
                 b = b.conjugate()
@@ -216,17 +221,17 @@ class NumpyBackend(BackendBase):
             if rank_a == 1 and rank_b == 1:  # result is scalar field
                 return np.einsum("i...,i...->...", a, b, out=out)
 
-            elif rank_a == 2 and rank_b == 1:  # result is vector field
+            if rank_a == 2 and rank_b == 1:  # result is vector field
                 return np.einsum("ij...,j...->i...", a, b, out=out)
 
-            elif rank_a == 1 and rank_b == 2:  # result is vector field
+            if rank_a == 1 and rank_b == 2:  # result is vector field
                 return np.einsum("i...,ij...->j...", a, b, out=out)
 
-            elif rank_a == 2 and rank_b == 2:  # result is tensor-2 field
+            if rank_a == 2 and rank_b == 2:  # result is tensor-2 field
                 return np.einsum("ij...,jk...->ik...", a, b, out=out)
 
-            else:
-                raise TypeError(f"Unsupported shapes ({a.shape}, {b.shape})")
+            msg = f"Unsupported shapes ({a.shape}, {b.shape})"
+            raise TypeError(msg)
 
         return dot
 
@@ -249,7 +254,8 @@ class NumpyBackend(BackendBase):
             specify the output array to which the result is written.
         """
         if not isinstance(field, VectorField):
-            raise TypeError("Can only define outer product between vector fields")
+            msg = "Can only define outer product between vector fields"
+            raise TypeError(msg)
 
         def outer(
             a: NumericArray, b: NumericArray, out: NumericArray | None = None
@@ -309,10 +315,8 @@ class NumpyBackend(BackendBase):
         assert solver.backend == self.name
         if stepper_style == "fixed":
             return solver._make_fixed_stepper(state, dt)
-        elif stepper_style == "adaptive":
+        if stepper_style == "adaptive":
             assert isinstance(solver, AdaptiveSolverBase)
             return solver._make_adaptive_stepper(state)
-        else:
-            raise NotImplementedError(
-                f"Numpy backend cannot handle stepper style {stepper_style}"
-            )
+        msg = f"Numpy backend cannot handle stepper style {stepper_style}"
+        raise NotImplementedError(msg)

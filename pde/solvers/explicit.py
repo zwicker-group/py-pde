@@ -6,14 +6,16 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 
-from ..pdes.base import PDEBase
-from ..tools.math import OnlineStatistics
-from ..tools.typing import NumericArray, StepperHook, TField
 from .base import AdaptiveSolverBase, AdaptiveStepperType, _make_dt_adjuster
+
+if TYPE_CHECKING:
+    from ..pdes.base import PDEBase
+    from ..tools.math import OnlineStatistics
+    from ..tools.typing import NumericArray, StepperHook, TField
 
 
 class EulerSolver(AdaptiveSolverBase):
@@ -82,7 +84,7 @@ class EulerSolver(AdaptiveSolverBase):
                 A function that runs the post_step_hook
             adjust_dt (callable or None):
                 A function that is used to adjust the time step. The function takes the
-                current time step and a relative error and returns an adjusted time step.
+                current time step and a relative error and returns an adjusted time step
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
@@ -94,7 +96,8 @@ class EulerSolver(AdaptiveSolverBase):
         # particular, we reuse the calculated right hand side in cases where the step
         # was not successful.
         if self.pde.is_sde:
-            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
+            msg = "Cannot use adaptive stepper with stochastic equation"
+            raise RuntimeError(msg)
 
         # obtain functions determining how the PDE is evolved
         rhs_pde = self._make_pde_rhs(state, backend=self.backend)
@@ -200,7 +203,8 @@ class RungeKuttaSolver(AdaptiveSolverBase):
             t_start: float, steps: int)`
         """
         if self.pde.is_sde:
-            raise RuntimeError("Runge-Kutta stepper does not support stochasticity")
+            msg = "Runge-Kutta stepper does not support stochasticity"
+            raise RuntimeError(msg)
 
         # obtain functions determining how the PDE is evolved
         rhs = self._make_pde_rhs(state, backend=self.backend)
@@ -234,7 +238,8 @@ class RungeKuttaSolver(AdaptiveSolverBase):
             t_start: float, t_end: float)`
         """
         if self.pde.is_sde:
-            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
+            msg = "Cannot use adaptive stepper with stochastic equation"
+            raise RuntimeError(msg)
 
         # obtain functions determining how the PDE is evolved
         rhs = self._make_pde_rhs(state, backend=self.backend)
@@ -337,11 +342,12 @@ class ExplicitSolver(AdaptiveSolverBase):
         """
         # deprecated since 2025-11-01
         warnings.warn(
-            "`ExplicitSolver` is deprecated. Use `EulerSolver` or `RungeKuttaSolver`."
+            "`ExplicitSolver` is deprecated. Use `EulerSolver` or `RungeKuttaSolver`.",
+            stacklevel=2,
         )
         if scheme == "euler":
             return EulerSolver(pde=pde, **kwargs)
-        elif scheme in {"rk", "rk45", "runge-kutta"}:
+        if scheme in {"rk", "rk45", "runge-kutta"}:
             return RungeKuttaSolver(pde=pde, **kwargs)
-        else:
-            raise ValueError(f"Scheme `{scheme}` is not supported")
+        msg = f"Scheme `{scheme}` is not supported"
+        raise ValueError(msg)

@@ -11,7 +11,9 @@ from pde import CartesianGrid, ScalarField
 from pde.backends.numba.operators import common as ops
 
 
-@pytest.mark.parametrize("ndim,axis", [(1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2)])
+@pytest.mark.parametrize(
+    ("ndim", "axis"), [(1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2)]
+)
 def test_make_derivative(ndim, axis, rng):
     """Test the _make_derivative function."""
     periodic = random.choice([True, False])
@@ -32,7 +34,9 @@ def test_make_derivative(ndim, axis, rng):
         )
 
 
-@pytest.mark.parametrize("ndim,axis", [(1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2)])
+@pytest.mark.parametrize(
+    ("ndim", "axis"), [(1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2)]
+)
 def test_make_derivative2(ndim, axis, rng):
     """Test the _make_derivative2 function."""
     periodic = random.choice([True, False])

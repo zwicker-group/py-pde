@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import numbers
 import re
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numba as nb
@@ -18,18 +17,27 @@ from sympy import Symbol
 from sympy.core.function import UndefinedFunction
 
 from ..fields import FieldCollection, VectorField
-from ..fields.base import FieldBase
 from ..fields.datafield_base import DataFieldBase
 from ..grids.boundaries import set_default_bc
-from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
 from ..pdes.base import PDEBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
-from ..tools.typing import ArrayLike, NumberOrArray, NumericArray, StepperHook, TField
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     import sympy
+
+    from ..fields.base import FieldBase
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import (
+        ArrayLike,
+        NumberOrArray,
+        NumericArray,
+        StepperHook,
+        TField,
+    )
 
 
 # Define short notations that can appear in mathematical equations and need to be
@@ -152,7 +160,8 @@ class PDE(PDEBase):
         if isinstance(noise, dict):
             noise = [noise.get(var, 0) for var in rhs]
         if hasattr(noise, "__iter__") and len(noise) != len(rhs):
-            raise ValueError("Number of noise strengths does not match field count")
+            msg = "Number of noise strengths does not match field count"
+            raise ValueError(msg)
 
         super().__init__(noise=noise, rng=rng)
 
@@ -160,7 +169,8 @@ class PDE(PDEBase):
         if not isinstance(rhs, dict):
             rhs = dict(rhs)
         if "t" in rhs:
-            raise ValueError("Cannot name field `t` since it denotes time")
+            msg = "Cannot name field `t` since it denotes time"
+            raise ValueError(msg)
         if consts is None:
             consts = {}
 
@@ -217,7 +227,8 @@ class PDE(PDEBase):
                 self._logger.warning("Found default BCs in `bcs` and `bc_ops`")
             bcs["*:*"] = bc  # append default boundary conditions
         else:
-            raise TypeError(f'`bc_ops` must be a dictionary, but got {type(bc_ops)}"')
+            msg = f'`bc_ops` must be a dictionary, but got {type(bc_ops)}"'
+            raise TypeError(msg)
 
         self.bcs: dict[str, Any] = {}
         for key_str, value in bcs.items():
@@ -227,14 +238,16 @@ class PDE(PDEBase):
                 if len(self.variables):
                     key = f"{self.variables[0]}:{key_str}"
                 else:
-                    raise ValueError(
+                    msg = (
                         f'Boundary condition "{key_str}" is ambiguous. Use format '
                         '"VARIABLE:OPERATOR" instead.'
                     )
+                    raise ValueError(msg)
             elif len(parts) == 2:
                 key = ":".join(parts)
             else:
-                raise ValueError(f'Cannot parse boundary condition "{key_str}"')
+                msg = f'Cannot parse boundary condition "{key_str}"'
+                raise ValueError(msg)
             if key in self.bcs:
                 self._logger.warning("Two boundary conditions for key %s", key)
             self.bcs[key] = value
@@ -295,10 +308,11 @@ class PDE(PDEBase):
                     self.diagnostics["pde"]["bcs_used"].add(bc_key)  # register it
                     break  # continue with this BC
             else:
-                raise RuntimeError(
+                msg = (
                     "Could not find suitable boundary condition for function "
                     f"`{func}` applied in equation for `{var}`"
                 )
+                raise RuntimeError(msg)
 
             # Tell the user what BC we chose for a given operator
             msg = "Using boundary condition `%s` for operator `%s` in PDE for `%s`"
@@ -315,7 +329,7 @@ class PDE(PDEBase):
                     f"Problems in boundary condition `{bc}` for operator `{func}` in "
                     f"PDE for `{var}`",
                 )
-                raise err
+                raise
 
             # add `bc_args` as an argument to the call of the operators to be able
             # to pass additional information, like time
@@ -333,7 +347,7 @@ class PDE(PDEBase):
             )
 
         # obtain the function to calculate the right hand side
-        signature = self.variables + ("t", "none", "bc_args")
+        signature = (*self.variables, "t", "none", "bc_args")
 
         # check whether this function depends on additional input
         if any(expr.depends_on(c) for c in state.grid.axes):
@@ -354,7 +368,8 @@ class PDE(PDEBase):
         extra_vars = set(expr.vars) - set(signature)
         if extra_vars:
             extra_vars_str = ", ".join(sorted(extra_vars))
-            raise RuntimeError(f"Undefined variable in expression: {extra_vars_str}")
+            msg = f"Undefined variable in expression: {extra_vars_str}"
+            raise RuntimeError(msg)
         expr.vars = signature
 
         self._logger.info("RHS for `%s` has signature %s", var, signature)
@@ -368,7 +383,8 @@ class PDE(PDEBase):
             )
             func_inner = jit(func_pure)
         else:
-            raise ValueError(f"Unsupported backend {backend}")
+            msg = f"Unsupported backend {backend}"
+            raise ValueError(msg)
 
         def rhs_func(*args) -> NumericArray:
             """Wrapper that inserts the extra arguments and initialized bc_args."""
@@ -404,23 +420,25 @@ class PDE(PDEBase):
         # check whether PDE has variables with same names as grid axes
         name_overlap = set(self.rhs) & set(state.grid.axes)
         if name_overlap:
-            raise ValueError(f"Coordinate {name_overlap} cannot be used as field name")
+            msg = f"Coordinate {name_overlap} cannot be used as field name"
+            raise ValueError(msg)
 
         # check whether the state is compatible with the PDE
         num_fields: int = len(self.variables)
         self.diagnostics["pde"]["num_fields"] = num_fields
         if isinstance(state, FieldCollection):
             if num_fields != len(state):
-                raise ValueError(
+                msg = (
                     f"Expected {num_fields} fields in state, but got {len(state)} ones"
                 )
+                raise ValueError(msg)
         elif isinstance(state, DataFieldBase):
             if num_fields != 1:
-                raise ValueError(
-                    f"Expected {num_fields} fields in state, but got only one"
-                )
+                msg = f"Expected {num_fields} fields in state, but got only one"
+                raise ValueError(msg)
         else:
-            raise ValueError(f"Unknown state class {state.__class__.__name__}")
+            msg = f"Unknown state class {state.__class__.__name__}"
+            raise TypeError(msg)
 
         # check compatibility of constants and update the rhs accordingly
         for name, value in self.consts.items():
@@ -436,7 +454,8 @@ class PDE(PDEBase):
                     value.grid.assert_grid_compatible(state.grid)
                     value = value.data  # just keep the actual discretized data
             else:
-                raise TypeError(f"Constant has unsupported type {value.__class__}")
+                msg = f"Constant has unsupported type {value.__class__}"
+                raise TypeError(msg)
 
             for rhs in self._rhs_expr.values():
                 rhs.consts[name] = value
@@ -534,7 +553,8 @@ class PDE(PDEBase):
                 result[i].data[:] = cache["rhs_funcs"][i](*data_tpl, t)
 
         else:
-            raise TypeError(f"Unsupported field {state.__class__.__name__}")
+            msg = f"Unsupported field {state.__class__.__name__}"
+            raise TypeError(msg)
 
         return result
 
@@ -555,15 +575,15 @@ class PDE(PDEBase):
             NotImplementedError: When :attr:`post_step_hook` is `None`.
         """
         if self.post_step_hook is None:
-            raise NotImplementedError("`post_step_hook` not set")
-        else:
-            post_step_hook = register_jitable(self.post_step_hook)
+            msg = "`post_step_hook` not set"
+            raise NotImplementedError(msg)
+        post_step_hook = register_jitable(self.post_step_hook)
 
-            @register_jitable
-            def post_step_hook_impl(state_data, t, post_step_data):
-                post_step_hook(state_data, t)
+        @register_jitable
+        def post_step_hook_impl(state_data, t, post_step_data):
+            post_step_hook(state_data, t)
 
-            return post_step_hook_impl, 0  # hook function and initial value
+        return post_step_hook_impl, 0  # hook function and initial value
 
     # time will not be updated
     def _make_pde_rhs_numba_coll(
@@ -616,19 +636,17 @@ class PDE(PDEBase):
             if i < num_fields - 1:
                 # there are more items in the chain
                 return chain(i + 1, inner=wrap)
-            else:
-                # this is the outermost function
-                @jit
-                def evolution_rate(
-                    state_data: NumericArray, t: float = 0
-                ) -> NumericArray:
-                    out = np.empty(data_shape)
-                    with nb.objmode():
-                        data_tpl = get_data_tuple(state_data)
-                        wrap(data_tpl, t, out)
-                    return out  # type: ignore
 
-                return evolution_rate  # type: ignore
+            # this is the outermost function
+            @jit
+            def evolution_rate(state_data: NumericArray, t: float = 0) -> NumericArray:
+                out = np.empty(data_shape)
+                with nb.objmode():
+                    data_tpl = get_data_tuple(state_data)
+                    wrap(data_tpl, t, out)
+                return out  # type: ignore
+
+            return evolution_rate  # type: ignore
 
         # compile the recursive chain
         return chain()
@@ -653,12 +671,12 @@ class PDE(PDEBase):
             # state is a single field
             return jit(cache["rhs_funcs"][0])  # type: ignore
 
-        elif isinstance(state, FieldCollection):
+        if isinstance(state, FieldCollection):
             # state is a collection of fields
             return self._make_pde_rhs_numba_coll(state, cache)
 
-        else:
-            raise TypeError(f"Unsupported field {state.__class__.__name__}")
+        msg = f"Unsupported field {state.__class__.__name__}"
+        raise TypeError(msg)
 
     def _jacobian_spectral(
         self,
@@ -697,9 +715,11 @@ class PDE(PDEBase):
 
         # basic checks
         if wave_vector == "t":
-            raise ValueError("`wave_vector` must not be `t`")
+            msg = "`wave_vector` must not be `t`"
+            raise ValueError(msg)
         if wave_vector in self.variables:
-            raise ValueError(f"`wave_vector` must be different from {self.variables}")
+            msg = f"`wave_vector` must be different from {self.variables}"
+            raise ValueError(msg)
 
         if state_hom is None:
             state_dict: Mapping[str, float | complex] | None = None
@@ -712,12 +732,14 @@ class PDE(PDEBase):
                 if isinstance(state_hom, numbers.Number):
                     state_dict = dict.fromkeys(self.variables, state_hom)  # type: ignore
                 elif len(state_hom) != dim:
-                    raise ValueError(f"Expect {dim} values in `state_hom`")
+                    msg = f"Expect {dim} values in `state_hom`"
+                    raise ValueError(msg)
                 else:
                     state_dict = {v: state_hom[i] for i, v in enumerate(self.variables)}
             for v, state in state_dict.items():
                 if not isinstance(state, numbers.Number):
-                    raise TypeError(f"Value for field `{v}` is not a number")
+                    msg = f"Value for field `{v}` is not a number"
+                    raise TypeError(msg)
 
         # prepare fourier transformed operators
         q_sym = sympy.symbols(wave_vector)
@@ -743,10 +765,11 @@ class PDE(PDEBase):
                     exprF0_val = float(exprF0.subs(state_dict))
                 except Exception as e:
                     if len(e.args) >= 1:
-                        e.args = (e.args[0] + f" (Expression: {exprF0})",) + e.args[1:]
+                        e.args = (e.args[0] + f" (Expression: {exprF0})", *e.args[1:])
                     raise
                 if not np.isclose(exprF0_val, 0):
-                    raise RuntimeError("State is not a stationary state")
+                    msg = "State is not a stationary state"
+                    raise RuntimeError(msg)
 
             # calculate Jacobian
             jac_line = []

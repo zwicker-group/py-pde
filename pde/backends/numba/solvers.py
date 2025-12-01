@@ -5,12 +5,12 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import numba as nb
 import numpy as np
 
-from ...solvers import *
+from ...solvers import AdamsBashforthSolver, EulerSolver
 from ...solvers.base import (
     AdaptiveSolverBase,
     AdaptiveStepperType,
@@ -18,9 +18,11 @@ from ...solvers.base import (
     SolverBase,
     _make_dt_adjuster,
 )
-from ...tools.math import OnlineStatistics
 from ...tools.numba import jit
 from ...tools.typing import NumericArray, StepperHook, TField
+
+if TYPE_CHECKING:
+    from ...tools.math import OnlineStatistics
 
 SingleStepType = Callable[[NumericArray, float], None]
 
@@ -189,8 +191,7 @@ def make_fixed_stepper(
     """
     if isinstance(solver, AdamsBashforthSolver):
         return _make_adams_bashforth_stepper(solver, state, dt)
-    else:
-        return _make_fixed_stepper(solver, state, dt)
+    return _make_fixed_stepper(solver, state, dt)
 
 
 def _make_adaptive_stepper_general(
@@ -301,27 +302,26 @@ def _make_adaptive_stepper_euler(
     if nb.config.DISABLE_JIT:
         # this can be useful to debug numba implementations and for test coverage checks
         return solver._make_adaptive_stepper(state)
-    else:
-        # create compiled function for adjusting the time step
-        adjust_dt = _make_dt_adjuster(solver.dt_min, solver.dt_max)
-        adjust_signature = (nb.double, nb.double)
-        adjust_dt = jit(adjust_signature)(adjust_dt)
+    # create compiled function for adjusting the time step
+    adjust_dt = _make_dt_adjuster(solver.dt_min, solver.dt_max)
+    adjust_signature = (nb.double, nb.double)
+    adjust_dt = jit(adjust_signature)(adjust_dt)
 
-        # create the adaptive stepper and compile it
-        stepper = solver._make_adaptive_stepper(
-            state,
-            post_step_hook=_make_post_step_hook(solver, state),
-            adjust_dt=adjust_dt,
-        )
-        signature = (
-            nb.typeof(state.data),
-            nb.double,
-            nb.double,
-            nb.double,
-            nb.typeof(solver.info["dt_statistics"]),
-            nb.typeof(solver._post_step_data_init),
-        )
-        return jit(signature)(stepper)  # type: ignore
+    # create the adaptive stepper and compile it
+    stepper = solver._make_adaptive_stepper(
+        state,
+        post_step_hook=_make_post_step_hook(solver, state),
+        adjust_dt=adjust_dt,
+    )
+    signature = (
+        nb.typeof(state.data),
+        nb.double,
+        nb.double,
+        nb.double,
+        nb.typeof(solver.info["dt_statistics"]),
+        nb.typeof(solver._post_step_data_init),
+    )
+    return jit(signature)(stepper)  # type: ignore
 
 
 def make_adaptive_stepper(
@@ -343,5 +343,4 @@ def make_adaptive_stepper(
     """
     if isinstance(solver, EulerSolver):
         return _make_adaptive_stepper_euler(solver, state)
-    else:
-        return _make_adaptive_stepper_general(solver, state)
+    return _make_adaptive_stepper_general(solver, state)

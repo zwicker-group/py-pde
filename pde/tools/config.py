@@ -33,7 +33,6 @@ from typing import Any
 import numpy as np
 
 from .misc import module_available
-from .typing import NumericArray
 
 
 class Parameter:
@@ -127,14 +126,14 @@ class Parameter:
 
         if self.cls is object:
             return value
-        else:
-            try:
-                return self.cls(value)
-            except ValueError as err:
-                raise ValueError(
-                    f"Could not convert {value!r} to {self.cls.__name__} for parameter "
-                    f"'{self.name}'"
-                ) from err
+        try:
+            return self.cls(value)
+        except ValueError as err:
+            msg = (
+                f"Could not convert {value!r} to {self.cls.__name__} for parameter "
+                f"'{self.name}'"
+            )
+            raise ValueError(msg) from err
 
 
 # define default parameter values
@@ -252,8 +251,7 @@ class Config(collections.UserDict):
         parameter = self.data[key]
         if isinstance(parameter, Parameter):
             return parameter.convert()
-        else:
-            return parameter
+        return parameter
 
     def _convert_value(self, key: str, value):
         """Helper function converting certain values."""
@@ -264,6 +262,7 @@ class Config(collections.UserDict):
                 "Boolean options are deprecated for `numba.multithreading`. Use "
                 f"config['numba.multithreading'] = '{value}' instead.",
                 DeprecationWarning,
+                stacklevel=2,
             )
         return value
 
@@ -276,23 +275,25 @@ class Config(collections.UserDict):
             try:
                 self[key]  # test whether the key already exist (including magic keys)
             except KeyError as err:
-                raise KeyError(
-                    f"{key} is not present and config is not in `insert` mode"
-                ) from err
+                msg = f"{key} is not present and config is not in `insert` mode"
+                raise KeyError(msg) from err
             self.data[key] = self._convert_value(key, value)
 
         elif self.mode == "locked":
-            raise RuntimeError("Configuration is locked")
+            msg = "Configuration is locked"
+            raise RuntimeError(msg)
 
         else:
-            raise ValueError(f"Unsupported configuration mode `{self.mode}`")
+            msg = f"Unsupported configuration mode `{self.mode}`"
+            raise ValueError(msg)
 
     def __delitem__(self, key: str):
         """Removes item `key`"""
         if self.mode == "insert":
             del self.data[key]
         else:
-            raise RuntimeError("Configuration is not in `insert` mode")
+            msg = "Configuration is not in `insert` mode"
+            raise RuntimeError(msg)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the configuration to a simple dictionary.
@@ -304,7 +305,7 @@ class Config(collections.UserDict):
 
     def __repr__(self) -> str:
         """Represent the configuration as a string."""
-        return f"{self.__class__.__name__}({repr(self.to_dict())})"
+        return f"{self.__class__.__name__}({self.to_dict()!r})"
 
     @contextlib.contextmanager
     def __call__(self, values: dict[str, Any] | None = None, **kwargs):
@@ -344,15 +345,15 @@ class Config(collections.UserDict):
         setting = self["numba.multithreading"]
         if setting == "always":
             return True
-        elif setting == "never":
+        if setting == "never":
             return False
-        elif setting == "only_local":
+        if setting == "only_local":
             return not is_hpc_environment()
-        else:
-            raise ValueError(
-                "Parameter `numba.multithreading` must be in {'always', 'never', "
-                f"'only_local'}}, not `{setting}`"
-            )
+        msg = (
+            "Parameter `numba.multithreading` must be in {'always', 'never', "
+            f"'only_local'}}, not `{setting}`"
+        )
+        raise ValueError(msg)
 
 
 def get_package_versions(
@@ -371,7 +372,7 @@ def get_package_versions(
     for name in sorted(packages):
         try:
             version = importlib.metadata.version(name)
-        except ImportError:
+        except ImportError:  # noqa: PERF203
             versions[name] = na_str
         else:
             versions[name] = version
@@ -396,12 +397,12 @@ def check_package_version(package_name: str, min_version: str):
         version = importlib.import_module(package_name).__version__
 
     except ImportError:
-        warnings.warn(f"{msg} (but none installed)")
+        warnings.warn(f"{msg} (but none installed)", stacklevel=2)
 
     else:
         # check whether it is installed and works
         if parse_version_str(version) < parse_version_str(min_version):
-            warnings.warn(f"{msg} (installed: {version})")
+            warnings.warn(f"{msg} (installed: {version})", stacklevel=2)
 
 
 def packages_from_requirements(requirements_file: Path | str) -> list[str]:
@@ -435,7 +436,7 @@ def get_ffmpeg_version() -> str | None:
     # run ffmpeg to get its version
     try:
         version_bytes = sp.check_output(["ffmpeg", "-version"])
-    except:
+    except Exception:
         return None
 
     # extract the version number from the output

@@ -5,13 +5,15 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 
-from ..pdes.base import PDEBase
-from ..tools.typing import BackendType, NumericArray, TField
 from .base import ConvergenceError, SolverBase
+
+if TYPE_CHECKING:
+    from ..pdes.base import PDEBase
+    from ..tools.typing import BackendType, NumericArray, TField
 
 
 class ImplicitSolver(SolverBase):
@@ -57,7 +59,8 @@ class ImplicitSolver(SolverBase):
                 Time step of the implicit step
         """
         if self.pde.is_sde:
-            raise RuntimeError("Cannot use implicit stepper with stochastic equation")
+            msg = "Cannot use implicit stepper with stochastic equation"
+            raise RuntimeError(msg)
 
         self.info["function_evaluations"] = 0
         self.info["scheme"] = "implicit-euler"
@@ -104,7 +107,8 @@ class ImplicitSolver(SolverBase):
                 #         t,
                 #         err,
                 #     )
-                raise ConvergenceError("Implicit Euler step did not converge.")
+                msg = "Implicit Euler step did not converge."
+                raise ConvergenceError(msg)
             nfev += n + 1
 
         self._logger.info("Init implicit Euler stepper with dt=%g", dt)
@@ -173,9 +177,8 @@ class ImplicitSolver(SolverBase):
                 #         t,
                 #         err,
                 #     )
-                raise ConvergenceError(
-                    "Semi-implicit Euler-Maruyama step did not converge."
-                )
+                msg = "Semi-implicit Euler-Maruyama step did not converge."
+                raise ConvergenceError(msg)
             nfev += n + 1
 
         self._logger.info("Init semi-implicit Euler-Maruyama stepper with dt=%g", dt)
@@ -195,5 +198,4 @@ class ImplicitSolver(SolverBase):
         """
         if self.pde.is_sde:
             return self._make_single_step_fixed_dt_stochastic(state, dt)
-        else:
-            return self._make_single_step_fixed_dt_deterministic(state, dt)
+        return self._make_single_step_fixed_dt_deterministic(state, dt)

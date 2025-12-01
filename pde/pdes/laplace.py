@@ -5,11 +5,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..backends import backends
 from ..fields import ScalarField
-from ..grids.base import GridBase
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
+
+if TYPE_CHECKING:
+    from ..grids.base import GridBase
+    from ..grids.boundaries.axes import BoundariesData
 
 
 @fill_in_docstring
@@ -70,13 +74,13 @@ def solve_poisson_equation(
     except RuntimeError as err:
         magnitude = rhs.magnitude
         if magnitude > 1e-10:
-            raise RuntimeError(
+            msg = (
                 "Could not solve the Poisson problem. One possible reason for this is "
                 "that only periodic or Neumann conditions are applied although the "
                 f"magnitude of the field is {magnitude} and thus non-zero."
-            ) from err
-        else:
-            raise  # another error occurred
+            )
+            raise RuntimeError(msg) from err
+        raise  # another error occurred
 
     return result
 

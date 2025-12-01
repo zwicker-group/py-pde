@@ -5,15 +5,19 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from contextlib import contextmanager
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import FieldBase
-from ..tools.typing import NumericArray
 from .base import InfoDict, StorageBase, WriteModeType
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ..fields.base import FieldBase
+    from ..tools.typing import NumericArray
 
 
 class MemoryStorage(StorageBase):
@@ -58,10 +62,11 @@ class MemoryStorage(StorageBase):
 
         # check consistency
         if len(self.times) != len(self.data):
-            raise ValueError(
+            msg = (
                 "Length of the supplied `times` and `fields` are inconsistent "
                 f"({len(self.times)} != {len(self.data)})"
             )
+            raise ValueError(msg)
 
     @classmethod
     def from_fields(
@@ -95,7 +100,8 @@ class MemoryStorage(StorageBase):
             data = [fields[0].data]
             for field in fields[1:]:
                 if field_obj.grid != field.grid:
-                    raise ValueError("Grids of the fields are incompatible")
+                    msg = "Grids of the fields are incompatible"
+                    raise ValueError(msg)
                 data.append(field.data)
 
         return cls(
@@ -142,7 +148,8 @@ class MemoryStorage(StorageBase):
         # append data from further storages
         for storage in storages[1:]:
             if not np.allclose(times, storage.times, rtol=rtol, atol=atol):
-                raise ValueError("Storages have incompatible times")
+                msg = "Storages have incompatible times"
+                raise ValueError(msg)
             for i, field in enumerate(storage):
                 data[i].append(field)
 
@@ -187,13 +194,15 @@ class MemoryStorage(StorageBase):
             self.clear()
 
         elif self.write_mode == "readonly":
-            raise RuntimeError("Cannot write in read-only mode")
+            msg = "Cannot write in read-only mode"
+            raise RuntimeError(msg)
 
         elif self.write_mode != "append":
-            raise ValueError(
+            msg = (
                 f"Unknown write mode `{self.write_mode}`. Possible values are "
                 "`truncate_once`, `truncate`, and `append`"
             )
+            raise ValueError(msg)
 
     def _append_data(self, data: NumericArray, time: float) -> None:
         """Append a new data set.
@@ -203,7 +212,8 @@ class MemoryStorage(StorageBase):
             time (float, optional): The time point associated with the data
         """
         if data.shape != self.data_shape:
-            raise ValueError(f"Data must have shape {self.data_shape}")
+            msg = f"Data must have shape {self.data_shape}"
+            raise ValueError(msg)
         self.data.append(np.array(data))  # store copy of the data
         self.times.append(time)
 

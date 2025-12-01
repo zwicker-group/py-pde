@@ -25,8 +25,8 @@ Inheritance structure of the classes:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .base import DimensionError, GridBase
-from .boundaries import *
-from .cartesian import CartesianGrid, UnitGrid
-from .cylindrical import CylindricalSymGrid
-from .spherical import PolarSymGrid, SphericalSymGrid
+from .base import DimensionError, GridBase  # noqa: F401
+from .boundaries import *  # noqa: F403
+from .cartesian import CartesianGrid, UnitGrid  # noqa: F401
+from .cylindrical import CylindricalSymGrid  # noqa: F401
+from .spherical import PolarSymGrid, SphericalSymGrid  # noqa: F401

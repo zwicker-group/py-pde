@@ -8,20 +8,20 @@ from __future__ import annotations
 import copy
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import FieldBase
 from ..fields.datafield_base import DataFieldBase
 from ..tools.numba import jit
-from ..tools.typing import ArrayLike, BackendType, NumericArray, StepperHook, TField
-from ..trackers.base import TrackerCollectionDataType
 
 if TYPE_CHECKING:
+    from ..fields.base import FieldBase
     from ..solvers.base import SolverBase
     from ..solvers.controller import TRangeType
+    from ..tools.typing import ArrayLike, BackendType, NumericArray, StepperHook, TField
+    from ..trackers.base import TrackerCollectionDataType
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for PDEs."""
@@ -187,12 +187,13 @@ class PDEBase(metaclass=ABCMeta):
         self, state: FieldBase, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function for evaluating the right hand side."""
-        raise NotImplementedError(
+        msg = (
             "The right-hand side of the PDE is not implemented using the `numba` "
             "backend. To add the implementation, provide the method "
             "`_make_pde_rhs_numba`, which should return a numba-compiled function "
             "calculating the right-hand side using numpy arrays as input and output."
         )
+        raise NotImplementedError(msg)
 
     def check_rhs_consistency(
         self,
@@ -298,7 +299,8 @@ class PDEBase(metaclass=ABCMeta):
             rhs = self._make_pde_rhs_numba(state, **kwargs)
 
         if rhs is None:
-            raise RuntimeError("`_make_pde_rhs_numba` returned None")
+            msg = "`_make_pde_rhs_numba` returned None"
+            raise RuntimeError(msg)
 
         if check_implementation:
             self.check_rhs_consistency(state, rhs_numba=rhs, **kwargs)
@@ -328,7 +330,7 @@ class PDEBase(metaclass=ABCMeta):
 
         if backend == "auto":
             try:
-                rhs = self._make_pde_rhs_numba_cached(state, **kwargs)
+                self._make_pde_rhs_numba_cached(state, **kwargs)
             except NotImplementedError:
                 backend = "numpy"
             else:
@@ -417,7 +419,8 @@ class PDEBase(metaclass=ABCMeta):
                 flat_index=True
             )
             if state.dtype != float:
-                raise TypeError("Noise is only supported for float types")
+                msg = "Noise is only supported for float types"
+                raise TypeError(msg)
 
             if isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field
@@ -437,7 +440,7 @@ class PDEBase(metaclass=ABCMeta):
                         else:
                             for i in range(state_data[n].size):
                                 scale = noises_var[n] / cell_volume(i)
-                                out[n].flat[i] = np.sqrt(scale) * np.random.randn()
+                                out[n].flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
                     return out  # type: ignore
 
             else:
@@ -452,7 +455,7 @@ class PDEBase(metaclass=ABCMeta):
                     out = np.empty(state_data.shape)
                     for i in range(state_data.size):
                         scale = noise_var / cell_volume(i)
-                        out.flat[i] = np.sqrt(scale) * np.random.randn()
+                        out.flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
                     return out  # type: ignore
 
         else:
@@ -567,7 +570,8 @@ class PDEBase(metaclass=ABCMeta):
             sde_rhs._backend = "numpy"  # type: ignore
 
         else:
-            raise ValueError(f"Unsupported backend `{backend}`")
+            msg = f"Unsupported backend `{backend}`"
+            raise ValueError(msg)
 
         return sde_rhs
 
@@ -661,10 +665,12 @@ class PDEBase(metaclass=ABCMeta):
             )
 
         elif isinstance(solver, SolverBase):
-            raise TypeError("`solver` must be a class not an instance")
+            msg = "`solver` must be a class not an instance"
+            raise TypeError(msg)
 
         else:
-            raise TypeError(f"Solver {solver} is not supported")
+            msg = f"Solver {solver} is not supported"
+            raise TypeError(msg)
 
         # create controller instance
         controller = Controller(solver_obj, t_range=t_range, tracker=tracker)
@@ -683,8 +689,7 @@ class PDEBase(metaclass=ABCMeta):
             # return a copy of the diagnostic information so it will not be overwritten
             # by a repeated call to `solve()`.
             return final_state, copy.deepcopy(self.diagnostics)
-        else:
-            return final_state
+        return final_state
 
 
 def expr_prod(factor: float, expression: str) -> str:
@@ -701,9 +706,8 @@ def expr_prod(factor: float, expression: str) -> str:
     """
     if factor == 0:
         return "0"
-    elif factor == 1:
+    if factor == 1:
         return expression
-    elif factor == -1:
+    if factor == -1:
         return "-" + expression
-    else:
-        return f"{factor:g} * {expression}"
+    return f"{factor:g} * {expression}"

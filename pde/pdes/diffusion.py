@@ -5,17 +5,19 @@
 
 from __future__ import annotations
 
-from typing import Callable
-
-import numpy as np
+from typing import TYPE_CHECKING, Callable
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
-from ..tools.typing import NumericArray
 from .base import PDEBase, expr_prod
+
+if TYPE_CHECKING:
+    import numpy as np
+
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import NumericArray
 
 
 class DiffusionPDE(PDEBase):
@@ -87,7 +89,8 @@ class DiffusionPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         if not isinstance(state, ScalarField):
-            raise ValueError("`state` must be ScalarField")
+            msg = "`state` must be ScalarField"
+            raise TypeError(msg)
         laplace = state.laplace(bc=self.bc, label="evolution rate", args={"t": t})
         return self.diffusivity * laplace  # type: ignore
 

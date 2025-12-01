@@ -16,15 +16,17 @@
 
 from __future__ import annotations
 
-from typing import Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 
-from ....grids.boundaries.axes import BoundariesList
 from ....grids.cartesian import CartesianGrid
-from ....tools.typing import NumericArray, OperatorType
 from ...registry import backends
 from .common import make_general_poisson_solver, uniform_discretization
+
+if TYPE_CHECKING:
+    from ....grids.boundaries.axes import BoundariesList
+    from ....tools.typing import NumericArray, OperatorType
 
 
 def _get_laplace_matrix_1d(bcs: BoundariesList) -> tuple[NumericArray, NumericArray]:
@@ -245,7 +247,8 @@ def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray
     elif dim == 3:
         result = _get_laplace_matrix_3d(bcs)
     else:
-        raise NotImplementedError(f"{dim:d}-dimensional Laplace matrix not implemented")
+        msg = f"{dim:d}-dimensional Laplace matrix not implemented"
+        raise NotImplementedError(msg)
 
     return result
 
@@ -300,7 +303,7 @@ def make_gradient(
 
     scaling = 1 / grid.discretization
     dim = grid.dim
-    shape_out = (dim,) + grid.shape
+    shape_out = (dim, *grid.shape)
 
     if method == "central":
         stencil = [-0.5, 0, 0.5]
@@ -309,7 +312,8 @@ def make_gradient(
     elif method == "backward":
         stencil = [-1, 1, 0]
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
@@ -357,7 +361,8 @@ def make_divergence(
     elif method == "backward":
         stencil = [-1, 1, 0]
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     def divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply divergence operator to array `arr`"""
@@ -499,11 +504,11 @@ def make_poisson_solver(
 
 
 __all__ = [
-    "make_laplace",
-    "make_gradient",
     "make_divergence",
+    "make_gradient",
+    "make_laplace",
+    "make_poisson_solver",
+    "make_tensor_divergence",
     "make_vector_gradient",
     "make_vector_laplace",
-    "make_tensor_divergence",
-    "make_poisson_solver",
 ]

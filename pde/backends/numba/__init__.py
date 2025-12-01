@@ -15,4 +15,4 @@ from .backend import NumbaBackend
 backends.add(NumbaBackend("numba"))
 
 # register all the standard operators
-from . import operators
+from . import operators  # noqa: F401

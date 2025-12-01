@@ -31,7 +31,7 @@ Inheritance structure of the classes:
 """
 
 from .adams_bashforth import AdamsBashforthSolver
-from .base import AdaptiveSolverBase, SolverBase
+from .base import AdaptiveSolverBase, SolverBase  # noqa: F401
 from .controller import Controller
 from .crank_nicolson import CrankNicolsonSolver
 from .explicit import EulerSolver, ExplicitSolver, RungeKuttaSolver
@@ -51,19 +51,18 @@ def registered_solvers() -> list[str]:
     Returns:
         list of str: List with the names of the solvers
     """
-    from .base import SolverBase
 
     return SolverBase.registered_solvers  # type: ignore
 
 
 __all__ = [
-    "Controller",
-    "ExplicitSolver",
-    "EulerSolver",
-    "RungeKuttaSolver",
-    "ImplicitSolver",
-    "CrankNicolsonSolver",
     "AdamsBashforthSolver",
+    "Controller",
+    "CrankNicolsonSolver",
+    "EulerSolver",
+    "ExplicitSolver",
+    "ImplicitSolver",
+    "RungeKuttaSolver",
     "ScipySolver",
     "registered_solvers",
 ]

@@ -7,15 +7,17 @@ TODO: Implement this not as a separate solver but as a separate numba-mpi backen
 
 from __future__ import annotations
 
-from typing import Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 
-from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
-from ..tools.typing import BackendType, TField
-from .base import AdaptiveStepperType, FixedStepperType
 from .explicit import EulerSolver
+
+if TYPE_CHECKING:
+    from ..pdes.base import PDEBase
+    from ..tools.typing import BackendType, TField
+    from .base import AdaptiveStepperType, FixedStepperType
 
 
 class ExplicitMPISolver(EulerSolver):
@@ -142,7 +144,7 @@ class ExplicitMPISolver(EulerSolver):
         if not mpi.parallel_run:
             self._logger.warning(
                 "Using `ExplicitMPISolver` without a proper multiprocessing run. "
-                "Scripts need to be started with `mpiexec` to profit from multiple cores"
+                "Scripts need to be started with `mpiexec` to use multiple cores."
             )
 
         if dt is None:
@@ -206,7 +208,8 @@ class ExplicitMPISolver(EulerSolver):
                 dt_list = self.mesh.allgather(dt)
                 if not np.isclose(min(dt_list), max(dt_list)):
                     # abort simulations in all nodes when they went out of sync
-                    raise RuntimeError(f"Processes went out of sync: dt={dt_list}")
+                    msg = f"Processes went out of sync: dt={dt_list}"
+                    raise RuntimeError(msg)
 
                 # collect the data from all nodes
                 post_step_data_list = self.mesh.gather(post_step_data)
@@ -230,7 +233,7 @@ class ExplicitMPISolver(EulerSolver):
                 post_step_data = self.info["post_step_data"]
 
                 # calculate number of steps (which is at least 1)
-                steps = max(1, int(round((t_end - t_start) / dt)))
+                steps = max(1, round((t_end - t_start) / dt))
 
                 # distribute the number of steps and the field to all nodes
                 steps = self.mesh.broadcast(steps)
@@ -244,7 +247,8 @@ class ExplicitMPISolver(EulerSolver):
                 # check whether t_last is the same for all processes
                 t_list = self.mesh.gather(t_last)
                 if t_list is not None and not np.isclose(min(t_list), max(t_list)):
-                    raise RuntimeError(f"Processes went out of sync: t_last={t_list}")
+                    msg = f"Processes went out of sync: t_last={t_list}"
+                    raise RuntimeError(msg)
 
                 # collect the data from all nodes
                 post_step_data_list = self.mesh.gather(post_step_data)

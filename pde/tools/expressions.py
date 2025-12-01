@@ -24,8 +24,7 @@ import math
 import numbers
 import re
 from abc import ABCMeta, abstractmethod
-from collections.abc import Mapping, Sequence
-from typing import Any, Callable, Union
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 import numpy as np
 import sympy
@@ -37,13 +36,17 @@ from sympy.utilities.lambdify import _get_namespace
 from ..fields.base import FieldBase
 from ..fields.collection import FieldCollection
 from ..fields.datafield_base import DataFieldBase
-from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
-from .misc import Number, number, number_array
+from .misc import number, number_array
 from .numba import jit
-from .typing import NumberOrArray, NumericArray
+from .typing import Number, NumberOrArray, NumericArray
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
+    from ..grids.boundaries.axes import BoundariesData
 
 try:
     from numba.core.extending import overload
@@ -84,7 +87,7 @@ def parse_number(
     except TypeError as err:
         if not err.args:
             err.args = ("",)
-        err.args = err.args + (f"Expression: `{expr}`",)
+        err.args = (*err.args, f"Expression: `{expr}`")
         raise
 
     return value
@@ -103,12 +106,11 @@ def _heaviside_implementation_ufunc(x1, x2):
     """
     if np.isnan(x1):
         return math.nan
-    elif x1 == 0:
+    if x1 == 0:
         return x2
-    elif x1 < 0:
+    if x1 < 0:
         return 0.0
-    else:
-        return 1.0
+    return 1.0
 
 
 def _heaviside_implementation(x1, x2):
@@ -203,8 +205,7 @@ def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.B
         """Helper function substituting expressions."""
         if isinstance(expr, list):
             return [substitute(e) for e in expr]
-        else:
-            return expr.subs(sympy.Function("heaviside"), sympy.Heaviside)
+        return expr.subs(sympy.Function("heaviside"), sympy.Heaviside)
 
     return substitute(expr)
 
@@ -300,8 +301,7 @@ class ExpressionBase(metaclass=ABCMeta):
         difference = sympy.simplify(self._sympy_expr - other._sympy_expr)
         if isinstance(self._sympy_expr, sympy.NDimArray):
             return difference == sympy.Array(np.zeros(self._sympy_expr.shape, int))
-        else:
-            return difference == 0
+        return difference == 0
 
     @property
     def _free_symbols(self) -> set:
@@ -366,9 +366,10 @@ class ExpressionBase(metaclass=ABCMeta):
 
         args = set(args) - found - set(self.consts)
         if len(args) > 0:
-            raise RuntimeError(
+            msg = (
                 f"Arguments {args} were not defined in expression signature {signature}"
             )
+            raise RuntimeError(msg)
 
     @property
     def expression(self) -> str:
@@ -397,8 +398,7 @@ class ExpressionBase(metaclass=ABCMeta):
         """
         if self.constant:
             return False
-        else:
-            return any(variable == str(symbol) for symbol in self._free_symbols)
+        return any(variable == str(symbol) for symbol in self._free_symbols)
 
     def _get_function(
         self,
@@ -434,8 +434,7 @@ class ExpressionBase(metaclass=ABCMeta):
                 if isinstance(func, np.ufunc):
                     # this is a work-around that allows to compile numpy ufuncs
                     return jit(lambda *args: func(*args))
-                else:
-                    return jit(func)
+                return jit(func)
 
             user_functions = {k: compile_func(v) for k, v in user_functions.items()}
 
@@ -596,7 +595,8 @@ class ScalarExpression(ExpressionBase):
 
         elif callable(expression):
             # expression is some other callable -> not allowed anymore
-            raise TypeError("Expression must be a string and not a function")
+            msg = "Expression must be a string and not a function"
+            raise TypeError(msg)
 
         elif isinstance(expression, numbers.Number):
             # expression is a simple number
@@ -651,8 +651,8 @@ class ScalarExpression(ExpressionBase):
 
             return value
 
-        else:
-            raise TypeError("Only constant expressions have a defined value")
+        msg = "Only constant expressions have a defined value"
+        raise TypeError(msg)
 
     @property
     def is_zero(self) -> bool:
@@ -679,8 +679,7 @@ class ScalarExpression(ExpressionBase):
         """
         if self.allow_indexed:
             return re.sub(r"(\w+)(\[\w+\])", r"IndexedBase(\1)\2", expression)
-        else:
-            return expression
+        return expression
 
     def _var_indexed(self, var: str) -> bool:
         """Checks whether the variable `var` is used in an indexed form."""
@@ -698,7 +697,8 @@ class ScalarExpression(ExpressionBase):
                 expression=0, signature=self.vars, allow_indexed=self.allow_indexed
             )
         if self.allow_indexed and self._var_indexed(var):
-            raise NotImplementedError("Cannot differentiate with respect to vector")
+            msg = "Cannot differentiate with respect to vector"
+            raise NotImplementedError(msg)
 
         # turn variable into sympy object and treat an indexed variable separately
         var_expr = self._prepare_expression(var)
@@ -727,9 +727,8 @@ class ScalarExpression(ExpressionBase):
             return TensorExpression(expression=expression, signature=self.vars)
 
         if self.allow_indexed and any(self._var_indexed(var) for var in self.vars):
-            raise RuntimeError(
-                "Cannot calculate gradient for expressions with indexed variables"
-            )
+            msg = "Cannot calculate gradient for expressions with indexed variables"
+            raise RuntimeError(msg)
 
         grad = sympy.Array([self._sympy_expr.diff(sympy.Symbol(v)) for v in self.vars])
         return TensorExpression(
@@ -826,8 +825,7 @@ class TensorExpression(ExpressionBase):
         if self.shape == (0,):
             # work-around for sympy bug (github.com/sympy/sympy/issues/19829)
             return f'{self.__class__.__name__}("[]", signature={self.vars})'
-        else:
-            return super().__repr__()
+        return super().__repr__()
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -847,13 +845,12 @@ class TensorExpression(ExpressionBase):
                 user_funcs=self.user_funcs,
                 consts=self.consts,
             )
-        else:
-            return ScalarExpression(
-                expr,
-                signature=self.vars,
-                user_funcs=self.user_funcs,
-                consts=self.consts,
-            )
+        return ScalarExpression(
+            expr,
+            signature=self.vars,
+            user_funcs=self.user_funcs,
+            consts=self.consts,
+        )
 
     @property
     def value(self):
@@ -875,8 +872,8 @@ class TensorExpression(ExpressionBase):
 
             return value
 
-        else:
-            raise TypeError("Only constant expressions have a defined value")
+        msg = "Only constant expressions have a defined value"
+        raise TypeError(msg)
 
     def differentiate(self, var: str) -> TensorExpression:
         """Return the expression differentiated with respect to var."""
@@ -891,7 +888,7 @@ class TensorExpression(ExpressionBase):
     @cached_property()
     def derivatives(self) -> TensorExpression:
         """Differentiate the expression with respect to all variables."""
-        shape = (len(self.vars),) + self.shape
+        shape = (len(self.vars), *self.shape)
 
         if self.constant:
             # return empty expression
@@ -916,12 +913,13 @@ class TensorExpression(ExpressionBase):
                 or whether they are supplied individually.
         """
         if not isinstance(self._sympy_expr, sympy.Array):
-            raise TypeError("Expression must be an array")
+            msg = "Expression must be an array"
+            raise TypeError(msg)
         variables = ", ".join(v for v in self.vars)
         shape = self._sympy_expr.shape
 
         lines = [
-            f"    out[{str(idx + (...,))[1:-1]}] = {self._sympy_expr[idx]}"
+            f"    out[{str((*idx, ...))[1:-1]}] = {self._sympy_expr[idx]}"
             for idx in np.ndindex(*self._sympy_expr.shape)
         ]
         # TODO: replace the np.ndindex with np.ndenumerate eventually. This does not
@@ -1040,12 +1038,14 @@ def evaluate(
         fields_keys = fields.labels
         fields_values = fields.fields
         if len(set(fields_keys)) != len(fields_values):
-            raise RuntimeError("Field names need to be unique")
+            msg = "Field names need to be unique"
+            raise RuntimeError(msg)
     elif isinstance(fields, dict):
         fields_keys = fields.keys()  # type: ignore
         fields_values = fields.values()  # type: ignore
     else:
-        raise TypeError("`fields` must be dict or FieldCollection")
+        msg = "`fields` must be dict or FieldCollection"
+        raise TypeError(msg)
 
     # turn the expression strings into sympy expressions
     expr = ScalarExpression(expression, user_funcs=user_funcs, consts=consts)
@@ -1074,14 +1074,16 @@ def evaluate(
         else:
             field.grid.assert_grid_compatible(grid)
     if grid is None:
-        raise ValueError("No fields given")
+        msg = "No fields given"
+        raise ValueError(msg)
 
     # prepare the differential operators
 
     # check whether PDE has variables with same names as grid axes
     name_overlap = set(fields_keys) & set(grid.axes)
     if name_overlap:
-        raise ValueError(f"Coordinate {name_overlap} cannot be used as field name")
+        msg = f"Coordinate {name_overlap} cannot be used as field name"
+        raise ValueError(msg)
 
     # obtain the (differential) operators
     bcs_used = set()
@@ -1103,9 +1105,10 @@ def evaluate(
                     bcs_used.add(bc_key)  # mark it as being used
                     break
             else:
-                raise RuntimeError(
+                msg = (
                     f"Could not find suitable boundary condition for function `{func}`"
                 )
+                raise RuntimeError(msg)
 
             # Tell the user what BC we chose for a given operator
             _base_logger.info("Using BC `%s` for operator `%s` in expression", bc, func)
@@ -1129,7 +1132,7 @@ def evaluate(
         _base_logger.warning("Unused BCs: %s", sorted(bcs_left))
 
     # obtain the function to calculate the right hand side
-    signature = tuple(fields_keys) + ("none", "bc_args")
+    signature = (*tuple(fields_keys), "none", "bc_args")
 
     # check whether this function depends on additional input
     if any(expr.depends_on(c) for c in grid.axes):
@@ -1148,7 +1151,8 @@ def evaluate(
     extra_vars = set(expr.vars) - set(signature)
     if extra_vars:
         extra_vars_str = ", ".join(sorted(extra_vars))
-        raise RuntimeError(f"Undefined variable in expression: {extra_vars_str}")
+        msg = f"Undefined variable in expression: {extra_vars_str}"
+        raise RuntimeError(msg)
     expr.vars = signature
 
     _base_logger.info("Expression has signature %s", signature)
@@ -1172,6 +1176,6 @@ __all__ = [
     "ExpressionBase",
     "ScalarExpression",
     "TensorExpression",
-    "parse_number",
     "evaluate",
+    "parse_number",
 ]

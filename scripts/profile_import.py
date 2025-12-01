@@ -14,6 +14,6 @@ sys.path.insert(0, str(PACKAGE_PATH))
 from pyinstrument import Profiler
 
 with Profiler() as profiler:
-    import pde
+    pass
 
 print(profiler.open_in_browser())

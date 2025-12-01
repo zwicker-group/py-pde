@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import warnings
-from typing import Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 import numba as nb
 import numpy as np
@@ -28,7 +28,9 @@ from numba.typed import Dict as NumbaDict
 
 from .. import config
 from ..tools.misc import decorator_arguments
-from .typing import Number, NumericArray
+
+if TYPE_CHECKING:
+    from .typing import Number, NumericArray
 
 # numba version as a list of integers
 NUMBA_VERSION = [int(v) for v in nb.__version__.split(".")[:2]]
@@ -140,8 +142,7 @@ def flat_idx(arr: NumericArray, i: int) -> Number:
     """
     if np.isscalar(arr):
         return arr  # type: ignore
-    else:
-        return arr.flat[i]
+    return arr.flat[i]
 
 
 @overload(flat_idx)
@@ -149,8 +150,7 @@ def ol_flat_idx(arr, i):
     """Helper function allowing indexing of scalars as if they arrays."""
     if isinstance(arr, nb.types.Number):
         return lambda arr, i: arr
-    else:
-        return lambda arr, i: arr.flat[i]
+    return lambda arr, i: arr.flat[i]
 
 
 @decorator_arguments
@@ -303,18 +303,19 @@ def get_common_numba_dtype(*args):
     for arg in args:
         if isinstance(arg, scalars.Complex):
             return nb.complex128
-        elif isinstance(arg, npytypes.Array):
+        if isinstance(arg, npytypes.Array):
             if isinstance(arg.dtype, scalars.Complex):
                 return nb.complex128
         else:
-            raise NotImplementedError(f"Cannot handle type {arg.__class__}")
+            msg = f"Cannot handle type {arg.__class__}"
+            raise NotImplementedError(msg)
     return nb.double
 
 
 @jit(nogil=True)
 def _random_seed_compiled(seed: int) -> None:
     """Sets the seed of the random number generator of numba."""
-    np.random.seed(seed)
+    np.random.seed(seed)  # noqa: NPY002
 
 
 def random_seed(seed: int = 0) -> None:
@@ -323,12 +324,13 @@ def random_seed(seed: int = 0) -> None:
     Args:
         seed (int): Sets random seed
     """
-    np.random.seed(seed)
+    np.random.seed(seed)  # noqa: NPY002
     if not nb.config.DISABLE_JIT:
         _random_seed_compiled(seed)
 
 
 if NUMBA_VERSION < [0, 59]:
     warnings.warn(
-        "Your numba version is outdated. Please install at least version 0.59"
+        "Your numba version is outdated. Please install at least version 0.59",
+        stacklevel=2,
     )

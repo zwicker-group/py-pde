@@ -35,7 +35,7 @@ def get_progress_bar_class(fancy: bool = True):
         # try using notebook progress bar
         try:
             # check whether progress bar can use a widget
-            import ipywidgets
+            import ipywidgets  # noqa: F401
         except ImportError:
             # widgets are not available => use standard tqdm
             progress_bar_class = tqdm.tqdm
@@ -130,7 +130,7 @@ class JupyterOutput(OutputBase):
 def in_jupyter_notebook() -> bool:
     """Checks whether we are in a jupyter notebook."""
     try:
-        from IPython import display, get_ipython
+        from IPython import display, get_ipython  # noqa: F401
     except ImportError:
         return False
 

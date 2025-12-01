@@ -24,15 +24,15 @@ import errno
 import functools
 import importlib
 import json
-import os
-import warnings
 from pathlib import Path
-from typing import Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 import numpy as np
-from numpy.typing import DTypeLike
 
-from .typing import ArrayLike, Number, NumericArray
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from .typing import ArrayLike, Number, NumericArray
 
 TFunc = TypeVar("TFunc", bound=Callable[..., Any])
 
@@ -87,9 +87,8 @@ def decorator_arguments(decorator: Callable) -> Callable:
         if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
             # actual decorated function
             return decorator(args[0])
-        else:
-            # decorator arguments
-            return lambda realf: decorator(realf, *args, **kwargs)
+        # decorator arguments
+        return lambda realf: decorator(realf, *args, **kwargs)
 
     return new_decorator
 
@@ -108,9 +107,8 @@ def import_class(identifier: str):
     if module_path:
         module = importlib.import_module(module_path)
         return getattr(module, class_name)
-    else:
-        # this happens when identifier does not contain a dot
-        return importlib.import_module(class_name)
+    # this happens when identifier does not contain a dot
+    return importlib.import_module(class_name)
 
 
 class classproperty(property):
@@ -161,10 +159,12 @@ class classproperty(property):
         return super().getter(self._wrap_fget(fget))
 
     def setter(self, fset):
-        raise NotImplementedError("classproperty is read-only")
+        msg = "classproperty is read-only"
+        raise NotImplementedError(msg)
 
     def deleter(self, fdel):
-        raise NotImplementedError("classproperty is read-only")
+        msg = "classproperty is read-only"
+        raise NotImplementedError(msg)
 
     @staticmethod
     def _wrap_fget(orig_fget):
@@ -261,7 +261,7 @@ def hdf_write_attributes(
     for key, value in attributes.items():
         try:
             value_serialized = json.dumps(value)
-        except TypeError:
+        except TypeError:  # noqa: PERF203
             if raise_serialization_error:
                 raise
         else:

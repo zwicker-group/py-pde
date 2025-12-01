@@ -8,12 +8,8 @@ from __future__ import annotations
 import inspect
 import logging
 from abc import abstractmethod
-from typing import Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
-from ..fields import DataFieldBase
-from ..grids import BoundariesBase, GridBase
-from ..pdes.base import PDEBase
-from ..solvers.base import SolverBase
 from ..tools.typing import (
     DataSetter,
     FloatingArray,
@@ -25,6 +21,12 @@ from ..tools.typing import (
     OperatorInfo,
     TField,
 )
+
+if TYPE_CHECKING:
+    from ..fields import DataFieldBase
+    from ..grids import BoundariesBase, GridBase
+    from ..pdes.base import PDEBase
+    from ..solvers.base import SolverBase
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
@@ -137,9 +139,8 @@ class BackendBase:
                 return backends._operators[self.name][cls][operator]
 
         # throw an error since operator was not found
-        raise NotImplementedError(
-            f"Operator '{operator}' is not defined for backend {self.name}"
-        )
+        msg = f"Operator '{operator}' is not defined for backend {self.name}"
+        raise NotImplementedError(msg)
 
     @abstractmethod
     def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
@@ -155,9 +156,8 @@ class BackendBase:
             sets the ghost cells of the full data, potentially using additional
             information in `args` (e.g., the time `t` during solving a PDE)
         """
-        raise NotImplementedError(
-            f"Ghost cell setter not defined for backend {self.name}"
-        )
+        msg = f"Ghost cell setter not defined for backend {self.name}"
+        raise NotImplementedError(msg)
 
     def make_data_setter(
         self, grid: GridBase, bcs: BoundariesBase | None = None
@@ -178,7 +178,8 @@ class BackendBase:
                 to have the correct dimensions, which are not checked. If `bcs` are
                 given, a third argument is allowed, which sets arguments for the BCs.
         """
-        raise NotImplementedError(f"Data setter not defined for backend {self.name}")
+        msg = f"Data setter not defined for backend {self.name}"
+        raise NotImplementedError(msg)
 
     def make_operator(
         self,
@@ -215,7 +216,8 @@ class BackendBase:
             callable: the function that applies the operator. This function has the
             signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
-        raise NotImplementedError(f"Operators not defined for backend {self.name}")
+        msg = f"Operators not defined for backend {self.name}"
+        raise NotImplementedError(msg)
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
@@ -236,7 +238,8 @@ class BackendBase:
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written.
         """
-        raise NotImplementedError(f"Inner product not defined for backend {self.name}")
+        msg = f"Inner product not defined for backend {self.name}"
+        raise NotImplementedError(msg)
 
     def make_outer_prod_operator(
         self, field: DataFieldBase
@@ -256,7 +259,8 @@ class BackendBase:
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written.
         """
-        raise NotImplementedError(f"Outer product not defined for backend {self.name}")
+        msg = f"Outer product not defined for backend {self.name}"
+        raise NotImplementedError(msg)
 
     def make_interpolator(
         self,
@@ -283,7 +287,8 @@ class BackendBase:
             A function which returns interpolated values when called with arbitrary
             positions within the space of the grid.
         """
-        raise NotImplementedError(f"Interpolator not defined for backend {self.name}")
+        msg = f"Interpolator not defined for backend {self.name}"
+        raise NotImplementedError(msg)
 
     def make_pde_rhs(
         self, eq: PDEBase, state: TField, **kwargs
@@ -299,9 +304,8 @@ class BackendBase:
         Returns:
             Function returning deterministic part of the right hand side of the PDE
         """
-        raise NotImplementedError(
-            f"PDE right hand side not defined for backend {self.name}"
-        )
+        msg = f"PDE right hand side not defined for backend {self.name}"
+        raise NotImplementedError(msg)
 
     def make_sde_rhs(
         self, eq: PDEBase, state: TField, **kwargs
@@ -318,9 +322,8 @@ class BackendBase:
             Function returning deterministic part of the right hand side of the PDE
             together with a noise realization.
         """
-        raise NotImplementedError(
-            f"SDE right hand side not defined for backend {self.name}"
-        )
+        msg = f"SDE right hand side not defined for backend {self.name}"
+        raise NotImplementedError(msg)
 
     def make_inner_stepper(
         self,
@@ -345,4 +348,5 @@ class BackendBase:
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
-        raise NotImplementedError(f"Steppers are not defined for backend {self.name}")
+        msg = f"Steppers are not defined for backend {self.name}"
+        raise NotImplementedError(msg)

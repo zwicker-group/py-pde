@@ -13,7 +13,6 @@ import numpy as np
 
 from pde import CylindricalSymGrid, ScalarField, SphericalSymGrid, UnitGrid, config
 from pde.grids.boundaries import BoundariesList
-from pde.grids.operators.cartesian import _make_laplace_numba_2d
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.numba import jit
 
@@ -89,8 +88,7 @@ def custom_laplace_2d(shape, periodic, dx=1):
     """Make laplace operator with Neumann or periodic boundary conditions."""
     if periodic:
         return custom_laplace_2d_periodic(shape, dx=dx)
-    else:
-        return custom_laplace_2d_neumann(shape, dx=dx)
+    return custom_laplace_2d_neumann(shape, dx=dx)
 
 
 def optimized_laplace_2d(bcs):
@@ -181,7 +179,8 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
         elif method in {"numba", "scipy"}:
             laplace = grid.make_operator("laplace", bc=bcs, backend=method)
         else:
-            raise ValueError(f"Unknown method `{method}`")
+            msg = f"Unknown method `{method}`"
+            raise ValueError(msg)
 
         # call once to pre-compile and test result
         if method == "OPTIMIZED":
@@ -215,7 +214,8 @@ def test_cylindrical(shape: tuple[int, int]) -> None:
         elif method == "numba":
             laplace = grid.make_operator("laplace", bc=bcs)
         else:
-            raise ValueError(f"Unknown method `{method}`")
+            msg = f"Unknown method `{method}`"
+            raise ValueError(msg)
         # call once to pre-compile and test result
         np.testing.assert_allclose(laplace(field.data), expected.data)
         speed = estimate_computation_speed(laplace, field.data)
@@ -239,7 +239,7 @@ def test_spherical(shape: int) -> None:
         laplace = grid.make_operator("laplace", bcs, conservative=conservative)
         laplace(field.data)  # call once to pre-compile
         speed = estimate_computation_speed(laplace, field.data)
-        print(f" numba (conservative={str(conservative):<5}): {int(speed):>9d}")
+        print(f" numba (conservative={conservative!s:<5}): {int(speed):>9d}")
     print()
 
 

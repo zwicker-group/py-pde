@@ -12,9 +12,9 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .base import StorageBase
+from .base import StorageBase  # noqa: F401
 from .file import FileStorage
-from .memory import MemoryStorage, get_memory_storage
+from .memory import MemoryStorage, get_memory_storage  # noqa: F401
 from .movie import MovieStorage
 
 __all__ = ["FileStorage", "MemoryStorage", "MovieStorage"]
@@ -25,4 +25,4 @@ try:
 except ImportError:
     pass
 else:
-    __all__.append("ModelrunnerStorage")
+    __all__ += ["ModelrunnerStorage"]

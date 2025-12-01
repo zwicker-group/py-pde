@@ -13,7 +13,7 @@ from pde.tools import mpi
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 @pytest.mark.parametrize(
-    "adaptive, decomposition",
+    ("adaptive", "decomposition"),
     [
         (False, "auto"),
         (True, [1, -1]),

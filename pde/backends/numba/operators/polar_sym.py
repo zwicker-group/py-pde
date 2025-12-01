@@ -15,13 +15,15 @@ r"""This module implements differential operators on polar grids.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from ....grids.spherical import PolarSymGrid
 from ....tools.docstrings import fill_in_docstring
 from ....tools.numba import jit
-from ....tools.typing import NumericArray, OperatorType
 from ...registry import backends
+
+if TYPE_CHECKING:
+    from ....tools.typing import NumericArray, OperatorType
 
 
 @backends.register_operator("numba", PolarSymGrid, "laplace", rank_in=0, rank_out=0)
@@ -84,7 +86,8 @@ def make_gradient(
     elif method in {"forward", "backward"}:
         scale_r = 1 / grid.discretization[0]
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     @jit
     def gradient(arr: NumericArray, out: NumericArray) -> None:

@@ -15,14 +15,18 @@ r"""This module implements differential operators on cylindrical grids.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numba as nb
 
 from .... import config
 from ....grids.cylindrical import CylindricalSymGrid
 from ....tools.docstrings import fill_in_docstring
 from ....tools.numba import jit
-from ....tools.typing import NumericArray, OperatorType
 from ...registry import backends
+
+if TYPE_CHECKING:
+    from ....tools.typing import NumericArray, OperatorType
 
 
 @backends.register_operator(

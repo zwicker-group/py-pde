@@ -15,4 +15,4 @@ from .backend import ScipyBackend
 backends.add(ScipyBackend("scipy"))
 
 # register all the standard operators
-from . import operators
+from . import operators  # noqa: F401

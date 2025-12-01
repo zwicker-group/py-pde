@@ -8,13 +8,16 @@ from __future__ import annotations
 import importlib
 import logging
 from collections import defaultdict
-from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .. import config
-from ..grids import GridBase
 from ..tools.typing import OperatorFactory, OperatorInfo
 from .base import BackendBase
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from ..grids import GridBase
 
 _RESERVED_NAMES = {
     "auto",
@@ -58,7 +61,8 @@ class BackendRegistry:
             if isinstance(self._backends[name], str):
                 _logger.info("Redefining backend `%s`", name)
             else:
-                raise RuntimeError("Cannot register package for loaded backend")
+                msg = "Cannot register package for loaded backend"
+                raise RuntimeError(msg)
         self._backends[name] = package_path
 
     def add(self, backend: BackendBase) -> None:
@@ -97,7 +101,8 @@ class BackendRegistry:
         backend_obj = self._backends.get(name, None)
         if backend_obj is None:
             backends = ", ".join(self._backends.keys())
-            raise KeyError(f"Backend `{name}` not in [{backends}]")
+            msg = f"Backend `{name}` not in [{backends}]"
+            raise KeyError(msg)
 
         # load the backend from a python package if necessary
         if isinstance(backend_obj, str):
@@ -170,11 +175,10 @@ class BackendRegistry:
         if factory_func is None:
             # method is used as a decorator, so return the helper function
             return register_operator
-        else:
-            # method is used directly
-            register_operator(factory_func)
-            return None
+        # method is used directly
+        register_operator(factory_func)
+        return None
 
 
-# initiate the backend registry – there should only be one instance of this class
+# initiate the backend registry - there should only be one instance of this class
 backends = BackendRegistry()

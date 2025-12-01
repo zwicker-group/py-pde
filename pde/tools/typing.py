@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar, Union
 
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike  # noqa: F401
 
 if TYPE_CHECKING:
     from ..fields import DataFieldBase, FieldCollection

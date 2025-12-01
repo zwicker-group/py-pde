@@ -13,19 +13,27 @@ from inspect import isabstract
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
 import numpy as np
-from numpy.typing import DTypeLike
+from typing_extensions import Self
 
 from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import Number, number_array
+from ..tools.misc import number_array
 from ..tools.plotting import PlotReference, plot_on_axes
 from ..tools.spectral import CorrelationType, make_correlated_noise
-from ..tools.typing import ArrayLike, FloatingArray, NumberOrArray, NumericArray
 from .base import FieldBase, RankError
 
 if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import (
+        ArrayLike,
+        FloatingArray,
+        Number,
+        NumberOrArray,
+        NumericArray,
+    )
     from .scalar import ScalarField
 
 
@@ -73,7 +81,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif with_ghost_cells:
             # use full data without copying (unless necessary)
             if data is None or isinstance(data, str):
-                raise ValueError("`data` must be supplied if with_ghost_cells==True")
+                msg = "`data` must be supplied if with_ghost_cells==True"
+                raise ValueError(msg)
             data_arr = number_array(data, dtype=dtype, copy=None)
             super().__init__(grid, data=data_arr, label=label)
 
@@ -95,7 +104,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 elif data == "ones":
                     data_arr = np.ones(full_shape, dtype=dtype)
                 else:
-                    raise ValueError(f"Unknown data '{data}'")
+                    msg = f"Unknown data '{data}'"
+                    raise ValueError(msg)
                 super().__init__(grid, data=data_arr, label=label)
 
             elif isinstance(data, DataFieldBase):
@@ -134,7 +144,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_uniform(
-        cls: type[TDataField],
+        cls,
         grid: GridBase,
         vmin: float = 0,
         vmax: float = 1,
@@ -142,7 +152,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: str | None = None,
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
-    ) -> TDataField:
+    ) -> Self:
         """Create field with uncorrelated uniform distributed random values.
 
         A complex field is returned when `vmin` or `vmax` is a complex number. In this
@@ -188,7 +198,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_normal(
-        cls: type[TDataField],
+        cls,
         grid: GridBase,
         mean: float = 0,
         std: float = 1,
@@ -199,7 +209,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
         **kwargs,
-    ) -> TDataField:
+    ) -> Self:
         r"""Creates Gaussian random field with normal distributed random values.
 
         A complex field is returned when either `mean` or `std` is a complex number. In
@@ -257,7 +267,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             :code:`none`      No correlation, :math:`C(k) = \delta(k)`
 
             :code:`gaussian`  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length
-                              scale :math:`\lambda` set by argument :code:`length_scale`.
+                              scale :math:`\lambda` set by argument :code:`length_scale`
 
             :code:`power law` :math:`C(k) = k^{\nu/2}` with exponent :math:`\nu` set by
                               argument :code:`exponent`.
@@ -304,7 +314,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif scaling == "physical":
             scale = 1 / np.sqrt(grid.cell_volumes)
         else:
-            raise ValueError(f"Unknown noise scaling {scaling}")
+            msg = f"Unknown noise scaling {scaling}"
+            raise ValueError(msg)
 
         if np.iscomplexobj(mean) or np.iscomplexobj(std):
             # create complex random numbers for the field
@@ -319,7 +330,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_harmonic(
-        cls: type[TDataField],
+        cls,
         grid: GridBase,
         modes: int = 3,
         harmonic=np.cos,
@@ -328,7 +339,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: str | None = None,
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
-    ) -> TDataField:
+    ) -> Self:
         r"""Create a random field build from harmonics.
 
         The resulting fields will be highly correlated in space and can thus
@@ -394,7 +405,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_colored(
-        cls: type[TDataField],
+        cls,
         grid: GridBase,
         exponent: float = 0,
         scale: float = 1,
@@ -402,7 +413,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: str | None = None,
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
-    ) -> TDataField:
+    ) -> Self:
         r"""Create a field of random values with colored noise.
 
         The spatially correlated values obey
@@ -436,6 +447,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             "`random_colored` method is deprecated. Use `random_normal` with "
             "correlation='power law' instead",
             DeprecationWarning,
+            stacklevel=2,
         )
 
         # get function making colored noise
@@ -472,14 +484,15 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 and field_cls.rank == rank
             ):
                 return field_cls
-        raise RuntimeError(f"Could not find field class for rank {rank}")
+        msg = f"Could not find field class for rank {rank}"
+        raise RuntimeError(msg)
 
     @classmethod
     def from_state(
-        cls: type[TDataField],
+        cls,
         attributes: dict[str, Any],
         data: NumericArray | None = None,
-    ) -> TDataField:
+    ) -> Self:
         """Create a field from given state.
 
         Args:
@@ -499,11 +512,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return cls(attributes.pop("grid"), data=data, **attributes)
 
     def copy(
-        self: TDataField,
+        self,
         *,
         label: str | None = None,
         dtype: DTypeLike | None = None,
-    ) -> TDataField:
+    ) -> Self:
         """Return a copy of the field.
 
         This method creates a new instance of the field with the same grid and data.
@@ -657,13 +670,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @fill_in_docstring
     def interpolate_to_grid(
-        self: TDataField,
+        self,
         grid: GridBase,
         *,
         bc: BoundariesData | None = None,
         fill: Number | None = None,
         label: str | None = None,
-    ) -> TDataField:
+    ) -> Self:
         """Interpolate the data of this field to another grid.
 
         Args:
@@ -685,7 +698,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             Field of the same rank as the current one.
         """
-        raise NotImplementedError(f"Cannot interpolate {self.__class__.__name__}")
+        msg = f"Cannot interpolate {self.__class__.__name__}"
+        raise NotImplementedError(msg)
 
     def insert(self, point: FloatingArray, amount: ArrayLike) -> None:
         """Adds an (integrated) value to the field at an interpolated position.
@@ -707,7 +721,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         grid_dim = len(grid.axes)
 
         if point.size != grid_dim or point.ndim != 1:
-            raise DimensionError(f"Dimension mismatch for point {point}")
+            msg = f"Dimension mismatch for point {point}"
+            raise DimensionError(msg)
 
         # determine the grid coordinates next to the chosen points
         low = np.array(grid.axes_bounds)[:, 0]
@@ -733,12 +748,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 cells.append((tuple(coords), weight))
 
         if total_weight == 0:
-            raise DomainError("Point lies outside grid")
+            msg = "Point lies outside grid"
+            raise DomainError(msg)
 
         # alter each point in second iteration
         for coords, weight in cells:
             chng = weight * amount / (total_weight * grid.cell_volumes[coords])
-            self.data[(Ellipsis,) + coords] += chng
+            self.data[(Ellipsis, *coords)] += chng
 
     @fill_in_docstring
     def get_boundary_values(
@@ -769,8 +785,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             l_wall[axis] = 1
             l_ghost[axis] = 0
-        i_wall = (...,) + tuple(l_wall)
-        i_ghost = (...,) + tuple(l_ghost)
+        i_wall = (..., *tuple(l_wall))
+        i_ghost = (..., *tuple(l_ghost))
 
         return (self._data_full[i_wall] + self._data_full[i_ghost]) / 2  # type: ignore
 
@@ -842,10 +858,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         if self.rank == 0:
             return abs(self.average)  # type: ignore
-        elif self.rank > 0:
+        if self.rank > 0:
             return abs(self.to_scalar().average)  # type: ignore
-        else:
-            raise AssertionError("Rank must be non-negative")
+        msg = "Rank must be non-negative"
+        raise AssertionError(msg)
 
     @fill_in_docstring
     def apply_operator(
@@ -894,7 +910,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if out is None:
             out = out_cls(self.grid, data="empty", label=label, dtype=self.dtype)
         elif not isinstance(out, out_cls):
-            raise RankError(f"`out` must be a {out_cls.__name__}")
+            msg = f"`out` must be a {out_cls.__name__}"
+            raise RankError(msg)
         else:
             self.grid.assert_grid_compatible(out.grid)
             if label is not None:
@@ -934,12 +951,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return backends[backend].make_inner_prod_operator(self, conjugate=conjugate)
 
     def smooth(
-        self: TDataField,
+        self,
         sigma: float = 1,
         *,
-        out: TDataField | None = None,
+        out: Self | None = None,
         label: str | None = None,
-    ) -> TDataField:
+    ) -> Self:
         """Applies Gaussian smoothing with the given standard deviation.
 
         This function respects periodic boundary conditions of the underlying grid,
@@ -990,7 +1007,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         # extract the line data
         data = self.grid.get_line_data(scalar_data, extract=extract)
-        if "label_y" in data and data["label_y"]:
+        if data.get("label_y"):
             if self.label:
                 data["label_y"] = f"{self.label} ({data['label_y']})"
         else:
@@ -1110,7 +1127,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             line2d.set_ydata(line_data["data_y"].real)
 
         else:
-            raise ValueError(f"Unsupported plot reference {reference}")
+            msg = f"Unsupported plot reference {reference}"
+            raise TypeError(msg)
 
     def _plot_image(
         self,
@@ -1261,7 +1279,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             )
 
         else:
-            raise ValueError(f"Vector plot `{method}` is not supported.")
+            msg = f"Vector plot `{method}` is not supported."
+            raise ValueError(msg)
         parameters["data_kws"] = data_kws  # save data parameters
 
         # set some default properties of the plot
@@ -1301,7 +1320,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             )
 
         else:
-            raise ValueError(f"Vector plot `{method}` is not supported.")
+            msg = f"Vector plot `{method}` is not supported."
+            raise ValueError(msg)
 
     def _update_plot(self, reference: PlotReference) -> None:
         """Update a plot with the current field values.
@@ -1321,7 +1341,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif isinstance(el, (mpl.quiver.Quiver, mpl.streamplot.StreamplotSet)):
             self._update_vector_plot(reference)
         else:
-            raise ValueError(f"Unknown plot element {el.__class__.__name__}")
+            msg = f"Unknown plot element {el.__class__.__name__}"
+            raise TypeError(msg)
 
     @plot_on_axes(update_method="_update_plot")
     def plot(self, kind: str = "auto", **kwargs) -> PlotReference:
@@ -1399,10 +1420,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif kind == "vector":
             reference = self._plot_vector(**kwargs)
         else:
-            raise ValueError(
+            msg = (
                 f"Unsupported plot `{kind}`. Possible choices are `image`, `line`, "
                 "`vector`, or `auto`."
             )
+            raise ValueError(msg)
 
         return reference
 
