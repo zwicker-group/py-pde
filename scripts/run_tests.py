@@ -196,11 +196,12 @@ def run_unit_tests(
         args.append("--runslow")  # also run slow tests
     if runinteractive:
         args.append("--runinteractive")  # also run interactive tests
-    if importlib.util.find_spec("numba_mpi"):
-        args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
-    else:
-        msg = "Module `numba_mpi` is required to test with MPI"
-        raise RuntimeError(msg)
+    if use_mpi:
+        if importlib.util.find_spec("numba_mpi"):
+            args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
+        else:
+            msg = "Module `numba_mpi` is required to test with MPI"
+            raise RuntimeError(msg)
 
     # run tests using multiple cores?
     if num_cores == "auto":
