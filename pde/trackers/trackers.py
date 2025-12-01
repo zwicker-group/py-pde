@@ -92,10 +92,11 @@ class CallbackTracker(TrackerBase):
         self._callback = func
         self._num_args = len(inspect.signature(func).parameters)
         if not 0 < self._num_args < 3:
-            raise ValueError(
+            msg = (
                 "`func` must be a function accepting one or two arguments, not "
                 f"{self._num_args}"
             )
+            raise ValueError(msg)
 
     def handle(self, field: FieldBase, t: float) -> None:
         """Handle data supplied to this tracker.
@@ -389,7 +390,8 @@ class PlotTracker(TransformedTrackerBase):
             self._save_movie = True
 
         else:
-            raise TypeError(f"Unknown type of `movie`: {movie.__class__.__name__}")
+            msg = f"Unknown type of `movie`: {movie.__class__.__name__}"
+            raise TypeError(msg)
 
         # determine whether to show the images interactively
         self._write_images = self._save_movie or self.output_file
@@ -438,17 +440,17 @@ class PlotTracker(TransformedTrackerBase):
                         self._update_method = "update_fig"
                     else:
                         mpl_class = plot_data.plot.mpl_class  # type: ignore
-                        raise RuntimeError(
-                            f"Unknown mpl_class on plot method: {mpl_class}"
-                        )
+                        msg = f"Unknown mpl_class on plot method: {mpl_class}"
+                        raise RuntimeError(msg)
                 else:
                     self._update_method = "update_data"
             else:
-                raise RuntimeError(
+                msg = (
                     "PlotTracker does not  work since the state of type "
                     f"{plot_data.__class__.__name__} does not use the plot protocol of "
                     "`pde.tools.plotting`."
                 )
+                raise RuntimeError(msg)
         else:
             self._update_method = "replot"
 
@@ -507,7 +509,8 @@ class PlotTracker(TransformedTrackerBase):
                     plt.gcf().tight_layout()
 
             else:
-                raise RuntimeError(f"Unknown update method `{self._update_method}`")
+                msg = f"Unknown update method `{self._update_method}`"
+                raise RuntimeError(msg)
 
         if self.output_file and self._context.fig is not None:
             self._context.fig.savefig(self.output_file)
@@ -731,7 +734,8 @@ class DataTracker(CallbackTracker):
         elif extension in {".xls", ".xlsx"}:
             self.dataframe.to_excel(filename, **kwargs)
         else:
-            raise ValueError(f"Unsupported file extension `{extension}`")
+            msg = f"Unsupported file extension `{extension}`"
+            raise ValueError(msg)
 
 
 class SteadyStateTracker(TrackerBase):
@@ -841,7 +845,8 @@ class SteadyStateTracker(TrackerBase):
                     self._progress_bar.disp(bar_style="success", check_delay=False)
                 except (TypeError, AttributeError):
                     self._progress_bar.close()
-            raise FinishedSimulation("Reached stationary state")
+            msg = "Reached stationary state"
+            raise FinishedSimulation(msg)
 
         if self.progress:
             # show progress of the convergence
@@ -910,7 +915,8 @@ class RuntimeTracker(TrackerBase):
         """
         if time.monotonic() > self.max_time:
             dt = timedelta(seconds=self.max_runtime)
-            raise FinishedSimulation(f"Reached maximal runtime of {str(dt)}")
+            msg = f"Reached maximal runtime of {str(dt)}"
+            raise FinishedSimulation(msg)
 
 
 class ConsistencyTracker(TrackerBase):
@@ -941,7 +947,8 @@ class ConsistencyTracker(TrackerBase):
                 The associated time
         """
         if not np.all(np.isfinite(field.data)):
-            raise StopIteration("Field was not finite")
+            msg = "Field was not finite"
+            raise StopIteration(msg)
 
 
 class MaterialConservationTracker(TrackerBase):

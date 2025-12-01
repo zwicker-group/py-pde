@@ -97,7 +97,8 @@ class SwiftHohenbergPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         if not isinstance(state, ScalarField):
-            raise ValueError("`state` must be ScalarField")
+            msg = "`state` must be ScalarField"
+            raise ValueError(msg)
         state_laplace = state.laplace(bc=self.bc, args={"t": t})
         state_laplace2 = state_laplace.laplace(bc=self.bc_lap, args={"t": t})
 

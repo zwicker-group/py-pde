@@ -115,29 +115,32 @@ class BoundariesList(BoundariesBase):
     def __init__(self, boundaries: list[BoundaryAxisBase]):
         """Initialize with a list of boundaries."""
         if len(boundaries) == 0:
-            raise BCDataError("List of boundaries must not be empty")
+            msg = "List of boundaries must not be empty"
+            raise BCDataError(msg)
 
         # extract grid
         self.grid = boundaries[0].grid
 
         # check dimension
         if len(boundaries) != self.grid.num_axes:
-            raise BCDataError(f"Need boundary conditions for {self.grid.num_axes} axes")
+            msg = f"Need boundary conditions for {self.grid.num_axes} axes"
+            raise BCDataError(msg)
 
         # check consistency
         for axis, boundary in enumerate(boundaries):
             if boundary.grid != self.grid:
-                raise BCDataError("BoundariesList are not defined on the same grid")
+                msg = "BoundariesList are not defined on the same grid"
+                raise BCDataError(msg)
             if boundary.axis != axis:
-                raise BCDataError(
-                    "BoundariesList need to be ordered like the respective axes"
-                )
+                msg = "BoundariesList need to be ordered like the respective axes"
+                raise BCDataError(msg)
             if boundary.periodic != self.grid.periodic[axis]:
-                raise PeriodicityError(
+                msg = (
                     "Periodicity specified in the boundaries conditions is not "
                     f"compatible with the grid ({boundary.periodic} != "
                     f"{self.grid.periodic[axis]} for axis {axis})"
                 )
+                raise PeriodicityError(msg)
 
         # create the list of boundaries
         self._axes: list[BoundaryAxisBase] = boundaries
@@ -187,7 +190,8 @@ class BoundariesList(BoundariesBase):
             for ext in ["", "-", "+"]:  # iterate all variants
                 if pattern + ext in data:
                     if repl + ext in data:
-                        raise KeyError(f"Key `{repl + ext}` is specified twice")
+                        msg = f"Key `{repl + ext}` is specified twice"
+                        raise KeyError(msg)
                     data[repl + ext] = data.pop(pattern + ext)
 
         # check specific boundary conditions for all axes
@@ -256,22 +260,25 @@ class BoundariesList(BoundariesBase):
                 # idea is that users only create boundary conditions for the full grid
                 # and that the splitting onto subgrids is only done once, automatically,
                 # and without involving calls to `from_data`
-                raise ValueError("Cannot create MPI subgrid BC from data")
+                msg = "Cannot create MPI subgrid BC from data"
+                raise ValueError(msg)
 
             if data.grid != grid:
-                raise ValueError(
+                msg = (
                     "The grid of the supplied boundary condition is incompatible with "
                     f"the current grid ({data.grid!r} != {grid!r})"
                 )
+                raise ValueError(msg)
             data.check_value_rank(rank)
             return data
 
         elif isinstance(data, BoundariesBase):
             # data seems to be given as another base class, which indicates problems
-            raise TypeError(
+            msg = (
                 "Can only use type `BoundariesList`. Use `BoundariesBase.from_data` "
                 "for more general data."
             )
+            raise TypeError(msg)
 
         elif isinstance(data, str):
             # a string implies the same boundary condition for all axes
@@ -475,9 +482,10 @@ class BoundariesList(BoundariesBase):
                     ) / 3
 
             elif self.grid.num_axes > 3:
-                raise NotImplementedError(
+                msg = (
                     f"Can't interpolate corners for grid with {self.grid.num_axes} axes"
                 )
+                raise NotImplementedError(msg)
 
     def make_ghost_cell_setter(self) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array."""
@@ -563,10 +571,11 @@ class BoundariesSetter(BoundariesBase):
             return data
 
         elif isinstance(data, BoundariesBase):
-            raise TypeError(
+            msg = (
                 "Can only use type `BoundariesSetter`. Use `BoundariesBase.from_data` "
                 "for more general data."
             )
+            raise TypeError(msg)
 
         return BoundariesSetter(data)
 

@@ -59,7 +59,8 @@ class BoundaryAxisBase:
             or not high.upper
             or low.upper
         ):
-            raise ValueError(f"Incompatible {low!r} and {high!r}")
+            msg = f"Incompatible {low!r} and {high!r}"
+            raise ValueError(msg)
 
         # check consistency with the grid
         if not (
@@ -67,7 +68,8 @@ class BoundaryAxisBase:
             == isinstance(low, _PeriodicBC)
             == isinstance(high, _PeriodicBC)
         ):
-            raise PeriodicityError("Periodicity of conditions must match grid")
+            msg = "Periodicity of conditions must match grid"
+            raise PeriodicityError(msg)
 
         self.low = low
         self.high = high
@@ -131,7 +133,8 @@ class BoundaryAxisBase:
         elif index == 1 or index is True:
             return self.high
         else:
-            raise IndexError("Index must be 0/False or 1/True")
+            msg = "Index must be 0/False or 1/True"
+            raise IndexError(msg)
 
     def __setitem__(self, index, data) -> None:
         """Set one of the sides."""
@@ -279,7 +282,8 @@ class BoundaryPair(BoundaryAxisBase):
                 d_high = data_copy.pop("high")
                 high = BCBase.from_data(grid, axis, upper=True, data=d_high, rank=rank)
                 if data_copy:
-                    raise BCDataError(f"Data items {list(data_copy)} were not used.")
+                    msg = f"Data items {list(data_copy)} were not used."
+                    raise BCDataError(msg)
             else:
                 # one condition for both sides
                 low = BCBase.from_data(grid, axis, upper=False, data=data, rank=rank)
@@ -305,10 +309,11 @@ class BoundaryPair(BoundaryAxisBase):
                 if data_len == 2:
                     # assume that data is given for each boundary
                     if data[0] == "periodic" or data[1] == "periodic":
-                        raise BCDataError(
+                        msg = (
                             f"Only one side of {grid.axes[axis]} axis was set to have "
                             "periodic boundary conditions."
                         )
+                        raise BCDataError(msg)
                     low = BCBase.from_data(
                         grid, axis, upper=False, data=data[0], rank=rank
                     )
@@ -439,5 +444,6 @@ def get_boundary_axis(
 
     # check consistency
     if bcs.periodic != grid.periodic[axis]:
-        raise PeriodicityError("Periodicity of conditions must match grid")
+        msg = "Periodicity of conditions must match grid"
+        raise PeriodicityError(msg)
     return bcs

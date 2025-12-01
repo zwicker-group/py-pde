@@ -365,7 +365,8 @@ def test_method_cache(serializer, cache_factory):
                     assert method(1) == 1
                     assert obj.counter == 3
                 else:
-                    raise ValueError(f"Unknown cache_factory `{cache_factory}`")
+                    msg = f"Unknown cache_factory `{cache_factory}`"
+                    raise ValueError(msg)
 
                 obj.counter = 0
                 # clear cache to test the second run

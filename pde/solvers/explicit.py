@@ -116,7 +116,8 @@ class ExplicitSolver(AdaptiveSolverBase):
             t_start: float, steps: int)`
         """
         if self.pde.is_sde:
-            raise RuntimeError("Runge-Kutta stepper does not support stochasticity")
+            msg = "Runge-Kutta stepper does not support stochasticity"
+            raise RuntimeError(msg)
 
         # obtain functions determining how the PDE is evolved
         rhs = self._make_pde_rhs(state, backend=self.backend)
@@ -152,7 +153,8 @@ class ExplicitSolver(AdaptiveSolverBase):
         elif self.scheme in {"runge-kutta", "rk", "rk45"}:
             return self._make_single_step_rk45(state, dt)
         else:
-            raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
+            msg = f"Explicit scheme `{self.scheme}` is not supported"
+            raise ValueError(msg)
 
     def _make_adaptive_euler_stepper(
         self, state: FieldBase
@@ -177,7 +179,8 @@ class ExplicitSolver(AdaptiveSolverBase):
         # particular, we reuse the calculated right hand side in cases where the step
         # was not successful.
         if self.pde.is_sde:
-            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
+            msg = "Cannot use adaptive stepper with stochastic equation"
+            raise RuntimeError(msg)
 
         # obtain functions determining how the PDE is evolved
         rhs_pde = self._make_pde_rhs(state, backend=self.backend)
@@ -285,7 +288,8 @@ class ExplicitSolver(AdaptiveSolverBase):
             t_start: float, t_end: float)`
         """
         if self.pde.is_sde:
-            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
+            msg = "Cannot use adaptive stepper with stochastic equation"
+            raise RuntimeError(msg)
 
         # obtain functions determining how the PDE is evolved
         rhs = self._make_pde_rhs(state, backend=self.backend)
@@ -371,7 +375,8 @@ class ExplicitSolver(AdaptiveSolverBase):
         else:
             # Note that the Euler scheme is implemented separately to use detailed
             # optimizations; see method `_make_adaptive_euler_stepper`
-            raise ValueError(f"Adaptive scheme `{self.scheme}` is not supported")
+            msg = f"Adaptive scheme `{self.scheme}` is not supported"
+            raise ValueError(msg)
 
     def _make_adaptive_stepper(
         self, state: FieldBase
@@ -392,4 +397,5 @@ class ExplicitSolver(AdaptiveSolverBase):
         elif self.scheme in {"runge-kutta", "rk", "rk45"}:
             return super()._make_adaptive_stepper(state)
         else:
-            raise ValueError(f"Adaptive scheme `{self.scheme}` is not supported")
+            msg = f"Adaptive scheme `{self.scheme}` is not supported"
+            raise ValueError(msg)

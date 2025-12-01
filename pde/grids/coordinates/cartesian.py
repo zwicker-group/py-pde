@@ -32,7 +32,8 @@ class CartesianCoordinates(CoordinatesBase):
                 Dimension of the Cartesian coordinate system
         """
         if dim <= 0:
-            raise ValueError("`dim` must be positive integer")
+            msg = "`dim` must be positive integer"
+            raise ValueError(msg)
         self.dim = dim
         if self.dim <= 3:
             self.axes = list("xyz"[: self.dim])

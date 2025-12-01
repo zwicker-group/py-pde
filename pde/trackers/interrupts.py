@@ -74,7 +74,8 @@ class FixedInterrupts(InterruptsBase):
     def __init__(self, interrupts: NumericArray | Sequence[float]):
         self.interrupts = np.atleast_1d(interrupts)
         if self.interrupts.ndim != 1:
-            raise ValueError("`interrupts` must be a 1d sequence")
+            msg = "`interrupts` must be a 1d sequence"
+            raise ValueError(msg)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(interrupts={self.interrupts})"
@@ -242,7 +243,8 @@ class GeometricInterrupts(InterruptsBase):
         self.scale = float(scale)
         self.factor = float(factor)
         if factor <= 0:
-            raise ValueError("Factor must be a positive number")
+            msg = "Factor must be a positive number"
+            raise ValueError(msg)
         self._t_next: float | None = None  # next time it should be called
 
     def __repr__(self):
@@ -374,7 +376,8 @@ def parse_interrupt(data: InterruptData) -> InterruptsBase:
                 factor = float(matches.group(2))
                 return GeometricInterrupts(scale, factor)
             else:
-                raise ValueError(f"Could not interpret `{data}` as interrupt")
+                msg = f"Could not interpret `{data}` as interrupt"
+                raise ValueError(msg)
         else:
             return RealtimeInterrupts(data)
 
@@ -384,4 +387,5 @@ def parse_interrupt(data: InterruptData) -> InterruptsBase:
 
     else:
         # anything else we cannot handle
-        raise TypeError(f"Cannot parse interrupt data `{data}`")
+        msg = f"Cannot parse interrupt data `{data}`"
+        raise TypeError(msg)

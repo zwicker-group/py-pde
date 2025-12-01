@@ -66,15 +66,17 @@ class VectorField(DataFieldBase):
         grid = fields[0].grid
 
         if grid.dim != len(fields):
-            raise DimensionError(
+            msg = (
                 f"Grid dimension and number of scalar fields differ ({grid.dim} != "
                 f"{len(fields)})"
             )
+            raise DimensionError(msg)
 
         data = []
         for field in fields:
             if not field.grid.compatible_with(grid):
-                raise ValueError("Grids are incompatible")
+                msg = "Grids are incompatible"
+                raise ValueError(msg)
             data.append(field.data)
 
         return cls(grid, data, label=label, dtype=dtype)
@@ -123,9 +125,8 @@ class VectorField(DataFieldBase):
 
         if isinstance(expressions, str) or len(expressions) != grid.dim:
             axes_names = grid.axes + grid.axes_symmetric
-            raise DimensionError(
-                f"Expected {grid.dim} expressions for the coordinates {axes_names}."
-            )
+            msg = f"Expected {grid.dim} expressions for the coordinates {axes_names}."
+            raise DimensionError(msg)
 
         if any("cartesian" in str(expression) for expression in expressions):
             # support Cartesian coordinates via a special constant
@@ -214,13 +215,15 @@ class VectorField(DataFieldBase):
         elif isinstance(other, Tensor2Field):
             result_type = VectorField  # type: ignore
         else:
-            raise TypeError("Second term must be a vector or tensor field")
+            msg = "Second term must be a vector or tensor field"
+            raise TypeError(msg)
 
         if out is None:
             out = result_type(self.grid, dtype=get_common_dtype(self, other))
         else:
             if not isinstance(out, result_type):
-                raise TypeError(f"`out` must be of type `{result_type}`")
+                msg = f"`out` must be of type `{result_type}`"
+                raise TypeError(msg)
             self.grid.assert_grid_compatible(out.grid)
 
         # calculate the result
@@ -308,9 +311,8 @@ class VectorField(DataFieldBase):
                 """Determine rank of field with type `arr`"""
                 arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
                 if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
-                    raise nb.errors.TypingError(
-                        f"Arguments must be array, not  {arr_typ.__class__}"
-                    )
+                    msg = f"Arguments must be array, not  {arr_typ.__class__}"
+                    raise nb.errors.TypingError(msg)
                 assert arr_typ.ndim == 1 + num_axes
 
             # create the inner function calculating the outer product
@@ -379,7 +381,8 @@ class VectorField(DataFieldBase):
             return outer_compiled  # type: ignore
 
         else:
-            raise ValueError(f"Unsupported backend `{backend}")
+            msg = f"Unsupported backend `{backend}"
+            raise ValueError(msg)
 
     @fill_in_docstring
     def divergence(
@@ -516,7 +519,8 @@ class VectorField(DataFieldBase):
             data = np.sum(self.data * self.data.conjugate(), axis=0)
 
         else:
-            raise ValueError(f"Unknown method `{scalar}` for `to_scalar`")
+            msg = f"Unknown method `{scalar}` for `to_scalar`"
+            raise ValueError(msg)
 
         if label is not None:
             label = label.format(scalar=scalar)
@@ -570,7 +574,8 @@ class VectorField(DataFieldBase):
                     elif axis == 1:
                         data["y"] = data["y"][idx_i]
                     else:
-                        raise RuntimeError("Only supports 2d grids")
+                        msg = "Only supports 2d grids"
+                        raise RuntimeError(msg)
 
         data["shape"] = data["data_x"].shape
         data["size"] = data["data_x"].size
@@ -607,9 +612,8 @@ class VectorField(DataFieldBase):
             Field of the same rank as the current one.
         """
         if self.grid.dim != grid.dim:
-            raise DimensionError(
-                f"Incompatible grid dimensions ({self.grid.dim:d} != {grid.dim:d})"
-            )
+            msg = f"Incompatible grid dimensions ({self.grid.dim:d} != {grid.dim:d})"
+            raise DimensionError(msg)
 
         # determine the points at which data needs to be calculated
         if (
@@ -637,7 +641,8 @@ class VectorField(DataFieldBase):
             # this type of interpolation is not supported
             grid_in = self.grid.__class__.__name__
             grid_out = grid.__class__.__name__
-            raise NotImplementedError(f"Can't interpolate from {grid_in} to {grid_out}")
+            msg = f"Can't interpolate from {grid_in} to {grid_out}"
+            raise NotImplementedError(msg)
 
         return self.__class__(grid, data, label=label)
 

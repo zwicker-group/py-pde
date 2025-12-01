@@ -100,7 +100,8 @@ def _subdivide(num: int, chunks: int) -> NumericArray:
         list: The number of intervals per chunk
     """
     if chunks > num:
-        raise RuntimeError("Cannot divide in more chunks than support points")
+        msg = "Cannot divide in more chunks than support points"
+        raise RuntimeError(msg)
     return np.diff(np.linspace(0, num, chunks + 1).astype(int))  # type: ignore
 
 
@@ -117,7 +118,8 @@ def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> list[GridBa
         list: A list of subgrids
     """
     if chunks <= 0:
-        raise ValueError("Chunks must be a positive Integer")
+        msg = "Chunks must be a positive Integer"
+        raise ValueError(msg)
     elif chunks == 1:
         return [grid]  # no subdivision necessary
 
@@ -172,7 +174,8 @@ class GridMesh:
                 The nested grids representing the subdivision
         """
         if basegrid._mesh is not None:
-            raise ValueError("Cannot subdivide a subgrid further")
+            msg = "Cannot subdivide a subgrid further"
+            raise ValueError(msg)
         self.basegrid = basegrid
         self.subgrids = np.asarray(subgrids)
         for subgrid in self.subgrids.flat:
@@ -215,11 +218,13 @@ class GridMesh:
                     if var_index is None:
                         var_index = i
                     else:
-                        raise ValueError("Can only specify one unknown dimension")
+                        msg = "Can only specify one unknown dimension"
+                        raise ValueError(msg)
                 elif num > 0:
                     size *= num
                 else:
-                    raise RuntimeError(f"Unknown size `{num}`")
+                    msg = f"Unknown size `{num}`"
+                    raise RuntimeError(msg)
 
             # replace potential variable index with correct value
             if var_index is not None:
@@ -227,17 +232,19 @@ class GridMesh:
                 if dim > 0:
                     decomposition[var_index] = dim
                 else:
-                    raise RuntimeError("Not enough nodes to satisfy decomposition")
+                    msg = "Not enough nodes to satisfy decomposition"
+                    raise RuntimeError(msg)
 
             # fill up with 1s until the grid size is met
             decomposition += [1] * (grid.num_axes - len(decomposition))
 
         # check compatibility with number of nodes
         if mpi.size > 1 and math.prod(decomposition) != mpi.size:
-            raise RuntimeError(
+            msg = (
                 f"Node count ({mpi.size}) incompatible with decomposition "
                 f"({decomposition})"
             )
+            raise RuntimeError(msg)
 
         # subdivide the base grid according to the decomposition
         subgrids: NumericArray = np.empty(decomposition, dtype=object)
@@ -513,7 +520,8 @@ class GridMesh:
             return field.__class__(fields, label=field.label)
 
         else:
-            raise TypeError(f"Field type {field.__class__.__name__} unsupported")
+            msg = f"Field type {field.__class__.__name__} unsupported"
+            raise TypeError(msg)
 
     def extract_boundary_conditions(self, bcs_base: BoundariesBase) -> BoundariesList:
         """Extract boundary conditions for current subgrid from global conditions.
@@ -527,12 +535,13 @@ class GridMesh:
             the subgrid
         """
         if not isinstance(bcs_base, BoundariesList):
-            raise TypeError(
+            msg = (
                 "Simulations parallelized with MPI only work with boundary conditions "
                 "based on the `BoundariesList` class, i.e., conditions need to be "
                 "specified for each axes separately and cannot be set using a "
                 "function globally."
             )
+            raise TypeError(msg)
 
         bcs: list[BoundaryAxisBase] = []
         for axis in range(self.num_axes):
@@ -569,9 +578,8 @@ class GridMesh:
         from ..tools.mpi import mpi_recv, mpi_send
 
         if len(self) != mpi.size:
-            raise RuntimeError(
-                f"GridMesh size differs from MPI size ({len(self)} != {mpi.size})"
-            )
+            msg = f"GridMesh size differs from MPI size ({len(self)} != {mpi.size})"
+            raise RuntimeError(msg)
 
         if mpi.is_main:
             # mpi_send fields to all client processes
@@ -636,7 +644,8 @@ class GridMesh:
             )
 
         else:
-            raise TypeError(f"Field type {field.__class__.__name__} unsupported")
+            msg = f"Field type {field.__class__.__name__} unsupported"
+            raise TypeError(msg)
 
     def combine_field_data(
         self,
@@ -785,9 +794,8 @@ class GridMesh:
                 e.g., to set the color of the lines
         """
         if self.num_axes not in {1, 2}:
-            raise NotImplementedError(
-                f"Cannot plot data of dimension {self.basegrid.dim}"
-            )
+            msg = f"Cannot plot data of dimension {self.basegrid.dim}"
+            raise NotImplementedError(msg)
 
         kwargs.setdefault("color", "k")
         for x in np.arange(self.shape[0] + 1) - 0.5:

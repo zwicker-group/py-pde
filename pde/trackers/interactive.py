@@ -84,7 +84,8 @@ def napari_process(
         elif msg == "close":
             viewer.close()
         else:
-            raise RuntimeError(f"Unknown message from listener: {msg}")
+            msg = f"Unknown message from listener: {msg}"
+            raise RuntimeError(msg)
 
     @thread_worker(connect={"yielded": check_signal})
     def update_listener():

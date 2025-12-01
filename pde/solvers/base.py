@@ -234,9 +234,8 @@ class SolverBase:
             applicable) a realization of the associated noise.
         """
         if getattr(self.pde, "is_sde", False):
-            raise RuntimeError(
-                "Cannot create a deterministic stepper for a stochastic equation"
-            )
+            msg = "Cannot create a deterministic stepper for a stochastic equation"
+            raise RuntimeError(msg)
 
         rhs = self.pde.make_pde_rhs(state, backend=backend)  # type: ignore
 
@@ -295,7 +294,8 @@ class SolverBase:
             dt (float):
                 Time step of the explicit stepping.
         """
-        raise NotImplementedError("Fixed stepper has not been defined")
+        msg = "Fixed stepper has not been defined"
+        raise NotImplementedError(msg)
 
     def _make_fixed_stepper(
         self, state: FieldBase, dt: float
@@ -512,7 +512,8 @@ class AdaptiveSolverBase(SolverBase):
                 be extracted
         """
         if getattr(self.pde, "is_sde", False):
-            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
+            msg = "Cannot use adaptive stepper with stochastic equation"
+            raise RuntimeError(msg)
 
         single_step = self._make_single_step_variable_dt(state)
         if self._compiled:
@@ -650,7 +651,8 @@ class AdaptiveSolverBase(SolverBase):
 
         if getattr(self.pde, "is_sde", False):
             # adaptive steppers cannot deal with stochastic PDEs
-            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
+            msg = "Cannot use adaptive stepper with stochastic equation"
+            raise RuntimeError(msg)
 
         # Support `None` as a default value, so the controller can signal that
         # the solver should use a default time step.

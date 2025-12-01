@@ -244,7 +244,8 @@ def make_serializer(method: SerializerMethod) -> Callable:
 
         return lambda s: yaml.dump(s).encode("utf-8")
 
-    raise ValueError(f"Unknown serialization method `{method}`")
+    msg = f"Unknown serialization method `{method}`"
+    raise ValueError(msg)
 
 
 def make_unserializer(method: SerializerMethod) -> Callable:
@@ -285,7 +286,8 @@ def make_unserializer(method: SerializerMethod) -> Callable:
 
         return yaml.unsafe_load
 
-    raise ValueError(f"Unknown serialization method `{method}`")
+    msg = f"Unknown serialization method `{method}`"
+    raise ValueError(msg)
 
 
 class DictFiniteCapacity(collections.OrderedDict):
@@ -482,10 +484,11 @@ class _class_cache:
         # check whether the decorator has been applied correctly
         if callable(factory):
             class_name = self.__class__.__name__
-            raise ValueError(
+            msg = (
                 f"Missing function call. Call this decorator as {class_name}() instead "
                 f"of {class_name}"
             )
+            raise ValueError(msg)
 
         else:
             self.factory = factory

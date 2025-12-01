@@ -46,7 +46,8 @@ class SmoothData1D:
         self.x = np.ravel(x)
         self.y = np.ravel(y)
         if self.x.shape != self.y.shape:
-            raise ValueError("`x` and `y` must have equal number of elements")
+            msg = "`x` and `y` must have equal number of elements"
+            raise ValueError(msg)
 
         # only take finite values
         idx = np.isfinite(self.y)

@@ -10,7 +10,6 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
-
 import os.path
 import sys
 
@@ -19,14 +18,14 @@ sys.path.insert(0, os.path.abspath("../.."))  # noqa: PTH100
 sys.path.insert(0, os.path.abspath("../../scripts"))  # noqa: PTH100
 sys.path.insert(0, os.path.abspath("../sphinx_ext/"))  # noqa: PTH100
 
-from datetime import date
+from datetime import UTC, datetime
 
 # -- Project information -----------------------------------------------------
 
 project = "py-pde"
 module_name = "pde"
 author = "Zwicker Group"
-copyright = f"{date.today().year}, {author}"  # noqa: A001
+copyright = f"{datetime.now(UTC).year}, {author}"  # noqa: A001
 html_logo = "_images/logo_small.png"
 
 # Determine the version from the actual package

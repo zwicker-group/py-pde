@@ -473,7 +473,8 @@ class BCBase(metaclass=ABCMeta):
             )
 
         else:
-            raise BCDataError(f"Boundary conditions `{list(data)}` are not supported.")
+            msg = f"Boundary conditions `{list(data)}` are not supported."
+            raise BCDataError(msg)
 
     @classmethod
     def from_data(
@@ -516,10 +517,12 @@ class BCBase(metaclass=ABCMeta):
                 # idea is that users only create boundary conditions for the full grid
                 # and that the splitting onto subgrids is only done once, automatically,
                 # and without involving calls to `from_data`
-                raise ValueError("Cannot create MPI subgrid BC from data")
+                msg = "Cannot create MPI subgrid BC from data"
+                raise ValueError(msg)
 
             if data.grid != grid or data.axis != axis or data.rank != rank:
-                raise ValueError(f"Incompatible: {data!r} & {grid=}, {axis=}, {rank=})")
+                msg = f"Incompatible: {data!r} & {grid=}, {axis=}, {rank=})"
+                raise ValueError(msg)
             bc = data.copy(upper=upper)
 
         elif isinstance(data, dict):
@@ -531,16 +534,16 @@ class BCBase(metaclass=ABCMeta):
             bc = cls.from_str(grid, axis, upper=upper, condition=data, rank=rank)
 
         elif data is None:
-            raise BCDataError(
-                f"Unspecified condition for boundary {grid.axes[axis]}{'-+'[int(upper)]}"
-            )
+            msg = f"Unspecified condition for boundary {grid.axes[axis]}{'-+'[int(upper)]}"
+            raise BCDataError(msg)
 
         else:
             raise BCDataError(f"Unsupported BC format: `{data}`. " + cls.get_help())
 
         # check consistency
         if bc.periodic != grid.periodic[axis]:
-            raise PeriodicityError("Periodicity of conditions must match grid")
+            msg = "Periodicity of conditions must match grid"
+            raise PeriodicityError(msg)
         return bc
 
     def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
@@ -553,7 +556,8 @@ class BCBase(metaclass=ABCMeta):
         Returns:
             :class:`BCBase`: Boundary conditions valid on the subgrid
         """
-        raise NotImplementedError("Boundary condition cannot be transferred to subgrid")
+        msg = "Boundary condition cannot be transferred to subgrid"
+        raise NotImplementedError(msg)
 
     def check_value_rank(self, rank: int) -> None:
         """Check whether the values at the boundaries have the correct rank.
@@ -566,9 +570,8 @@ class BCBase(metaclass=ABCMeta):
             RuntimeError: if the value does not have rank `rank`
         """
         if self.rank != rank:
-            raise RuntimeError(
-                f"Expected rank {rank}, but boundary condition had rank {self.rank}."
-            )
+            msg = f"Expected rank {rank}, but boundary condition had rank {self.rank}."
+            raise RuntimeError(msg)
 
     def copy(self: TBC, upper: bool | None = None, rank: int | None = None) -> TBC:
         raise NotImplementedError
@@ -735,7 +738,8 @@ class BCBase(metaclass=ABCMeta):
                                 data_full[..., i + 1, j + 1, vp_idx] = val
 
         else:
-            raise NotImplementedError("Too many axes")
+            msg = "Too many axes"
+            raise NotImplementedError(msg)
 
         return ghost_cell_setter  # type: ignore
 
@@ -772,7 +776,8 @@ class _MPIBC(BCBase):
         super().__init__(mesh[node_id], axis, upper, rank=rank)
         neighbor_id = mesh.get_neighbor(axis, upper, node_id=node_id)
         if neighbor_id is None:
-            raise RuntimeError("No neighboring cell for this boundary")
+            msg = "No neighboring cell for this boundary"
+            raise RuntimeError(msg)
         self._neighbor_id = neighbor_id
         self._mpi_flag = mesh.get_boundary_flag(self._neighbor_id, upper)
 
@@ -1026,7 +1031,8 @@ class UserBC(BCBase):
                 _, _, bc_idx = get_arr_1d(arr, idx)
                 return values[bc_idx]
             else:
-                raise TypeError("Either a scalar or an array must be supplied")
+                msg = "Either a scalar or an array must be supplied"
+                raise TypeError(msg)
 
         @overload(extract_value)
         def ol_extract_value(values, arr: NumericArray, idx: tuple[int, ...]):
@@ -1044,7 +1050,8 @@ class UserBC(BCBase):
                     return values[bc_idx]
 
             else:
-                raise TypeError("Either a scalar or an array must be supplied")
+                msg = "Either a scalar or an array must be supplied"
+                raise TypeError(msg)
 
             return impl
 
@@ -1162,9 +1169,8 @@ class ExpressionBC(BCBase):
         self.value_cell = value_cell
 
         if self.rank != 0:
-            raise NotImplementedError(
-                "Expression boundary conditions only work for scalar conditions"
-            )
+            msg = "Expression boundary conditions only work for scalar conditions"
+            raise NotImplementedError(msg)
 
         # store data for later use
         self._input: dict[str, Any] = {
@@ -1194,7 +1200,8 @@ class ExpressionBC(BCBase):
                 enumerator = f"2 * dx * ({const}) + (2 - ({value}) * dx) * value"
                 expression = f"({enumerator}) / (({value}) * dx + 2)"
             else:
-                raise ValueError(f"Unknown target `{target}` for expression")
+                msg = f"Unknown target `{target}` for expression"
+                raise ValueError(msg)
 
             # parse this expression
             from pde.tools.expressions import ScalarExpression
@@ -1211,14 +1218,14 @@ class ExpressionBC(BCBase):
             self._func(do_jit=False)(*self._test_values)
         except Exception as err:
             if self._is_func:
-                raise BCDataError(
-                    f"Could not evaluate BC function. Expected signature {signature}."
-                ) from err
+                msg = f"Could not evaluate BC function. Expected signature {signature}."
+                raise BCDataError(msg) from err
             else:
-                raise BCDataError(
+                msg = (
                     f"Could not evaluate BC expression `{expression}` with signature "
                     f"{signature}."
-                ) from err
+                )
+                raise BCDataError(msg) from err
 
     @property
     def _test_values(self) -> tuple[float, ...]:
@@ -1258,7 +1265,8 @@ class ExpressionBC(BCBase):
 
                 if os.environ.get("PYPDE_TESTRUN"):
                     # ensure that the except path is also tested
-                    raise nb.NumbaError("Force except")
+                    msg = "Force except"
+                    raise nb.NumbaError(msg)
 
             except nb.NumbaError:
                 # if compilation fails, we simply fall back to pure-python mode
@@ -1322,7 +1330,8 @@ class ExpressionBC(BCBase):
             return virtual_from_mixed  # type: ignore
 
         else:
-            raise ValueError(f"Unknown target `{target}` for expression")
+            msg = f"Unknown target `{target}` for expression"
+            raise ValueError(msg)
 
     def _get_function_from_expression(self, do_jit: bool) -> Callable:
         """Returns function from expression evaluating the value of the virtual point.
@@ -1343,7 +1352,8 @@ class ExpressionBC(BCBase):
 
             if os.environ.get("PYPDE_TESTRUN"):
                 # ensure that the except path is also tested
-                raise nb.NumbaError("Force except")
+                msg = "Force except"
+                raise nb.NumbaError(msg)
 
         except nb.NumbaError:
             # if compilation fails, we simply fall back to pure-python mode
@@ -1383,9 +1393,8 @@ class ExpressionBC(BCBase):
             # compile the actual function and check the result
             result_compiled = value_func(*self._test_values)
             if not np.allclose(result_compiled, expected):
-                raise RuntimeError(
-                    "Compiled function does not give same value"
-                ) from None
+                msg = "Compiled function does not give same value"
+                raise RuntimeError(msg) from None
 
         return value_func  # type: ignore
 
@@ -1444,7 +1453,8 @@ class ExpressionBC(BCBase):
                 f"{const_expr}   @ {axis_name}={self.axis_coord}"
             )
         else:
-            raise NotImplementedError(f"Unsupported target `{target}`")
+            msg = f"Unsupported target `{target}`"
+            raise NotImplementedError(msg)
 
     def __eq__(self, other):
         """Checks for equality neglecting the `upper` property."""
@@ -1487,7 +1497,8 @@ class ExpressionBC(BCBase):
         assert issubclass(self.grid.__class__, subgrid.__class__)
 
         if self.value_cell is not None:
-            raise NotImplementedError("Custom value indices are not supported")
+            msg = "Custom value indices are not supported"
+            raise NotImplementedError(msg)
 
         bc = self.__class__(
             grid=subgrid,
@@ -1522,14 +1533,16 @@ class ExpressionBC(BCBase):
             idx = int(self.value_cell)
             if idx >= self.grid.shape[self.axis]:
                 size = self.grid.shape[self.axis]
-                raise IndexError(f"Index {self.value_cell} out of bounds ({size=})")
+                msg = f"Index {self.value_cell} out of bounds ({size=})"
+                raise IndexError(msg)
             return idx + 1 if with_ghost_cells else idx
         else:  # self.value_cell < 0:
             # negative indexing
             idx = int(self.value_cell)
             if idx < -self.grid.shape[self.axis]:
                 size = self.grid.shape[self.axis]
-                raise IndexError(f"Index {self.value_cell} out of bounds ({size=})")
+                msg = f"Index {self.value_cell} out of bounds ({size=})"
+                raise IndexError(msg)
             return idx - 1 if with_ghost_cells else idx
 
     def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
@@ -1556,10 +1569,11 @@ class ExpressionBC(BCBase):
 
         if args is None:
             if not self._is_func and self._func_expression.depends_on("t"):
-                raise RuntimeError(
+                msg = (
                     "Require value for `t` for time-dependent BC. The value must be "
                     "passed explicitly via `args` when calling a differential operator."
                 )
+                raise RuntimeError(msg)
             t = 0.0
         else:
             t = float(args["t"])
@@ -1591,11 +1605,12 @@ class ExpressionBC(BCBase):
             # extract time for handling time-dependent BCs
             if args is None or "t" not in args:
                 if warn_if_time_not_set:
-                    raise RuntimeError(
+                    msg = (
                         "Require value for `t` for time-dependent BC. The value must "
                         "be passed explicitly via `args` when calling a differential "
                         "operator."
                     )
+                    raise RuntimeError(msg)
                 t = 0.0
             else:
                 t = float(args["t"])
@@ -1811,10 +1826,11 @@ class ConstBCBase(BCBase):
             # inhomogeneous field
             self.homogeneous = False
         else:
-            raise ValueError(
+            msg = (
                 f"Dimensions {self._value.shape} of the value are incompatible with "
                 f"rank {self.rank} and spatial dimensions {self._shape_boundary}"
             )
+            raise ValueError(msg)
 
         self.value_is_linked = False
 
@@ -1861,9 +1877,8 @@ class ConstBCBase(BCBase):
         if isinstance(value, str):
             # inhomogeneous value given by an expression
             if len(self._shape_tensor) > 0:
-                raise NotImplementedError(
-                    "Expressions for boundaries are only supported for scalar values."
-                )
+                msg = "Expressions for boundaries are only supported for scalar values."
+                raise NotImplementedError(msg)
 
             from ...tools.expressions import ScalarExpression
 
@@ -1921,12 +1936,13 @@ class ConstBCBase(BCBase):
                 # homogeneous field with all tensor components
                 result = value
             else:
-                raise ValueError(
+                msg = (
                     f"Dimensions {value.shape} of the given value are incompatible "  # type: ignore
                     f"with the expected shape {self._shape_tensor} of the boundary "
                     f"value and its spatial dimensions {self._shape_boundary}. "
                     f"(rank={self.rank}, normal={self.normal})"
                 )
+                raise ValueError(msg)
 
         # check consistency
         if np.any(np.isnan(result)):
@@ -1940,10 +1956,11 @@ class ConstBCBase(BCBase):
 
         shape = self._shape_tensor + self._shape_boundary
         if value.shape != shape:
-            raise ValueError(
+            msg = (
                 f"The shape of the value, {value.shape}, is incompatible with the "
                 f"expected shape for this boundary condition, {shape}"
             )
+            raise ValueError(msg)
         self._value = value
         self.homogeneous = False
         self.value_is_linked = True
@@ -1980,7 +1997,8 @@ class ConstBCBase(BCBase):
         # `CartesianGrid`
         assert issubclass(self.grid.__class__, subgrid.__class__)
         if self.value_is_linked or not self.homogeneous:
-            raise NotImplementedError("Cannot transfer complicated BC to subgrid")
+            msg = "Cannot transfer complicated BC to subgrid"
+            raise NotImplementedError(msg)
 
         return self.__class__(
             grid=subgrid,
@@ -2087,9 +2105,8 @@ class ConstBC1stOrderBase(ConstBCBase):
             if self.grid.num_axes == 1:
                 idx = (self.grid.shape[0] if self.upper else -1,)
             else:
-                raise ValueError(
-                    "Index `idx` can only be deduced for grids with a single axis."
-                )
+                msg = "Index `idx` can only be deduced for grids with a single axis."
+                raise ValueError(msg)
 
         # extract the 1d array
         arr_1d, _, bc_idx = _get_arr_1d(arr, idx, axis=self.axis)
@@ -2221,7 +2238,8 @@ class _PeriodicBC(ConstBC1stOrderBase):
         # `CartesianGrid`
         assert issubclass(self.grid.__class__, subgrid.__class__)
         if self.value_is_linked or not self.homogeneous:
-            raise NotImplementedError("Cannot transfer complicated BC to subgrid")
+            msg = "Cannot transfer complicated BC to subgrid"
+            raise NotImplementedError(msg)
 
         return self.__class__(
             grid=subgrid, axis=self.axis, upper=self.upper, flip_sign=self.flip_sign
@@ -2463,7 +2481,8 @@ class MixedBC(ConstBC1stOrderBase):
         # `CartesianGrid`
         assert issubclass(self.grid.__class__, subgrid.__class__)
         if self.value_is_linked or not self.homogeneous:
-            raise NotImplementedError("Cannot transfer complicated BC to subgrid")
+            msg = "Cannot transfer complicated BC to subgrid"
+            raise NotImplementedError(msg)
 
         return self.__class__(
             grid=subgrid,
@@ -2605,9 +2624,8 @@ class ConstBC2ndOrderBase(ConstBCBase):
             if self.grid.num_axes == 1:
                 idx = (self.grid.shape[0] if self.upper else -1,)
             else:
-                raise ValueError(
-                    "Index can only be deduced for grids with a single axis."
-                )
+                msg = "Index can only be deduced for grids with a single axis."
+                raise ValueError(msg)
 
         # extract the 1d array
         arr_1d, _, bc_idx = _get_arr_1d(arr, idx, axis=self.axis)
@@ -2635,9 +2653,8 @@ class ConstBC2ndOrderBase(ConstBCBase):
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
 
         if size < 2:
-            raise ValueError(
-                f"Need two support points along axis {self.axis} to apply conditions"
-            )
+            msg = f"Need two support points along axis {self.axis} to apply conditions"
+            raise ValueError(msg)
 
         # calculate necessary constants
         data = self.get_virtual_point_data()
@@ -2739,9 +2756,8 @@ class CurvatureBC(ConstBC2ndOrderBase):
         dx = self.grid.discretization[self.axis]
 
         if size < 2:
-            raise RuntimeError(
-                "Need at least 2 support points to use curvature boundary condition"
-            )
+            msg = "Need at least 2 support points to use curvature boundary condition"
+            raise RuntimeError(msg)
 
         value = np.asarray(self.value * dx**2)
         f1 = np.full_like(value, 2.0)

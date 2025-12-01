@@ -95,9 +95,11 @@ class WavePDE(PDEBase):
             Fields describing the evolution rates of the PDE
         """
         if not isinstance(state, FieldCollection):
-            raise ValueError("`state` must be FieldCollection")
+            msg = "`state` must be FieldCollection"
+            raise ValueError(msg)
         if len(state) != 2:
-            raise ValueError("`state` must contain two fields")
+            msg = "`state` must contain two fields"
+            raise ValueError(msg)
         u, v = state
         u_t = v.copy()
         v_t = self.speed**2 * u.laplace(self.bc, args={"t": t})  # type: ignore

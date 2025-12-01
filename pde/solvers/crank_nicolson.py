@@ -66,7 +66,8 @@ class CrankNicolsonSolver(SolverBase):
                 Time step of the implicit step
         """
         if self.pde.is_sde:
-            raise RuntimeError("Cannot use implicit stepper with stochastic equation")
+            msg = "Cannot use implicit stepper with stochastic equation"
+            raise RuntimeError(msg)
 
         self.info["function_evaluations"] = 0
         self.info["scheme"] = "implicit-euler"
@@ -117,7 +118,8 @@ class CrankNicolsonSolver(SolverBase):
                         t,
                         err,
                     )
-                raise ConvergenceError("Crank-Nicolson step did not converge.")
+                msg = "Crank-Nicolson step did not converge."
+                raise ConvergenceError(msg)
             nfev += n + 2
 
         return crank_nicolson_step

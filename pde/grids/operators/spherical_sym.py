@@ -121,7 +121,8 @@ def make_gradient(
     elif method in {"forward", "backward"}:
         scale_r = 1 / grid.discretization[0]
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     @jit
     def gradient(arr: NumericArray, out: NumericArray) -> None:
@@ -336,7 +337,8 @@ def make_vector_gradient(
     elif method in {"forward", "backward"}:
         scale_r = 1 / grid.discretization[0]
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     @jit
     def vector_gradient(arr: NumericArray, out: NumericArray) -> None:

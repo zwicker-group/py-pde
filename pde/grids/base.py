@@ -66,7 +66,8 @@ def _check_shape(shape: int | Sequence[int]) -> tuple[int, ...]:
         shape_list = [shape]
 
     if len(shape_list) == 0:
-        raise ValueError("Require at least one dimension")
+        msg = "Require at least one dimension"
+        raise ValueError(msg)
 
     # convert the shape to a tuple of integers
     result = []
@@ -74,7 +75,8 @@ def _check_shape(shape: int | Sequence[int]) -> tuple[int, ...]:
         if dim == int(dim) and dim >= 1:
             result.append(int(dim))
         else:
-            raise ValueError(f"{repr(dim)} is not a valid number of support points")
+            msg = f"{repr(dim)} is not a valid number of support points"
+            raise ValueError(msg)
     return tuple(result)
 
 
@@ -202,7 +204,8 @@ class GridBase(metaclass=ABCMeta):
         # create the instance of the correct class
         class_name = state.pop("class")
         if class_name == cls.__name__:
-            raise RuntimeError(f"Cannot reconstruct abstract class `{class_name}`")
+            msg = f"Cannot reconstruct abstract class `{class_name}`"
+            raise RuntimeError(msg)
         grid_cls = cls._subclasses[class_name]
         return grid_cls.from_state(state)
 
@@ -256,11 +259,13 @@ class GridBase(metaclass=ABCMeta):
             if key in axes:
                 return axes.index(key)
             else:
-                raise IndexError(f"`{key}` is not in the axes {axes}")
+                msg = f"`{key}` is not in the axes {axes}"
+                raise IndexError(msg)
         elif isinstance(key, int):
             # assume that it is already an index
             return key
-        raise IndexError("Index must be an integer or the name of an axes")
+        msg = "Index must be an integer or the name of an axes"
+        raise IndexError(msg)
 
     def _get_boundary_index(self, index: str | tuple[int, bool]) -> tuple[int, bool]:
         """Return the index of a boundary belonging to an axis.
@@ -292,7 +297,8 @@ class GridBase(metaclass=ABCMeta):
                         upper = True
                         break
                 else:
-                    raise KeyError("Unknown boundary {index}")
+                    msg = "Unknown boundary {index}"
+                    raise KeyError(msg)
 
         else:
             # assume the index is directly given as a tuple of an axis and a boolean
@@ -507,7 +513,8 @@ class GridBase(metaclass=ABCMeta):
             ValueError: if grids are not compatible
         """
         if not self.compatible_with(other):
-            raise ValueError(f"Grids {self} and {other} are incompatible")
+            msg = f"Grids {self} and {other} are incompatible"
+            raise ValueError(msg)
 
     @property
     def numba_type(self) -> str:
@@ -731,11 +738,13 @@ class GridBase(metaclass=ABCMeta):
         components = np.asanyarray(components)
         # check input shapes
         if points.shape[-1] != self.dim:
-            raise DimensionError(f"`points` must have {self.dim} coordinates")
+            msg = f"`points` must have {self.dim} coordinates"
+            raise DimensionError(msg)
         shape = points.shape[:-1]  # shape of array describing the different points
         vec_shape = (self.dim,) + shape
         if components.shape != vec_shape:
-            raise DimensionError(f"`components` must have shape {vec_shape}")
+            msg = f"`components` must have shape {vec_shape}"
+            raise DimensionError(msg)
 
         # convert the basis of the vectors to Cartesian
         rot_mat = self.c.basis_rotation(points)
@@ -775,14 +784,14 @@ class GridBase(metaclass=ABCMeta):
 
         if point.ndim == 0:
             if self.num_axes > 1:
-                raise DimensionError(
-                    f"Point {point} is not of dimension {self.num_axes}"
-                )
+                msg = f"Point {point} is not of dimension {self.num_axes}"
+                raise DimensionError(msg)
         elif point.shape[-1] != self.num_axes:
-            raise DimensionError(
+            msg = (
                 f"Array of shape {point.shape} does not describe points of dimension "
                 f"{self.num_axes}"
             )
+            raise DimensionError(msg)
 
         # normalize the coordinates for the periodic dimensions
         bounds = np.array(self.axes_bounds)
@@ -821,7 +830,8 @@ class GridBase(metaclass=ABCMeta):
             are not along symmetry axes of the grid.
         """
         if points.shape[-1] != self.dim:
-            raise DimensionError(f"Points need to be specified as {self.c.axes}")
+            msg = f"Points need to be specified as {self.c.axes}"
+            raise DimensionError(msg)
         return points[..., self._axes_described]
 
     def _coords_full(
@@ -845,7 +855,8 @@ class GridBase(metaclass=ABCMeta):
             return points
         else:
             if points.shape[-1] != self.num_axes:
-                raise DimensionError(f"Points need to be specified as {self.axes}")
+                msg = f"Points need to be specified as {self.axes}"
+                raise DimensionError(msg)
             res = np.empty(points.shape[:-1] + (self.dim,), dtype=points.dtype)
             j = 0
             for i in range(self.dim):
@@ -905,7 +916,8 @@ class GridBase(metaclass=ABCMeta):
             # Cartesian coordinates given
             cartesian = np.atleast_1d(coordinates)
             if cartesian.shape[-1] != self.dim:
-                raise DimensionError(f"Require {self.dim} cartesian coordinates")
+                msg = f"Require {self.dim} cartesian coordinates"
+                raise DimensionError(msg)
 
             if target == "cartesian":
                 return coordinates
@@ -923,7 +935,8 @@ class GridBase(metaclass=ABCMeta):
             # Cell coordinates given
             cells = np.atleast_1d(coordinates)
             if cells.shape[-1] != self.num_axes:
-                raise DimensionError(f"Require {self.num_axes} cell coordinates")
+                msg = f"Require {self.num_axes} cell coordinates"
+                raise DimensionError(msg)
 
             if target == "cell":
                 return coordinates
@@ -941,7 +954,8 @@ class GridBase(metaclass=ABCMeta):
             # Grid coordinates given
             grid_coords = np.atleast_1d(coordinates)
             if grid_coords.shape[-1] != self.num_axes:
-                raise DimensionError(f"Require {self.num_axes} grid coordinates")
+                msg = f"Require {self.num_axes} grid coordinates"
+                raise DimensionError(msg)
 
             if target == "cartesian":
                 return self.point_to_cartesian(grid_coords)
@@ -952,8 +966,10 @@ class GridBase(metaclass=ABCMeta):
                 return grid_coords  # type: ignore
 
         else:
-            raise ValueError(f"Unknown source coordinates `{source}`")
-        raise ValueError(f"Unknown target coordinates `{target}`")
+            msg = f"Unknown source coordinates `{source}`"
+            raise ValueError(msg)
+        msg = f"Unknown target coordinates `{target}`"
+        raise ValueError(msg)
 
     def contains_point(
         self,
@@ -1078,12 +1094,14 @@ class GridBase(metaclass=ABCMeta):
             dict: A dictionary with information about the data convenient for plotting.
         """
         if self.dim != 2:
-            raise DimensionError("Can only plot generic vector fields for dim=2")
+            msg = "Can only plot generic vector fields for dim=2"
+            raise DimensionError(msg)
         if data.shape != (self.dim,) + self.shape:
-            raise ValueError(
+            msg = (
                 f"Shape {data.shape} of the data array is not compatible with grid "
                 f"shape {self.shape}"
             )
+            raise ValueError(msg)
 
         # obtain the correctly interpolated components of the vector in grid coordinates
         img_coord0 = self.get_image_data(data[0], **kwargs)
@@ -1262,10 +1280,11 @@ class GridBase(metaclass=ABCMeta):
 
         # throw an informative error since operator was not found
         op_list = ", ".join(sorted(self.operators))
-        raise ValueError(
+        msg = (
             f"'{operator}' is not one of the defined operators ({op_list}). Custom "
             "operators can be added using the `register_operator` method."
         )
+        raise ValueError(msg)
 
     @cached_method()
     def make_operator_no_bc(
@@ -1364,13 +1383,15 @@ class GridBase(metaclass=ABCMeta):
             """Set boundary conditions and apply operator."""
             # check input array
             if arr.shape != shape_in_valid:
-                raise ValueError(f"Incompatible shapes {arr.shape} != {shape_in_valid}")
+                msg = f"Incompatible shapes {arr.shape} != {shape_in_valid}"
+                raise ValueError(msg)
 
             # ensure `out` array is allocated and has the right shape
             if out is None:
                 out = np.empty(shape_out, dtype=arr.dtype)
             elif out.shape != shape_out:
-                raise ValueError(f"Incompatible shapes {out.shape} != {shape_out}")
+                msg = f"Incompatible shapes {out.shape} != {shape_out}"
+                raise ValueError(msg)
 
             # prepare input with boundary conditions
             arr_full = np.empty(shape_in_full, dtype=arr.dtype)
@@ -1408,7 +1429,8 @@ class GridBase(metaclass=ABCMeta):
                     ) -> NumericArray:
                         """Allocates `out` and applies operator to the data."""
                         if arr.shape != shape_in_valid:
-                            raise ValueError("Incompatible shapes of input array")
+                            msg = "Incompatible shapes of input array"
+                            raise ValueError(msg)
 
                         out = np.empty(shape_out, dtype=arr.dtype)
                         # prepare input with boundary conditions
@@ -1429,9 +1451,11 @@ class GridBase(metaclass=ABCMeta):
                     ) -> NumericArray:
                         """Applies operator to the data without allocating out."""
                         if arr.shape != shape_in_valid:
-                            raise ValueError("Incompatible shapes of input array")
+                            msg = "Incompatible shapes of input array"
+                            raise ValueError(msg)
                         if out.shape != shape_out:  # type: ignore
-                            raise ValueError("Incompatible shapes of output array")
+                            msg = "Incompatible shapes of output array"
+                            raise ValueError(msg)
 
                         # prepare input with boundary conditions
                         arr_full = np.empty(shape_in_full, dtype=arr.dtype)
@@ -1457,7 +1481,8 @@ class GridBase(metaclass=ABCMeta):
 
         else:
             # simply return the operator if the backend was `numba` or `scipy`
-            raise NotImplementedError(f"Undefined backend '{backend}'")
+            msg = f"Undefined backend '{backend}'"
+            raise NotImplementedError(msg)
 
     def slice(self, indices: Sequence[int]) -> GridBase:
         """Return a subgrid of only the specified axes.
@@ -1469,15 +1494,13 @@ class GridBase(metaclass=ABCMeta):
         Returns:
             :class:`GridBase`: The subgrid
         """
-        raise NotImplementedError(
-            f"Slicing is not implemented for class {self.__class__.__name__}"
-        )
+        msg = f"Slicing is not implemented for class {self.__class__.__name__}"
+        raise NotImplementedError(msg)
 
     def plot(self) -> None:
         """Visualize the grid."""
-        raise NotImplementedError(
-            f"Plotting is not implemented for class {self.__class__.__name__}"
-        )
+        msg = f"Plotting is not implemented for class {self.__class__.__name__}"
+        raise NotImplementedError(msg)
 
     @property
     def typical_discretization(self) -> float:
@@ -1779,7 +1802,8 @@ class GridBase(metaclass=ABCMeta):
                 if c_li == -42:  # out of bounds
                     if fill is None:  # outside the domain
                         print("POINT", point)
-                        raise DomainError("Point lies outside the grid domain")
+                        msg = "Point lies outside the grid domain"
+                        raise DomainError(msg)
                     else:
                         return fill
 
@@ -1813,7 +1837,8 @@ class GridBase(metaclass=ABCMeta):
                 if c_xli == -42 or c_yli == -42:  # out of bounds
                     if fill is None:  # outside the domain
                         print("POINT", point)
-                        raise DomainError("Point lies outside the grid domain")
+                        msg = "Point lies outside the grid domain"
+                        raise DomainError(msg)
                     else:
                         return fill
 
@@ -1854,7 +1879,8 @@ class GridBase(metaclass=ABCMeta):
                 if c_xli == -42 or c_yli == -42 or c_zli == -42:  # out of bounds
                     if fill is None:  # outside the domain
                         print("POINT", point)
-                        raise DomainError("Point lies outside the grid domain")
+                        msg = "Point lies outside the grid domain"
+                        raise DomainError(msg)
                     else:
                         return fill
 
@@ -1871,9 +1897,10 @@ class GridBase(metaclass=ABCMeta):
                 )
 
         else:
-            raise NotImplementedError(
+            msg = (
                 f"Compiled interpolation not implemented for dimension {self.num_axes}"
             )
+            raise NotImplementedError(msg)
 
         return interpolate_single  # type: ignore
 
@@ -1923,7 +1950,8 @@ class GridBase(metaclass=ABCMeta):
                 c_li, c_hi, w_l, w_h = data_x(float(point[0]))
 
                 if c_li == -42:  # out of bounds
-                    raise DomainError("Point lies outside the grid domain")
+                    msg = "Point lies outside the grid domain"
+                    raise DomainError(msg)
 
                 data[..., c_li] += w_l * amount / cell_volume(c_li)
                 data[..., c_hi] += w_h * amount / cell_volume(c_hi)
@@ -1960,7 +1988,8 @@ class GridBase(metaclass=ABCMeta):
                 c_yli, c_yhi, w_yl, w_yh = data_y(float(point[1]))
 
                 if c_xli == -42 or c_yli == -42:  # out of bounds
-                    raise DomainError("Point lies outside the grid domain")
+                    msg = "Point lies outside the grid domain"
+                    raise DomainError(msg)
 
                 cell_vol = cell_volume(c_xli, c_yli)
                 data[..., c_xli, c_yli] += w_xl * w_yl * amount / cell_vol
@@ -2008,7 +2037,8 @@ class GridBase(metaclass=ABCMeta):
                 c_zli, c_zhi, w_zl, w_zh = data_z(float(point[2]))
 
                 if c_xli == -42 or c_yli == -42 or c_zli == -42:  # out of bounds
-                    raise DomainError("Point lies outside the grid domain")
+                    msg = "Point lies outside the grid domain"
+                    raise DomainError(msg)
 
                 cell_vol = cell_volume(c_xli, c_yli, c_zli)
                 data[..., c_xli, c_yli, c_zli] += w_xl * w_yl * w_zl * amount / cell_vol
@@ -2031,9 +2061,10 @@ class GridBase(metaclass=ABCMeta):
                 data[..., c_xhi, c_yhi, c_zhi] += w_xh * w_yh * w_zh * amount / cell_vol
 
         else:
-            raise NotImplementedError(
+            msg = (
                 f"Compiled interpolation not implemented for dimension {self.num_axes}"
             )
+            raise NotImplementedError(msg)
 
         return insert  # type: ignore
 

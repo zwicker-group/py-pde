@@ -85,6 +85,9 @@ select = [
     "RET", # flake8-return
     "SIM", # flake8-simplify
     "PTH", # flake8-use-pathlib
+    "CPY", # flake8-copyright
+    "DTZ", # flake8-datetimez
+    "EM", # flake8-errmsg
 ]
 ignore = ["A005", "B007", "B027", "B028", "SIM108", "ISC001", "PT006", "PT011", "RET504", "RET505", "RET506"]
 

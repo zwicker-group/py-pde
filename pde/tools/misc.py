@@ -159,10 +159,12 @@ class classproperty(property):
         return super().getter(self._wrap_fget(fget))
 
     def setter(self, fset):
-        raise NotImplementedError("classproperty is read-only")
+        msg = "classproperty is read-only"
+        raise NotImplementedError(msg)
 
     def deleter(self, fdel):
-        raise NotImplementedError("classproperty is read-only")
+        msg = "classproperty is read-only"
+        raise NotImplementedError(msg)
 
     @staticmethod
     def _wrap_fget(orig_fget):

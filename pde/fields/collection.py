@@ -82,13 +82,15 @@ class FieldCollection(FieldBase):
             fields = list(fields.values())
 
         if len(fields) == 0:
-            raise ValueError("At least one field must be defined")
+            msg = "At least one field must be defined"
+            raise ValueError(msg)
 
         # check if grids are compatible
         grid = fields[0].grid
         if any(grid != f.grid for f in fields[1:]):
             grids = [f.grid for f in fields]
-            raise RuntimeError(f"Grids are incompatible: {grids}")
+            msg = f"Grids are incompatible: {grids}"
+            raise RuntimeError(msg)
 
         # check whether some fields are identical
         if not copy_fields and len(fields) != len({id(field) for field in fields}):
@@ -107,10 +109,11 @@ class FieldCollection(FieldBase):
         dof = 0  # count local degrees of freedom
         for field in self.fields:
             if not isinstance(field, DataFieldBase):
-                raise RuntimeError(
+                msg = (
                     "Individual fields must be of type DataFieldBase. Field "
                     "collections cannot be nested."
                 )
+                raise RuntimeError(msg)
             start = len(fields_data)
             this_data = field._data_flat
             fields_data.extend(this_data)
@@ -131,9 +134,11 @@ class FieldCollection(FieldBase):
 
                 # check whether the field data is based on our data field
                 if field.data.shape != field_shape:
-                    raise RuntimeError("Field shapes have changed!")
+                    msg = "Field shapes have changed!"
+                    raise RuntimeError(msg)
                 if not np.may_share_memory(field._data_full, self._data_full):
-                    raise RuntimeError("Spurious copy of data detected!")
+                    msg = "Spurious copy of data detected!"
+                    raise RuntimeError(msg)
 
         if labels is not None:
             self.labels = labels  # type: ignore
@@ -179,14 +184,16 @@ class FieldCollection(FieldBase):
             for field in self.fields:
                 if field.label == index:
                     return field
-            raise KeyError(f"No field with name `{index}`")
+            msg = f"No field with name `{index}`"
+            raise KeyError(msg)
 
         elif isinstance(index, slice):
             # range of indices -> collection is returned
             return FieldCollection(self.fields[index], copy_fields=True)
 
         else:
-            raise TypeError(f"Unsupported index `{index}`")
+            msg = f"Unsupported index `{index}`"
+            raise TypeError(msg)
 
     def __setitem__(self, index: int | str, value: NumberOrArray):
         """Set the value of a specific field.
@@ -213,10 +220,12 @@ class FieldCollection(FieldBase):
                     field.data = value
                     break  # indicates that a field has been found
             else:
-                raise KeyError(f"No field with name `{index}`")
+                msg = f"No field with name `{index}`"
+                raise KeyError(msg)
 
         else:
-            raise TypeError(f"Unsupported index `{index}`")
+            msg = f"Unsupported index `{index}`"
+            raise TypeError(msg)
 
     @property
     def fields(self) -> list[DataFieldBase]:
@@ -240,7 +249,8 @@ class FieldCollection(FieldBase):
     def labels(self, values: list[str | None]):
         """Sets the labels of all fields."""
         if len(values) != len(self):
-            raise ValueError("Require a label for each field")
+            msg = "Require a label for each field"
+            raise ValueError(msg)
         for field, value in zip(self.fields, values):
             field.label = value
 
@@ -318,7 +328,8 @@ class FieldCollection(FieldBase):
         start = 0
         for field_class in field_classes:
             if not issubclass(field_class, DataFieldBase):
-                raise RuntimeError("Individual fields must be of type DataFieldBase.")
+                msg = "Individual fields must be of type DataFieldBase."
+                raise RuntimeError(msg)
             field = field_class(grid)
             end = start + grid.num_axes**field.rank
             if with_ghost_cells:
@@ -728,7 +739,8 @@ class FieldCollection(FieldBase):
                 The projected data of all fields on a subgrid of the original grid.
         """
         if not all(isinstance(f, ScalarField) for f in self):
-            raise TypeError("All fields must be scalar fields to project data")
+            msg = "All fields must be scalar fields to project data"
+            raise TypeError(msg)
         return self._apply_to_fields(lambda f: f.project(axes, **kwargs), label=label)  # type: ignore
 
     def slice(
@@ -758,7 +770,8 @@ class FieldCollection(FieldBase):
                 The projected data of all fields on a subgrid of the original grid.
         """
         if not all(isinstance(f, ScalarField) for f in self):
-            raise TypeError("All fields must be scalar fields to slice data")
+            msg = "All fields must be scalar fields to slice data"
+            raise TypeError(msg)
         return self._apply_to_fields(lambda f: f.slice(position, **kwargs), label=label)  # type: ignore
 
     def get_line_data(  # type: ignore
@@ -870,7 +883,8 @@ class FieldCollection(FieldBase):
         elif projection == "sum":
             rgb_arr = np.sum(arr, axis=0)
         else:
-            raise ValueError(f"Undefined projection `{projection}`")
+            msg = f"Undefined projection `{projection}`"
+            raise ValueError(msg)
         if inverse_projection:
             rgb_arr = 1 - rgb_arr
 
@@ -1131,7 +1145,8 @@ class _FieldLabels:
         elif isinstance(index, slice):
             return list(self)[index]
         else:
-            raise TypeError("Unsupported index type")
+            msg = "Unsupported index type"
+            raise TypeError(msg)
 
     def __setitem__(self, index: int | slice, value: None | str | list[str | None]):
         """Change one or many labels of a field in the collection."""
@@ -1142,11 +1157,13 @@ class _FieldLabels:
             if value is None or isinstance(value, str):
                 value = [value] * len(fields)
             if len(fields) != len(value):
-                raise ValueError("Require a label for each field")
+                msg = "Require a label for each field"
+                raise ValueError(msg)
             for field, label in zip(fields, value):
                 field.label = label
         else:
-            raise TypeError("Unsupported index type")
+            msg = "Unsupported index type"
+            raise TypeError(msg)
 
     def index(self, label: str) -> int:
         """Return the index in the field labels where a certain label is stored.
@@ -1161,4 +1178,5 @@ class _FieldLabels:
         for i, field in enumerate(self.collection):
             if field.label == label:
                 return i
-        raise ValueError(f"Label `{label}` is not present in the collection")
+        msg = f"Label `{label}` is not present in the collection"
+        raise ValueError(msg)

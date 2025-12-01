@@ -307,7 +307,8 @@ def get_common_numba_dtype(*args):
             if isinstance(arg.dtype, scalars.Complex):
                 return nb.complex128
         else:
-            raise NotImplementedError(f"Cannot handle type {arg.__class__}")
+            msg = f"Cannot handle type {arg.__class__}"
+            raise NotImplementedError(msg)
     return nb.double
 
 

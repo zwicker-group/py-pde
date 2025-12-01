@@ -292,7 +292,8 @@ def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray
     elif dim == 3:
         result = _get_laplace_matrix_3d(bcs)
     else:
-        raise NotImplementedError(f"{dim:d}-dimensional Laplace matrix not implemented")
+        msg = f"{dim:d}-dimensional Laplace matrix not implemented"
+        raise NotImplementedError(msg)
 
     return result
 
@@ -586,9 +587,8 @@ def make_laplace(
         elif dim == 3:
             laplace = _make_laplace_numba_3d(grid, **kwargs)
         else:
-            raise NotImplementedError(
-                f"Numba Laplace operator not implemented for {dim:d} dimensions"
-            )
+            msg = f"Numba Laplace operator not implemented for {dim:d} dimensions"
+            raise NotImplementedError(msg)
 
     elif backend == "numba-spectral":
         if dim == 1:
@@ -596,15 +596,15 @@ def make_laplace(
         elif dim == 2:
             laplace = _make_laplace_numba_spectral_2d(grid, **kwargs)
         else:
-            raise NotImplementedError(
-                f"Spectral Laplace operator not implemented for {dim:d} dimensions"
-            )
+            msg = f"Spectral Laplace operator not implemented for {dim:d} dimensions"
+            raise NotImplementedError(msg)
 
     elif backend == "scipy":
         laplace = _make_laplace_scipy_nd(grid, **kwargs)
 
     else:
-        raise ValueError(f"Backend `{backend}` is not defined")
+        msg = f"Backend `{backend}` is not defined"
+        raise ValueError(msg)
 
     return laplace
 
@@ -637,7 +637,8 @@ def _make_gradient_scipy_nd(
     elif method == "backward":
         stencil = [-1, 1, 0]
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
@@ -672,7 +673,8 @@ def _make_gradient_numba_1d(
         A function that can be applied to an array of values
     """
     if method not in {"central", "forward", "backward"}:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     dim_x = grid.shape[0]
     dx = grid.discretization[0]
@@ -712,7 +714,8 @@ def _make_gradient_numba_2d(
     elif method in {"forward", "backward"}:
         scale_x, scale_y = 1 / grid.discretization
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
@@ -756,7 +759,8 @@ def _make_gradient_numba_3d(
     elif method in {"forward", "backward"}:
         scale_x, scale_y, scale_z = 1 / grid.discretization
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y * dim_z >= config["numba.multithreading_threshold"]
@@ -842,15 +846,15 @@ def make_gradient(
         elif dim == 3:
             gradient = _make_gradient_numba_3d(grid, method=method)
         else:
-            raise NotImplementedError(
-                f"Numba gradient operator not implemented for dimension {dim}"
-            )
+            msg = f"Numba gradient operator not implemented for dimension {dim}"
+            raise NotImplementedError(msg)
 
     elif backend == "scipy":
         gradient = _make_gradient_scipy_nd(grid, method=method)
 
     else:
-        raise ValueError(f"Backend `{backend}` is not defined")
+        msg = f"Backend `{backend}` is not defined"
+        raise ValueError(msg)
 
     return gradient
 
@@ -1045,9 +1049,8 @@ def make_gradient_squared(grid: CartesianGrid, *, central: bool = True) -> Opera
     elif dim == 3:
         gradient_squared = _make_gradient_squared_numba_3d(grid, central=central)
     else:
-        raise NotImplementedError(
-            f"Squared gradient operator is not implemented for dimension {dim}"
-        )
+        msg = f"Squared gradient operator is not implemented for dimension {dim}"
+        raise NotImplementedError(msg)
 
     return gradient_squared
 
@@ -1078,7 +1081,8 @@ def _make_divergence_scipy_nd(
     elif method == "backward":
         stencil = [-1, 1, 0]
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     def divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply divergence operator to array `arr`"""
@@ -1116,7 +1120,8 @@ def _make_divergence_numba_1d(
         A function that can be applied to an array of values
     """
     if method not in {"central", "forward", "backward"}:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
     dim_x = grid.shape[0]
     dx = grid.discretization[0]
 
@@ -1155,7 +1160,8 @@ def _make_divergence_numba_2d(
     elif method in {"forward", "backward"}:
         scale_x, scale_y = 1 / grid.discretization
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
@@ -1200,7 +1206,8 @@ def _make_divergence_numba_3d(
     elif method in {"forward", "backward"}:
         scale_x, scale_y, scale_z = 1 / grid.discretization
     else:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y * dim_z >= config["numba.multithreading_threshold"]
@@ -1269,15 +1276,15 @@ def make_divergence(
         elif dim == 3:
             divergence = _make_divergence_numba_3d(grid, method=method)
         else:
-            raise NotImplementedError(
-                f"Numba divergence operator not implemented for dimension {dim}"
-            )
+            msg = f"Numba divergence operator not implemented for dimension {dim}"
+            raise NotImplementedError(msg)
 
     elif backend == "scipy":
         divergence = _make_divergence_scipy_nd(grid, method=method)
 
     else:
-        raise ValueError(f"Backend `{backend}` is not defined")
+        msg = f"Backend `{backend}` is not defined"
+        raise ValueError(msg)
 
     return divergence
 

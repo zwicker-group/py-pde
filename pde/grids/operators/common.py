@@ -38,7 +38,8 @@ def make_derivative(
         derivatives at the valid (interior) grid points.
     """
     if method not in {"central", "forward", "backward"}:
-        raise ValueError(f"Unknown derivative type `{method}`")
+        msg = f"Unknown derivative type `{method}`"
+        raise ValueError(msg)
 
     shape = grid.shape
     num_axes = len(shape)
@@ -51,7 +52,8 @@ def make_derivative(
     elif axis == 2:
         di, dj, dk = 0, 0, 1
     else:
-        raise NotImplementedError(f"Derivative for {axis:d} dimensions")
+        msg = f"Derivative for {axis:d} dimensions"
+        raise NotImplementedError(msg)
 
     if num_axes == 1:
 
@@ -100,9 +102,8 @@ def make_derivative(
                             out[i - 1, j - 1, k - 1] = (arr[i, j, k] - arr_l) / dx
 
     else:
-        raise NotImplementedError(
-            f"Numba derivative operator not implemented for {num_axes:d} axes"
-        )
+        msg = f"Numba derivative operator not implemented for {num_axes:d} axes"
+        raise NotImplementedError(msg)
 
     return diff  # type: ignore
 
@@ -132,7 +133,8 @@ def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorType:
     elif axis == 2:
         di, dj, dk = 0, 0, 1
     else:
-        raise NotImplementedError(f"Derivative for {axis:d} dimensions")
+        msg = f"Derivative for {axis:d} dimensions"
+        raise NotImplementedError(msg)
 
     if num_axes == 1:
 
@@ -168,9 +170,8 @@ def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorType:
                         ) * scale
 
     else:
-        raise NotImplementedError(
-            f"Numba derivative operator not implemented for {num_axes:d} axes"
-        )
+        msg = f"Numba derivative operator not implemented for {num_axes:d} axes"
+        raise NotImplementedError(msg)
 
     return diff  # type: ignore
 
@@ -192,7 +193,8 @@ def uniform_discretization(grid: GridBase) -> float:
     if np.allclose(grid.discretization, dx_mean):
         return float(dx_mean)
     else:
-        raise RuntimeError("Grid discretization is not uniform")
+        msg = "Grid discretization is not uniform"
+        raise RuntimeError(msg)
 
 
 def make_laplace_from_matrix(
@@ -253,7 +255,8 @@ def make_general_poisson_solver(
     logger = logging.getLogger(__name__)
 
     if method not in {"auto", "scipy"}:
-        raise ValueError(f"Method {method} is not available")
+        msg = f"Method {method} is not available"
+        raise ValueError(msg)
 
     # prepare the matrix representing the operator
     mat = matrix.tocsc()
@@ -296,9 +299,8 @@ def make_general_poisson_solver(
             result = sparse.linalg.lsmr(mat, rhs)[0]
             if not np.allclose(mat.dot(result), rhs, rtol=1e-5, atol=1e-5):
                 residual = np.linalg.norm(mat.dot(result) - rhs)
-                raise RuntimeError(
-                    f"Poisson problem could not be solved (Residual: {residual})"
-                )
+                msg = f"Poisson problem could not be solved (Residual: {residual})"
+                raise RuntimeError(msg)
             logger.info("Solved Poisson problem with sparse.linalg.lsmr")
 
         # convert the result to the correct format

@@ -130,10 +130,11 @@ class Parameter:
             try:
                 return self.cls(value)
             except ValueError as err:
-                raise ValueError(
+                msg = (
                     f"Could not convert {value!r} to {self.cls.__name__} for parameter "
                     f"'{self.name}'"
-                ) from err
+                )
+                raise ValueError(msg) from err
 
 
 # define default parameter values
@@ -269,23 +270,25 @@ class Config(collections.UserDict):
             try:
                 self[key]  # test whether the key already exist (including magic keys)
             except KeyError as err:
-                raise KeyError(
-                    f"{key} is not present and config is not in `insert` mode"
-                ) from err
+                msg = f"{key} is not present and config is not in `insert` mode"
+                raise KeyError(msg) from err
             self.data[key] = self._convert_value(key, value)
 
         elif self.mode == "locked":
-            raise RuntimeError("Configuration is locked")
+            msg = "Configuration is locked"
+            raise RuntimeError(msg)
 
         else:
-            raise ValueError(f"Unsupported configuration mode `{self.mode}`")
+            msg = f"Unsupported configuration mode `{self.mode}`"
+            raise ValueError(msg)
 
     def __delitem__(self, key: str):
         """Removes item `key`"""
         if self.mode == "insert":
             del self.data[key]
         else:
-            raise RuntimeError("Configuration is not in `insert` mode")
+            msg = "Configuration is not in `insert` mode"
+            raise RuntimeError(msg)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the configuration to a simple dictionary.
@@ -342,10 +345,11 @@ class Config(collections.UserDict):
         elif setting == "only_local":
             return not is_hpc_environment()
         else:
-            raise ValueError(
+            msg = (
                 "Parameter `numba.multithreading` must be in {'always', 'never', "
                 f"'only_local'}}, not `{setting}`"
             )
+            raise ValueError(msg)
 
 
 def get_package_versions(

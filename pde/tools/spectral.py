@@ -202,7 +202,8 @@ def make_correlated_noise(
             return np.exp(-sharpness2 * (length_scale * np.sqrt(k2s) - 1) ** 2)
 
     else:
-        raise ValueError(f"Unknown correlation `{correlation}`")
+        msg = f"Unknown correlation `{correlation}`"
+        raise ValueError(msg)
 
     if kwargs:
         _logger.warning("Unused arguments: %s", list(kwargs))

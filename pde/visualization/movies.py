@@ -71,16 +71,18 @@ class Movie:
 
         # check whether ffmpeg is available
         if not self.is_available():
-            raise RuntimeError(
+            msg = (
                 "FFMpegWriter is not available. This is most likely because a suitable "
                 "installation of FFMpeg was not found. See ffmpeg.org for how to "
                 "install it properly on your system."
             )
+            raise RuntimeError(msg)
 
         # check whether the path to which the movie is written is available
         folder = pathlib.Path(self.filename).parent
         if not folder.exists() or not folder.is_dir():
-            raise OSError(f"Folder `{folder}` does not exist")
+            msg = f"Folder `{folder}` does not exist"
+            raise OSError(msg)
 
         self._writer = None
 

@@ -74,11 +74,12 @@ class CartesianGrid(GridBase):
         """
         bounds_arr: NumericArray = np.array(bounds, ndmin=1, dtype=np.double)
         if bounds_arr.shape == (2,):
-            raise ValueError(
+            msg = (
                 "`bounds with shape (2,) are ambiguous. Either use shape (1, 2) to set "
                 "up a 1d system with two bounds or shape (2, 1) for a 2d system with "
                 "only the upper bounds specified"
             )
+            raise ValueError(msg)
 
         if bounds_arr.ndim == 1 or bounds_arr.shape[1] == 1:
             # only set the upper bounds
@@ -90,16 +91,16 @@ class CartesianGrid(GridBase):
             self.cuboid = Cuboid.from_bounds(bounds_arr, mutable=False)
 
         else:
-            raise ValueError(
-                f"Do not know how to interpret shape {bounds_arr.shape} for bounds"
-            )
+            msg = f"Do not know how to interpret shape {bounds_arr.shape} for bounds"
+            raise ValueError(msg)
 
         # handle the shape array
         shape = _check_shape(shape)
         if len(shape) == 1 and self.cuboid.dim > 1:
             shape = (int(shape[0]),) * self.cuboid.dim
         if self.cuboid.dim != len(shape):
-            raise DimensionError("Dimension of `bounds` and `shape` are not compatible")
+            msg = "Dimension of `bounds` and `shape` are not compatible"
+            raise DimensionError(msg)
         self._shape = _check_shape(shape)
         self.c = CartesianCoordinates(dim=len(self.shape))
 
@@ -109,10 +110,11 @@ class CartesianGrid(GridBase):
         if isinstance(periodic, (bool, np.bool_)):
             self._periodic = [bool(periodic)] * self.dim
         elif len(periodic) != self.dim:
-            raise DimensionError(
+            msg = (
                 "Number of axes with specified periodicity does not match grid "
                 f"dimension ({len(periodic)} != {self.dim})"
             )
+            raise DimensionError(msg)
         else:
             self._periodic = list(periodic)
 
@@ -161,7 +163,8 @@ class CartesianGrid(GridBase):
             periodic=state_copy.pop("periodic"),
         )
         if state_copy:
-            raise ValueError(f"State items {list(state_copy)} were not used")
+            msg = f"State items {list(state_copy)} were not used"
+            raise ValueError(msg)
         return obj
 
     @classmethod
@@ -260,7 +263,8 @@ class CartesianGrid(GridBase):
         cuboid = self.cuboid
         if boundary_distance != 0:
             if any(cuboid.size <= 2 * boundary_distance):
-                raise RuntimeError("Random points would be too close to boundary")
+                msg = "Random points would be too close to boundary"
+                raise RuntimeError(msg)
             cuboid = cuboid.buffer(-boundary_distance)
 
         # create random point
@@ -271,7 +275,8 @@ class CartesianGrid(GridBase):
         elif coords == "cell":
             return self.transform(point, "grid", "cell")
         else:
-            raise ValueError(f"Unknown coordinate system `{coords}`")
+            msg = f"Unknown coordinate system `{coords}`"
+            raise ValueError(msg)
 
     def difference_vector(
         self, p1: FloatingArray, p2: FloatingArray, *, coords: CoordsType = "grid"
@@ -304,10 +309,11 @@ class CartesianGrid(GridBase):
             for plotting.
         """
         if data.shape[-self.dim :] != self.shape:
-            raise ValueError(
+            msg = (
                 f"Shape {data.shape} of the data array is not compatible with grid "
                 f"shape {self.shape}"
             )
+            raise ValueError(msg)
 
         def _get_axis(axis):
             """Determine the axis from a given specifier."""
@@ -317,7 +323,8 @@ class CartesianGrid(GridBase):
                 try:
                     axis = self.axes.index(axis)
                 except ValueError:
-                    raise ValueError(f"Axis `{axis}` not defined") from None
+                    msg = f"Axis `{axis}` not defined"
+                    raise ValueError(msg) from None
             return axis
 
         if extract == "auto":
@@ -342,7 +349,8 @@ class CartesianGrid(GridBase):
             label_y = f"Projection onto {self.axes[axis]}"
 
         else:
-            raise ValueError(f"Unknown extraction method `{extract}`")
+            msg = f"Unknown extraction method `{extract}`"
+            raise ValueError(msg)
 
         if self.dim == 1:
             label_y = ""
@@ -358,19 +366,19 @@ class CartesianGrid(GridBase):
 
     def get_image_data(self, data: NumericArray) -> dict[str, Any]:
         if data.shape[-self.dim :] != self.shape:
-            raise ValueError(
+            msg = (
                 f"Shape {data.shape} of the data array is not compatible with grid "
                 f"shape {self.shape}"
             )
+            raise ValueError(msg)
 
         if self.dim == 2:
             image_data = data
         elif self.dim == 3:
             image_data = data[:, :, self.shape[-1] // 2]
         else:
-            raise NotImplementedError(
-                "Creating images is only implemented for 2d and 3d grids"
-            )
+            msg = "Creating images is only implemented for 2d and 3d grids"
+            raise NotImplementedError(msg)
 
         extent: list[float] = []
         for c in self.axes_bounds[:2]:
@@ -387,12 +395,14 @@ class CartesianGrid(GridBase):
 
     def get_vector_data(self, data: NumericArray, **kwargs) -> dict[str, Any]:
         if self.dim != 2:
-            raise DimensionError("Vector data only available for dim==2")
+            msg = "Vector data only available for dim==2"
+            raise DimensionError(msg)
         if data.shape != (2,) + self.shape:
-            raise ValueError(
+            msg = (
                 f"Shape {data.shape} of the data array is not compatible with grid "
                 f"shape {self.shape}"
             )
+            raise ValueError(msg)
 
         return {
             "data_x": data[0],
@@ -414,9 +424,8 @@ class CartesianGrid(GridBase):
                 plotting routines, e.g., to set the color of the lines
         """
         if self.dim not in {1, 2}:
-            raise NotImplementedError(
-                f"Plotting is not implemented for grids of dimension {self.dim}"
-            )
+            msg = f"Plotting is not implemented for grids of dimension {self.dim}"
+            raise NotImplementedError(msg)
 
         kwargs.setdefault("color", "k")
         xb = self.axes_bounds[0]
@@ -504,7 +513,8 @@ class UnitGrid(CartesianGrid):
         state_copy = state.copy()
         obj = cls(shape=state_copy.pop("shape"), periodic=state_copy.pop("periodic"))
         if state_copy:
-            raise ValueError(f"State items {list(state_copy)} were not used")
+            msg = f"State items {list(state_copy)} were not used"
+            raise ValueError(msg)
         return obj
 
     def to_cartesian(self) -> CartesianGrid:

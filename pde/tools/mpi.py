@@ -90,7 +90,8 @@ else:
             try:
                 return self._name_ids[name]
             except KeyError:
-                raise AttributeError(f"MPI operator `{name}` not registered") from None
+                msg = f"MPI operator `{name}` not registered"
+                raise AttributeError(msg) from None
 
     Operator = _OperatorRegistry()
     Operator.register("MAX", MPI.MAX)
@@ -214,7 +215,8 @@ def ol_mpi_allreduce(data, operator):
     elif isinstance(operator, nb.types.Integer):
         op_id = None  # use given value of operator
     else:
-        raise RuntimeError(f"`operator` must be a literal type, not {operator}")
+        msg = f"`operator` must be a literal type, not {operator}"
+        raise RuntimeError(msg)
 
     import numba_mpi
 
@@ -250,6 +252,7 @@ def ol_mpi_allreduce(data, operator):
             return recvobj
 
     else:
-        raise TypeError(f"Unsupported type {data.__class__.__name__}")
+        msg = f"Unsupported type {data.__class__.__name__}"
+        raise TypeError(msg)
 
     return impl

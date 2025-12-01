@@ -88,7 +88,8 @@ class AllenCahnPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         if not isinstance(state, ScalarField):
-            raise ValueError("`state` must be ScalarField")
+            msg = "`state` must be ScalarField"
+            raise ValueError(msg)
         laplace = state.laplace(bc=self.bc, label="evolution rate", args={"t": t})
         rhs = self.interface_width * laplace - state**3 + state
         return self.mobility * rhs  # type: ignore

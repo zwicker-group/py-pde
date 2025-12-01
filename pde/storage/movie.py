@@ -153,7 +153,8 @@ class MovieStorage(StorageBase):
                 be useful to get additional information about the encoding.
         """
         if not module_available("ffmpeg"):
-            raise ModuleNotFoundError("`MovieStorage` needs `ffmpeg-python` package")
+            msg = "`MovieStorage` needs `ffmpeg-python` package"
+            raise ModuleNotFoundError(msg)
 
         super().__init__(info=info, write_mode=write_mode)
         self.filename = Path(filename)
@@ -218,7 +219,8 @@ class MovieStorage(StorageBase):
 
         path = Path(self.filename)
         if not path.exists():
-            raise OSError(f"File `{path}` does not exist")
+            msg = f"File `{path}` does not exist"
+            raise OSError(msg)
         info = ffmpeg.probe(path)
 
         # sanity checks on the video
@@ -251,7 +253,8 @@ class MovieStorage(StorageBase):
                 fps = Fraction(stream.get("avg_frame_rate", None))
                 duration = parse_duration(stream.get("tags", {}).get("DURATION"))
             except TypeError as err:
-                raise RuntimeError("Frame count could not be read from video") from err
+                msg = "Frame count could not be read from video"
+                raise RuntimeError(msg) from err
             else:
                 self.info["num_frames"] = int(duration.total_seconds() * float(fps))
         self.info["width"] = stream["width"]
@@ -261,7 +264,8 @@ class MovieStorage(StorageBase):
             if video_format is None:
                 video_format = stream.get("pix_fmt")
             if video_format is None:
-                raise RuntimeError("Could not determine video format from file")
+                msg = "Could not determine video format from file"
+                raise RuntimeError(msg)
         else:
             video_format = self.video_format
         try:
@@ -317,9 +321,11 @@ class MovieStorage(StorageBase):
         ffmpeg = _import_ffmpeg()  # lazy loading so it's not a hard dependence
 
         if self._is_writing:
-            raise RuntimeError(f"{self.__class__.__name__} is already in writing mode")
+            msg = f"{self.__class__.__name__} is already in writing mode"
+            raise RuntimeError(msg)
         if self._ffmpeg is not None:
-            raise RuntimeError("ffmpeg process already started")
+            msg = "ffmpeg process already started"
+            raise RuntimeError(msg)
 
         # delete data if truncation is requested. This is for instance necessary
         # to remove older data with incompatible data_shape
@@ -329,7 +335,8 @@ class MovieStorage(StorageBase):
             self.clear()
             self.write_mode = "append"  # do not truncate in subsequent calls
         elif self.write_mode == "append":
-            raise NotImplementedError("Appending to movies is not possible")
+            msg = "Appending to movies is not possible"
+            raise NotImplementedError(msg)
 
         # initialize the writing, setting current data shape
         super().start_writing(field, info=info)
@@ -343,23 +350,26 @@ class MovieStorage(StorageBase):
         elif self._grid.num_axes == 2:
             width, height = field.grid.shape
         else:
-            raise RuntimeError("Cannot use grid with more than two axes")
+            msg = "Cannot use grid with more than two axes"
+            raise RuntimeError(msg)
 
         # get color channel information
         if self.video_format == "auto":
             channels = field._data_flat.shape[0]
             video_format = FFmpeg.find_format(channels, self.bits_per_channel)
             if video_format is None:
-                raise RuntimeError(
+                msg = (
                     f"Could not find a video format with {channels} channels and "
                     f"{self.bits_per_channel} bits per channel."
                 )
+                raise RuntimeError(msg)
             self.info["video_format"] = video_format
         else:
             self.info["video_format"] = self.video_format
         self._format = FFmpeg.formats[self.info["video_format"]]
         if field.is_complex:
-            raise NotImplementedError("MovieStorage does not support complex values")
+            msg = "MovieStorage does not support complex values"
+            raise NotImplementedError(msg)
         self._frame_shape = (width, height, self._format.channels)
 
         # set up the normalization
@@ -575,7 +585,8 @@ class MovieStorage(StorageBase):
             t_index += len(self)
 
         if not 0 <= t_index < len(self):
-            raise IndexError("Time index out of range")
+            msg = "Time index out of range"
+            raise IndexError(msg)
 
         if "width" not in self.info:
             self._read_metadata()
@@ -596,7 +607,8 @@ class MovieStorage(StorageBase):
         )
         read_bytes, _ = f_output.run(capture_stdout=True)
         if not read_bytes:
-            raise OSError("Could not read any data")
+            msg = "Could not read any data"
+            raise OSError(msg)
         frame = np.frombuffer(read_bytes, self._format.dtype).reshape(frame_shape)
 
         for i, norm in enumerate(self._norms):

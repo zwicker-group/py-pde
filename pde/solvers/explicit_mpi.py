@@ -208,7 +208,8 @@ class ExplicitMPISolver(ExplicitSolver):
                 dt_list = self.mesh.allgather(dt)
                 if not np.isclose(min(dt_list), max(dt_list)):
                     # abort simulations in all nodes when they went out of sync
-                    raise RuntimeError(f"Processes went out of sync: dt={dt_list}")
+                    msg = f"Processes went out of sync: dt={dt_list}"
+                    raise RuntimeError(msg)
 
                 # collect the data from all nodes
                 post_step_data_list = self.mesh.gather(post_step_data)
@@ -246,7 +247,8 @@ class ExplicitMPISolver(ExplicitSolver):
                 # check whether t_last is the same for all processes
                 t_list = self.mesh.gather(t_last)
                 if t_list is not None and not np.isclose(min(t_list), max(t_list)):
-                    raise RuntimeError(f"Processes went out of sync: t_last={t_list}")
+                    msg = f"Processes went out of sync: t_last={t_list}"
+                    raise RuntimeError(msg)
 
                 # collect the data from all nodes
                 post_step_data_list = self.mesh.gather(post_step_data)

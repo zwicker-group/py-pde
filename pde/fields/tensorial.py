@@ -84,10 +84,11 @@ class Tensor2Field(DataFieldBase):
             or any(len(expr) != grid.dim for expr in expressions)
         ):
             axes_names = grid.axes + grid.axes_symmetric
-            raise DimensionError(
+            msg = (
                 f"Expected a nested list of {grid.dim}x{grid.dim} expressions for the "
                 f"tensor components of the coordinates {axes_names}."
             )
+            raise DimensionError(msg)
 
         if any("cartesian" in str(expression) for expression in expressions):
             # support Cartesian coordinates via a special constant
@@ -123,9 +124,11 @@ class Tensor2Field(DataFieldBase):
         """Turns a general index of two axis into a tuple of two numeric indices."""
         try:
             if len(key) != 2:
-                raise IndexError("Index must be given as two integers")
+                msg = "Index must be given as two integers"
+                raise IndexError(msg)
         except TypeError as err:
-            raise IndexError("Index must be given as two values") from err
+            msg = "Index must be given as two values"
+            raise IndexError(msg) from err
         return tuple(self.grid.get_axis_index(k) for k in key)  # type: ignore
 
     def __getitem__(self, key: tuple[int | str, int | str]) -> ScalarField:
@@ -163,7 +166,8 @@ class Tensor2Field(DataFieldBase):
 
         # ensure that no copying happened
         if not np.may_share_memory(self.data, value):
-            raise RuntimeError("Spurious copy detected!")
+            msg = "Spurious copy detected!"
+            raise RuntimeError(msg)
 
     def dot(
         self,
@@ -196,14 +200,16 @@ class Tensor2Field(DataFieldBase):
         # check input
         self.grid.assert_grid_compatible(other.grid)
         if not isinstance(other, (VectorField, Tensor2Field)):
-            raise TypeError("Second term must be a vector or tensor field")
+            msg = "Second term must be a vector or tensor field"
+            raise TypeError(msg)
 
         # create and check the output instance
         if out is None:
             out = other.__class__(self.grid, dtype=get_common_dtype(self, other))
         else:
             if not isinstance(out, other.__class__):
-                raise TypeError(f"`out` must be of type `{other.__class__}`")
+                msg = f"`out` must be of type `{other.__class__}`"
+                raise TypeError(msg)
             self.grid.assert_grid_compatible(out.grid)
 
         # calculate the result
@@ -382,11 +388,12 @@ class Tensor2Field(DataFieldBase):
                     data[idx] = np.linalg.det(self.data[(...,) + idx])
 
         else:
-            raise ValueError(
+            msg = (
                 f"Unknown method `{scalar}` for `to_scalar`. Valid methods are `norm`, "
                 "`min`, `max`, squared_sum`, `norm_squared`, `trace`, `determinant`, "
                 "and `invariant#`, where # is 1, 2, or 3"
             )
+            raise ValueError(msg)
 
         # determine label of the result
         if self.label is None:

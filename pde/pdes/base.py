@@ -189,12 +189,13 @@ class PDEBase(metaclass=ABCMeta):
         self, state: FieldBase, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function for evaluating the right hand side."""
-        raise NotImplementedError(
+        msg = (
             "The right-hand side of the PDE is not implemented using the `numba` "
             "backend. To add the implementation, provide the method "
             "`_make_pde_rhs_numba`, which should return a numba-compiled function "
             "calculating the right-hand side using numpy arrays as input and output."
         )
+        raise NotImplementedError(msg)
 
     def check_rhs_consistency(
         self,
@@ -300,7 +301,8 @@ class PDEBase(metaclass=ABCMeta):
             rhs = self._make_pde_rhs_numba(state, **kwargs)
 
         if rhs is None:
-            raise RuntimeError("`_make_pde_rhs_numba` returned None")
+            msg = "`_make_pde_rhs_numba` returned None"
+            raise RuntimeError(msg)
 
         if check_implementation:
             self.check_rhs_consistency(state, rhs_numba=rhs, **kwargs)
@@ -355,10 +357,11 @@ class PDEBase(metaclass=ABCMeta):
             rhs._backend = "numba"  # type: ignore
 
         elif backend != "auto":
-            raise ValueError(
+            msg = (
                 f"Unknown backend `{backend}`. Possible values are ['auto', 'numpy', "
                 "'numba']"
             )
+            raise ValueError(msg)
 
         return rhs
 
@@ -440,7 +443,8 @@ class PDEBase(metaclass=ABCMeta):
                 flat_index=True
             )
             if state.dtype != float:
-                raise TypeError("Noise is only supported for float types")
+                msg = "Noise is only supported for float types"
+                raise TypeError(msg)
 
             if isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field
@@ -590,7 +594,8 @@ class PDEBase(metaclass=ABCMeta):
             sde_rhs._backend = "numpy"  # type: ignore
 
         else:
-            raise ValueError(f"Unsupported backend `{backend}`")
+            msg = f"Unsupported backend `{backend}`"
+            raise ValueError(msg)
 
         return sde_rhs
 
@@ -681,10 +686,12 @@ class PDEBase(metaclass=ABCMeta):
             solver_obj = SolverBase.from_name(solver, pde=self, **kwargs)
 
         elif isinstance(solver, SolverBase):
-            raise TypeError("`solver` must be a class not an instance")
+            msg = "`solver` must be a class not an instance"
+            raise TypeError(msg)
 
         else:
-            raise TypeError(f"Solver {solver} is not supported")
+            msg = f"Solver {solver} is not supported"
+            raise TypeError(msg)
 
         # create controller instance
         controller = Controller(solver_obj, t_range=t_range, tracker=tracker)

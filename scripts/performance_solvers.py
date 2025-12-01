@@ -48,7 +48,8 @@ def main(
     elif equation == "cahn-hilliard":
         eq = CahnHilliardPDE()
     else:
-        raise ValueError(f"Undefined equation `{equation}`")
+        msg = f"Undefined equation `{equation}`"
+        raise ValueError(msg)
     print(f"EQUATION: ∂c/∂t = {eq.expression}\n")
 
     print("Determine ground truth...")

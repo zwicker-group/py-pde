@@ -254,7 +254,8 @@ def write_requirements_py(path: Path, requirements: list[Requirement]):
                 break
             content.append(line)
         else:
-            raise ValueError("Could not find the token 'GENERATED CODE'")
+            msg = "Could not find the token 'GENERATED CODE'"
+            raise ValueError(msg)
 
     # add generated code
     for r in sorted(requirements, key=lambda r: r.name.lower()):

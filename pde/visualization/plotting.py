@@ -97,17 +97,20 @@ def extract_field(
         if isinstance(fields, FieldCollection):
             field = fields[source]
         else:
-            raise TypeError(
+            msg = (
                 f"Cannot extract component {source} from instance of "
                 f"{fields.__class__.__name__}"
             )
+            raise TypeError(msg)
 
     if isinstance(field, FieldCollection):
-        raise RuntimeError("Extract field is a collection")
+        msg = "Extract field is a collection"
+        raise RuntimeError(msg)
 
     # test whether the rank is as expected
     if check_rank is not None and field.rank != check_rank:  # type: ignore
-        raise RuntimeError(f"Rank of extracted field is not {check_rank}")
+        msg = f"Rank of extracted field is not {check_rank}"
+        raise RuntimeError(msg)
 
     return field  # type: ignore
 
@@ -207,7 +210,8 @@ class ScalarFieldPlot:
         """
         fields = storage[0]
         if not isinstance(fields, FieldBase):
-            raise RuntimeError("Storage must contain fields")
+            msg = "Storage must contain fields"
+            raise RuntimeError(msg)
 
         # prepare the data that needs to be plotted
         quantities = cls._prepare_quantities(fields, quantities=quantities, scale=scale)
@@ -396,7 +400,8 @@ class ScalarFieldPlot:
                 changed.
         """
         if not isinstance(fields, FieldBase):
-            raise TypeError("`fields` must be of type FieldBase")
+            msg = "`fields` must be of type FieldBase"
+            raise TypeError(msg)
 
         if title:
             self.sup_title.set_text(title)
@@ -524,7 +529,8 @@ def plot_magnitudes(
     if quantities is None:
         fields = storage[0]
         if not isinstance(fields, FieldBase):
-            raise TypeError("`fields` must be of type FieldBase")
+            msg = "`fields` must be of type FieldBase"
+            raise TypeError(msg)
         if fields.label:
             label_base = fields.label
         else:
@@ -692,7 +698,8 @@ def plot_kymograph(
         :class:`~pde.tools.plotting.PlotReference`: The reference to the plot
     """
     if len(storage) == 0:
-        raise RuntimeError("Storage is empty")
+        msg = "Storage is empty"
+        raise RuntimeError(msg)
     line_data_args: dict[str, Any] = {"scalar": scalar, "extract": extract}
 
     if storage.has_collection:
@@ -766,7 +773,8 @@ def plot_kymographs(
         all plots
     """
     if len(storage) == 0:
-        raise RuntimeError("Storage is empty")
+        msg = "Storage is empty"
+        raise RuntimeError(msg)
     line_data_args = {"scalar": scalar, "extract": extract}
     if storage.has_collection:
         num_fields = len(storage[0])  # type: ignore
@@ -835,14 +843,17 @@ def plot_interactive(
             Extra arguments passed to the plotting function
     """
     if not module_available("napari"):
-        raise ImportError("Require the `napari` module for interactive plotting")
+        msg = "Require the `napari` module for interactive plotting"
+        raise ImportError(msg)
 
     if len(storage) < 1:
-        raise ValueError("Storage is empty")
+        msg = "Storage is empty"
+        raise ValueError(msg)
 
     grid = storage.grid
     if grid is None:
-        raise RuntimeError("Storage did not contain information about the grid")
+        msg = "Storage did not contain information about the grid"
+        raise RuntimeError(msg)
 
     # collect data from all time points
     timecourse: dict[str, list[NumericArray]] = {}
@@ -866,7 +877,8 @@ def plot_interactive(
                 length_scale = grid.volume ** (1 / grid.dim)
                 dt = length_scale / len(storage)
             else:
-                raise ValueError(f"Unknown time scaling `{time_scaling}`")
+                msg = f"Unknown time scaling `{time_scaling}`"
+                raise ValueError(msg)
             field_data["scale"] = np.r_[dt, field_data["scale"]]
 
     if viewer_args is None:

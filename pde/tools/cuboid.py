@@ -47,10 +47,11 @@ class Cuboid:
     def size(self, value: FloatOrArray):
         self._size = np.array(value, self.pos.dtype)  # make copy
         if self.pos.shape != self._size.shape:
-            raise ValueError(
+            msg = (
                 f"Size vector (dim={len(self._size)}) must have the same "
                 f"dimension as the position vector (dim={len(self.pos)})"
             )
+            raise ValueError(msg)
 
         # flip Cuboid with negative size
         neg = self._size < 0
@@ -128,7 +129,8 @@ class Cuboid:
         """The sum of two cuboids is the minimal cuboid enclosing both."""
         if isinstance(other, Cuboid):
             if self.dim != other.dim:
-                raise RuntimeError("Incompatible dimensions")
+                msg = "Incompatible dimensions"
+                raise RuntimeError(msg)
             a1, a2 = self.corners
             b1, b2 = other.corners
             return self.__class__.from_points(np.minimum(a1, b1), np.maximum(a2, b2))
@@ -217,10 +219,11 @@ class Cuboid:
             return points
 
         if points.shape[-1] != self.dim:
-            raise ValueError(
+            msg = (
                 "Last dimension of `points` must agree with "
                 f"cuboid dimension {self.dim}"
             )
+            raise ValueError(msg)
 
         c1, c2 = self.corners
         return np.all(c1 <= points, axis=-1) & np.all(points <= c2, axis=-1)  # type: ignore

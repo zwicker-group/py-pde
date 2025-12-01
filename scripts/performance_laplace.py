@@ -180,7 +180,8 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
         elif method in {"numba", "scipy"}:
             laplace = grid.make_operator("laplace", bc=bcs, backend=method)
         else:
-            raise ValueError(f"Unknown method `{method}`")
+            msg = f"Unknown method `{method}`"
+            raise ValueError(msg)
 
         # call once to pre-compile and test result
         if method == "OPTIMIZED":
@@ -214,7 +215,8 @@ def test_cylindrical(shape: tuple[int, int]) -> None:
         elif method == "numba":
             laplace = grid.make_operator("laplace", bc=bcs)
         else:
-            raise ValueError(f"Unknown method `{method}`")
+            msg = f"Unknown method `{method}`"
+            raise ValueError(msg)
         # call once to pre-compile and test result
         np.testing.assert_allclose(laplace(field.data), expected.data)
         speed = estimate_computation_speed(laplace, field.data)

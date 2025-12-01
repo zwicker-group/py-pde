@@ -22,7 +22,8 @@ class BisphericalCoordinates(CoordinatesBase):
     def __init__(self, scale_parameter: float = 1):
         super().__init__()
         if scale_parameter <= 0:
-            raise ValueError("Scale parameter must be positive")
+            msg = "Scale parameter must be positive"
+            raise ValueError(msg)
         self.scale_parameter = scale_parameter
 
     def __repr__(self) -> str:

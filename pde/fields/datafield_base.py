@@ -76,7 +76,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif with_ghost_cells:
             # use full data without copying (unless necessary)
             if data is None or isinstance(data, str):
-                raise ValueError("`data` must be supplied if with_ghost_cells==True")
+                msg = "`data` must be supplied if with_ghost_cells==True"
+                raise ValueError(msg)
             data_arr = number_array(data, dtype=dtype, copy=None)
             super().__init__(grid, data=data_arr, label=label)
 
@@ -98,7 +99,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 elif data == "ones":
                     data_arr = np.ones(full_shape, dtype=dtype)
                 else:
-                    raise ValueError(f"Unknown data '{data}'")
+                    msg = f"Unknown data '{data}'"
+                    raise ValueError(msg)
                 super().__init__(grid, data=data_arr, label=label)
 
             elif isinstance(data, DataFieldBase):
@@ -307,7 +309,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif scaling == "physical":
             scale = 1 / np.sqrt(grid.cell_volumes)
         else:
-            raise ValueError(f"Unknown noise scaling {scaling}")
+            msg = f"Unknown noise scaling {scaling}"
+            raise ValueError(msg)
 
         if np.iscomplexobj(mean) or np.iscomplexobj(std):
             # create complex random numbers for the field
@@ -475,7 +478,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 and field_cls.rank == rank
             ):
                 return field_cls
-        raise RuntimeError(f"Could not find field class for rank {rank}")
+        msg = f"Could not find field class for rank {rank}"
+        raise RuntimeError(msg)
 
     @classmethod
     def from_state(
@@ -746,7 +750,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             Field of the same rank as the current one.
         """
-        raise NotImplementedError(f"Cannot interpolate {self.__class__.__name__}")
+        msg = f"Cannot interpolate {self.__class__.__name__}"
+        raise NotImplementedError(msg)
 
     def insert(self, point: FloatingArray, amount: ArrayLike) -> None:
         """Adds an (integrated) value to the field at an interpolated position.
@@ -768,7 +773,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         grid_dim = len(grid.axes)
 
         if point.size != grid_dim or point.ndim != 1:
-            raise DimensionError(f"Dimension mismatch for point {point}")
+            msg = f"Dimension mismatch for point {point}"
+            raise DimensionError(msg)
 
         # determine the grid coordinates next to the chosen points
         low = np.array(grid.axes_bounds)[:, 0]
@@ -794,7 +800,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 cells.append((tuple(coords), weight))
 
         if total_weight == 0:
-            raise DomainError("Point lies outside grid")
+            msg = "Point lies outside grid"
+            raise DomainError(msg)
 
         # alter each point in second iteration
         for coords, weight in cells:
@@ -906,7 +913,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif self.rank > 0:
             return abs(self.to_scalar().average)  # type: ignore
         else:
-            raise AssertionError("Rank must be non-negative")
+            msg = "Rank must be non-negative"
+            raise AssertionError(msg)
 
     @fill_in_docstring
     def apply_operator(
@@ -949,7 +957,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if out is None:
             out = out_cls(self.grid, data="empty", label=label, dtype=self.dtype)
         elif not isinstance(out, out_cls):
-            raise RankError(f"`out` must be a {out_cls.__name__}")
+            msg = f"`out` must be a {out_cls.__name__}"
+            raise RankError(msg)
         else:
             self.grid.assert_grid_compatible(out.grid)
             if label is not None:
@@ -997,9 +1006,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             rank_a = a.ndim - num_axes
             rank_b = b.ndim - num_axes
             if rank_a < 1 or rank_b < 1:
-                raise TypeError("Fields in dot product must have rank >= 1")
+                msg = "Fields in dot product must have rank >= 1"
+                raise TypeError(msg)
             if a.shape[rank_a:] != b.shape[rank_b:]:
-                raise ValueError("Shapes of fields are not compatible for dot product")
+                msg = "Shapes of fields are not compatible for dot product"
+                raise ValueError(msg)
 
             if rank_a == 1 and rank_b == 1:  # result is scalar field
                 return np.einsum("i...,i...->...", a, maybe_conj(b), out=out)
@@ -1014,7 +1025,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 return np.einsum("ij...,jk...->ik...", a, maybe_conj(b), out=out)
 
             else:
-                raise TypeError(f"Unsupported shapes ({a.shape}, {b.shape})")
+                msg = f"Unsupported shapes ({a.shape}, {b.shape})"
+                raise TypeError(msg)
 
         if backend == "numpy":
             # return the bare dot operator without the numba-overloaded version
@@ -1027,15 +1039,15 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 """Determine rank of field with type `arr`"""
                 arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
                 if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
-                    raise nb.errors.TypingError(
-                        f"Dot argument must be array, not  {arr_typ.__class__}"
-                    )
+                    msg = f"Dot argument must be array, not  {arr_typ.__class__}"
+                    raise nb.errors.TypingError(msg)
                 rank = arr_typ.ndim - num_axes
                 if rank < 1:
-                    raise nb.NumbaTypeError(
+                    msg = (
                         f"Rank={rank} too small for dot product. Use a normal product "
                         "instead."
                     )
+                    raise nb.NumbaTypeError(msg)
                 return rank
 
             @overload(dot, inline="always")
@@ -1092,7 +1104,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                                     out[i, j] += a[i, k] * maybe_conj(b[k, j])
 
                 else:
-                    raise NotImplementedError("Inner product for these ranks")
+                    msg = "Inner product for these ranks"
+                    raise NotImplementedError(msg)
 
                 if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                     # function is called without `out` -> allocate memory
@@ -1141,7 +1154,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             return dot_compiled  # type: ignore
 
         else:
-            raise ValueError(f"Unsupported backend `{backend}")
+            msg = f"Unsupported backend `{backend}"
+            raise ValueError(msg)
 
     def smooth(
         self: TDataField,
@@ -1320,7 +1334,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             line2d.set_ydata(line_data["data_y"].real)
 
         else:
-            raise ValueError(f"Unsupported plot reference {reference}")
+            msg = f"Unsupported plot reference {reference}"
+            raise ValueError(msg)
 
     def _plot_image(
         self,
@@ -1471,7 +1486,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             )
 
         else:
-            raise ValueError(f"Vector plot `{method}` is not supported.")
+            msg = f"Vector plot `{method}` is not supported."
+            raise ValueError(msg)
         parameters["data_kws"] = data_kws  # save data parameters
 
         # set some default properties of the plot
@@ -1511,7 +1527,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             )
 
         else:
-            raise ValueError(f"Vector plot `{method}` is not supported.")
+            msg = f"Vector plot `{method}` is not supported."
+            raise ValueError(msg)
 
     def _update_plot(self, reference: PlotReference) -> None:
         """Update a plot with the current field values.
@@ -1531,7 +1548,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif isinstance(el, (mpl.quiver.Quiver, mpl.streamplot.StreamplotSet)):
             self._update_vector_plot(reference)
         else:
-            raise ValueError(f"Unknown plot element {el.__class__.__name__}")
+            msg = f"Unknown plot element {el.__class__.__name__}"
+            raise ValueError(msg)
 
     @plot_on_axes(update_method="_update_plot")
     def plot(self, kind: str = "auto", **kwargs) -> PlotReference:
@@ -1609,10 +1627,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif kind == "vector":
             reference = self._plot_vector(**kwargs)
         else:
-            raise ValueError(
+            msg = (
                 f"Unsupported plot `{kind}`. Possible choices are `image`, `line`, "
                 "`vector`, or `auto`."
             )
+            raise ValueError(msg)
 
         return reference
 

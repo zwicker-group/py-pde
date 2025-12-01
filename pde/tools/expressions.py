@@ -366,9 +366,10 @@ class ExpressionBase(metaclass=ABCMeta):
 
         args = set(args) - found - set(self.consts)
         if len(args) > 0:
-            raise RuntimeError(
+            msg = (
                 f"Arguments {args} were not defined in expression signature {signature}"
             )
+            raise RuntimeError(msg)
 
     @property
     def expression(self) -> str:
@@ -596,7 +597,8 @@ class ScalarExpression(ExpressionBase):
 
         elif callable(expression):
             # expression is some other callable -> not allowed anymore
-            raise TypeError("Expression must be a string and not a function")
+            msg = "Expression must be a string and not a function"
+            raise TypeError(msg)
 
         elif isinstance(expression, numbers.Number):
             # expression is a simple number
@@ -652,7 +654,8 @@ class ScalarExpression(ExpressionBase):
             return value
 
         else:
-            raise TypeError("Only constant expressions have a defined value")
+            msg = "Only constant expressions have a defined value"
+            raise TypeError(msg)
 
     @property
     def is_zero(self) -> bool:
@@ -698,7 +701,8 @@ class ScalarExpression(ExpressionBase):
                 expression=0, signature=self.vars, allow_indexed=self.allow_indexed
             )
         if self.allow_indexed and self._var_indexed(var):
-            raise NotImplementedError("Cannot differentiate with respect to vector")
+            msg = "Cannot differentiate with respect to vector"
+            raise NotImplementedError(msg)
 
         # turn variable into sympy object and treat an indexed variable separately
         var_expr = self._prepare_expression(var)
@@ -727,9 +731,8 @@ class ScalarExpression(ExpressionBase):
             return TensorExpression(expression=expression, signature=self.vars)
 
         if self.allow_indexed and any(self._var_indexed(var) for var in self.vars):
-            raise RuntimeError(
-                "Cannot calculate gradient for expressions with indexed variables"
-            )
+            msg = "Cannot calculate gradient for expressions with indexed variables"
+            raise RuntimeError(msg)
 
         grad = sympy.Array([self._sympy_expr.diff(sympy.Symbol(v)) for v in self.vars])
         return TensorExpression(
@@ -876,7 +879,8 @@ class TensorExpression(ExpressionBase):
             return value
 
         else:
-            raise TypeError("Only constant expressions have a defined value")
+            msg = "Only constant expressions have a defined value"
+            raise TypeError(msg)
 
     def differentiate(self, var: str) -> TensorExpression:
         """Return the expression differentiated with respect to var."""
@@ -916,7 +920,8 @@ class TensorExpression(ExpressionBase):
                 or whether they are supplied individually.
         """
         if not isinstance(self._sympy_expr, sympy.Array):
-            raise TypeError("Expression must be an array")
+            msg = "Expression must be an array"
+            raise TypeError(msg)
         variables = ", ".join(v for v in self.vars)
         shape = self._sympy_expr.shape
 
@@ -1040,12 +1045,14 @@ def evaluate(
         fields_keys = fields.labels
         fields_values = fields.fields
         if len(set(fields_keys)) != len(fields_values):
-            raise RuntimeError("Field names need to be unique")
+            msg = "Field names need to be unique"
+            raise RuntimeError(msg)
     elif isinstance(fields, dict):
         fields_keys = fields.keys()  # type: ignore
         fields_values = fields.values()  # type: ignore
     else:
-        raise TypeError("`fields` must be dict or FieldCollection")
+        msg = "`fields` must be dict or FieldCollection"
+        raise TypeError(msg)
 
     # turn the expression strings into sympy expressions
     expr = ScalarExpression(expression, user_funcs=user_funcs, consts=consts)
@@ -1074,14 +1081,16 @@ def evaluate(
         else:
             field.grid.assert_grid_compatible(grid)
     if grid is None:
-        raise ValueError("No fields given")
+        msg = "No fields given"
+        raise ValueError(msg)
 
     # prepare the differential operators
 
     # check whether PDE has variables with same names as grid axes
     name_overlap = set(fields_keys) & set(grid.axes)
     if name_overlap:
-        raise ValueError(f"Coordinate {name_overlap} cannot be used as field name")
+        msg = f"Coordinate {name_overlap} cannot be used as field name"
+        raise ValueError(msg)
 
     # obtain the (differential) operators
     bcs_used = set()
@@ -1103,9 +1112,10 @@ def evaluate(
                     bcs_used.add(bc_key)  # mark it as being used
                     break
             else:
-                raise RuntimeError(
+                msg = (
                     f"Could not find suitable boundary condition for function `{func}`"
                 )
+                raise RuntimeError(msg)
 
             # Tell the user what BC we chose for a given operator
             _base_logger.info("Using BC `%s` for operator `%s` in expression", bc, func)
@@ -1148,7 +1158,8 @@ def evaluate(
     extra_vars = set(expr.vars) - set(signature)
     if extra_vars:
         extra_vars_str = ", ".join(sorted(extra_vars))
-        raise RuntimeError(f"Undefined variable in expression: {extra_vars_str}")
+        msg = f"Undefined variable in expression: {extra_vars_str}"
+        raise RuntimeError(msg)
     expr.vars = signature
 
     _base_logger.info("Expression has signature %s", signature)

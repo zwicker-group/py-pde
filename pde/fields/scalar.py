@@ -138,7 +138,8 @@ class ScalarField(DataFieldBase):
             weights = np.array([0.299, 0.587, 0.114])
             data = data[..., :3] @ weights
         else:
-            raise RuntimeError(f"Image data has wrong shape: {data.shape}")
+            msg = f"Image data has wrong shape: {data.shape}"
+            raise RuntimeError(msg)
 
         # transpose data to use mathematical conventions for axes
         data = data.T[:, ::-1]
@@ -168,9 +169,8 @@ class ScalarField(DataFieldBase):
                     arrs.append(arg)
                 elif isinstance(arg, np.ndarray):
                     if arg.shape != self.data.shape:
-                        raise RuntimeError(
-                            f"Data shapes incompatible ({arg.shape} != {self.data.shape}"
-                        )
+                        msg = f"Data shapes incompatible ({arg.shape} != {self.data.shape}"
+                        raise RuntimeError(msg)
                     arrs.append(arg)
                 elif isinstance(arg, self.__class__):
                     self.assert_field_compatible(arg)
@@ -299,10 +299,11 @@ class ScalarField(DataFieldBase):
         if isinstance(axes, str):
             axes = [axes]
         if any(ax not in self.grid.axes for ax in axes):
-            raise ValueError(
+            msg = (
                 f"The axes {axes} are not all contained in {self.grid} with axes "
                 f"{self.grid.axes}"
             )
+            raise ValueError(msg)
 
         # determine the axes after projection
         ax_all = range(self.grid.num_axes)
@@ -322,7 +323,8 @@ class ScalarField(DataFieldBase):
             subdata = integrals / volumes
 
         else:
-            raise ValueError(f"Unknown projection method `{method}`")
+            msg = f"Unknown projection method `{method}`"
+            raise ValueError(msg)
 
         # create the new field instance
         return self.__class__(grid=sliced_grid, data=subdata, label=label)
@@ -369,10 +371,11 @@ class ScalarField(DataFieldBase):
             try:
                 i = grid.axes.index(ax)
             except ValueError:
-                raise ValueError(
+                msg = (
                     f"The axes {ax} is not contained in "
                     f"{self.grid} with axes {self.grid.axes}"
-                ) from None
+                )
+                raise ValueError(msg) from None
             ax_remove.append(i)
 
             # check the position
@@ -384,7 +387,8 @@ class ScalarField(DataFieldBase):
                 elif pos in {"mid", "middle", "center"}:
                     pos_values[i] = np.mean(grid.axes_bounds[i])
                 else:
-                    raise ValueError(f"Unknown position `{pos}`")
+                    msg = f"Unknown position `{pos}`"
+                    raise ValueError(msg)
             else:
                 pos_values[i] = float(pos)
 
@@ -401,9 +405,8 @@ class ScalarField(DataFieldBase):
                     pos = pos_values[i]
                     axis_bounds = grid.axes_bounds[i]
                     if pos < axis_bounds[0] or pos > axis_bounds[1]:
-                        raise DomainError(
-                            f"Position {grid.axes[i]} = {pos} is outside the domain"
-                        )
+                        msg = f"Position {grid.axes[i]} = {pos} is outside the domain"
+                        raise DomainError(msg)
                     # add slice that is closest to pos
                     idx.append(int(np.argmin((grid.axes_coords[i] - pos) ** 2)))
                 else:
@@ -411,7 +414,8 @@ class ScalarField(DataFieldBase):
             subdata = self.data[tuple(idx)]
 
         else:
-            raise ValueError(f"Unknown slicing method `{method}`")
+            msg = f"Unknown slicing method `{method}`"
+            raise ValueError(msg)
 
         # create the new field instance
         return self.__class__(grid=sliced_grid, data=subdata, label=label)
@@ -449,7 +453,8 @@ class ScalarField(DataFieldBase):
         elif scalar == "norm_squared":
             data = self.data * self.data.conjugate()
         else:
-            raise ValueError(f"Unknown method `{scalar}` for `to_scalar`")
+            msg = f"Unknown method `{scalar}` for `to_scalar`"
+            raise ValueError(msg)
 
         return ScalarField(grid=self.grid, data=data, label=label)
 
@@ -483,9 +488,8 @@ class ScalarField(DataFieldBase):
             Field of the same rank as the current one.
         """
         if self.grid.dim != grid.dim:
-            raise DimensionError(
-                f"Incompatible grid dimensions ({self.grid.dim:d} != {grid.dim:d})"
-            )
+            msg = f"Incompatible grid dimensions ({self.grid.dim:d} != {grid.dim:d})"
+            raise DimensionError(msg)
 
         # determine the points at which data needs to be calculated
         if isinstance(grid, CartesianGrid):
@@ -503,7 +507,8 @@ class ScalarField(DataFieldBase):
             # this type of interpolation is not supported
             grid_in = self.grid.__class__.__name__
             grid_out = grid.__class__.__name__
-            raise NotImplementedError(f"Can't interpolate from {grid_in} to {grid_out}")
+            msg = f"Can't interpolate from {grid_in} to {grid_out}"
+            raise NotImplementedError(msg)
 
         # interpolate the data to the grid
         data = self.interpolate(points, bc=bc, fill=fill)

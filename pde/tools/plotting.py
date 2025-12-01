@@ -354,7 +354,8 @@ def plot_on_axes(wrapped=None, update_method=None):
 
             elif action != "none":
                 # do nothing if "none", otherwise raise error
-                raise ValueError(f"Unknown action `{action}`")
+                msg = f"Unknown action `{action}`"
+                raise ValueError(msg)
 
         return reference
 
@@ -527,7 +528,8 @@ def plot_on_figure(wrapped=None, update_method=None):
 
             elif action != "none":
                 # do nothing if "none", otherwise raise error
-                raise ValueError(f"Unknown action `{action}`")
+                msg = f"Unknown action `{action}`"
+                raise ValueError(msg)
 
         return reference
 
@@ -611,7 +613,8 @@ class PlottingContextBase:
             self.fig = plt.gcf()
             if len(self.fig.axes) == 0:
                 # The figure seems to be empty, which must be a mistake
-                raise RuntimeError("Plot figure does not contain axes")
+                msg = "Plot figure does not contain axes"
+                raise RuntimeError(msg)
 
             elif len(self.fig.axes) == 1:
                 # The figure contains only a single axis, indicating that it is
@@ -788,7 +791,8 @@ def get_plotting_context(
         return BasicPlottingContext(fig_or_ax=context, title=title, show=show)
 
     else:
-        raise RuntimeError(f"Unknown plotting context `{context}`")
+        msg = f"Unknown plotting context `{context}`"
+        raise RuntimeError(msg)
 
 
 def in_ipython() -> bool:
@@ -855,6 +859,7 @@ def napari_add_layers(
         try:
             add_layer = getattr(viewer, f"add_{layer_type}")
         except AttributeError as err:
-            raise RuntimeError(f"Unknown layer type: {layer_type}") from err
+            msg = f"Unknown layer type: {layer_type}"
+            raise RuntimeError(msg) from err
         else:
             add_layer(**layer_data)

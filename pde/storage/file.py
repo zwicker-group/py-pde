@@ -99,7 +99,8 @@ class FileStorage(StorageBase):
         elif self._file.mode == "r+":
             return "writing"
         else:
-            raise NotImplementedError(f"Do not understand mode `{self._file.mode}")
+            msg = f"Do not understand mode `{self._file.mode}"
+            raise NotImplementedError(msg)
 
     def close(self) -> None:
         """Close the currently opened file."""
@@ -195,9 +196,8 @@ class FileStorage(StorageBase):
             if state in ["appending", "writing"]:
                 return  # we are already in a mode where we can append data
             if self.keep_opened and self._is_writing:
-                raise RuntimeError(
-                    "Currently writing data, so mode cannot be switched."
-                )
+                msg = "Currently writing data, so mode cannot be switched."
+                raise RuntimeError(msg)
             self.close()
 
             # open file for reading or appending
@@ -230,7 +230,8 @@ class FileStorage(StorageBase):
         elif mode == "writing":
             # open file for writing data; delete potentially present data
             if self._is_writing:
-                raise RuntimeError("Currently writing data, so mode cannot be switched")
+                msg = "Currently writing data, so mode cannot be switched"
+                raise RuntimeError(msg)
             if self._file:
                 self.close()
             else:
@@ -249,7 +250,8 @@ class FileStorage(StorageBase):
             self.close()
 
         else:
-            raise RuntimeError(f"Mode `{mode}` not implemented")
+            msg = f"Mode `{mode}` not implemented"
+            raise RuntimeError(msg)
 
     def __len__(self):
         """Return the number of stored items, i.e., time steps."""
@@ -327,7 +329,8 @@ class FileStorage(StorageBase):
                 Supplies extra information that is stored in the storage
         """
         if self._is_writing:
-            raise RuntimeError(f"{self.__class__.__name__} is already in writing mode")
+            msg = f"{self.__class__.__name__} is already in writing mode"
+            raise RuntimeError(msg)
 
         # delete data if truncation is requested. This is for instance necessary
         # to remove older data with incompatible data_shape
@@ -350,13 +353,15 @@ class FileStorage(StorageBase):
             self._open("appending", info)
 
         elif self.write_mode == "readonly":
-            raise RuntimeError("Cannot write in read-only mode")
+            msg = "Cannot write in read-only mode"
+            raise RuntimeError(msg)
 
         else:
-            raise ValueError(
+            msg = (
                 f"Unknown write mode `{self.write_mode}`. Possible values are "
                 "`truncate_once`, `truncate`, and `append`"
             )
+            raise ValueError(msg)
 
         if not self.keep_opened:
             # store extra information as attributes
@@ -373,10 +378,11 @@ class FileStorage(StorageBase):
         """
         if self.keep_opened:
             if not self._is_writing or self._data_length is None:
-                raise RuntimeError(
+                msg = (
                     "Writing not initialized. Call "
                     f"`{self.__class__.__name__}.start_writing`"
                 )
+                raise RuntimeError(msg)
 
         else:
             # need to reopen the file

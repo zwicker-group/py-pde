@@ -108,9 +108,8 @@ class Controller:
             if len(value) == 2:  # type: ignore
                 self._t_range = tuple(value)  # type: ignore
             else:
-                raise ValueError(
-                    "t_range must be set to a single number or a tuple of two numbers"
-                ) from err
+                msg = "t_range must be set to a single number or a tuple of two numbers"
+                raise ValueError(msg) from err
 
     def _get_stop_handler(self) -> Callable[[Exception, float], tuple[int, str]]:
         """Return function that handles messaging."""
@@ -184,7 +183,7 @@ class Controller:
         self.info["jit_count"] = {"make_stepper": jit_count_after_init - jit_count_base}
         prof_start_tracker = get_time()
         profiler["compilation"] = prof_start_tracker - prof_start_compile
-        solver_start = datetime.datetime.now()
+        solver_start = datetime.datetime.now(datetime.timezone.utc)
         self.info["solver_start"] = str(solver_start)
 
         if dt is None:
@@ -253,7 +252,7 @@ class Controller:
 
         # calculate final statistics
         profiler["tracker"] += get_time() - prof_start_tracker
-        duration = datetime.datetime.now() - solver_start
+        duration = datetime.datetime.now(datetime.timezone.utc) - solver_start
         self.info["solver_duration"] = str(duration)
         self.info["t_final"] = t
         self.info["jit_count"]["simulation"] = int(JIT_COUNT) - jit_count_after_init
