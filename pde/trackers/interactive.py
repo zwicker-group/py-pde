@@ -83,7 +83,7 @@ def napari_process(
         """Helper function that processes messages by the listener thread."""
         if msg is None:
             return  # do nothing
-        elif msg == "close":
+        if msg == "close":
             viewer.close()
         else:
             msg = f"Unknown message from listener: {msg}"

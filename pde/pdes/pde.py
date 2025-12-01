@@ -571,14 +571,13 @@ class PDE(PDEBase):
         if self.post_step_hook is None:
             msg = "`post_step_hook` not set"
             raise NotImplementedError(msg)
-        else:
-            post_step_hook = register_jitable(self.post_step_hook)
+        post_step_hook = register_jitable(self.post_step_hook)
 
-            @register_jitable
-            def post_step_hook_impl(state_data, t, post_step_data):
-                post_step_hook(state_data, t)
+        @register_jitable
+        def post_step_hook_impl(state_data, t, post_step_data):
+            post_step_hook(state_data, t)
 
-            return post_step_hook_impl, 0  # hook function and initial value
+        return post_step_hook_impl, 0  # hook function and initial value
 
     # time will not be updated
     def _make_pde_rhs_numba_coll(
@@ -631,19 +630,17 @@ class PDE(PDEBase):
             if i < num_fields - 1:
                 # there are more items in the chain
                 return chain(i + 1, inner=wrap)
-            else:
-                # this is the outermost function
-                @jit
-                def evolution_rate(
-                    state_data: NumericArray, t: float = 0
-                ) -> NumericArray:
-                    out = np.empty(data_shape)
-                    with nb.objmode():
-                        data_tpl = get_data_tuple(state_data)
-                        wrap(data_tpl, t, out)
-                    return out  # type: ignore
 
-                return evolution_rate  # type: ignore
+            # this is the outermost function
+            @jit
+            def evolution_rate(state_data: NumericArray, t: float = 0) -> NumericArray:
+                out = np.empty(data_shape)
+                with nb.objmode():
+                    data_tpl = get_data_tuple(state_data)
+                    wrap(data_tpl, t, out)
+                return out  # type: ignore
+
+            return evolution_rate  # type: ignore
 
         # compile the recursive chain
         return chain()
@@ -668,13 +665,12 @@ class PDE(PDEBase):
             # state is a single field
             return jit(cache["rhs_funcs"][0])  # type: ignore
 
-        elif isinstance(state, FieldCollection):
+        if isinstance(state, FieldCollection):
             # state is a collection of fields
             return self._make_pde_rhs_numba_coll(state, cache)
 
-        else:
-            msg = f"Unsupported field {state.__class__.__name__}"
-            raise TypeError(msg)
+        msg = f"Unsupported field {state.__class__.__name__}"
+        raise TypeError(msg)
 
     def _jacobian_spectral(
         self,

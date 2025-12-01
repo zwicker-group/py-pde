@@ -261,10 +261,9 @@ class GridBase(metaclass=ABCMeta):
                 axes = self.axes
             if key in axes:
                 return axes.index(key)
-            else:
-                msg = f"`{key}` is not in the axes {axes}"
-                raise IndexError(msg)
-        elif isinstance(key, int):
+            msg = f"`{key}` is not in the axes {axes}"
+            raise IndexError(msg)
+        if isinstance(key, int):
             # assume that it is already an index
             return key
         msg = "Index must be an integer or the name of an axes"
@@ -352,12 +351,11 @@ class GridBase(metaclass=ABCMeta):
             """
             if num_axes == 1:
                 return data_full[..., 1:-1]
-            elif num_axes == 2:
+            if num_axes == 2:
                 return data_full[..., 1:-1, 1:-1]
-            elif num_axes == 3:
+            if num_axes == 3:
                 return data_full[..., 1:-1, 1:-1, 1:-1]
-            else:
-                raise NotImplementedError
+            raise NotImplementedError
 
         return get_valid  # type: ignore
 
@@ -408,28 +406,27 @@ class GridBase(metaclass=ABCMeta):
         if bcs is None:
             # just set the valid elements and leave ghost cells with arbitrary data
             return set_valid  # type: ignore
-        else:
-            # set the valid elements and the ghost cells according to boundary condition
-            set_bcs = bcs.make_ghost_cell_setter()
+        # set the valid elements and the ghost cells according to boundary condition
+        set_bcs = bcs.make_ghost_cell_setter()
 
-            @jit
-            def set_valid_bcs(
-                data_full: NumericArray, data_valid: NumericArray, args=None
-            ) -> None:
-                """Set valid part of the data and the ghost cells using BCs.
+        @jit
+        def set_valid_bcs(
+            data_full: NumericArray, data_valid: NumericArray, args=None
+        ) -> None:
+            """Set valid part of the data and the ghost cells using BCs.
 
-                Args:
-                    data_full (:class:`~numpy.ndarray`):
-                        The full array with ghost cells that the data is written to
-                    data_valid (:class:`~numpy.ndarray`):
-                        The valid data that is written to `data_full`
-                    args (dict):
-                        Extra arguments affecting the boundary conditions
-                """
-                set_valid(data_full, data_valid)
-                set_bcs(data_full, args=args)
+            Args:
+                data_full (:class:`~numpy.ndarray`):
+                    The full array with ghost cells that the data is written to
+                data_valid (:class:`~numpy.ndarray`):
+                    The valid data that is written to `data_full`
+                args (dict):
+                    Extra arguments affecting the boundary conditions
+            """
+            set_valid(data_full, data_valid)
+            set_bcs(data_full, args=args)
 
-            return set_valid_bcs  # type: ignore
+        return set_valid_bcs  # type: ignore
 
     @property
     @abstractmethod
@@ -544,18 +541,16 @@ class GridBase(metaclass=ABCMeta):
             x_high = self._coords_full(self.cell_coords + d2, value="max")
             return self.c.cell_volume(x_low, x_high)
 
-        else:
-            # use cell_volume_data
-            vols = functools.reduce(np.outer, self.cell_volume_data)
-            return np.broadcast_to(vols, self.shape)  # type: ignore
+        # use cell_volume_data
+        vols = functools.reduce(np.outer, self.cell_volume_data)
+        return np.broadcast_to(vols, self.shape)  # type: ignore
 
     @cached_property()
     def uniform_cell_volumes(self) -> bool:
         """bool: returns True if all cell volumes are the same"""
         if self.cell_volume_data is None:
             return False
-        else:
-            return all(np.asarray(vols).ndim == 0 for vols in self.cell_volume_data)
+        return all(np.asarray(vols).ndim == 0 for vols in self.cell_volume_data)
 
     def _difference_vector(
         self,
@@ -859,24 +854,23 @@ class GridBase(metaclass=ABCMeta):
         """
         if self.num_axes == self.dim:
             return points
-        else:
-            if points.shape[-1] != self.num_axes:
-                msg = f"Points need to be specified as {self.axes}"
-                raise DimensionError(msg)
-            res = np.empty((*points.shape[:-1], self.dim), dtype=points.dtype)
-            j = 0
-            for i in range(self.dim):
-                if i in self._axes_described:
-                    res[..., i] = points[..., j]
-                    j += 1
+        if points.shape[-1] != self.num_axes:
+            msg = f"Points need to be specified as {self.axes}"
+            raise DimensionError(msg)
+        res = np.empty((*points.shape[:-1], self.dim), dtype=points.dtype)
+        j = 0
+        for i in range(self.dim):
+            if i in self._axes_described:
+                res[..., i] = points[..., j]
+                j += 1
+            else:
+                if value == "min":
+                    res[..., i] = self.c.coordinate_limits[i][0]
+                elif value == "max":
+                    res[..., i] = self.c.coordinate_limits[i][1]
                 else:
-                    if value == "min":
-                        res[..., i] = self.c.coordinate_limits[i][0]
-                    elif value == "max":
-                        res[..., i] = self.c.coordinate_limits[i][1]
-                    else:
-                        res[..., i] = value
-            return res  # type: ignore
+                    res[..., i] = value
+        return res  # type: ignore
 
     def transform(
         self, coordinates: FloatingArray, source: CoordsType, target: CoordsType
@@ -953,7 +947,7 @@ class GridBase(metaclass=ABCMeta):
 
             if target == "grid":
                 return grid_coords  # type: ignore
-            elif target == "cartesian":
+            if target == "cartesian":
                 return self.point_to_cartesian(grid_coords)
 
         elif source == "grid":
@@ -965,10 +959,10 @@ class GridBase(metaclass=ABCMeta):
 
             if target == "cartesian":
                 return self.point_to_cartesian(grid_coords)
-            elif target == "cell":
+            if target == "cell":
                 c_min = np.array(self.axes_bounds)[:, 0]
                 return (grid_coords - c_min) / self.discretization  # type: ignore
-            elif target == "grid":
+            if target == "grid":
                 return grid_coords  # type: ignore
 
         else:
@@ -1198,10 +1192,9 @@ class GridBase(metaclass=ABCMeta):
         if factory_func is None:
             # method is used as a decorator, so return the helper function
             return register_operator
-        else:
-            # method is used directly
-            register_operator(factory_func)
-            return None
+        # method is used directly
+        register_operator(factory_func)
+        return None
 
     @hybridmethod  # type: ignore
     @property
@@ -1276,7 +1269,7 @@ class GridBase(metaclass=ABCMeta):
             factory = functools.partial(make_derivative, axis=axis_id, method=method)  # type: ignore
             return OperatorInfo(factory, rank_in=0, rank_out=0, name=operator)
 
-        elif operator.startswith("d2_d") and operator.endswith("2"):
+        if operator.startswith("d2_d") and operator.endswith("2"):
             # create a special operator that takes a second derivative along one axis
             from .operators.common import make_derivative2
 
@@ -1414,7 +1407,7 @@ class GridBase(metaclass=ABCMeta):
             # return the bare operator without the numba-overloaded version
             return apply_op
 
-        elif backend.startswith("numba"):
+        if backend.startswith("numba"):
             # overload `apply_op` with numba-compiled version
             # set_ghost_cells = bcs.make_ghost_cell_setter()
             set_valid_w_bc = self._make_set_valid(bcs=bcs)
@@ -1485,10 +1478,9 @@ class GridBase(metaclass=ABCMeta):
             # return the compiled versions of the operator
             return apply_op_compiled  # type: ignore
 
-        else:
-            # simply return the operator if the backend was `numba` or `scipy`
-            msg = f"Undefined backend '{backend}'"
-            raise NotImplementedError(msg)
+        # simply return the operator if the backend was `numba` or `scipy`
+        msg = f"Undefined backend '{backend}'"
+        raise NotImplementedError(msg)
 
     def slice(self, indices: Sequence[int]) -> GridBase:
         """Return a subgrid of only the specified axes.
@@ -1574,13 +1566,12 @@ class GridBase(metaclass=ABCMeta):
             # standard case of a single integral
             return integral  # type: ignore
 
-        else:
-            # we are in a parallel run, so we need to gather the sub-integrals from all
-            from mpi4py.MPI import COMM_WORLD
+        # we are in a parallel run, so we need to gather the sub-integrals from all
+        from mpi4py.MPI import COMM_WORLD
 
-            integral_full = np.empty_like(integral)
-            COMM_WORLD.Allreduce(integral, integral_full)
-            return integral_full  # type: ignore
+        integral_full = np.empty_like(integral)
+        COMM_WORLD.Allreduce(integral, integral_full)
+        return integral_full  # type: ignore
 
     @cached_method()
     def make_normalize_point_compiled(
@@ -1810,8 +1801,7 @@ class GridBase(metaclass=ABCMeta):
                         print("POINT", point)
                         msg = "Point lies outside the grid domain"
                         raise DomainError(msg)
-                    else:
-                        return fill
+                    return fill
 
                 # do the linear interpolation
                 return w_l * data[..., c_li] + w_h * data[..., c_hi]  # type: ignore
@@ -1845,8 +1835,7 @@ class GridBase(metaclass=ABCMeta):
                         print("POINT", point)
                         msg = "Point lies outside the grid domain"
                         raise DomainError(msg)
-                    else:
-                        return fill
+                    return fill
 
                 # do the linear interpolation
                 return (  # type: ignore
@@ -1887,8 +1876,7 @@ class GridBase(metaclass=ABCMeta):
                         print("POINT", point)
                         msg = "Point lies outside the grid domain"
                         raise DomainError(msg)
-                    else:
-                        return fill
+                    return fill
 
                 # do the linear interpolation
                 return (  # type: ignore

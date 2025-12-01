@@ -43,8 +43,7 @@ def _get_limits(value: float | ArrayLike, dim: int) -> NumericArray:
     """Helper function creating sequence of length `dim` from input."""
     if np.isscalar(value):
         return np.full(dim, value, dtype=float)  # type: ignore
-    else:
-        return np.asarray(value)[:dim].astype(float)  # type: ignore
+    return np.asarray(value)[:dim].astype(float)  # type: ignore
 
 
 def _import_ffmpeg() -> types.ModuleType:

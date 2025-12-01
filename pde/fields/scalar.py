@@ -190,11 +190,9 @@ class ScalarField(DataFieldBase):
                 kwargs["out"] = (out.data,)
                 ufunc(*arrs, **kwargs)
                 return out
-            else:
-                # return new field
-                return self.__class__(self.grid, data=ufunc(*arrs, **kwargs))
-        else:
-            return NotImplemented
+            # return new field
+            return self.__class__(self.grid, data=ufunc(*arrs, **kwargs))
+        return NotImplemented
 
     @fill_in_docstring
     def laplace(

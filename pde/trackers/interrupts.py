@@ -363,11 +363,11 @@ def parse_interrupt(data: InterruptData) -> InterruptsBase:
         # is already the correct class
         return data
 
-    elif isinstance(data, (int, float)):
+    if isinstance(data, (int, float)):
         # is a number, so we assume a constant interrupt of that duration
         return ConstantInterrupts(data)
 
-    elif isinstance(data, str):
+    if isinstance(data, str):
         # a string is either a special geometric sequence of a time duration
         if data.startswith("geometric"):
             regex = r"geometric\(\s*([0-9.e+-]*)\s*,\s*([0-9.e+-]*)\s*\)"
@@ -376,17 +376,14 @@ def parse_interrupt(data: InterruptData) -> InterruptsBase:
                 scale = float(matches.group(1))
                 factor = float(matches.group(2))
                 return GeometricInterrupts(scale, factor)
-            else:
-                msg = f"Could not interpret `{data}` as interrupt"
-                raise ValueError(msg)
-        else:
-            return RealtimeInterrupts(data)
+            msg = f"Could not interpret `{data}` as interrupt"
+            raise ValueError(msg)
+        return RealtimeInterrupts(data)
 
-    elif hasattr(data, "__iter__"):
+    if hasattr(data, "__iter__"):
         # a sequence is supposed to give fixed time points for interrupts
         return FixedInterrupts(data)
 
-    else:
-        # anything else we cannot handle
-        msg = f"Cannot parse interrupt data `{data}`"
-        raise TypeError(msg)
+    # anything else we cannot handle
+    msg = f"Cannot parse interrupt data `{data}`"
+    raise TypeError(msg)

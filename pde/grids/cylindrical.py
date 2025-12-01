@@ -203,8 +203,7 @@ class CylindricalSymGrid(GridBase):
         r_inner, r_outer = self.axes_bounds[0]
         if r_inner == 0:
             return r_outer
-        else:
-            return r_inner, r_outer
+        return r_inner, r_outer
 
     @property
     def length(self) -> float:
@@ -262,15 +261,14 @@ class CylindricalSymGrid(GridBase):
             φ = rng.uniform(0, 2 * np.pi)  # additional random angle
             return self.c._pos_to_cart(np.array([r, φ, z]))
 
-        elif coords == "cell":
+        if coords == "cell":
             return self.transform(np.array([r, z]), "grid", "cell")
 
-        elif coords == "grid":
+        if coords == "grid":
             return np.array([r, z])  # type: ignore
 
-        else:
-            msg = f"Unknown coordinate system `{coords}`"
-            raise ValueError(msg)
+        msg = f"Unknown coordinate system `{coords}`"
+        raise ValueError(msg)
 
     def difference_vector(
         self, p1: FloatingArray, p2: FloatingArray, *, coords: CoordsType = "grid"
@@ -450,7 +448,7 @@ class CylindricalSymGrid(GridBase):
 
             return PolarSymGrid(self.radius, self.shape[0])
 
-        elif indices[0] == 1:
+        if indices[0] == 1:
             # return a Cartesian grid along the z-axis
             subgrid = CartesianGrid(
                 bounds=[self.axes_bounds[1]],
@@ -460,6 +458,5 @@ class CylindricalSymGrid(GridBase):
             subgrid.axes = [self.axes[1]]
             return subgrid
 
-        else:
-            msg = f"Cannot get sub-grid for index {indices[0]}"
-            raise ValueError(msg)
+        msg = f"Cannot get sub-grid for index {indices[0]}"
+        raise ValueError(msg)

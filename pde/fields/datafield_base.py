@@ -919,11 +919,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         if self.rank == 0:
             return abs(self.average)  # type: ignore
-        elif self.rank > 0:
+        if self.rank > 0:
             return abs(self.to_scalar().average)  # type: ignore
-        else:
-            msg = "Rank must be non-negative"
-            raise AssertionError(msg)
+        msg = "Rank must be non-negative"
+        raise AssertionError(msg)
 
     @fill_in_docstring
     def apply_operator(
@@ -1024,24 +1023,23 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             if rank_a == 1 and rank_b == 1:  # result is scalar field
                 return np.einsum("i...,i...->...", a, maybe_conj(b), out=out)
 
-            elif rank_a == 2 and rank_b == 1:  # result is vector field
+            if rank_a == 2 and rank_b == 1:  # result is vector field
                 return np.einsum("ij...,j...->i...", a, maybe_conj(b), out=out)
 
-            elif rank_a == 1 and rank_b == 2:  # result is vector field
+            if rank_a == 1 and rank_b == 2:  # result is vector field
                 return np.einsum("i...,ij...->j...", a, maybe_conj(b), out=out)
 
-            elif rank_a == 2 and rank_b == 2:  # result is tensor-2 field
+            if rank_a == 2 and rank_b == 2:  # result is tensor-2 field
                 return np.einsum("ij...,jk...->ik...", a, maybe_conj(b), out=out)
 
-            else:
-                msg = f"Unsupported shapes ({a.shape}, {b.shape})"
-                raise TypeError(msg)
+            msg = f"Unsupported shapes ({a.shape}, {b.shape})"
+            raise TypeError(msg)
 
         if backend == "numpy":
             # return the bare dot operator without the numba-overloaded version
             return dot
 
-        elif backend == "numba":
+        if backend == "numba":
             # overload `dot` and return a compiled version
 
             def get_rank(arr: nb.types.Type | nb.types.Optional) -> int:
@@ -1162,9 +1160,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             return dot_compiled  # type: ignore
 
-        else:
-            msg = f"Unsupported backend `{backend}"
-            raise ValueError(msg)
+        msg = f"Unsupported backend `{backend}"
+        raise ValueError(msg)
 
     def smooth(
         self,

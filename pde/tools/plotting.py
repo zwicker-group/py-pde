@@ -617,7 +617,7 @@ class PlottingContextBase:
                 msg = "Plot figure does not contain axes"
                 raise RuntimeError(msg)
 
-            elif len(self.fig.axes) == 1:
+            if len(self.fig.axes) == 1:
                 # The figure contains only a single axis, indicating that it is
                 # composed of a single panel
                 self._title = plt.title(self.title)
@@ -781,19 +781,18 @@ def get_plotting_context(
 
         return context_class(title=title, show=show)
 
-    elif isinstance(context, PlottingContextBase):
+    if isinstance(context, PlottingContextBase):
         # re-use an existing context
         context.title = title
         context.show = show
         return context
 
-    elif isinstance(context, (mpl_axes.Axes, mpl_figure.Figure)):
+    if isinstance(context, (mpl_axes.Axes, mpl_figure.Figure)):
         # create a basic context based on the given axes or figure
         return BasicPlottingContext(fig_or_ax=context, title=title, show=show)
 
-    else:
-        msg = f"Unknown plotting context `{context}`"
-        raise RuntimeError(msg)
+    msg = f"Unknown plotting context `{context}`"
+    raise RuntimeError(msg)
 
 
 def in_ipython() -> bool:
@@ -801,8 +800,7 @@ def in_ipython() -> bool:
     ipy_module = sys.modules.get("IPython")
     if ipy_module:
         return bool(ipy_module.get_ipython())
-    else:
-        return False
+    return False
 
 
 @contextlib.contextmanager

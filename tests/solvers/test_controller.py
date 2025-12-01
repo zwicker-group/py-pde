@@ -18,8 +18,7 @@ def test_controller_abort():
         def evolution_rate(self, state, t):
             if t < 1:
                 return 0 * state
-            else:
-                raise ErrorPDEException
+            raise ErrorPDEException
 
     field = ScalarField(UnitGrid([16]), 1)
     eq = ErrorPDE()

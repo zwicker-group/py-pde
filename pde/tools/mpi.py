@@ -78,8 +78,7 @@ else:
         def id(self, name_or_id: int | str) -> int:
             if isinstance(name_or_id, int):
                 return name_or_id
-            else:
-                return self._name_ids[name_or_id]
+            return self._name_ids[name_or_id]
 
         def operator(self, name_or_id: int | str) -> MPI.Op:
             if isinstance(name_or_id, str):
@@ -185,9 +184,8 @@ def mpi_allreduce(data, operator):
         MPI.COMM_WORLD.Allreduce(data, out, op=Operator.operator(operator))
         return out
 
-    else:
-        # synchronize a single value
-        return MPI.COMM_WORLD.allreduce(data, op=Operator.operator(operator))
+    # synchronize a single value
+    return MPI.COMM_WORLD.allreduce(data, op=Operator.operator(operator))
 
 
 @overload(mpi_allreduce)
@@ -225,8 +223,7 @@ def ol_mpi_allreduce(data, operator):
         """Helper function that calls `numba_mpi.allreduce`"""
         if op_id is None:
             return numba_mpi.allreduce(sendobj, recvobj, operator)  # type: ignore
-        else:
-            return numba_mpi.allreduce(sendobj, recvobj, op_id)  # type: ignore
+        return numba_mpi.allreduce(sendobj, recvobj, op_id)  # type: ignore
 
     if isinstance(data, types.Number):
         # implementation of the reduction for a single number

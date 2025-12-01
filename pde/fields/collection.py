@@ -182,7 +182,7 @@ class FieldCollection(FieldBase):
             # simple numerical index -> return single field
             return self.fields[index]
 
-        elif isinstance(index, str):
+        if isinstance(index, str):
             # index specifying the label of the field -> return a single field
             for field in self.fields:
                 if field.label == index:
@@ -190,13 +190,12 @@ class FieldCollection(FieldBase):
             msg = f"No field with name `{index}`"
             raise KeyError(msg)
 
-        elif isinstance(index, slice):
+        if isinstance(index, slice):
             # range of indices -> collection is returned
             return FieldCollection(self.fields[index], copy_fields=True)
 
-        else:
-            msg = f"Unsupported index `{index}`"
-            raise TypeError(msg)
+        msg = f"Unsupported index `{index}`"
+        raise TypeError(msg)
 
     def __setitem__(self, index: int | str, value: NumberOrArray):
         """Set the value of a specific field.
@@ -1145,11 +1144,10 @@ class _FieldLabels:
         """Return one or many labels of a field in the collection."""
         if isinstance(index, int):
             return self.collection[index].label
-        elif isinstance(index, slice):
+        if isinstance(index, slice):
             return list(self)[index]
-        else:
-            msg = "Unsupported index type"
-            raise TypeError(msg)
+        msg = "Unsupported index type"
+        raise TypeError(msg)
 
     def __setitem__(self, index: int | slice, value: None | str | list[str | None]):
         """Change one or many labels of a field in the collection."""

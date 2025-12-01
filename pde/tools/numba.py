@@ -142,8 +142,7 @@ def flat_idx(arr: NumericArray, i: int) -> Number:
     """
     if np.isscalar(arr):
         return arr  # type: ignore
-    else:
-        return arr.flat[i]
+    return arr.flat[i]
 
 
 @overload(flat_idx)
@@ -151,8 +150,7 @@ def ol_flat_idx(arr, i):
     """Helper function allowing indexing of scalars as if they arrays."""
     if isinstance(arr, nb.types.Number):
         return lambda arr, i: arr
-    else:
-        return lambda arr, i: arr.flat[i]
+    return lambda arr, i: arr.flat[i]
 
 
 @decorator_arguments
@@ -305,7 +303,7 @@ def get_common_numba_dtype(*args):
     for arg in args:
         if isinstance(arg, scalars.Complex):
             return nb.complex128
-        elif isinstance(arg, npytypes.Array):
+        if isinstance(arg, npytypes.Array):
             if isinstance(arg.dtype, scalars.Complex):
                 return nb.complex128
         else:

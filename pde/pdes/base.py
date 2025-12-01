@@ -710,8 +710,7 @@ class PDEBase(metaclass=ABCMeta):
             # return a copy of the diagnostic information so it will not be overwritten
             # by a repeated call to `solve()`.
             return final_state, copy.deepcopy(self.diagnostics)
-        else:
-            return final_state
+        return final_state
 
 
 def expr_prod(factor: float, expression: str) -> str:
@@ -728,9 +727,8 @@ def expr_prod(factor: float, expression: str) -> str:
     """
     if factor == 0:
         return "0"
-    elif factor == 1:
+    if factor == 1:
         return expression
-    elif factor == -1:
+    if factor == -1:
         return "-" + expression
-    else:
-        return f"{factor:g} * {expression}"
+    return f"{factor:g} * {expression}"

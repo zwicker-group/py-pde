@@ -69,8 +69,7 @@ class AllenCahnPDE(PDEBase):
         expr = f"{expr_prod(self.interface_width, '∇²c')} - c³ + c"
         if np.isclose(self.mobility, 1):
             return expr
-        else:
-            return expr_prod(self.mobility, f"({expr})")
+        return expr_prod(self.mobility, f"({expr})")
 
     def evolution_rate(  # type: ignore
         self,

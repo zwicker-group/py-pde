@@ -97,8 +97,7 @@ class BoundariesBase:
         # best guess based on the data:
         if callable(data):
             return BoundariesSetter.from_data(data)
-        else:
-            return BoundariesList.from_data(data, **kwargs)
+        return BoundariesList.from_data(data, **kwargs)
 
     @classmethod
     def get_help(cls) -> str:
@@ -275,7 +274,7 @@ class BoundariesList(BoundariesBase):
             data.check_value_rank(rank)
             return data
 
-        elif isinstance(data, BoundariesBase):
+        if isinstance(data, BoundariesBase):
             # data seems to be given as another base class, which indicates problems
             msg = (
                 "Can only use type `BoundariesList`. Use `BoundariesBase.from_data` "
@@ -283,7 +282,7 @@ class BoundariesList(BoundariesBase):
             )
             raise TypeError(msg)
 
-        elif isinstance(data, str):
+        if isinstance(data, str):
             # a string implies the same boundary condition for all axes
 
             if data.startswith("auto_periodic_"):
@@ -400,13 +399,11 @@ class BoundariesList(BoundariesBase):
             # assume that the index is a known identifier
             if index in self.grid.axes:
                 return self._axes[self.grid.axes.index(index)]
-            else:
-                axis, upper = self.grid._get_boundary_index(index)
-                return self._axes[axis][upper]
+            axis, upper = self.grid._get_boundary_index(index)
+            return self._axes[axis][upper]
 
-        else:
-            # handle all other cases, in particular integer indices
-            return self._axes[index]
+        # handle all other cases, in particular integer indices
+        return self._axes[index]
 
     def __setitem__(self, index, data) -> None:
         """Set specific boundary conditions.
@@ -529,8 +526,7 @@ class BoundariesList(BoundariesBase):
 
             if rest:
                 return chain(rest, wrap)
-            else:
-                return wrap  # type: ignore
+            return wrap  # type: ignore
 
         return chain(ghost_cell_setters)
 
@@ -574,7 +570,7 @@ class BoundariesSetter(BoundariesBase):
             # boundaries are already in the correct format
             return data
 
-        elif isinstance(data, BoundariesBase):
+        if isinstance(data, BoundariesBase):
             msg = (
                 "Can only use type `BoundariesSetter`. Use `BoundariesBase.from_data` "
                 "for more general data."

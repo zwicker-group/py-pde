@@ -155,8 +155,7 @@ def test_adaptive_solver_nan(scheme):
             MockPDE.evaluations += 1
             if MockPDE.evaluations == 2:
                 return ScalarField(state.grid, data=np.nan)
-            else:
-                return state.copy()
+            return state.copy()
 
     field = ScalarField(UnitGrid([2]))
     eq = MockPDE()

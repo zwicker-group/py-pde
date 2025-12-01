@@ -58,8 +58,7 @@ class FFmpegFormat:
         """Maximal value stored in a color channel."""
         if np.issubdtype(self.dtype, np.integer):
             return 2**self.bits_per_channel - 1  # type: ignore
-        else:
-            return 1.0
+        return 1.0
 
     def data_to_frame(self, normalized_data: NumericArray) -> NumericArray:
         """Converts normalized data to data being stored in a color channel."""

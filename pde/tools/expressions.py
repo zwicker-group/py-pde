@@ -107,12 +107,11 @@ def _heaviside_implementation_ufunc(x1, x2):
     """
     if np.isnan(x1):
         return math.nan
-    elif x1 == 0:
+    if x1 == 0:
         return x2
-    elif x1 < 0:
+    if x1 < 0:
         return 0.0
-    else:
-        return 1.0
+    return 1.0
 
 
 def _heaviside_implementation(x1, x2):
@@ -207,8 +206,7 @@ def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.B
         """Helper function substituting expressions."""
         if isinstance(expr, list):
             return [substitute(e) for e in expr]
-        else:
-            return expr.subs(sympy.Function("heaviside"), sympy.Heaviside)
+        return expr.subs(sympy.Function("heaviside"), sympy.Heaviside)
 
     return substitute(expr)
 
@@ -304,8 +302,7 @@ class ExpressionBase(metaclass=ABCMeta):
         difference = sympy.simplify(self._sympy_expr - other._sympy_expr)
         if isinstance(self._sympy_expr, sympy.NDimArray):
             return difference == sympy.Array(np.zeros(self._sympy_expr.shape, int))
-        else:
-            return difference == 0
+        return difference == 0
 
     @property
     def _free_symbols(self) -> set:
@@ -402,8 +399,7 @@ class ExpressionBase(metaclass=ABCMeta):
         """
         if self.constant:
             return False
-        else:
-            return any(variable == str(symbol) for symbol in self._free_symbols)
+        return any(variable == str(symbol) for symbol in self._free_symbols)
 
     def _get_function(
         self,
@@ -439,8 +435,7 @@ class ExpressionBase(metaclass=ABCMeta):
                 if isinstance(func, np.ufunc):
                     # this is a work-around that allows to compile numpy ufuncs
                     return jit(lambda *args: func(*args))
-                else:
-                    return jit(func)
+                return jit(func)
 
             user_functions = {k: compile_func(v) for k, v in user_functions.items()}
 
@@ -657,9 +652,8 @@ class ScalarExpression(ExpressionBase):
 
             return value
 
-        else:
-            msg = "Only constant expressions have a defined value"
-            raise TypeError(msg)
+        msg = "Only constant expressions have a defined value"
+        raise TypeError(msg)
 
     @property
     def is_zero(self) -> bool:
@@ -686,8 +680,7 @@ class ScalarExpression(ExpressionBase):
         """
         if self.allow_indexed:
             return re.sub(r"(\w+)(\[\w+\])", r"IndexedBase(\1)\2", expression)
-        else:
-            return expression
+        return expression
 
     def _var_indexed(self, var: str) -> bool:
         """Checks whether the variable `var` is used in an indexed form."""
@@ -833,8 +826,7 @@ class TensorExpression(ExpressionBase):
         if self.shape == (0,):
             # work-around for sympy bug (github.com/sympy/sympy/issues/19829)
             return f'{self.__class__.__name__}("[]", signature={self.vars})'
-        else:
-            return super().__repr__()
+        return super().__repr__()
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -854,13 +846,12 @@ class TensorExpression(ExpressionBase):
                 user_funcs=self.user_funcs,
                 consts=self.consts,
             )
-        else:
-            return ScalarExpression(
-                expr,
-                signature=self.vars,
-                user_funcs=self.user_funcs,
-                consts=self.consts,
-            )
+        return ScalarExpression(
+            expr,
+            signature=self.vars,
+            user_funcs=self.user_funcs,
+            consts=self.consts,
+        )
 
     @property
     def value(self):
@@ -882,9 +873,8 @@ class TensorExpression(ExpressionBase):
 
             return value
 
-        else:
-            msg = "Only constant expressions have a defined value"
-            raise TypeError(msg)
+        msg = "Only constant expressions have a defined value"
+        raise TypeError(msg)
 
     def differentiate(self, var: str) -> TensorExpression:
         """Return the expression differentiated with respect to var."""

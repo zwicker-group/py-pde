@@ -109,13 +109,12 @@ ignore = [
     "E402",  # allow Module level import not at top of file
     "PT011",  # allow broad exceptions
     "PYI034",  # until python 3.11 is minimal version
-    "RET504",
-    "RET505",
+    "RET504",  # cannot use this because of numba
     "RET506",
     "RUF001",  # allow greek letters
     "RUF002",  # allow using prime in docstrings
     "RUF012",  # allow using mixture of class and instance variables
-    "SIM108",
+    "SIM108",  # don't use ternary operator too much
 ]
 
 [tool.ruff.lint.isort]

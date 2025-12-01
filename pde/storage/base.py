@@ -94,8 +94,8 @@ class StorageBase(metaclass=ABCMeta):
         if self._data_shape is None:
             msg = "data_shape was not set"
             raise RuntimeError(msg)
-        else:  # use the else clause to help typing
-            return self._data_shape
+        # use the else clause to help typing
+        return self._data_shape
 
     @property
     def dtype(self) -> DTypeLike:
@@ -107,8 +107,8 @@ class StorageBase(metaclass=ABCMeta):
         if self._dtype is None:
             msg = "dtype was not set"
             raise RuntimeError(msg)
-        else:  # use the else clause to help typing
-            return self._dtype
+        # use the else clause to help typing
+        return self._dtype
 
     @abstractmethod
     def _append_data(self, data: NumericArray, time: float) -> None:
@@ -158,19 +158,17 @@ class StorageBase(metaclass=ABCMeta):
         """The shape of the stored data."""
         if self._data_shape:
             return (len(self), *self._data_shape)
-        else:
-            return None
+        return None
 
     @property
     def has_collection(self) -> bool:
         """bool: whether the storage is storing a collection"""
         if self._field is not None:
             return isinstance(self._field, FieldCollection)
-        elif len(self) > 0:
+        if len(self) > 0:
             return isinstance(self._get_field(0), FieldCollection)
-        else:
-            msg = "Storage is empty"
-            raise RuntimeError(msg)
+        msg = "Storage is empty"
+        raise RuntimeError(msg)
 
     @property
     def grid(self) -> GridBase | None:
@@ -276,11 +274,10 @@ class StorageBase(metaclass=ABCMeta):
         """Return field at given index or a list of fields for a slice."""
         if isinstance(key, int):
             return self._get_field(key)
-        elif isinstance(key, slice):
+        if isinstance(key, slice):
             return [self._get_field(i) for i in range(*key.indices(len(self)))]
-        else:
-            msg = "Unknown key type"
-            raise TypeError(msg)
+        msg = "Unknown key type"
+        raise TypeError(msg)
 
     def __iter__(self) -> Iterator[FieldBase]:
         """Iterate over all stored fields."""

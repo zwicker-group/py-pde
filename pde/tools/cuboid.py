@@ -138,8 +138,7 @@ class Cuboid:
             b1, b2 = other.corners
             return self.__class__.from_points(np.minimum(a1, b1), np.maximum(a2, b2))
 
-        else:
-            return NotImplemented
+        return NotImplemented
 
     def __eq__(self, other) -> bool:
         """Override the default equality test."""
@@ -181,10 +180,9 @@ class Cuboid:
         null_count = null.sum()
         if null_count == 0:
             return 2 * np.sum(np.prod(sides) / sides)
-        elif null_count == 1:
+        if null_count == 1:
             return 2 * np.prod(sides[~null])  # type: ignore
-        else:
-            return 0
+        return 0
 
     @property
     def centroid(self):
@@ -205,8 +203,7 @@ class Cuboid:
             self.pos -= amount
             self.size += 2 * amount
             return self
-        else:
-            return self.__class__(self.pos - amount, self.size + 2 * amount)
+        return self.__class__(self.pos - amount, self.size + 2 * amount)
 
     def contains_point(self, points: NumericArray) -> NumericArray:
         """Returns a True when `points` are within the Cuboid.

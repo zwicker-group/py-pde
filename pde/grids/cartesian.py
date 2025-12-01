@@ -275,11 +275,10 @@ class CartesianGrid(GridBase):
 
         if coords == "cartesian" or coords == "grid":
             return point  # type: ignore
-        elif coords == "cell":
+        if coords == "cell":
             return self.transform(point, "grid", "cell")
-        else:
-            msg = f"Unknown coordinate system `{coords}`"
-            raise ValueError(msg)
+        msg = f"Unknown coordinate system `{coords}`"
+        raise ValueError(msg)
 
     def difference_vector(
         self, p1: FloatingArray, p2: FloatingArray, *, coords: CoordsType = "grid"

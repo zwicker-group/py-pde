@@ -200,5 +200,4 @@ class ImplicitSolver(SolverBase):
         """
         if self.pde.is_sde:
             return self._make_single_step_fixed_dt_stochastic(state, dt)
-        else:
-            return self._make_single_step_fixed_dt_deterministic(state, dt)
+        return self._make_single_step_fixed_dt_deterministic(state, dt)

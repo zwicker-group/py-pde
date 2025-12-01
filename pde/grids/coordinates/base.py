@@ -66,8 +66,7 @@ class CoordinatesBase:
             raise DimensionError(msg)
         if axis == -1 or axis == self.dim - 1:
             return self._pos_to_cart(points)
-        else:
-            return np.apply_along_axis(self._pos_to_cart, axis, points)  # type:ignore
+        return np.apply_along_axis(self._pos_to_cart, axis, points)  # type:ignore
 
     def _pos_from_cart(self, points: FloatingArray) -> FloatingArray:
         # actual calculation needs to be implemented by sub-class
@@ -91,8 +90,7 @@ class CoordinatesBase:
             raise DimensionError(msg)
         if axis == -1 or axis == self.dim - 1:
             return self._pos_from_cart(points)
-        else:
-            return np.apply_along_axis(self._pos_from_cart, axis, points)  # type:ignore
+        return np.apply_along_axis(self._pos_from_cart, axis, points)  # type:ignore
 
     def distance(
         self, p1: FloatingArray, p2: FloatingArray, *, axis: int = -1

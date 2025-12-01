@@ -87,9 +87,8 @@ def decorator_arguments(decorator: Callable) -> Callable:
         if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
             # actual decorated function
             return decorator(args[0])
-        else:
-            # decorator arguments
-            return lambda realf: decorator(realf, *args, **kwargs)
+        # decorator arguments
+        return lambda realf: decorator(realf, *args, **kwargs)
 
     return new_decorator
 
@@ -108,9 +107,8 @@ def import_class(identifier: str):
     if module_path:
         module = importlib.import_module(module_path)
         return getattr(module, class_name)
-    else:
-        # this happens when identifier does not contain a dot
-        return importlib.import_module(class_name)
+    # this happens when identifier does not contain a dot
+    return importlib.import_module(class_name)
 
 
 class classproperty(property):

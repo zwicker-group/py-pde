@@ -154,8 +154,7 @@ class OnlineStatistics:
         DDOF = 0
         if self.count <= DDOF:
             return math.nan
-        else:
-            return self._mean2 / (self.count - DDOF)
+        return self._mean2 / (self.count - DDOF)
 
     @property
     def std(self) -> float:

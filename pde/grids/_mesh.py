@@ -41,16 +41,14 @@ class MPIFlags(IntEnum):
         """Flag for connection between my lower boundary and `other_id`"""
         if my_id <= other_id:
             return 2 * my_id + cls._boundary_lower
-        else:
-            return 2 * other_id + cls._boundary_upper
+        return 2 * other_id + cls._boundary_upper
 
     @classmethod
     def boundary_upper(cls, my_id: int, other_id: int) -> int:
         """Flag for connection between my upper boundary and `other_id`"""
         if my_id <= other_id:
             return 2 * my_id + cls._boundary_upper
-        else:
-            return 2 * other_id + cls._boundary_lower
+        return 2 * other_id + cls._boundary_lower
 
 
 def _get_optimal_decomposition(shape: Sequence[int], mpi_size: int) -> list[int]:
@@ -123,16 +121,15 @@ def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> list[GridBa
     if chunks <= 0:
         msg = "Chunks must be a positive Integer"
         raise ValueError(msg)
-    elif chunks == 1:
+    if chunks == 1:
         return [grid]  # no subdivision necessary
 
     def replace_in_axis(arr, value):
         if isinstance(arr, tuple):
             return (*arr[:axis], value, *arr[axis + 1 :])
-        else:
-            res = arr.copy()
-            res[axis] = value
-            return res
+        res = arr.copy()
+        res[axis] = value
+        return res
 
     subgrids = []
     start = 0
@@ -387,9 +384,8 @@ class GridMesh:
         if upper:
             # my upper boundary (lower boundary of right cell)
             return MPIFlags.boundary_upper(self.current_node, neighbor)
-        else:
-            # my lower boundary (upper boundary of left cell)
-            return MPIFlags.boundary_lower(self.current_node, neighbor)
+        # my lower boundary (upper boundary of left cell)
+        return MPIFlags.boundary_lower(self.current_node, neighbor)
 
     def get_neighbor(
         self, axis: int, upper: bool, *, node_id: int | None = None
@@ -510,7 +506,7 @@ class GridMesh:
                 with_ghost_cells=with_ghost_cells,
             )
 
-        elif isinstance(field, FieldCollection):
+        if isinstance(field, FieldCollection):
             # extract data from a field collection
 
             # extract individual fields
@@ -522,9 +518,8 @@ class GridMesh:
             # combine everything to a field collection
             return field.__class__(fields, label=field.label)
 
-        else:
-            msg = f"Field type {field.__class__.__name__} unsupported"
-            raise TypeError(msg)
+        msg = f"Field type {field.__class__.__name__} unsupported"
+        raise TypeError(msg)
 
     def extract_boundary_conditions(self, bcs_base: BoundariesBase) -> BoundariesList:
         """Extract boundary conditions for current subgrid from global conditions.
@@ -597,17 +592,16 @@ class GridMesh:
                 field_data, 0, with_ghost_cells=with_ghost_cells
             )
 
-        else:
-            # receive subfield from main process
-            subgrid = self.current_grid
+        # receive subfield from main process
+        subgrid = self.current_grid
 
-            # determine shape of resulting data
-            shape = field_data.shape[: -self.num_axes]
-            shape += subgrid._shape_full if with_ghost_cells else subgrid.shape
+        # determine shape of resulting data
+        shape = field_data.shape[: -self.num_axes]
+        shape += subgrid._shape_full if with_ghost_cells else subgrid.shape
 
-            subfield_data = np.empty(shape, dtype=field_data.dtype)
-            mpi_recv(subfield_data, 0, MPIFlags.field_split)
-            return subfield_data  # type: ignore
+        subfield_data = np.empty(shape, dtype=field_data.dtype)
+        mpi_recv(subfield_data, 0, MPIFlags.field_split)
+        return subfield_data  # type: ignore
 
     def split_field_mpi(self: GridMesh, field: TField) -> TField:
         """Split a field onto the subgrids by communicating data via MPI.
@@ -634,7 +628,7 @@ class GridMesh:
                 with_ghost_cells=True,
             )
 
-        elif isinstance(field, FieldCollection):
+        if isinstance(field, FieldCollection):
             # split field collection
             field_classes = [f.__class__ for f in field]
             data = self.split_field_data_mpi(field._data_full, with_ghost_cells=True)
@@ -646,9 +640,8 @@ class GridMesh:
                 labels=field.labels,
             )
 
-        else:
-            msg = f"Field type {field.__class__.__name__} unsupported"
-            raise TypeError(msg)
+        msg = f"Field type {field.__class__.__name__} unsupported"
+        raise TypeError(msg)
 
     def combine_field_data(
         self,
@@ -738,10 +731,9 @@ class GridMesh:
                 field_data, out=out, with_ghost_cells=with_ghost_cells
             )
 
-        else:
-            # mpi_send our subfield to the main node
-            mpi_send(subfield, 0, MPIFlags.field_combine)
-            return None
+        # mpi_send our subfield to the main node
+        mpi_send(subfield, 0, MPIFlags.field_combine)
+        return None
 
     def broadcast(self, data: TData) -> TData:
         """Distribute a value from the main node to all nodes.

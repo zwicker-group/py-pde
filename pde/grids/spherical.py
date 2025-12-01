@@ -38,13 +38,12 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
     """
     if dim == 1:
         return 2 * radius
-    elif dim == 2:
+    if dim == 2:
         return np.pi * radius**2  # type: ignore
-    elif dim == 3:
+    if dim == 3:
         return 4 / 3 * np.pi * radius**3  # type: ignore
-    else:
-        msg = f"Cannot calculate the volume in {dim} dimensions"
-        raise NotImplementedError(msg)
+    msg = f"Cannot calculate the volume in {dim} dimensions"
+    raise NotImplementedError(msg)
 
 
 class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
@@ -157,8 +156,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         r_inner, r_outer = self.axes_bounds[0]
         if r_inner == 0:
             return r_outer
-        else:
-            return r_inner, r_outer
+        return r_inner, r_outer
 
     @property
     def volume(self) -> float:
@@ -234,15 +232,14 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 
             return self.c._pos_to_cart(point)
 
-        elif coords == "cell":
+        if coords == "cell":
             return self.transform(r, "grid", "cell")
 
-        elif coords == "grid":
+        if coords == "grid":
             return r  # type: ignore
 
-        else:
-            msg = f"Unknown coordinate system `{coords}`"
-            raise ValueError(msg)
+        msg = f"Unknown coordinate system `{coords}`"
+        raise ValueError(msg)
 
     def get_line_data(
         self, data: NumericArray, extract: str = "auto"

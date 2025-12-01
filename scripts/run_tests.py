@@ -29,8 +29,7 @@ def _most_severe_exit_code(retcodes: Sequence[int]) -> int:
     """
     if all(retcode == 0 for retcode in retcodes):
         return 0
-    else:
-        return max(retcodes, key=lambda retcode: abs(retcode))
+    return max(retcodes, key=lambda retcode: abs(retcode))
 
 
 def show_config():

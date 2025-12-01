@@ -217,10 +217,9 @@ def make_correlated_noise(
 
         return noise_normal
 
-    else:
-        return _make_isotropic_correlated_noise(
-            shape, corr_spectrum=corr_spectrum, discretization=discretization, rng=rng
-        )
+    return _make_isotropic_correlated_noise(
+        shape, corr_spectrum=corr_spectrum, discretization=discretization, rng=rng
+    )
 
 
 def make_colored_noise(

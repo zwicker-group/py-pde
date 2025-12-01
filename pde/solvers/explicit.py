@@ -152,11 +152,10 @@ class ExplicitSolver(AdaptiveSolverBase):
         self.info["scheme"] = self.scheme
         if self.scheme == "euler":
             return self._make_single_step_fixed_euler(state, dt)
-        elif self.scheme in {"runge-kutta", "rk", "rk45"}:
+        if self.scheme in {"runge-kutta", "rk", "rk45"}:
             return self._make_single_step_rk45(state, dt)
-        else:
-            msg = f"Explicit scheme `{self.scheme}` is not supported"
-            raise ValueError(msg)
+        msg = f"Explicit scheme `{self.scheme}` is not supported"
+        raise ValueError(msg)
 
     def _make_adaptive_euler_stepper(
         self, state: FieldBase
@@ -374,11 +373,10 @@ class ExplicitSolver(AdaptiveSolverBase):
         self.info["scheme"] = self.scheme
         if self.scheme in {"runge-kutta", "rk", "rk45"}:
             return self._make_single_step_error_estimate_rkf(state)
-        else:
-            # Note that the Euler scheme is implemented separately to use detailed
-            # optimizations; see method `_make_adaptive_euler_stepper`
-            msg = f"Adaptive scheme `{self.scheme}` is not supported"
-            raise ValueError(msg)
+        # Note that the Euler scheme is implemented separately to use detailed
+        # optimizations; see method `_make_adaptive_euler_stepper`
+        msg = f"Adaptive scheme `{self.scheme}` is not supported"
+        raise ValueError(msg)
 
     def _make_adaptive_stepper(
         self, state: FieldBase
@@ -396,8 +394,7 @@ class ExplicitSolver(AdaptiveSolverBase):
         self.info["scheme"] = self.scheme
         if self.scheme == "euler":
             return self._make_adaptive_euler_stepper(state)
-        elif self.scheme in {"runge-kutta", "rk", "rk45"}:
+        if self.scheme in {"runge-kutta", "rk", "rk45"}:
             return super()._make_adaptive_stepper(state)
-        else:
-            msg = f"Adaptive scheme `{self.scheme}` is not supported"
-            raise ValueError(msg)
+        msg = f"Adaptive scheme `{self.scheme}` is not supported"
+        raise ValueError(msg)

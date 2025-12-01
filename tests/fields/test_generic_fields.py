@@ -49,10 +49,9 @@ def test_interpolation_natural(grid, field_class, rng):
     def get_point():
         if isinstance(grid, CartesianGrid):
             return grid.get_random_point(boundary_distance=0.5, coords="grid", rng=rng)
-        else:
-            return grid.get_random_point(
-                boundary_distance=1, avoid_center=True, coords="grid", rng=rng
-            )
+        return grid.get_random_point(
+            boundary_distance=1, avoid_center=True, coords="grid", rng=rng
+        )
 
     # interpolate at cell center
     c = (1,) * len(grid.axes)

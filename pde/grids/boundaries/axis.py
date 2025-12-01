@@ -82,8 +82,7 @@ class BoundaryAxisBase:
     def __str__(self):
         if self.low == self.high:
             return str(self.low)
-        else:
-            return f"({self.low}, {self.high})"
+        return f"({self.low}, {self.high})"
 
     @classmethod
     def get_help(cls) -> str:
@@ -132,11 +131,10 @@ class BoundaryAxisBase:
         """Returns one of the sides."""
         if index == 0 or index is False:
             return self.low
-        elif index == 1 or index is True:
+        if index == 1 or index is True:
             return self.high
-        else:
-            msg = "Index must be 0/False or 1/True"
-            raise IndexError(msg)
+        msg = "Index must be 0/False or 1/True"
+        raise IndexError(msg)
 
     def __setitem__(self, index, data) -> None:
         """Set one of the sides."""
@@ -203,12 +201,11 @@ class BoundaryAxisBase:
         if axis_coord == -1:
             # the virtual point on the lower side
             return self.low.get_sparse_matrix_data(idx)
-        elif axis_coord == self.grid.shape[self.axis]:
+        if axis_coord == self.grid.shape[self.axis]:
             # the virtual point on the upper side
             return self.high.get_sparse_matrix_data(idx)
-        else:
-            # the normal case of an interior point
-            return 0, {axis_coord: 1}
+        # the normal case of an interior point
+        return 0, {axis_coord: 1}
 
     def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         """Set the ghost cell values for all boundaries.
@@ -371,14 +368,12 @@ class BoundaryPeriodic(BoundaryPair):
         res = f"{self.__class__.__name__}(grid={self.grid}, axis={self.axis}"
         if self.flip_sign:
             return res + ", flip_sign=True)"
-        else:
-            return res + ")"
+        return res + ")"
 
     def __str__(self):
         if self.flip_sign:
             return '"anti-periodic"'
-        else:
-            return '"periodic"'
+        return '"periodic"'
 
     def copy(self) -> BoundaryPeriodic:
         """Return a copy of itself, but with a reference to the same grid."""

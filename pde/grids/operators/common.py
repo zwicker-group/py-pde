@@ -194,9 +194,8 @@ def uniform_discretization(grid: GridBase) -> float:
     dx_mean = np.mean(grid.discretization)
     if np.allclose(grid.discretization, dx_mean):
         return float(dx_mean)
-    else:
-        msg = "Grid discretization is not uniform"
-        raise RuntimeError(msg)
+    msg = "Grid discretization is not uniform"
+    raise RuntimeError(msg)
 
 
 def make_laplace_from_matrix(

@@ -88,8 +88,7 @@ def custom_laplace_2d(shape, periodic, dx=1):
     """Make laplace operator with Neumann or periodic boundary conditions."""
     if periodic:
         return custom_laplace_2d_periodic(shape, dx=dx)
-    else:
-        return custom_laplace_2d_neumann(shape, dx=dx)
+    return custom_laplace_2d_neumann(shape, dx=dx)
 
 
 def optimized_laplace_2d(bcs):

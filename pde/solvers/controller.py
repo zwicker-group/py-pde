@@ -405,5 +405,4 @@ class Controller:
 
         if mpi.size > 1:  # run the simulation on multiple nodes
             return self._run_parallel(state, dt)
-        else:
-            return self._run_serial(state, dt)
+        return self._run_serial(state, dt)

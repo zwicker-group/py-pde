@@ -493,8 +493,7 @@ def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorType:
 
             return laplace_real
 
-        else:
-            return laplace_impl
+        return laplace_impl
 
     @jit
     def laplace(arr: NumericArray, out: NumericArray) -> None:
@@ -538,8 +537,7 @@ def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorType:
 
             return laplace_real
 
-        else:
-            return laplace_impl
+        return laplace_impl
 
     @jit
     def laplace(arr: NumericArray, out: NumericArray) -> None:
@@ -1321,8 +1319,7 @@ def _vectorize_operator(
 
     if backend == "numba":
         return register_jitable(vectorized_operator)  # type: ignore
-    else:
-        return vectorized_operator
+    return vectorized_operator
 
 
 @CartesianGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)

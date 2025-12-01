@@ -97,13 +97,12 @@ class FileStorage(StorageBase):
         """str: the state that the file is currently in"""
         if self._file is None:
             return "closed"
-        elif self._file.mode == "r":
+        if self._file.mode == "r":
             return "reading"
-        elif self._file.mode == "r+":
+        if self._file.mode == "r+":
             return "writing"
-        else:
-            msg = f"Do not understand mode `{self._file.mode}"
-            raise NotImplementedError(msg)
+        msg = f"Do not understand mode `{self._file.mode}"
+        raise NotImplementedError(msg)
 
     def close(self) -> None:
         """Close the currently opened file."""
@@ -140,14 +139,13 @@ class FileStorage(StorageBase):
         if self._max_length:
             shape = (self._max_length, *shape)
             return self._file.create_dataset(name, shape=shape, dtype=dtype, **kwargs)
-        else:
-            return self._file.create_dataset(
-                name,
-                shape=(0, *shape),
-                dtype=dtype,
-                maxshape=(None, *shape),
-                **kwargs,
-            )
+        return self._file.create_dataset(
+            name,
+            shape=(0, *shape),
+            dtype=dtype,
+            maxshape=(None, *shape),
+            **kwargs,
+        )
 
     def _open(
         self,
@@ -266,9 +264,8 @@ class FileStorage(StorageBase):
 
         if self._data_length is None:
             return length
-        else:
-            # size of stored data is smaller since preallocation was used
-            return min(length, self._data_length)
+        # size of stored data is smaller since preallocation was used
+        return min(length, self._data_length)
 
     @property
     def times(self):

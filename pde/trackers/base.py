@@ -67,7 +67,7 @@ class TrackerBase(metaclass=ABCMeta):
         """
         if isinstance(data, TrackerBase):
             return data
-        elif isinstance(data, str):
+        if isinstance(data, str):
             try:
                 tracker_cls = cls._subclasses[data]
             except KeyError as err:
@@ -75,9 +75,8 @@ class TrackerBase(metaclass=ABCMeta):
                 msg = f"Tracker `{data}` is not in {trackers}"
                 raise ValueError(msg) from err
             return tracker_cls(**kwargs)
-        else:
-            msg = f"Unsupported tracker format: `{data}`."
-            raise TypeError(msg)
+        msg = f"Unsupported tracker format: `{data}`."
+        raise TypeError(msg)
 
     def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """Initialize the tracker with information about the simulation.

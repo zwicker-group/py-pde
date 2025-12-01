@@ -303,7 +303,7 @@ class VectorField(DataFieldBase):
             # return the bare dot operator without the numba-overloaded version
             return outer
 
-        elif backend == "numba":
+        if backend == "numba":
             # overload `outer` with a numba-compiled version
 
             dim = self.grid.dim
@@ -382,9 +382,8 @@ class VectorField(DataFieldBase):
 
             return outer_compiled  # type: ignore
 
-        else:
-            msg = f"Unsupported backend `{backend}"
-            raise ValueError(msg)
+        msg = f"Unsupported backend `{backend}"
+        raise ValueError(msg)
 
     @fill_in_docstring
     def divergence(

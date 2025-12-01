@@ -126,15 +126,14 @@ class Parameter:
 
         if self.cls is object:
             return value
-        else:
-            try:
-                return self.cls(value)
-            except ValueError as err:
-                msg = (
-                    f"Could not convert {value!r} to {self.cls.__name__} for parameter "
-                    f"'{self.name}'"
-                )
-                raise ValueError(msg) from err
+        try:
+            return self.cls(value)
+        except ValueError as err:
+            msg = (
+                f"Could not convert {value!r} to {self.cls.__name__} for parameter "
+                f"'{self.name}'"
+            )
+            raise ValueError(msg) from err
 
 
 # define default parameter values
@@ -246,8 +245,7 @@ class Config(collections.UserDict):
         parameter = self.data[key]
         if isinstance(parameter, Parameter):
             return parameter.convert()
-        else:
-            return parameter
+        return parameter
 
     def _convert_value(self, key: str, value):
         """Helper function converting certain values."""
@@ -341,16 +339,15 @@ class Config(collections.UserDict):
         setting = self["numba.multithreading"]
         if setting == "always":
             return True
-        elif setting == "never":
+        if setting == "never":
             return False
-        elif setting == "only_local":
+        if setting == "only_local":
             return not is_hpc_environment()
-        else:
-            msg = (
-                "Parameter `numba.multithreading` must be in {'always', 'never', "
-                f"'only_local'}}, not `{setting}`"
-            )
-            raise ValueError(msg)
+        msg = (
+            "Parameter `numba.multithreading` must be in {'always', 'never', "
+            f"'only_local'}}, not `{setting}`"
+        )
+        raise ValueError(msg)
 
 
 def get_package_versions(

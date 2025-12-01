@@ -316,8 +316,7 @@ class BCBase(metaclass=ABCMeta):
         """float: value of the coordinate that defines this boundary condition"""
         if self.upper:
             return self.grid.axes_bounds[self.axis][1]
-        else:
-            return self.grid.axes_bounds[self.axis][0]
+        return self.grid.axes_bounds[self.axis][0]
 
     def _field_repr(self, field_name: str) -> str:
         """Return representation of the field to which the condition is applied.
@@ -336,8 +335,7 @@ class BCBase(metaclass=ABCMeta):
             field_indices = self._axes_indices[: self.rank]
         if field_indices:
             return f"{field_name}_{field_indices}"
-        else:
-            return f"{field_name}"
+        return f"{field_name}"
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition."""
@@ -466,16 +464,15 @@ class BCBase(metaclass=ABCMeta):
             b_type = data.pop("type")
             return cls.from_str(grid, axis, upper, condition=b_type, rank=rank, **data)
 
-        elif len(data) == 1:
+        if len(data) == 1:
             # only a single items is given
             b_type, b_value = data.popitem()
             return cls.from_str(
                 grid, axis, upper, condition=b_type, rank=rank, value=b_value, **data
             )
 
-        else:
-            msg = f"Boundary conditions `{list(data)}` are not supported."
-            raise BCDataError(msg)
+        msg = f"Boundary conditions `{list(data)}` are not supported."
+        raise BCDataError(msg)
 
     @classmethod
     def from_data(
@@ -634,13 +631,10 @@ class BCBase(metaclass=ABCMeta):
         if self.upper:
             if with_ghost_cells:
                 return self.grid.shape[self.axis]
-            else:
-                return self.grid.shape[self.axis] - 1
-        else:
-            if with_ghost_cells:
-                return 1
-            else:
-                return 0
+            return self.grid.shape[self.axis] - 1
+        if with_ghost_cells:
+            return 1
+        return 0
 
     def make_ghost_cell_setter(self) -> GhostCellSetter:
         """Return function that sets the ghost cells for this boundary."""
@@ -1028,13 +1022,12 @@ class UserBC(BCBase):
             if isinstance(values, (nb.types.Number, Number)):
                 # scalar was supplied => simply return it
                 return values
-            elif isinstance(arr, (nb.types.Array, np.ndarray)):
+            if isinstance(arr, (nb.types.Array, np.ndarray)):
                 # array was supplied => extract value at current position
                 _, _, bc_idx = get_arr_1d(arr, idx)
                 return values[bc_idx]
-            else:
-                msg = "Either a scalar or an array must be supplied"
-                raise TypeError(msg)
+            msg = "Either a scalar or an array must be supplied"
+            raise TypeError(msg)
 
         @overload(extract_value)
         def ol_extract_value(values, arr: NumericArray, idx: tuple[int, ...]):
@@ -1064,19 +1057,18 @@ class UserBC(BCBase):
                 # set the virtual point directly
                 return extract_value(args["virtual_point"], arr, idx)
 
-            elif "value" in args:
+            if "value" in args:
                 # set the value at the boundary
                 value = extract_value(args["value"], arr, idx)
                 return 2 * value - arr[idx]
 
-            elif "derivative" in args:
+            if "derivative" in args:
                 # set the outward derivative at the boundary
                 value = extract_value(args["derivative"], arr, idx)
                 return dx * value + arr[idx]
 
-            else:
-                # no-op for the default case where BCs are not set by user
-                return math.nan
+            # no-op for the default case where BCs are not set by user
+            return math.nan
 
         return virtual_point  # type: ignore
 
@@ -1222,12 +1214,11 @@ class ExpressionBC(BCBase):
             if self._is_func:
                 msg = f"Could not evaluate BC function. Expected signature {signature}."
                 raise BCDataError(msg) from err
-            else:
-                msg = (
-                    f"Could not evaluate BC expression `{expression}` with signature "
-                    f"{signature}."
-                )
-                raise BCDataError(msg) from err
+            msg = (
+                f"Could not evaluate BC expression `{expression}` with signature "
+                f"{signature}."
+            )
+            raise BCDataError(msg) from err
 
     @property
     def _test_values(self) -> tuple[float, ...]:
@@ -1253,34 +1244,33 @@ class ExpressionBC(BCBase):
 
             return value_func  # type: ignore
 
-        elif not do_jit:
+        if not do_jit:
             # function is callable, but does not need to be compiled
             return func
 
-        else:
-            # function is callable and needs to be compiled
-            try:
-                # try compiling the function
-                value_func = jit(func)
-                # and evaluate it, so compilation is forced
-                value_func(*self._test_values)
+        # function is callable and needs to be compiled
+        try:
+            # try compiling the function
+            value_func = jit(func)
+            # and evaluate it, so compilation is forced
+            value_func(*self._test_values)
 
-                if os.environ.get("PYPDE_TESTRUN"):
-                    # ensure that the except path is also tested
-                    msg = "Force except"
-                    raise nb.NumbaError(msg)  # noqa: TRY301
+            if os.environ.get("PYPDE_TESTRUN"):
+                # ensure that the except path is also tested
+                msg = "Force except"
+                raise nb.NumbaError(msg)  # noqa: TRY301
 
-            except nb.NumbaError:
-                # if compilation fails, we simply fall back to pure-python mode
-                _logger.warning("Cannot compile BC %s", self)
+        except nb.NumbaError:
+            # if compilation fails, we simply fall back to pure-python mode
+            _logger.warning("Cannot compile BC %s", self)
 
-                @register_jitable
-                def value_func(*args):
-                    with nb.objmode(value="double"):
-                        value = func(*args)
-                    return value
+            @register_jitable
+            def value_func(*args):
+                with nb.objmode(value="double"):
+                    value = func(*args)
+                return value
 
-            return value_func  # type: ignore
+        return value_func  # type: ignore
 
     def _get_function_from_userfunc(self, do_jit: bool) -> Callable:
         """Returns function from user function evaluating the value of the virtual
@@ -1297,7 +1287,7 @@ class ExpressionBC(BCBase):
         if target == "virtual_point":
             return value_func
 
-        elif target == "value":
+        if target == "value":
             # Dirichlet boundary condition
 
             @register_jitable
@@ -1306,7 +1296,7 @@ class ExpressionBC(BCBase):
 
             return virtual_from_value  # type: ignore
 
-        elif target == "derivative":
+        if target == "derivative":
             # Neumann boundary condition
 
             @register_jitable
@@ -1315,7 +1305,7 @@ class ExpressionBC(BCBase):
 
             return virtual_from_derivative  # type: ignore
 
-        elif target == "mixed":
+        if target == "mixed":
             # special case of a Robin boundary condition, which also uses `const`
             const_func = self._prepare_function(
                 self._input["const_expr"], do_jit=do_jit
@@ -1331,9 +1321,8 @@ class ExpressionBC(BCBase):
 
             return virtual_from_mixed  # type: ignore
 
-        else:
-            msg = f"Unknown target `{target}` for expression"
-            raise ValueError(msg)
+        msg = f"Unknown target `{target}` for expression"
+        raise ValueError(msg)
 
     def _get_function_from_expression(self, do_jit: bool) -> Callable:
         """Returns function from expression evaluating the value of the virtual point.
@@ -1410,8 +1399,7 @@ class ExpressionBC(BCBase):
         """
         if self._is_func:
             return self._get_function_from_userfunc(do_jit=do_jit)
-        else:
-            return self._get_function_from_expression(do_jit=do_jit)
+        return self._get_function_from_expression(do_jit=do_jit)
 
     def _repr_value(self):
         if self._input["target"] == "mixed":
@@ -1443,21 +1431,20 @@ class ExpressionBC(BCBase):
         field = self._field_repr(field_name)
         if target == "virtual_point":
             return f"{field} = {value_expr}   @ virtual point"
-        elif target == "value":
+        if target == "value":
             return f"{field} = {value_expr}   @ {axis_name}={self.axis_coord}"
-        elif target == "derivative":
+        if target == "derivative":
             sign = " " if self.upper else "-"
             position = f"{axis_name}={self.axis_coord}"
             return f"{sign}∂{field}/∂{axis_name} = {value_expr}   @ {position}"
-        elif target == "mixed":
+        if target == "mixed":
             sign = " " if self.upper else "-"
             return (
                 f"{sign}∂{field}/∂{axis_name} + ({value_expr})*{field} = "
                 f"{const_expr}   @ {axis_name}={self.axis_coord}"
             )
-        else:
-            msg = f"Unsupported target `{target}`"
-            raise NotImplementedError(msg)
+        msg = f"Unsupported target `{target}`"
+        raise NotImplementedError(msg)
 
     def __eq__(self, other):
         """Checks for equality neglecting the `upper` property."""
@@ -1531,7 +1518,7 @@ class ExpressionBC(BCBase):
         if self.value_cell is None:
             # pick adjacent cell by default
             return super()._get_value_cell_index(with_ghost_cells)
-        elif self.value_cell >= 0:
+        if self.value_cell >= 0:
             # positive indexing
             idx = int(self.value_cell)
             if idx >= self.grid.shape[self.axis]:
@@ -1539,14 +1526,14 @@ class ExpressionBC(BCBase):
                 msg = f"Index {self.value_cell} out of bounds ({size=})"
                 raise IndexError(msg)
             return idx + 1 if with_ghost_cells else idx
-        else:  # self.value_cell < 0:
-            # negative indexing
-            idx = int(self.value_cell)
-            if idx < -self.grid.shape[self.axis]:
-                size = self.grid.shape[self.axis]
-                msg = f"Index {self.value_cell} out of bounds ({size=})"
-                raise IndexError(msg)
-            return idx - 1 if with_ghost_cells else idx
+        # self.value_cell < 0:
+        # negative indexing
+        idx = int(self.value_cell)
+        if idx < -self.grid.shape[self.axis]:
+            size = self.grid.shape[self.axis]
+            msg = f"Index {self.value_cell} out of bounds ({size=})"
+            raise IndexError(msg)
+        return idx - 1 if with_ghost_cells else idx
 
     def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         dx = self.grid.discretization[self.axis]
@@ -1620,13 +1607,12 @@ class ExpressionBC(BCBase):
 
             if num_axes == 1:
                 return func(grid_value, dx, coords[0], t)  # type: ignore
-            elif num_axes == 2:
+            if num_axes == 2:
                 return func(grid_value, dx, coords[0], coords[1], t)  # type: ignore
-            elif num_axes == 3:
+            if num_axes == 3:
                 return func(grid_value, dx, coords[0], coords[1], coords[2], t)  # type: ignore
-            else:
-                # cheap way to signal a problem
-                return math.nan
+            # cheap way to signal a problem
+            return math.nan
 
         # evaluate the function to force compilation and catch errors early
         virtual_point(np.zeros([3] * num_axes), (0,) * num_axes, numba_dict(t=0.0))
@@ -1840,24 +1826,21 @@ class ConstBCBase(BCBase):
     def _repr_value(self):
         if self.value_is_linked:
             return [f"value=<linked: {self.value.ctypes.data}>"]
-        elif np.array_equal(self.value, 0):
+        if np.array_equal(self.value, 0):
             return []
-        else:
-            return [f"value={self.value!r}"]
+        return [f"value={self.value!r}"]
 
     def __str__(self):
         if hasattr(self, "names"):
             if np.array_equal(self.value, 0):
                 return f'"{self.names[0]}"'
-            elif self.value_is_linked:
+            if self.value_is_linked:
                 return (
                     f'{{"type": "{self.names[0]}", '
                     f'"value": <linked: {self.value.ctypes.data}>}}'
                 )
-            else:
-                return f'{{"type": "{self.names[0]}", "value": {self.value}}}'
-        else:
-            return self.__repr__()
+            return f'{{"type": "{self.names[0]}", "value": {self.value}}}'
+        return self.__repr__()
 
     @fill_in_docstring
     def _parse_value(self, value: float | NumericArray | str) -> NumericArray:
@@ -2119,8 +2102,7 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         if self.homogeneous:
             return const + factor * arr_1d[..., index]  # type: ignore
-        else:
-            return const[bc_idx] + factor[bc_idx] * arr_1d[..., index]  # type: ignore
+        return const[bc_idx] + factor[bc_idx] * arr_1d[..., index]  # type: ignore
 
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         normal = self.normal
@@ -2261,11 +2243,10 @@ class _PeriodicBC(ConstBC1stOrderBase):
                 f"{field_name}({axis_name}={self.axis_coord})"
                 f" = -{field_name}({axis_name}={other_coord})"
             )
-        else:
-            return (
-                f"{field_name}({axis_name}={self.axis_coord})"
-                f"= {field_name}({axis_name}={other_coord})"
-            )
+        return (
+            f"{field_name}({axis_name}={self.axis_coord})"
+            f"= {field_name}({axis_name}={other_coord})"
+        )
 
     def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
         index = 0 if self.upper else self.grid.shape[self.axis] - 1
@@ -2273,19 +2254,18 @@ class _PeriodicBC(ConstBC1stOrderBase):
 
         if not compiled:
             return (0.0, value, index)
-        else:
-            const = np.array(0)
-            factor = np.array(value)
+        const = np.array(0)
+        factor = np.array(value)
 
-            @register_jitable(inline="always")
-            def const_func():
-                return const
+        @register_jitable(inline="always")
+        def const_func():
+            return const
 
-            @register_jitable(inline="always")
-            def factor_func():
-                return factor
+        @register_jitable(inline="always")
+        def factor_func():
+            return factor
 
-            return (const_func, factor_func, index)
+        return (const_func, factor_func, index)
 
 
 class DirichletBC(ConstBC1stOrderBase):
@@ -2306,33 +2286,32 @@ class DirichletBC(ConstBC1stOrderBase):
         if not compiled:
             factor = -np.ones_like(const)
             return (const, factor, index)
-        else:
-            # return boundary data such that dynamically calculated values can
-            # be used in numba compiled code. This is a work-around since numpy
-            # arrays are copied into closures, making them compile-time
-            # constants
+        # return boundary data such that dynamically calculated values can
+        # be used in numba compiled code. This is a work-around since numpy
+        # arrays are copied into closures, making them compile-time
+        # constants
 
-            const = np.array(const)
-            factor = np.full_like(const, -1)
+        const = np.array(const)
+        factor = np.full_like(const, -1)
 
-            if self.value_is_linked:
-                value = self._make_value_getter()
-
-                @register_jitable(inline="always")
-                def const_func():
-                    return 2 * value()
-
-            else:
-
-                @register_jitable(inline="always")
-                def const_func():
-                    return const
+        if self.value_is_linked:
+            value = self._make_value_getter()
 
             @register_jitable(inline="always")
-            def factor_func():
-                return factor
+            def const_func():
+                return 2 * value()
 
-            return (const_func, factor_func, index)
+        else:
+
+            @register_jitable(inline="always")
+            def const_func():
+                return const
+
+        @register_jitable(inline="always")
+        def factor_func():
+            return factor
+
+        return (const_func, factor_func, index)
 
 
 class NeumannBC(ConstBC1stOrderBase):
@@ -2357,33 +2336,32 @@ class NeumannBC(ConstBC1stOrderBase):
         if not compiled:
             factor = np.ones_like(const)
             return (const, factor, index)
-        else:
-            # return boundary data such that dynamically calculated values can
-            # be used in numba compiled code. This is a work-around since numpy
-            # arrays are copied into closures, making them compile-time
-            # constants
+        # return boundary data such that dynamically calculated values can
+        # be used in numba compiled code. This is a work-around since numpy
+        # arrays are copied into closures, making them compile-time
+        # constants
 
-            const = np.array(const)
-            factor = np.ones_like(const)
+        const = np.array(const)
+        factor = np.ones_like(const)
 
-            if self.value_is_linked:
-                value = self._make_value_getter()
-
-                @register_jitable(inline="always")
-                def const_func():
-                    return dx * value()
-
-            else:
-
-                @register_jitable(inline="always")
-                def const_func():
-                    return const
+        if self.value_is_linked:
+            value = self._make_value_getter()
 
             @register_jitable(inline="always")
-            def factor_func():
-                return factor
+            def const_func():
+                return dx * value()
 
-            return (const_func, factor_func, index)
+        else:
+
+            @register_jitable(inline="always")
+            def const_func():
+                return const
+
+        @register_jitable(inline="always")
+        def factor_func():
+            return factor
+
+        return (const_func, factor_func, index)
 
 
 class MixedBC(ConstBC1stOrderBase):
@@ -2651,12 +2629,11 @@ class ConstBC2ndOrderBase(ConstBCBase):
                 + data[1] * arr_1d[..., data[2]]
                 + data[3] * arr_1d[..., data[4]]
             )
-        else:
-            return (  # type: ignore
-                data[0][bc_idx]
-                + data[1][bc_idx] * arr_1d[..., data[2]]
-                + data[3][bc_idx] * arr_1d[..., data[4]]
-            )
+        return (  # type: ignore
+            data[0][bc_idx]
+            + data[1][bc_idx] * arr_1d[..., data[2]]
+            + data[3][bc_idx] * arr_1d[..., data[4]]
+        )
 
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         normal = self.normal
