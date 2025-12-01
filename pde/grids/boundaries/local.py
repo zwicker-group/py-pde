@@ -247,7 +247,7 @@ class BCBase(metaclass=ABCMeta):
     """bool: determines whether the boundary condition depends on space"""
     normal: bool = False
     """bool: determines whether the boundary condition only affects normal components.
-    
+
     If this flag is `False`, boundary conditions must specify values for all components
     of the field. If `True`, only the normal components at the boundary are specified.
     """

@@ -85,7 +85,6 @@ select = [
     "RET", # flake8-return
     "SIM", # flake8-simplify
     "PTH", # flake8-use-pathlib
-    "CPY", # flake8-copyright
     "DTZ", # flake8-datetimez
     "EM", # flake8-errmsg
     "EXE", # flake8-executable
@@ -98,7 +97,9 @@ select = [
     "NPY", # numpy rules
     "PD", # pandas-vet 
     "PERF", # Perflint 
-    "E"
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    
 ]
 ignore = ["A005", "B007", "B027", "B028", "SIM108", "ISC001", "PT006", "PT011", "RET504", "RET505", "RET506",
  "PYI034",  # until python 3.11 is minimal version

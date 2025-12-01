@@ -182,7 +182,7 @@ class BoundariesList(BoundariesBase):
         # else: assume that boundary conditions are given for separate axes
 
         # initialize boundary data with wildcard default
-        data = data.copy()  #  we want to modify this dictionary
+        data = data.copy()  # we want to modify this dictionary
         bc_all = data.pop("*", None)
         bc_data = [[bc_all, bc_all] for _ in range(grid.num_axes)]
         bc_seen = [[False, False] for _ in range(grid.num_axes)]
