@@ -26,7 +26,6 @@ Inheritance structure of the classes:
 """
 
 from .base import DimensionError, GridBase
-from .base import DimensionError, GridBase
 from .boundaries import *
 from .cartesian import CartesianGrid, UnitGrid
 from .cylindrical import CylindricalSymGrid

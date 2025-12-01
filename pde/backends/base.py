@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import inspect
 import logging
+from abc import abstractmethod
 from typing import Any, Callable, Literal
 
 from ..fields import DataFieldBase
