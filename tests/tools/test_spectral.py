@@ -34,7 +34,7 @@ def spectral_density(data, dx=1.0):
 
     res = fftpack.fftn(data) / data.size
 
-    return np.sqrt(k2s), np.abs(res) ** 2
+    return np.sqrt(k2s), np.abs(res) ** 2 / np.prod(dx)
 
 
 def test_colored_noise(rng):
@@ -177,3 +177,22 @@ def test_cosine_correlation(rng):
     k, density = spectral_density(data=data, dx=grid.discretization[0])
     k_max = k[np.argmax(density)]
     assert k_max == pytest.approx(1 / length_scale)
+
+
+@pytest.mark.parametrize(
+    "corr_args",
+    [
+        {"correlation": "none"},
+        {"correlation": "gaussian"},
+        {"correlation": "power law", "exponent": -2},
+        {"correlation": "cosine", "length_scale": 20},
+    ],
+)
+def test_local_variance(corr_args, rng):
+    """Test whether the values have locally a variance of 1."""
+    noise_corr = make_correlated_noise((128,), **corr_args, rng=rng)
+
+    samples = np.array([noise_corr() for _ in range(1000)])
+    samples_var = np.var(samples, axis=0)
+    mean, std = np.mean(samples_var), np.std(samples_var)
+    assert mean - std < 1 < mean + std
