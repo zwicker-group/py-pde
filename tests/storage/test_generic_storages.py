@@ -293,7 +293,7 @@ def test_storage_types(storage_factory, dtype, rng):
     """Test storing different types."""
     grid = UnitGrid([32])
     field = ScalarField.random_uniform(grid, rng=rng).copy(dtype=dtype)
-    if dtype == complex:
+    if dtype is complex:
         field += 1j * ScalarField.random_uniform(grid, rng=rng)
 
     s = storage_factory()

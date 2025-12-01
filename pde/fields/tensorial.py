@@ -197,7 +197,7 @@ class Tensor2Field(DataFieldBase):
 
         Returns:
             :class:`~pde.fields.vectorial.VectorField` or
-            :class:`~pde.fields.tensorial.Tensor2Field`: result of applying the dot operator
+            :class:`~pde.fields.tensorial.Tensor2Field`: result of applying dot operator
         """
         # check input
         self.grid.assert_grid_compatible(other.grid)

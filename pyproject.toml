@@ -91,11 +91,18 @@ select = [
     "EXE", # flake8-executable
     "INT", # flake8-gettext
     "PYI", # flake8-pyi 
-    "SLOT", #  flake8-slots
-    "TC"
+    "SLOT", # flake8-slots
+    "TC", # flake8-type-checking
+    "PTH", # flake8-use-pathlib
+    "FLY", # flynt
+    "NPY", # numpy rules
+    "PD", # pandas-vet 
+    "PERF", # Perflint 
+    "E"
 ]
 ignore = ["A005", "B007", "B027", "B028", "SIM108", "ISC001", "PT006", "PT011", "RET504", "RET505", "RET506",
  "PYI034",  # until python 3.11 is minimal version
+ "E402",  # allow Module level import not at top of file
 ]
 
 [tool.ruff.lint.isort]

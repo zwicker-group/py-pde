@@ -31,7 +31,7 @@ class CylindricalSymGrid(GridBase):
     r"""3-dimensional cylindrical grid assuming polar symmetry.
 
     The polar symmetry implies that states only depend on the radial and axial
-    coordinates :math:`r` and :math:`z`, respectively. These are discretized uniformly as
+    coordinates :math:`r` and :math:`z`, respectively. These are discretized uniformly:
 
     .. math::
         :nowrap:
@@ -88,8 +88,8 @@ class CylindricalSymGrid(GridBase):
             bounds_z (tuple):
                 The lower and upper bound of the z-axis
             shape (tuple):
-                The number of support points in r and z direction, respectively. The same
-                number is used for both if a single value is given.
+                The number of support points in r and z direction, respectively. The
+                same number is used for both if a single value is given.
             periodic_z (bool):
                 Determines whether the z-axis has periodic boundary conditions.
         """

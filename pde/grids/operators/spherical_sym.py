@@ -437,9 +437,9 @@ def make_tensor_divergence(
 
             # check inputs
             if safe:
-                # the following conditions need to be met. Otherwise, the vector resulting
-                # from the divergence might contain components that cannot be expressed in
-                # spherically symmetric coordinates
+                # the following conditions need to be met. Otherwise, the vector
+                # resulting from the divergence might contain components that cannot be
+                # expressed in spherically symmetric coordinates
                 assert np.all(arr_φr[1:-1] == 0)
                 assert np.all(arr_rφ[1:-1] == 0)
                 assert np.all(arr_rθ[1:-1] == 0)
@@ -470,9 +470,9 @@ def make_tensor_divergence(
 
             # check inputs
             if safe:
-                # the following conditions need to be met. Otherwise, the vector resulting
-                # from the divergence might contain components that cannot be expressed in
-                # spherically symmetric coordinates
+                # the following conditions need to be met. Otherwise, the vector
+                # resulting from the divergence might contain components that cannot be
+                # expressed in spherically symmetric coordinates
                 assert np.all(arr_rθ[1:-1] == 0)
                 assert np.all(arr_θθ[1:-1] == arr_φφ[1:-1])
                 assert np.all(arr_φθ[1:-1] == -arr_θφ[1:-1])

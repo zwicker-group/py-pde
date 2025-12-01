@@ -535,7 +535,8 @@ class BCBase(metaclass=ABCMeta):
             bc = cls.from_str(grid, axis, upper=upper, condition=data, rank=rank)
 
         elif data is None:
-            msg = f"Unspecified condition for boundary {grid.axes[axis]}{'-+'[int(upper)]}"
+            sign = "-+"[int(upper)]
+            msg = f"Unspecified condition for boundary {grid.axes[axis]}{sign}"
             raise BCDataError(msg)
 
         else:
@@ -1446,7 +1447,8 @@ class ExpressionBC(BCBase):
             return f"{field} = {value_expr}   @ {axis_name}={self.axis_coord}"
         elif target == "derivative":
             sign = " " if self.upper else "-"
-            return f"{sign}∂{field}/∂{axis_name} = {value_expr}   @ {axis_name}={self.axis_coord}"
+            position = f"{axis_name}={self.axis_coord}"
+            return f"{sign}∂{field}/∂{axis_name} = {value_expr}   @ {position}"
         elif target == "mixed":
             sign = " " if self.upper else "-"
             return (
@@ -2255,9 +2257,15 @@ class _PeriodicBC(ConstBC1stOrderBase):
 
         axis_name = self.grid.axes[self.axis]
         if self.flip_sign:
-            return f"{field_name}({axis_name}={self.axis_coord}) = -{field_name}({axis_name}={other_coord})"
+            return (
+                f"{field_name}({axis_name}={self.axis_coord})"
+                f" = -{field_name}({axis_name}={other_coord})"
+            )
         else:
-            return f"{field_name}({axis_name}={self.axis_coord}) = {field_name}({axis_name}={other_coord})"
+            return (
+                f"{field_name}({axis_name}={self.axis_coord})"
+                f"= {field_name}({axis_name}={other_coord})"
+            )
 
     def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
         index = 0 if self.upper else self.grid.shape[self.axis] - 1
@@ -2500,7 +2508,10 @@ class MixedBC(ConstBC1stOrderBase):
         axis_name = self.grid.axes[self.axis]
         field_repr = self._field_repr(field_name)
         deriv = f"∂{field_repr}/∂{axis_name}"
-        return f"{sign}{deriv} + {self.value} * {field_repr} = {self.const}   @ {axis_name}={self.axis_coord}"
+        return (
+            f"{sign}{deriv} + {self.value} * {field_repr}"
+            f"= {self.const}   @ {axis_name}={self.axis_coord}"
+        )
 
     def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
         # calculate values assuming finite factor

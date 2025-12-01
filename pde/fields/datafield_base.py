@@ -269,8 +269,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ================= ==========================================================
             :code:`none`      No correlation, :math:`C(k) = \delta(k)`
 
-            :code:`gaussian`  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length
-                              scale :math:`\lambda` set by argument :code:`length_scale`.
+            :code:`gaussian`  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with length
+                              scale :math:`\lambda` set by argument :code:`length_scale`
 
             :code:`power law` :math:`C(k) = k^{\nu/2}` with exponent :math:`\nu` set by
                               argument :code:`exponent`.

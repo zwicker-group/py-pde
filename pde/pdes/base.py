@@ -464,7 +464,7 @@ class PDEBase(metaclass=ABCMeta):
                         else:
                             for i in range(state_data[n].size):
                                 scale = noises_var[n] / cell_volume(i)
-                                out[n].flat[i] = np.sqrt(scale) * np.random.randn()
+                                out[n].flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
                     return out  # type: ignore
 
             else:
@@ -479,7 +479,7 @@ class PDEBase(metaclass=ABCMeta):
                     out = np.empty(state_data.shape)
                     for i in range(state_data.size):
                         scale = noise_var / cell_volume(i)
-                        out.flat[i] = np.sqrt(scale) * np.random.randn()
+                        out.flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
                     return out  # type: ignore
 
         else:

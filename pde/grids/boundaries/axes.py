@@ -435,12 +435,12 @@ class BoundariesList(BoundariesBase):
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition."""
         result: list[str] = []
-        for b in self._axes:
-            try:
+        try:
+            for b in self._axes:
                 result.extend(b.get_mathematical_representation(field_name))
-            except NotImplementedError:
-                axis_name = self.grid.axes[b.axis]
-                result.append(f"Representation not implemented for axis {axis_name}")
+        except NotImplementedError:
+            axis_name = self.grid.axes[b.axis]
+            result.append(f"Representation not implemented for axis {axis_name}")
 
         return "\n".join(result)
 

@@ -170,7 +170,10 @@ class ScalarField(DataFieldBase):
                     arrs.append(arg)
                 elif isinstance(arg, np.ndarray):
                     if arg.shape != self.data.shape:
-                        msg = f"Data shapes incompatible ({arg.shape} != {self.data.shape}"
+                        msg = (
+                            "Data shapes incompatible: "
+                            f"{arg.shape} != {self.data.shape}"
+                        )
                         raise RuntimeError(msg)
                     arrs.append(arg)
                 elif isinstance(arg, self.__class__):
@@ -238,7 +241,8 @@ class ScalarField(DataFieldBase):
             label (str, optional):
                 Name of the returned field
             \**kwargs:
-                Forward to :meth:`~pde.fields.datafield_base.DataFieldBase.apply_operator`
+                Additional arguments are forward to
+                :meth:`~pde.fields.datafield_base.DataFieldBase.apply_operator`
 
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the squared gradient of the field

@@ -406,7 +406,7 @@ class GridBase(metaclass=ABCMeta):
                 raise NotImplementedError
 
         if bcs is None:
-            # just set the valid elements and leave ghost cells with arbitrary data_valids
+            # just set the valid elements and leave ghost cells with arbitrary data
             return set_valid  # type: ignore
         else:
             # set the valid elements and the ghost cells according to boundary condition
@@ -613,8 +613,9 @@ class GridBase(metaclass=ABCMeta):
             p2 (:class:`~numpy.ndarray`):
                 Second point(s)
             coords (str):
-                The coordinate system in which the points are specified. Valid values are
-                `cartesian`, `cell`, and `grid`; see :meth:`~pde.grids.base.GridBase.transform`.
+                Coordinate system in which the points are specified. Valid values are
+                `cartesian`, `cell`, and `grid`; see
+                :meth:`~pde.grids.base.GridBase.transform`.
 
         Returns:
             :class:`~numpy.ndarray`: The difference vectors between the points with
@@ -637,8 +638,9 @@ class GridBase(metaclass=ABCMeta):
             p2 (:class:`~numpy.ndarray`):
                 Second position
             coords (str):
-                The coordinate system in which the points are specified. Valid values are
-                `cartesian`, `cell`, and `grid`; see :meth:`~pde.grids.base.GridBase.transform`.
+                Coordinate system in which the points are specified. Valid values are
+                `cartesian`, `cell`, and `grid`; see
+                :meth:`~pde.grids.base.GridBase.transform`.
 
         Returns:
             float: Distance between the two positions
@@ -1317,8 +1319,8 @@ class GridBase(metaclass=ABCMeta):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray), so they `out` array need to be
-            supplied explicitly.
+            signature (arr: NumericArray, out: NumericArray), so they `out` array need
+            to be supplied explicitly.
         """
         return self._get_operator_info(operator).factory(self, **kwargs)
 

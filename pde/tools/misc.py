@@ -263,7 +263,7 @@ def hdf_write_attributes(
     for key, value in attributes.items():
         try:
             value_serialized = json.dumps(value)
-        except TypeError:
+        except TypeError:  # noqa: PERF203
             if raise_serialization_error:
                 raise
         else:

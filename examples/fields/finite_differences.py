@@ -12,7 +12,7 @@ import numpy as np
 from pde import CartesianGrid, ScalarField
 from pde.tools.expressions import evaluate
 
-# create two grids with different resolution to emphasize finite difference approximation
+# create grids with different resolution to emphasize finite difference approximation
 grid_fine = CartesianGrid([(0, 2 * np.pi)], 256, periodic=True)
 grid_coarse = CartesianGrid([(0, 2 * np.pi)], 10, periodic=True)
 

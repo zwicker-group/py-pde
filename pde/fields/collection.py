@@ -920,7 +920,7 @@ class FieldCollection(FieldBase):
         vmax: float | list[float | None] | None = None,
         **kwargs,
     ) -> PlotReference:
-        r"""Visualize fields by mapping to different color channels in a 2d density plot.
+        r"""Visualize fields by mapping to different color channels in 2d density plot.
 
         Args:
             ax (:class:`matplotlib.axes.Axes`):

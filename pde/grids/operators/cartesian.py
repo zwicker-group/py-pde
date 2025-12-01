@@ -358,8 +358,8 @@ def _make_laplace_numba_2d(
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         corner_weight (float):
-            Weighting factor for the corner points of the stencil. If `None`, the value
-            is read from the configuration option `operators.cartesian_laplacian_2d_corner_weight`.
+            Weighting factor for corner points of stencil. If `None`, value is read from
+            the configuration option `operators.cartesian_laplacian_2d_corner_weight`.
             The standard value is zero, which corresponds to the traditional 5-point
             stencil. Typical alternative choices are 1/2 (Oono-Puri stencil) and 1/3
             (Patra-Karttunen or Mehrstellen stencil); see

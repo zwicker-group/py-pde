@@ -317,7 +317,7 @@ def get_common_numba_dtype(*args):
 @jit(nogil=True)
 def _random_seed_compiled(seed: int) -> None:
     """Sets the seed of the random number generator of numba."""
-    np.random.seed(seed)
+    np.random.seed(seed)  # noqa: NPY002
 
 
 def random_seed(seed: int = 0) -> None:
@@ -326,7 +326,7 @@ def random_seed(seed: int = 0) -> None:
     Args:
         seed (int): Sets random seed
     """
-    np.random.seed(seed)
+    np.random.seed(seed)  # noqa: NPY002
     if not nb.config.DISABLE_JIT:
         _random_seed_compiled(seed)
 

@@ -121,7 +121,8 @@ REQUIREMENTS = [
         name="pyfftw",
         version_min="0.12",
         usage="Faster Fourier transforms",
-        collections=set(),  # include in "full" collection when pyfftw supports python 3.12
+        collections=set(),
+        # TODO: include in "full" collection when pyfftw supports python 3.12
     ),
     Requirement(
         name="rocket-fft",
@@ -258,8 +259,10 @@ def write_requirements_py(path: Path, requirements: list[Requirement]):
             raise ValueError(msg)
 
     # add generated code
-    for r in sorted(requirements, key=lambda r: r.name.lower()):
-        content.append(f'check_package_version("{r.name}", "{r.version_min}")\n')
+    content.extend(
+        f'check_package_version("{r.name}", "{r.version_min}")\n'
+        for r in sorted(requirements, key=lambda r: r.name.lower())
+    )
     content.append("del check_package_version\n")
 
     # write content back to file

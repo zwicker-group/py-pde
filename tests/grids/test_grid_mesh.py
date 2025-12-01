@@ -68,9 +68,9 @@ def test_split_fields_mpi(decomp, dtype, rng):
     mesh = GridMesh.from_grid(grid, decomp)
 
     field = ScalarField(grid, dtype=dtype)
-    if dtype == int:
+    if dtype is int:
         field._data_full = rng.integers(0, 10, size=grid._shape_full)
-    elif dtype == complex:
+    elif dtype is complex:
         field._data_full.real = rng.random(size=grid._shape_full)
         field._data_full.imag = rng.random(size=grid._shape_full)
     else:

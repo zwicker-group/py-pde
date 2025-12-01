@@ -259,11 +259,12 @@ else:
     toc_filter_exclude = []
 
 
+ignore_pattern = r".*movie.*|.*interactive.*|.*parallel.*|.*modelrunner.*|.*jupyter.*"
 sphinx_gallery_conf = {
     "examples_dirs": "../../examples",
     "gallery_dirs": "examples_gallery",
     "filename_pattern": "/",
-    "ignore_pattern": r".*movie.*|.*interactive.*|.*parallel.*|.*modelrunner.*|.*jupyter.*",
+    "ignore_pattern": ignore_pattern,
     "capture_repr": (),
     "show_signature": False,
     "download_all_examples": False,

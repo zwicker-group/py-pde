@@ -582,8 +582,8 @@ def plot_magnitudes(
             check_complex = False  # only warn once
 
         # actually plot the data
-        (l,) = ax.plot(times, np.real(d["values"]), **kwargs)
-        lines.append(l)
+        (line,) = ax.plot(times, np.real(d["values"]), **kwargs)
+        lines.append(line)
 
     ax.set_xlabel("Time")
     if len(data) == 1:
@@ -720,7 +720,7 @@ def plot_kymograph(
 
     # prepare the image data for one kymograph
     image = []
-    for _, field in storage.items():
+    for _, field in storage.items():  # noqa: PERF102
         img_data = field.get_line_data(**line_data_args)
         image.append(img_data["data_y"])
 
@@ -785,7 +785,7 @@ def plot_kymographs(
 
     # prepare the image data for one kymograph
     images = []
-    for _, field in storage.items():
+    for _, field in storage.items():  # noqa: PERF102
         if storage.has_collection:
             image_lines = []
             for f_id in range(num_fields):

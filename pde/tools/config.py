@@ -368,7 +368,7 @@ def get_package_versions(
     for name in sorted(packages):
         try:
             version = importlib.metadata.version(name)
-        except ImportError:
+        except ImportError:  # noqa: PERF203
             versions[name] = na_str
         else:
             versions[name] = version
@@ -432,7 +432,7 @@ def get_ffmpeg_version() -> str | None:
     # run ffmpeg to get its version
     try:
         version_bytes = sp.check_output(["ffmpeg", "-version"])
-    except:
+    except Exception:
         return None
 
     # extract the version number from the output
