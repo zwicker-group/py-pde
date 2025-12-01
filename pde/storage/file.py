@@ -8,15 +8,18 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-from numpy.typing import DTypeLike
 
-from ..fields.base import FieldBase
 from ..tools.misc import ensure_directory_exists, hdf_write_attributes
-from ..tools.typing import NumericArray
 from .base import InfoDict, StorageBase, WriteModeType
+
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from ..fields.base import FieldBase
+    from ..tools.typing import NumericArray
 
 
 class FileStorage(StorageBase):

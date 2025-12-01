@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import warnings
-from typing import Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 import numba as nb
 import numpy as np
@@ -28,7 +28,9 @@ from numba.typed import Dict as NumbaDict
 
 from .. import config
 from ..tools.misc import decorator_arguments
-from .typing import Number, NumericArray
+
+if TYPE_CHECKING:
+    from .typing import Number, NumericArray
 
 # numba version as a list of integers
 NUMBA_VERSION = [int(v) for v in nb.__version__.split(".")[:2]]

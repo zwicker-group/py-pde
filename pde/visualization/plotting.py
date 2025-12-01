@@ -18,14 +18,12 @@ import logging
 import math
 import time
 import warnings
-from typing import Any, Callable, Literal, Union
+from typing import TYPE_CHECKING, Any, Callable, Literal, Union
 
 import numpy as np
 
 from ..fields import FieldCollection
 from ..fields.base import FieldBase
-from ..fields.datafield_base import DataFieldBase
-from ..storage.base import StorageBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..tools.output import display_progress
@@ -36,7 +34,11 @@ from ..tools.plotting import (
     plot_on_axes,
     plot_on_figure,
 )
-from ..tools.typing import NumericArray
+
+if TYPE_CHECKING:
+    from ..fields.datafield_base import DataFieldBase
+    from ..storage.base import StorageBase
+    from ..tools.typing import NumericArray
 
 _logger = logging.getLogger(__name__)
 ScaleData = Union[str, float, tuple[float, float]]

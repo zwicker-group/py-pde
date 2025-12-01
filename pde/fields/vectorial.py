@@ -5,25 +5,27 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numba as nb
 import numpy as np
 from numba.extending import overload, register_jitable
-from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, GridBase
-from ..grids.boundaries.axes import BoundariesData
 from ..grids.cartesian import CartesianGrid
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import Number, get_common_dtype
+from ..tools.misc import get_common_dtype
 from ..tools.numba import get_common_numba_dtype, jit
-from ..tools.typing import NumberOrArray, NumericArray
 from .datafield_base import DataFieldBase
 from .scalar import ScalarField
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from numpy.typing import DTypeLike
+
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import Number, NumberOrArray, NumericArray
     from .tensorial import Tensor2Field
 
 

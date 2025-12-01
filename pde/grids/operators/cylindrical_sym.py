@@ -16,17 +16,19 @@ r"""This module implements differential operators on cylindrical grids.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numba as nb
 
 from ... import config
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit
-from ...tools.typing import NumericArray, OperatorType
-from ..boundaries.axes import BoundariesList
 from ..cylindrical import CylindricalSymGrid
 from .common import make_general_poisson_solver
+
+if TYPE_CHECKING:
+    from ...tools.typing import NumericArray, OperatorType
+    from ..boundaries.axes import BoundariesList
 
 
 def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray]:

@@ -21,12 +21,14 @@ import collections
 import functools
 import logging
 import numbers
-from collections.abc import Iterable
 from hashlib import sha1
-from typing import Callable, Literal, TypeVar
+from typing import TYPE_CHECKING, Callable, Literal, TypeVar
 
 import numpy as np
 from scipy import sparse
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 TFunc = TypeVar("TFunc", bound="Callable")
 

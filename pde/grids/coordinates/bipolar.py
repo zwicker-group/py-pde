@@ -4,11 +4,16 @@
 
 from __future__ import annotations
 
-import numpy as np
-from numpy.typing import ArrayLike
+from typing import TYPE_CHECKING
 
-from ...tools.typing import FloatingArray
+import numpy as np
+
 from .base import CoordinatesBase
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+
+    from ...tools.typing import FloatingArray
 
 
 class BipolarCoordinates(CoordinatesBase):

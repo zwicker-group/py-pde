@@ -13,13 +13,15 @@ import platform
 import queue
 import signal
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.plotting import napari_add_layers
 from .base import InfoDict, TrackerBase
-from .interrupts import InterruptData
+
+if TYPE_CHECKING:
+    from ..fields.base import FieldBase
+    from .interrupts import InterruptData
 
 
 def napari_process(

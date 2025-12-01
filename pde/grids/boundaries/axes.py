@@ -17,16 +17,18 @@ import itertools
 import logging
 import warnings
 from collections.abc import Iterator, Sequence
-from typing import Any, Callable, Union
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 from numba.extending import register_jitable
 
 from ... import config
 from ...tools.numba import jit
-from ...tools.typing import GhostCellSetter, NumericArray
 from ..base import GridBase, PeriodicityError
 from .axis import BoundaryAxisBase, BoundaryPairData, get_boundary_axis
 from .local import BCBase, BCDataError, BoundaryData
+
+if TYPE_CHECKING:
+    from ...tools.typing import GhostCellSetter, NumericArray
 
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger instance."""

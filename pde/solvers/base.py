@@ -11,18 +11,20 @@ from __future__ import annotations
 import logging
 import warnings
 from inspect import isabstract
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import numba as nb
 import numpy as np
 from numba.extending import register_jitable
 
-from ..fields.base import FieldBase
-from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.misc import classproperty
 from ..tools.numba import is_jitted, jit
-from ..tools.typing import BackendType, NumericArray, StepperHook
+
+if TYPE_CHECKING:
+    from ..fields.base import FieldBase
+    from ..pdes.base import PDEBase
+    from ..tools.typing import BackendType, NumericArray, StepperHook
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for solvers."""

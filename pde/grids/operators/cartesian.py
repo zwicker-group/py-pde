@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numba as nb
 import numpy as np
@@ -26,10 +26,12 @@ from numba.extending import overload, register_jitable
 from ... import config
 from ...tools.misc import module_available
 from ...tools.numba import jit
-from ...tools.typing import NumericArray, OperatorType
-from ..boundaries.axes import BoundariesList
 from ..cartesian import CartesianGrid
 from .common import make_general_poisson_solver, uniform_discretization
+
+if TYPE_CHECKING:
+    from ...tools.typing import NumericArray, OperatorType
+    from ..boundaries.axes import BoundariesList
 
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger instance."""

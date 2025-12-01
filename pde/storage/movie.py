@@ -8,31 +8,35 @@ reading and writing movies.
 
 from __future__ import annotations
 
-import io
 import json
 import shlex
-import types
 import warnings
-from collections.abc import Iterator, Sequence
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numpy as np
 from matplotlib.colors import Normalize
-from numpy.typing import ArrayLike
 
 from ..fields import FieldCollection
-from ..fields.base import FieldBase
-from ..fields.datafield_base import DataFieldBase
 from ..tools import ffmpeg as FFmpeg
 from ..tools.cache import cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..tools.parse_duration import parse_duration
-from ..tools.typing import NumericArray
 from ..trackers.interrupts import ConstantInterrupts, InterruptData, parse_interrupt
 from .base import InfoDict, StorageBase, StorageTracker, WriteModeType
+
+if TYPE_CHECKING:
+    import io
+    import types
+    from collections.abc import Iterator, Sequence
+
+    from numpy.typing import ArrayLike
+
+    from ..fields.base import FieldBase
+    from ..fields.datafield_base import DataFieldBase
+    from ..tools.typing import NumericArray
 
 
 def _get_limits(value: float | ArrayLike, dim: int) -> NumericArray:

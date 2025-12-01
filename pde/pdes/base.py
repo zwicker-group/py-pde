@@ -13,15 +13,15 @@ from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import FieldBase
 from ..fields.datafield_base import DataFieldBase
 from ..tools.numba import jit
-from ..tools.typing import ArrayLike, NumericArray, StepperHook
-from ..trackers.base import TrackerCollectionDataType
 
 if TYPE_CHECKING:
+    from ..fields.base import FieldBase
     from ..solvers.base import SolverBase
     from ..solvers.controller import TRangeType
+    from ..tools.typing import ArrayLike, NumericArray, StepperHook
+    from ..trackers.base import TrackerCollectionDataType
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for PDEs."""

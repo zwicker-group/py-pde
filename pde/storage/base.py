@@ -7,24 +7,26 @@ from __future__ import annotations
 
 import logging
 from abc import ABCMeta, abstractmethod
-from collections.abc import Iterator, Sequence
 from inspect import signature
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numpy as np
-from numpy.typing import DTypeLike
 
 from ..fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from ..fields.base import FieldBase
-from ..fields.datafield_base import DataFieldBase
-from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress
-from ..tools.typing import NumericArray
 from ..trackers.base import InfoDict, TransformationType, TransformedTrackerBase
-from ..trackers.interrupts import InterruptData
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
+
+    from numpy.typing import DTypeLike
+
+    from ..fields.datafield_base import DataFieldBase
+    from ..grids.base import GridBase
+    from ..tools.typing import NumericArray
+    from ..trackers.interrupts import InterruptData
     from .memory import MemoryStorage
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])

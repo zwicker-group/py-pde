@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
 from ..tools.cache import cached_property
-from ..tools.typing import FloatingArray, NumericArray
 from .base import (
     CoordsType,
     DimensionError,
@@ -23,6 +21,9 @@ from .cartesian import CartesianGrid
 from .coordinates import CylindricalCoordinates
 
 if TYPE_CHECKING:
+    from collections.abc import Generator, Sequence
+
+    from ..tools.typing import FloatingArray, NumericArray
     from .spherical import PolarSymGrid
 
 

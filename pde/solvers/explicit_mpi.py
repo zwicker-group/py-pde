@@ -5,15 +5,17 @@
 
 from __future__ import annotations
 
-from typing import Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 
-from ..fields.base import FieldBase
-from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
-from ..tools.typing import BackendType
 from .explicit import ExplicitSolver
+
+if TYPE_CHECKING:
+    from ..fields.base import FieldBase
+    from ..pdes.base import PDEBase
+    from ..tools.typing import BackendType
 
 
 class ExplicitMPISolver(ExplicitSolver):

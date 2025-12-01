@@ -13,11 +13,12 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 
-from .typing import NumberOrArray, NumericArray
+if TYPE_CHECKING:
+    from .typing import NumberOrArray, NumericArray
 
 try:
     from pyfftw.interfaces.numpy_fft import ifftn as np_ifftn

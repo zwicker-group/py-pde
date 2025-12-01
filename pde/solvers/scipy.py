@@ -5,14 +5,16 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 
-from ..fields.base import FieldBase
-from ..pdes.base import PDEBase
-from ..tools.typing import BackendType, NumericArray
 from .base import SolverBase
+
+if TYPE_CHECKING:
+    from ..fields.base import FieldBase
+    from ..pdes.base import PDEBase
+    from ..tools.typing import BackendType, NumericArray
 
 
 class ScipySolverError(RuntimeError): ...

@@ -32,13 +32,10 @@ from typing import IO, TYPE_CHECKING, Any, Callable
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..tools.output import get_progress_bar_class
 from ..tools.parse_duration import parse_duration
-from ..tools.typing import NumericArray, Real
-from ..visualization.movies import Movie
 from .base import (
     FinishedSimulation,
     InfoDict,
@@ -50,6 +47,10 @@ from .interrupts import InterruptData, RealtimeInterrupts
 
 if TYPE_CHECKING:
     import pandas  # noqa: ICN001
+
+    from ..fields.base import FieldBase
+    from ..tools.typing import NumericArray, Real
+    from ..visualization.movies import Movie
 
 
 class CallbackTracker(TrackerBase):

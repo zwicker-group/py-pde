@@ -5,23 +5,25 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Callable
 
 import numpy as np
-from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
 from ..tools.plotting import PlotReference, plot_on_figure
-from ..tools.typing import NumberOrArray, NumericArray
 from .datafield_base import DataFieldBase
 from .scalar import ScalarField
 from .vectorial import VectorField
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from numpy.typing import DTypeLike
+
     from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import NumberOrArray, NumericArray
 
 
 class Tensor2Field(DataFieldBase):

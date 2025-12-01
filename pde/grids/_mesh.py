@@ -6,9 +6,8 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
 from enum import IntEnum
-from typing import Any, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import numpy as np
 
@@ -18,11 +17,15 @@ from ..fields.datafield_base import DataFieldBase
 from ..tools import mpi
 from ..tools.cache import cached_method
 from ..tools.plotting import plot_on_axes
-from ..tools.typing import NumericArray
-from .base import GridBase
 from .boundaries.axes import BoundariesBase, BoundariesList
 from .boundaries.axis import BoundaryAxisBase, BoundaryPair
 from .boundaries.local import _MPIBC
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ..tools.typing import NumericArray
+    from .base import GridBase
 
 
 class MPIFlags(IntEnum):

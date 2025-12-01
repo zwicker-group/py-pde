@@ -23,12 +23,13 @@ import functools
 import logging
 import sys
 import warnings
-from collections.abc import Generator
 from typing import TYPE_CHECKING, Any, Literal
 
 from ..tools.docstrings import replace_in_docstring
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     import matplotlib.cm
     import matplotlib.figure as mpl_figure
     import napari

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import numbers
 import re
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numba as nb
@@ -18,18 +17,21 @@ from sympy import Symbol
 from sympy.core.function import UndefinedFunction
 
 from ..fields import FieldCollection, VectorField
-from ..fields.base import FieldBase
 from ..fields.datafield_base import DataFieldBase
 from ..grids.boundaries import set_default_bc
-from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
 from ..pdes.base import PDEBase, TState
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
-from ..tools.typing import ArrayLike, NumberOrArray, NumericArray, StepperHook
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     import sympy
+
+    from ..fields.base import FieldBase
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import ArrayLike, NumberOrArray, NumericArray, StepperHook
 
 
 # Define short notations that can appear in mathematical equations and need to be

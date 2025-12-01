@@ -6,14 +6,12 @@
 from __future__ import annotations
 
 import itertools
-from collections.abc import Generator, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from ..tools.cuboid import Cuboid
 from ..tools.plotting import plot_on_axes
-from ..tools.typing import FloatingArray, NumericArray
 from .base import (
     CoordsType,
     DimensionError,
@@ -22,6 +20,11 @@ from .base import (
     discretize_interval,
 )
 from .coordinates import CartesianCoordinates
+
+if TYPE_CHECKING:
+    from collections.abc import Generator, Sequence
+
+    from ..tools.typing import FloatingArray, NumericArray
 
 
 class CartesianGrid(GridBase):

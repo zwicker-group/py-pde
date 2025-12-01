@@ -24,8 +24,7 @@ import math
 import numbers
 import re
 from abc import ABCMeta, abstractmethod
-from collections.abc import Mapping, Sequence
-from typing import Any, Callable, Union
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 import numpy as np
 import sympy
@@ -37,13 +36,18 @@ from sympy.utilities.lambdify import _get_namespace
 from ..fields.base import FieldBase
 from ..fields.collection import FieldCollection
 from ..fields.datafield_base import DataFieldBase
-from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
-from .misc import Number, number, number_array
+from .misc import number, number_array
 from .numba import jit
-from .typing import NumberOrArray, NumericArray
+from .typing import NumericArray
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
+    from ..grids.boundaries.axes import BoundariesData
+    from .typing import Number, NumberOrArray
 
 try:
     from numba.core.extending import overload

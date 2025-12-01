@@ -5,15 +5,19 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from contextlib import contextmanager
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import FieldBase
-from ..tools.typing import NumericArray
 from .base import InfoDict, StorageBase, WriteModeType
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ..fields.base import FieldBase
+    from ..tools.typing import NumericArray
 
 
 class MemoryStorage(StorageBase):

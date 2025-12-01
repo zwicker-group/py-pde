@@ -6,22 +6,23 @@
 from __future__ import annotations
 
 import numbers
-from collections.abc import Sequence
-from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
-from numpy.typing import DTypeLike
 
 from ..grids import CartesianGrid, UnitGrid
 from ..grids.base import DimensionError, DomainError, GridBase
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import Number
-from ..tools.typing import NumberOrArray
 from .datafield_base import DataFieldBase
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
+
+    from numpy.typing import DTypeLike
+
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import Number, NumberOrArray
     from .vectorial import VectorField
 
 

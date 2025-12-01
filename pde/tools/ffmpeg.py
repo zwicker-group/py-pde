@@ -13,11 +13,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
-from numpy.typing import DTypeLike
 
-from .typing import NumericArray
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from .typing import NumericArray
 
 
 @dataclass

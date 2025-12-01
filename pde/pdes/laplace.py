@@ -5,10 +5,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..fields import ScalarField
-from ..grids.base import GridBase
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
+
+if TYPE_CHECKING:
+    from ..grids.base import GridBase
+    from ..grids.boundaries.axes import BoundariesData
 
 
 @fill_in_docstring

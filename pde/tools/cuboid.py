@@ -9,11 +9,14 @@ cuboid that is aligned with the axes of a Cartesian coordinate system.
 from __future__ import annotations
 
 import itertools
+from typing import TYPE_CHECKING
 
 import numpy as np
-from numpy.typing import DTypeLike
 
-from .typing import FloatOrArray, NumericArray
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from .typing import FloatOrArray, NumericArray
 
 
 class Cuboid:

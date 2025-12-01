@@ -15,20 +15,28 @@ from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 import numba as nb
 import numpy as np
 from numba.extending import overload, register_jitable
-from numpy.typing import DTypeLike
+from typing_extensions import Self
 
 from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import Number, number_array
+from ..tools.misc import number_array
 from ..tools.numba import get_common_numba_dtype, jit, make_array_constructor
 from ..tools.plotting import PlotReference, plot_on_axes
 from ..tools.spectral import CorrelationType, make_correlated_noise
-from ..tools.typing import ArrayLike, FloatingArray, NumberOrArray, NumericArray
 from .base import FieldBase, RankError
 
 if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import (
+        ArrayLike,
+        FloatingArray,
+        Number,
+        NumberOrArray,
+        NumericArray,
+    )
     from .scalar import ScalarField
 
 
@@ -139,7 +147,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_uniform(
-        cls: type[TDataField],
+        cls,
         grid: GridBase,
         vmin: float = 0,
         vmax: float = 1,
@@ -147,7 +155,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: str | None = None,
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
-    ) -> TDataField:
+    ) -> Self:
         """Create field with uncorrelated uniform distributed random values.
 
         A complex field is returned when `vmin` or `vmax` is a complex number. In this
@@ -193,7 +201,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_normal(
-        cls: type[TDataField],
+        cls,
         grid: GridBase,
         mean: float = 0,
         std: float = 1,
@@ -204,7 +212,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
         **kwargs,
-    ) -> TDataField:
+    ) -> Self:
         r"""Creates Gaussian random field with normal distributed random values.
 
         A complex field is returned when either `mean` or `std` is a complex number. In
@@ -325,7 +333,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_harmonic(
-        cls: type[TDataField],
+        cls,
         grid: GridBase,
         modes: int = 3,
         harmonic=np.cos,
@@ -334,7 +342,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: str | None = None,
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
-    ) -> TDataField:
+    ) -> Self:
         r"""Create a random field build from harmonics.
 
         The resulting fields will be highly correlated in space and can thus
@@ -400,7 +408,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_colored(
-        cls: type[TDataField],
+        cls,
         grid: GridBase,
         exponent: float = 0,
         scale: float = 1,
@@ -408,7 +416,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: str | None = None,
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
-    ) -> TDataField:
+    ) -> Self:
         r"""Create a field of random values with colored noise.
 
         The spatially correlated values obey
@@ -483,10 +491,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def from_state(
-        cls: type[TDataField],
+        cls,
         attributes: dict[str, Any],
         data: NumericArray | None = None,
-    ) -> TDataField:
+    ) -> Self:
         """Create a field from given state.
 
         Args:
@@ -506,11 +514,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return cls(attributes.pop("grid"), data=data, **attributes)
 
     def copy(
-        self: TDataField,
+        self,
         *,
         label: str | None = None,
         dtype: DTypeLike | None = None,
-    ) -> TDataField:
+    ) -> Self:
         """Return a copy of the field.
 
         This method creates a new instance of the field with the same grid and data.
@@ -722,13 +730,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @fill_in_docstring
     def interpolate_to_grid(
-        self: TDataField,
+        self,
         grid: GridBase,
         *,
         bc: BoundariesData | None = None,
         fill: Number | None = None,
         label: str | None = None,
-    ) -> TDataField:
+    ) -> Self:
         """Interpolate the data of this field to another grid.
 
         Args:
@@ -1158,12 +1166,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             raise ValueError(msg)
 
     def smooth(
-        self: TDataField,
+        self,
         sigma: float = 1,
         *,
-        out: TDataField | None = None,
+        out: Self | None = None,
         label: str | None = None,
-    ) -> TDataField:
+    ) -> Self:
         """Applies Gaussian smoothing with the given standard deviation.
 
         This function respects periodic boundary conditions of the underlying grid,

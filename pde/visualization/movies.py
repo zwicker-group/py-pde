@@ -14,12 +14,14 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..storage.base import StorageBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress
 from .plotting import ScalarFieldPlot, ScaleData
+
+if TYPE_CHECKING:
+    from ..storage.base import StorageBase
 
 
 class Movie:

@@ -8,12 +8,11 @@ from __future__ import annotations
 import json
 import math
 from collections.abc import Iterator, Mapping, Sequence
-from typing import Any, Callable, Literal, overload
+from typing import TYPE_CHECKING, Any, Callable, Literal, overload
 
 import numpy as np
 from matplotlib import cm
 from matplotlib.colors import LinearSegmentedColormap, Normalize
-from numpy.typing import DTypeLike
 
 try:
     from matplotlib import colormaps
@@ -21,14 +20,18 @@ except ImportError:
     # fall-back to access cm.get_cmap
     from matplotlib import cm as colormaps  # type: ignore
 
-from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import Number, number_array
+from ..tools.misc import number_array
 from ..tools.plotting import PlotReference, plot_on_axes, plot_on_figure
-from ..tools.typing import NumberOrArray, NumericArray
 from .base import FieldBase
 from .datafield_base import DataFieldBase
 from .scalar import ScalarField
+
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from ..grids.base import GridBase
+    from ..tools.typing import Number, NumberOrArray, NumericArray
 
 
 class FieldCollection(FieldBase):

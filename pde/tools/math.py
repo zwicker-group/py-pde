@@ -12,13 +12,14 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numba as nb
 import numpy as np
 from numba.experimental import jitclass
 
-from .typing import ArrayLike, NumericArray
+if TYPE_CHECKING:
+    from .typing import ArrayLike, NumericArray
 
 
 class SmoothData1D:

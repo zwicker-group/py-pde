@@ -15,17 +15,19 @@ r"""This module implements differential operators on spherical grids.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 from ... import config
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit
-from ...tools.typing import NumericArray, OperatorType
-from ..boundaries.axes import BoundariesList
 from ..spherical import SphericalSymGrid
 from .common import make_general_poisson_solver
+
+if TYPE_CHECKING:
+    from ...tools.typing import NumericArray, OperatorType
+    from ..boundaries.axes import BoundariesList
 
 
 @SphericalSymGrid.register_operator("laplace", rank_in=0, rank_out=0)

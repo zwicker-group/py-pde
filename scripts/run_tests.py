@@ -8,8 +8,11 @@ import os
 import subprocess as sp
 import sys
 import tempfile
-from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 PACKAGE = "pde"  # name of the package that needs to be tested
 PACKAGE_PATH = Path(__file__).resolve().parents[1]  # base path of the package

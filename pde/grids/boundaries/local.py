@@ -69,6 +69,7 @@ from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar, Union
 import numba as nb
 import numpy as np
 from numba.extending import overload, register_jitable
+from typing_extensions import Self
 
 from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring
@@ -546,7 +547,7 @@ class BCBase(metaclass=ABCMeta):
             raise PeriodicityError(msg)
         return bc
 
-    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+    def to_subgrid(self, subgrid: GridBase) -> Self:
         """Converts this boundary condition to one valid for a given subgrid.
 
         Args:
@@ -573,7 +574,7 @@ class BCBase(metaclass=ABCMeta):
             msg = f"Expected rank {rank}, but boundary condition had rank {self.rank}."
             raise RuntimeError(msg)
 
-    def copy(self: TBC, upper: bool | None = None, rank: int | None = None) -> TBC:
+    def copy(self, upper: bool | None = None, rank: int | None = None) -> Self:
         raise NotImplementedError
 
     def get_sparse_matrix_data(
@@ -952,7 +953,7 @@ class UserBC(BCBase):
         axis_name = self.grid.axes[self.axis]
         return f"user-controlled  @ {axis_name}={self.axis_coord}"
 
-    def copy(self: TBC, upper: bool | None = None, rank: int | None = None) -> TBC:
+    def copy(self, upper: bool | None = None, rank: int | None = None) -> Self:
         """Return a copy of itself, but with a reference to the same grid."""
         return self.__class__(
             grid=self.grid,
@@ -961,7 +962,7 @@ class UserBC(BCBase):
             rank=self.rank if rank is None else rank,
         )
 
-    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+    def to_subgrid(self, subgrid: GridBase) -> Self:
         """Converts this boundary condition to one valid for a given subgrid.
 
         Args:

@@ -17,10 +17,10 @@ from ..trackers.base import (
     TrackerCollection,
     TrackerCollectionDataType,
 )
-from .base import SolverBase
 
 if TYPE_CHECKING:
     from ..fields.base import FieldBase
+    from .base import SolverBase
 
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger for controller."""

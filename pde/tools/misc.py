@@ -25,12 +25,14 @@ import functools
 import importlib
 import json
 from pathlib import Path
-from typing import Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 import numpy as np
-from numpy.typing import DTypeLike
 
-from .typing import ArrayLike, Number, NumericArray
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from .typing import ArrayLike, Number, NumericArray
 
 TFunc = TypeVar("TFunc", bound=Callable[..., Any])
 

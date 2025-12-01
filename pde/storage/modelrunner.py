@@ -5,11 +5,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import modelrunner as mr
 
-from ..fields.base import FieldBase
-from ..tools.typing import NumericArray
 from .base import InfoDict, StorageBase, WriteModeType
+
+if TYPE_CHECKING:
+    from ..fields.base import FieldBase
+    from ..tools.typing import NumericArray
 
 
 class ModelrunnerStorage(StorageBase):

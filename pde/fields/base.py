@@ -10,14 +10,18 @@ import logging
 import warnings
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import Any, Callable, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
 import numpy as np
-from numpy.typing import DTypeLike
+from typing_extensions import Self
 
-from ..grids.base import GridBase
 from ..tools.plotting import napari_add_layers, napari_viewer
-from ..tools.typing import NumberOrArray, NumericArray
+
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from ..grids.base import GridBase
+    from ..tools.typing import NumberOrArray, NumericArray
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for fields."""
@@ -439,7 +443,7 @@ class FieldBase(metaclass=ABCMeta):
             return NotImplemented
         return self.grid == other.grid and np.array_equal(self.data, other.data)
 
-    def _unary_operation(self: TField, op: Callable) -> TField:
+    def _unary_operation(self, op: Callable) -> Self:
         """Perform an unary operation on this field.
 
         Args:
@@ -452,16 +456,16 @@ class FieldBase(metaclass=ABCMeta):
         return self.__class__(grid=self.grid, data=op(self.data), label=self.label)
 
     @property
-    def real(self: TField) -> TField:
+    def real(self) -> Self:
         """:class:`FieldBase`: Real part of the field."""
         return self._unary_operation(np.real)
 
     @property
-    def imag(self: TField) -> TField:
+    def imag(self) -> Self:
         """:class:`FieldBase`: Imaginary part of the field."""
         return self._unary_operation(np.imag)
 
-    def conjugate(self: TField) -> TField:
+    def conjugate(self) -> Self:
         """Returns complex conjugate of the field.
 
         Returns:
@@ -531,8 +535,8 @@ class FieldBase(metaclass=ABCMeta):
         return result
 
     def _binary_operation_inplace(
-        self: TField, other, op_inplace: Callable, scalar_second: bool = True
-    ) -> TField:
+        self, other, op_inplace: Callable, scalar_second: bool = True
+    ) -> Self:
         """Perform an in-place binary operation between this field and `other`
 
         Args:
@@ -575,7 +579,7 @@ class FieldBase(metaclass=ABCMeta):
 
     __radd__ = __add__
 
-    def __iadd__(self: TField, other) -> TField:
+    def __iadd__(self, other) -> Self:
         """Add `other` to the current field."""
         return self._binary_operation_inplace(other, np.add, scalar_second=False)
 
@@ -589,7 +593,7 @@ class FieldBase(metaclass=ABCMeta):
             other, lambda x, y, out: np.subtract(y, x, out=out), scalar_second=False
         )
 
-    def __isub__(self: TField, other) -> TField:
+    def __isub__(self, other) -> Self:
         """Add `other` to the current field."""
         return self._binary_operation_inplace(other, np.subtract, scalar_second=False)
 
@@ -599,7 +603,7 @@ class FieldBase(metaclass=ABCMeta):
 
     __rmul__ = __mul__
 
-    def __imul__(self: TField, other) -> TField:
+    def __imul__(self, other) -> Self:
         """Multiply field by value."""
         return self._binary_operation_inplace(other, np.multiply, scalar_second=False)
 
@@ -615,7 +619,7 @@ class FieldBase(metaclass=ABCMeta):
 
         return self._binary_operation(other, rdivision, scalar_second=True)
 
-    def __itruediv__(self: TField, other) -> TField:
+    def __itruediv__(self, other) -> Self:
         """Divide field by value."""
         return self._binary_operation_inplace(other, np.true_divide, scalar_second=True)
 
@@ -626,7 +630,7 @@ class FieldBase(metaclass=ABCMeta):
             raise NotImplementedError(msg)
         return self._binary_operation(exponent, np.power, scalar_second=True)
 
-    def __ipow__(self: TField, exponent: float) -> TField:
+    def __ipow__(self, exponent: float) -> Self:
         """Raise data of the field to a certain power in-place."""
         if not np.isscalar(exponent):
             msg = "Only scalar exponents are supported"
@@ -635,13 +639,13 @@ class FieldBase(metaclass=ABCMeta):
         return self
 
     def apply(
-        self: TField,
+        self,
         func: Callable | str,
-        out: TField | None = None,
+        out: Self | None = None,
         *,
         label: str | None = None,
         evaluate_args: dict[str, Any] | None = None,
-    ) -> TField:
+    ) -> Self:
         """Applies a function/expression to the data and returns it as a field.
 
         Args:
@@ -774,8 +778,8 @@ class FieldBase(metaclass=ABCMeta):
             napari_add_layers(viewer, self._get_napari_data(**kwargs))
 
     def split_mpi(
-        self: TField, decomposition: Literal["auto"] | int | list[int] = "auto"
-    ) -> TField:
+        self, decomposition: Literal["auto"] | int | list[int] = "auto"
+    ) -> Self:
         """Splits the field onto subgrids in an MPI run.
 
         In a normal serial simulation, the method simply returns the field itself. In

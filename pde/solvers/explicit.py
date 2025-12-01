@@ -5,17 +5,19 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numba as nb
 import numpy as np
 
-from ..fields.base import FieldBase
-from ..pdes.base import PDEBase
-from ..tools.math import OnlineStatistics
 from ..tools.numba import jit
-from ..tools.typing import BackendType, NumericArray
 from .base import AdaptiveSolverBase
+
+if TYPE_CHECKING:
+    from ..fields.base import FieldBase
+    from ..pdes.base import PDEBase
+    from ..tools.math import OnlineStatistics
+    from ..tools.typing import BackendType, NumericArray
 
 
 class ExplicitSolver(AdaptiveSolverBase):
