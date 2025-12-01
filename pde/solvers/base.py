@@ -470,8 +470,7 @@ class AdaptiveSolverBase(SolverBase):
             elif dt < dt_min:
                 if np.isnan(error_rel):
                     raise RuntimeError(dt_min_nan_err)
-                else:
-                    raise RuntimeError(dt_min_err)
+                raise RuntimeError(dt_min_err)
 
             return dt
 

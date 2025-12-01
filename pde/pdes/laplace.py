@@ -79,8 +79,7 @@ def solve_poisson_equation(
                 f"magnitude of the field is {magnitude} and thus non-zero."
             )
             raise RuntimeError(msg) from err
-        else:
-            raise  # another error occurred
+        raise  # another error occurred
 
     return result
 

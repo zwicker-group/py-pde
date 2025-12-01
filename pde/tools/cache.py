@@ -492,8 +492,7 @@ class _class_cache:
             )
             raise TypeError(msg)
 
-        else:
-            self.factory = factory
+        self.factory = factory
 
     def _get_clear_cache_method(self):
         """Return a method that can be attached to classes to clear the cache of the
