@@ -10,7 +10,7 @@ import logging
 import warnings
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
+from typing import Any, Callable, Literal, TypeVar
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -18,10 +18,6 @@ from numpy.typing import DTypeLike
 from ..grids.base import GridBase
 from ..tools.plotting import napari_add_layers, napari_viewer
 from ..tools.typing import NumberOrArray, NumericArray
-
-if TYPE_CHECKING:
-    from .scalar import ScalarField
-
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for fields."""

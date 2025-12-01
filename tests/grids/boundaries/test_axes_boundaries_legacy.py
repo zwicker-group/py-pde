@@ -4,18 +4,15 @@
 
 import itertools
 
-import numpy as np
 import pytest
 
-from pde import ScalarField, UnitGrid, config
-from pde.grids.base import PeriodicityError
+from pde import UnitGrid, config
 from pde.grids.boundaries.axes import (
     BCDataError,
     BoundariesBase,
     BoundariesList,
-    BoundariesSetter,
 )
-from pde.grids.boundaries.axis import BoundaryPair, BoundaryPeriodic, get_boundary_axis
+from pde.grids.boundaries.axis import get_boundary_axis
 from pde.grids.boundaries.local import NeumannBC
 
 
@@ -91,7 +88,7 @@ def test_boundary_specifications_legacy_disabled():
     with config({"boundaries.accept_lists": False}):
         g = UnitGrid([2])
         with pytest.raises(BCDataError):
-            bc1 = BoundariesBase.from_data(
+            BoundariesBase.from_data(
                 [{"type": "derivative", "value": 0}, {"type": "value", "value": 0}],
                 grid=g,
             )

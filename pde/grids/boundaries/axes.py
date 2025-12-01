@@ -19,14 +19,13 @@ import warnings
 from collections.abc import Iterator, Sequence
 from typing import Any, Callable, Union
 
-import numpy as np
 from numba.extending import register_jitable
 
 from ... import config
 from ...tools.numba import jit
 from ...tools.typing import GhostCellSetter, NumericArray
 from ..base import GridBase, PeriodicityError
-from .axis import BoundaryAxisBase, BoundaryPair, BoundaryPairData, get_boundary_axis
+from .axis import BoundaryAxisBase, BoundaryPairData, get_boundary_axis
 from .local import BCBase, BCDataError, BoundaryData
 
 _logger = logging.getLogger(__name__)

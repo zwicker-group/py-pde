@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import modelrunner as mr
-import numpy as np
 
 from ..fields.base import FieldBase
 from ..tools.typing import NumericArray

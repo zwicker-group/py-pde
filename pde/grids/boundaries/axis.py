@@ -19,17 +19,13 @@ axes have more option, which are represented by
 from __future__ import annotations
 
 import collections
-from typing import TYPE_CHECKING, Union
+from typing import Union
 
-import numpy as np
 from numba.extending import register_jitable
 
 from ...tools.typing import GhostCellSetter, NumericArray
 from ..base import GridBase, PeriodicityError
 from .local import _MPIBC, BCBase, BCDataError, BoundaryData, _PeriodicBC
-
-if TYPE_CHECKING:
-    from .._mesh import GridMesh
 
 BoundaryPairData = Union[
     dict[str, BoundaryData],

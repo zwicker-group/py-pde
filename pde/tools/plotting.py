@@ -764,8 +764,8 @@ def get_plotting_context(
         if "backend_inline" in mpl.get_backend():
             # special context to support the `inline` backend
             try:
-                from IPython.display import display
-                from ipywidgets import Output
+                from IPython.display import display  # noqa: F401
+                from ipywidgets import Output  # noqa: F401
             except ImportError:
                 context_class: type[PlottingContextBase] = BasicPlottingContext
             else:

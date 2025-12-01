@@ -28,8 +28,6 @@ from typing import Callable, Literal, TypeVar
 import numpy as np
 from scipy import sparse
 
-from .typing import NumericArray
-
 TFunc = TypeVar("TFunc", bound="Callable")
 
 

@@ -27,8 +27,7 @@ from ... import config
 from ...tools.misc import module_available
 from ...tools.numba import jit
 from ...tools.typing import NumericArray, OperatorType
-from ..boundaries.axes import BoundariesBase, BoundariesList
-from ..boundaries.axis import BoundaryAxisBase
+from ..boundaries.axes import BoundariesList
 from ..cartesian import CartesianGrid
 from .common import make_general_poisson_solver, uniform_discretization
 

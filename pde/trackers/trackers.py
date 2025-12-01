@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import inspect
 import math
-import os.path
 import sys
 import time
 from datetime import timedelta

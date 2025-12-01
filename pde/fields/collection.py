@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import math
-import warnings
 from collections.abc import Iterator, Mapping, Sequence
 from typing import Any, Callable, Literal, overload
 

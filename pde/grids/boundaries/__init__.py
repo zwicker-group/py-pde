@@ -185,9 +185,9 @@ The details of the classes are explained below:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from ..base import DomainError, PeriodicityError
-from .axes import BoundariesBase, BoundariesList, set_default_bc
-from .local import (
+from ..base import DomainError, PeriodicityError  # noqa: F401
+from .axes import BoundariesBase, BoundariesList, set_default_bc  # noqa: F401
+from .local import (  # noqa: F401
     registered_boundary_condition_classes,
     registered_boundary_condition_names,
 )

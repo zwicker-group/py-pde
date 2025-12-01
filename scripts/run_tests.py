@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import os
 import subprocess as sp
 import sys
@@ -194,13 +195,10 @@ def run_unit_tests(
     if runinteractive:
         args.append("--runinteractive")  # also run interactive tests
     if use_mpi:
-        try:
-            import numba_mpi
-        except ImportError as err:
-            raise RuntimeError(
-                "Module `numba_mpi` is required to test with MPI"
-            ) from err
-        args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
+        if importlib.util.find_spec("numba_mpi"):
+            args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
+        else:
+            raise RuntimeError("Module `numba_mpi` is required to test with MPI")
 
     # run tests using multiple cores?
     if num_cores == "auto":

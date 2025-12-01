@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import logging
 import warnings
-from abc import ABCMeta
 from inspect import isabstract
 from typing import Any, Callable
 

@@ -13,7 +13,6 @@ import numpy as np
 
 from pde import CylindricalSymGrid, ScalarField, SphericalSymGrid, UnitGrid, config
 from pde.grids.boundaries import BoundariesList
-from pde.grids.operators.cartesian import _make_laplace_numba_2d
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.numba import jit
 

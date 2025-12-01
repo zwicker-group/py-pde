@@ -13,7 +13,7 @@ import logging
 import math
 import warnings
 from abc import ABCMeta, abstractmethod
-from collections.abc import Generator, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Any, Callable, Literal, NamedTuple, overload
 
 import numba as nb
@@ -1408,7 +1408,7 @@ class GridBase(metaclass=ABCMeta):
                     ) -> NumericArray:
                         """Allocates `out` and applies operator to the data."""
                         if arr.shape != shape_in_valid:
-                            raise ValueError(f"Incompatible shapes of input array")
+                            raise ValueError("Incompatible shapes of input array")
 
                         out = np.empty(shape_out, dtype=arr.dtype)
                         # prepare input with boundary conditions
@@ -1429,9 +1429,9 @@ class GridBase(metaclass=ABCMeta):
                     ) -> NumericArray:
                         """Applies operator to the data without allocating out."""
                         if arr.shape != shape_in_valid:
-                            raise ValueError(f"Incompatible shapes of input array")
+                            raise ValueError("Incompatible shapes of input array")
                         if out.shape != shape_out:  # type: ignore
-                            raise ValueError(f"Incompatible shapes of output array")
+                            raise ValueError("Incompatible shapes of output array")
 
                         # prepare input with boundary conditions
                         arr_full = np.empty(shape_in_full, dtype=arr.dtype)

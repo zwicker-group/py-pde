@@ -24,8 +24,6 @@ import errno
 import functools
 import importlib
 import json
-import os
-import warnings
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 

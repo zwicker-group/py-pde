@@ -12,8 +12,6 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Sequence
 from typing import Any, Callable, Optional, Union
 
-import numpy as np
-
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available

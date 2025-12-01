@@ -8,7 +8,6 @@ from __future__ import annotations
 from typing import Callable
 
 import numba as nb
-import numpy as np
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc

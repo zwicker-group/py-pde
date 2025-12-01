@@ -74,7 +74,6 @@ from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import address_as_void_pointer, jit, numba_dict
 from ...tools.typing import (
-    FloatOrArray,
     GhostCellSetter,
     NumberOrArray,
     NumericArray,
