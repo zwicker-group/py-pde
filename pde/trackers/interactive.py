@@ -174,10 +174,10 @@ class NapariViewer:
                 "safe-guard, which is necessary on some platforms. Please protect the "
                 "main code of your program in the following way:"
             )
-            print("")
+            print()
             print("    if __name__ == '__main__':")
             print("        code ...")
-            print("")
+            print()
             print("The interactive Napari viewer could not be launched.")
             print("=" * 80)
             print()
