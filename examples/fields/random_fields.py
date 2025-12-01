@@ -6,7 +6,6 @@ This example showcases several random fields
 """
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 from pde import ScalarField, UnitGrid
 

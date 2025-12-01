@@ -199,7 +199,7 @@ def test_vector_to_cartesian(grid, rng):
     if grid.dim == 1:
         return
 
-    elif grid.dim == 2:
+    if grid.dim == 2:
         vec1 = grid._vector_to_cartesian(point, [1, 0])
         vec2 = grid._vector_to_cartesian(point, [0, 1])
         u = [vec1, vec2]

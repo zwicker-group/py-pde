@@ -5,21 +5,23 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import numba as nb
 import numpy as np
 
-from ..fields.base import FieldBase
 from ..tools.numba import jit
-from ..tools.typing import NumericArray
 from .base import SolverBase
+
+if TYPE_CHECKING:
+    from ..fields.base import FieldBase
+    from ..tools.typing import NumericArray
 
 
 class AdamsBashforthSolver(SolverBase):
     """Explicit Adams-Bashforth multi-step solver."""
 
-    name = "adams–bashforth"
+    name = "adams-bashforth"
 
     def _make_fixed_stepper(
         self, state: FieldBase, dt: float

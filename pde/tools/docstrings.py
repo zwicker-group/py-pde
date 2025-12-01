@@ -42,9 +42,9 @@ DOCSTRING_REPLACEMENTS = {
         Determines when the tracker interrupts the simulation. A single numbers
         determines an interval (measured in the simulation time unit) of regular
         interruption. A string is interpreted as a duration in real time assuming the
-        format 'hh:mm:ss'. A list of numbers is taken as explicit simulation time points.
-        More fine-grained control is possible by passing an instance of classes defined
-        in :mod:`~pde.trackers.interrupts`.
+        format 'hh:mm:ss'. A list of numbers is taken as explicit simulation time
+        points. More fine-grained control is possible by passing an instance of classes
+        defined in :mod:`~pde.trackers.interrupts`.
         """,
     "ARG_PLOT_QUANTITIES": """
         A 2d list of quantities that are shown in a rectangular arrangement.
@@ -62,7 +62,7 @@ DOCSTRING_REPLACEMENTS = {
         """,
     "ARG_PLOT_SCALE": """
         Flag determining how the range of the color scale is determined. In the
-        simplest case a tuple of numbers marks the lower and upper end of the 
+        simplest case a tuple of numbers marks the lower and upper end of the
         scalar values that will be shown. If only a single number is supplied,
         the range starts at zero and ends at the given number. Additionally, the
         special value 'automatic' determines the range from the range of scalar
@@ -96,7 +96,7 @@ DOCSTRING_REPLACEMENTS = {
         """,
     # notes in the docstring
     "WARNING_EXEC": r"""
-        This implementation uses :func:`exec` and should therefore not be used 
+        This implementation uses :func:`exec` and should therefore not be used
         in a context where malicious input could occur.
         """,
 }

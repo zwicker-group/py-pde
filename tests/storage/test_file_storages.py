@@ -94,7 +94,7 @@ def test_simulation_persistence(compression, tmp_path, rng):
     storage = FileStorage(path)
     np.testing.assert_almost_equal(storage.times, [0, 0.05, 0.1])
     data = np.array(storage.data)
-    assert data.shape == (3,) + state.data.shape
+    assert data.shape == (3, *state.data.shape)
     grid_res = storage.grid
     assert grid == grid_res
     grid_res = storage.grid
@@ -188,7 +188,7 @@ def test_write_types(dtype, tmp_path, rng):
 
     grid = UnitGrid([32])
     c = ScalarField.random_uniform(grid, rng=rng).copy(dtype=dtype)
-    if dtype == complex:
+    if dtype is complex:
         c += 1j * ScalarField.random_uniform(grid, rng=rng)
 
     storage = FileStorage(path, keep_opened=False)

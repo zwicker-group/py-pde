@@ -10,7 +10,6 @@ import numpy as np
 import pytest
 
 from pde import CartesianGrid, DiffusionPDE, FileStorage, PDEBase, ScalarField, UnitGrid
-from pde.grids.boundaries.axes import BoundariesSetter
 from pde.tools import misc, mpi, numba
 from pde.tools.misc import module_available
 

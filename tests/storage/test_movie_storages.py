@@ -91,7 +91,7 @@ def test_movie_storage_vector(dim, tmp_path, rng):
     for i, field in enumerate(reader):
         assert field.grid == grid
         assert isinstance(field, pde.VectorField)
-        assert field.data.shape == (dim,) + grid.shape
+        assert field.data.shape == (dim, *grid.shape)
         np.testing.assert_allclose(field.data, storage[i].data, atol=0.01)
 
 
@@ -123,7 +123,7 @@ def test_movie_storage_containers(ext, tmp_path, rng):
 
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
-@pytest.mark.parametrize("name,video_format", formats.items())
+@pytest.mark.parametrize(("name", "video_format"), formats.items())
 def test_video_format(name, video_format, tmp_path, rng):
     """Test all video_formats."""
     if np.issubdtype(video_format.dtype, np.integer):
@@ -210,7 +210,7 @@ def test_stored_files(path):
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
 @pytest.mark.parametrize(
-    "interrupt, expected",
+    ("interrupt", "expected"),
     [
         (pde.FixedInterrupts([0.5, 0.7, 1.4]), [0.5, 0.7, 1.4]),
         (pde.ConstantInterrupts(1, t_start=1), [1, 2]),

@@ -5,15 +5,17 @@
 
 from __future__ import annotations
 
-from typing import Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 
-from ..fields.base import FieldBase
-from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
-from ..tools.typing import BackendType
 from .explicit import ExplicitSolver
+
+if TYPE_CHECKING:
+    from ..fields.base import FieldBase
+    from ..pdes.base import PDEBase
+    from ..tools.typing import BackendType
 
 
 class ExplicitMPISolver(ExplicitSolver):
@@ -145,7 +147,7 @@ class ExplicitMPISolver(ExplicitSolver):
         if not mpi.parallel_run:
             self._logger.warning(
                 "Using `ExplicitMPISolver` without a proper multiprocessing run. "
-                "Scripts need to be started with `mpiexec` to profit from multiple cores"
+                "Scripts need to be started with `mpiexec` to use multiple cores."
             )
 
         if dt is None:
@@ -208,7 +210,8 @@ class ExplicitMPISolver(ExplicitSolver):
                 dt_list = self.mesh.allgather(dt)
                 if not np.isclose(min(dt_list), max(dt_list)):
                     # abort simulations in all nodes when they went out of sync
-                    raise RuntimeError(f"Processes went out of sync: dt={dt_list}")
+                    msg = f"Processes went out of sync: dt={dt_list}"
+                    raise RuntimeError(msg)
 
                 # collect the data from all nodes
                 post_step_data_list = self.mesh.gather(post_step_data)
@@ -246,7 +249,8 @@ class ExplicitMPISolver(ExplicitSolver):
                 # check whether t_last is the same for all processes
                 t_list = self.mesh.gather(t_last)
                 if t_list is not None and not np.isclose(min(t_list), max(t_list)):
-                    raise RuntimeError(f"Processes went out of sync: t_last={t_list}")
+                    msg = f"Processes went out of sync: t_last={t_list}"
+                    raise RuntimeError(msg)
 
                 # collect the data from all nodes
                 post_step_data_list = self.mesh.gather(post_step_data)

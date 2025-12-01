@@ -13,11 +13,12 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 
-from .typing import NumberOrArray, NumericArray
+if TYPE_CHECKING:
+    from .typing import NumberOrArray, NumericArray
 
 try:
     from pyfftw.interfaces.numpy_fft import ifftn as np_ifftn
@@ -202,7 +203,8 @@ def make_correlated_noise(
             return np.exp(-sharpness2 * (length_scale * np.sqrt(k2s) - 1) ** 2)
 
     else:
-        raise ValueError(f"Unknown correlation `{correlation}`")
+        msg = f"Unknown correlation `{correlation}`"
+        raise ValueError(msg)
 
     if kwargs:
         _logger.warning("Unused arguments: %s", list(kwargs))
@@ -215,10 +217,9 @@ def make_correlated_noise(
 
         return noise_normal
 
-    else:
-        return _make_isotropic_correlated_noise(
-            shape, corr_spectrum=corr_spectrum, discretization=discretization, rng=rng
-        )
+    return _make_isotropic_correlated_noise(
+        shape, corr_spectrum=corr_spectrum, discretization=discretization, rng=rng
+    )
 
 
 def make_colored_noise(
@@ -260,6 +261,7 @@ def make_colored_noise(
         "`make_colored_noise` is deprecated. Use `make_correlated_noise` with "
         "correlation='power law' instead",
         DeprecationWarning,
+        stacklevel=2,
     )
     rng = np.random.default_rng(rng)
 

@@ -9,11 +9,14 @@ cuboid that is aligned with the axes of a Cartesian coordinate system.
 from __future__ import annotations
 
 import itertools
+from typing import TYPE_CHECKING
 
 import numpy as np
-from numpy.typing import DTypeLike
 
-from .typing import FloatOrArray, NumericArray
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from .typing import FloatOrArray, NumericArray
 
 
 class Cuboid:
@@ -47,10 +50,11 @@ class Cuboid:
     def size(self, value: FloatOrArray):
         self._size = np.array(value, self.pos.dtype)  # make copy
         if self.pos.shape != self._size.shape:
-            raise ValueError(
+            msg = (
                 f"Size vector (dim={len(self._size)}) must have the same "
                 f"dimension as the position vector (dim={len(self.pos)})"
             )
+            raise ValueError(msg)
 
         # flip Cuboid with negative size
         neg = self._size < 0
@@ -128,13 +132,13 @@ class Cuboid:
         """The sum of two cuboids is the minimal cuboid enclosing both."""
         if isinstance(other, Cuboid):
             if self.dim != other.dim:
-                raise RuntimeError("Incompatible dimensions")
+                msg = "Incompatible dimensions"
+                raise RuntimeError(msg)
             a1, a2 = self.corners
             b1, b2 = other.corners
             return self.__class__.from_points(np.minimum(a1, b1), np.maximum(a2, b2))
 
-        else:
-            return NotImplemented
+        return NotImplemented
 
     def __eq__(self, other) -> bool:
         """Override the default equality test."""
@@ -176,10 +180,9 @@ class Cuboid:
         null_count = null.sum()
         if null_count == 0:
             return 2 * np.sum(np.prod(sides) / sides)
-        elif null_count == 1:
+        if null_count == 1:
             return 2 * np.prod(sides[~null])  # type: ignore
-        else:
-            return 0
+        return 0
 
     @property
     def centroid(self):
@@ -200,8 +203,7 @@ class Cuboid:
             self.pos -= amount
             self.size += 2 * amount
             return self
-        else:
-            return self.__class__(self.pos - amount, self.size + 2 * amount)
+        return self.__class__(self.pos - amount, self.size + 2 * amount)
 
     def contains_point(self, points: NumericArray) -> NumericArray:
         """Returns a True when `points` are within the Cuboid.
@@ -217,10 +219,11 @@ class Cuboid:
             return points
 
         if points.shape[-1] != self.dim:
-            raise ValueError(
+            msg = (
                 "Last dimension of `points` must agree with "
                 f"cuboid dimension {self.dim}"
             )
+            raise ValueError(msg)
 
         c1, c2 = self.corners
         return np.all(c1 <= points, axis=-1) & np.all(points <= c2, axis=-1)  # type: ignore

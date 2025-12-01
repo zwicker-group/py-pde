@@ -74,7 +74,8 @@ class FixedInterrupts(InterruptsBase):
     def __init__(self, interrupts: NumericArray | Sequence[float]):
         self.interrupts = np.atleast_1d(interrupts)
         if self.interrupts.ndim != 1:
-            raise ValueError("`interrupts` must be a 1d sequence")
+            msg = "`interrupts` must be a 1d sequence"
+            raise ValueError(msg)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(interrupts={self.interrupts})"
@@ -103,11 +104,12 @@ class FixedInterrupts(InterruptsBase):
                 t_next = self.interrupts[self._index]
 
             self.dt = t_next - t_last
-            return t_next
 
         except IndexError:
             # iterator has been exhausted -> never break again
             return math.inf
+
+        return t_next
 
 
 class ConstantInterrupts(InterruptsBase):
@@ -242,7 +244,8 @@ class GeometricInterrupts(InterruptsBase):
         self.scale = float(scale)
         self.factor = float(factor)
         if factor <= 0:
-            raise ValueError("Factor must be a positive number")
+            msg = "Factor must be a positive number"
+            raise ValueError(msg)
         self._t_next: float | None = None  # next time it should be called
 
     def __repr__(self):
@@ -360,11 +363,11 @@ def parse_interrupt(data: InterruptData) -> InterruptsBase:
         # is already the correct class
         return data
 
-    elif isinstance(data, (int, float)):
+    if isinstance(data, (int, float)):
         # is a number, so we assume a constant interrupt of that duration
         return ConstantInterrupts(data)
 
-    elif isinstance(data, str):
+    if isinstance(data, str):
         # a string is either a special geometric sequence of a time duration
         if data.startswith("geometric"):
             regex = r"geometric\(\s*([0-9.e+-]*)\s*,\s*([0-9.e+-]*)\s*\)"
@@ -373,15 +376,14 @@ def parse_interrupt(data: InterruptData) -> InterruptsBase:
                 scale = float(matches.group(1))
                 factor = float(matches.group(2))
                 return GeometricInterrupts(scale, factor)
-            else:
-                raise ValueError(f"Could not interpret `{data}` as interrupt")
-        else:
-            return RealtimeInterrupts(data)
+            msg = f"Could not interpret `{data}` as interrupt"
+            raise ValueError(msg)
+        return RealtimeInterrupts(data)
 
-    elif hasattr(data, "__iter__"):
+    if hasattr(data, "__iter__"):
         # a sequence is supposed to give fixed time points for interrupts
         return FixedInterrupts(data)
 
-    else:
-        # anything else we cannot handle
-        raise TypeError(f"Cannot parse interrupt data `{data}`")
+    # anything else we cannot handle
+    msg = f"Cannot parse interrupt data `{data}`"
+    raise TypeError(msg)

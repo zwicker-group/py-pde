@@ -38,12 +38,12 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
     """
     if dim == 1:
         return 2 * radius
-    elif dim == 2:
+    if dim == 2:
         return np.pi * radius**2  # type: ignore
-    elif dim == 3:
+    if dim == 3:
         return 4 / 3 * np.pi * radius**3  # type: ignore
-    else:
-        raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
+    msg = f"Cannot calculate the volume in {dim} dimensions"
+    raise NotImplementedError(msg)
 
 
 class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
@@ -79,8 +79,9 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         """
         super().__init__()
         shape_list = _check_shape(shape)
-        if not len(shape_list) == 1:
-            raise ValueError(f"`shape` must be a single number, not {shape_list}")
+        if len(shape_list) != 1:
+            msg = f"`shape` must be a single number, not {shape_list}"
+            raise ValueError(msg)
         self._shape: tuple[int] = (int(shape_list[0]),)
 
         try:
@@ -89,9 +90,11 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             r_inner, r_outer = 0, float(radius)  # type: ignore
 
         if r_inner < 0:
-            raise ValueError("Inner radius must be positive")
+            msg = "Inner radius must be positive"
+            raise ValueError(msg)
         if r_inner >= r_outer:
-            raise ValueError("Outer radius must be larger than inner radius")
+            msg = "Outer radius must be larger than inner radius"
+            raise ValueError(msg)
 
         # radial discretization
         rs, dr = discretize_interval(r_inner, r_outer, self.shape[0])
@@ -116,7 +119,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         state_copy = state.copy()
         obj = cls(radius=state_copy.pop("radius"), shape=state_copy.pop("shape"))
         if state_copy:
-            raise ValueError(f"State items {list(state_copy)} were not used")
+            msg = f"State items {list(state_copy)} were not used"
+            raise ValueError(msg)
         return obj
 
     @classmethod
@@ -137,9 +141,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             :class:`SphericalGridBase`: represents the region chosen by bounds
         """
         if len(bounds) != 1:
-            raise ValueError(
-                f"`bounds` must be given as ((r_min, r_max),). Got {bounds} instead"
-            )
+            msg = f"`bounds` must be given as ((r_min, r_max),). Got {bounds} instead"
+            raise ValueError(msg)
         return cls(bounds[0], shape)
 
     @property
@@ -153,8 +156,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         r_inner, r_outer = self.axes_bounds[0]
         if r_inner == 0:
             return r_outer
-        else:
-            return r_inner, r_outer
+        return r_inner, r_outer
 
     @property
     def volume(self) -> float:
@@ -210,7 +212,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         r_min = r_inner + boundary_distance if avoid_center else r_inner
         r_max = r_outer - boundary_distance
         if r_max <= r_min:
-            raise RuntimeError("Random points would be too close to boundary")
+            msg = "Random points would be too close to boundary"
+            raise RuntimeError(msg)
 
         # choose random radius scaled such that points are uniformly distributed
         r = np.array([rng.uniform(r_min**self.dim, r_max**self.dim) ** (1 / self.dim)])
@@ -224,18 +227,19 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
                 φ = rng.uniform(0, 2 * np.pi)
                 point = np.r_[r, θ, φ]
             else:
-                raise NotImplementedError(f"{self.dim} dimensions")
+                msg = f"{self.dim} dimensions"
+                raise NotImplementedError(msg)
 
             return self.c._pos_to_cart(point)
 
-        elif coords == "cell":
+        if coords == "cell":
             return self.transform(r, "grid", "cell")
 
-        elif coords == "grid":
+        if coords == "grid":
             return r  # type: ignore
 
-        else:
-            raise ValueError(f"Unknown coordinate system `{coords}`")
+        msg = f"Unknown coordinate system `{coords}`"
+        raise ValueError(msg)
 
     def get_line_data(
         self, data: NumericArray, extract: str = "auto"
@@ -254,7 +258,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             convenient for plotting.
         """
         if extract not in {"auto", "r", "radial"}:
-            raise ValueError(f"Unknown extraction method `{extract}`")
+            msg = f"Unknown extraction method `{extract}`"
+            raise ValueError(msg)
 
         return {
             "data_x": self.axes_coords[0],
@@ -323,7 +328,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             data_int = f(r_img)
 
         else:
-            raise ValueError(f"Performance goal `{performance_goal}` undefined")
+            msg = f"Performance goal `{performance_goal}` undefined"
+            raise ValueError(msg)
 
         if masked:
             mask = (r_img < r_data[0]) | (r_data[-1] < r_img)
@@ -370,7 +376,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         elif mode == "full" or mode == "circumscribed":
             bounds = self.radius
         else:
-            raise ValueError(f"Unsupported mode `{mode}`")
+            msg = f"Unsupported mode `{mode}`"
+            raise ValueError(msg)
 
         # determine the grid points
         if num is None:

@@ -69,7 +69,7 @@ def test_conservative_sph():
 
 
 @pytest.mark.parametrize(
-    "op_name,field",
+    ("op_name", "field"),
     [
         ("laplace", ScalarField),
         ("divergence", VectorField),

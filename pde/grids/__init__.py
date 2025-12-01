@@ -26,10 +26,10 @@ Inheritance structure of the classes:
 """
 
 from . import operators  # import all operator modules to register them
-from .base import registered_operators
-from .boundaries import *
-from .cartesian import CartesianGrid, UnitGrid
-from .cylindrical import CylindricalSymGrid
-from .spherical import PolarSymGrid, SphericalSymGrid
+from .base import registered_operators  # noqa: F401
+from .boundaries import *  # noqa: F403
+from .cartesian import CartesianGrid, UnitGrid  # noqa: F401
+from .cylindrical import CylindricalSymGrid  # noqa: F401
+from .spherical import PolarSymGrid, SphericalSymGrid  # noqa: F401
 
 del operators  # remove the name from the namespace

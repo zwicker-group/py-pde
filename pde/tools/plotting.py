@@ -23,12 +23,13 @@ import functools
 import logging
 import sys
 import warnings
-from collections.abc import Generator
 from typing import TYPE_CHECKING, Any, Literal
 
 from ..tools.docstrings import replace_in_docstring
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     import matplotlib.cm
     import matplotlib.figure as mpl_figure
     import napari
@@ -354,7 +355,8 @@ def plot_on_axes(wrapped=None, update_method=None):
 
             elif action != "none":
                 # do nothing if "none", otherwise raise error
-                raise ValueError(f"Unknown action `{action}`")
+                msg = f"Unknown action `{action}`"
+                raise ValueError(msg)
 
         return reference
 
@@ -527,7 +529,8 @@ def plot_on_figure(wrapped=None, update_method=None):
 
             elif action != "none":
                 # do nothing if "none", otherwise raise error
-                raise ValueError(f"Unknown action `{action}`")
+                msg = f"Unknown action `{action}`"
+                raise ValueError(msg)
 
         return reference
 
@@ -611,9 +614,10 @@ class PlottingContextBase:
             self.fig = plt.gcf()
             if len(self.fig.axes) == 0:
                 # The figure seems to be empty, which must be a mistake
-                raise RuntimeError("Plot figure does not contain axes")
+                msg = "Plot figure does not contain axes"
+                raise RuntimeError(msg)
 
-            elif len(self.fig.axes) == 1:
+            if len(self.fig.axes) == 1:
                 # The figure contains only a single axis, indicating that it is
                 # composed of a single panel
                 self._title = plt.title(self.title)
@@ -764,8 +768,8 @@ def get_plotting_context(
         if "backend_inline" in mpl.get_backend():
             # special context to support the `inline` backend
             try:
-                from IPython.display import display
-                from ipywidgets import Output
+                from IPython.display import display  # noqa: F401
+                from ipywidgets import Output  # noqa: F401
             except ImportError:
                 context_class: type[PlottingContextBase] = BasicPlottingContext
             else:
@@ -777,18 +781,18 @@ def get_plotting_context(
 
         return context_class(title=title, show=show)
 
-    elif isinstance(context, PlottingContextBase):
+    if isinstance(context, PlottingContextBase):
         # re-use an existing context
         context.title = title
         context.show = show
         return context
 
-    elif isinstance(context, (mpl_axes.Axes, mpl_figure.Figure)):
+    if isinstance(context, (mpl_axes.Axes, mpl_figure.Figure)):
         # create a basic context based on the given axes or figure
         return BasicPlottingContext(fig_or_ax=context, title=title, show=show)
 
-    else:
-        raise RuntimeError(f"Unknown plotting context `{context}`")
+    msg = f"Unknown plotting context `{context}`"
+    raise RuntimeError(msg)
 
 
 def in_ipython() -> bool:
@@ -796,8 +800,7 @@ def in_ipython() -> bool:
     ipy_module = sys.modules.get("IPython")
     if ipy_module:
         return bool(ipy_module.get_ipython())
-    else:
-        return False
+    return False
 
 
 @contextlib.contextmanager
@@ -834,7 +837,9 @@ def napari_viewer(
 
     # close the viewer if requested
     if close:
-        warnings.warn("Closing napari does not work reliably and is thus disabled")
+        warnings.warn(
+            "Closing napari does not work reliably and is thus disabled", stacklevel=2
+        )
         # viewer.close()
 
 
@@ -855,6 +860,7 @@ def napari_add_layers(
         try:
             add_layer = getattr(viewer, f"add_{layer_type}")
         except AttributeError as err:
-            raise RuntimeError(f"Unknown layer type: {layer_type}") from err
+            msg = f"Unknown layer type: {layer_type}"
+            raise RuntimeError(msg) from err
         else:
             add_layer(**layer_data)

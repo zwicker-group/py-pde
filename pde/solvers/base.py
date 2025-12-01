@@ -10,20 +10,21 @@ from __future__ import annotations
 
 import logging
 import warnings
-from abc import ABCMeta
 from inspect import isabstract
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import numba as nb
 import numpy as np
 from numba.extending import register_jitable
 
-from ..fields.base import FieldBase
-from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.misc import classproperty
 from ..tools.numba import is_jitted, jit
-from ..tools.typing import BackendType, NumericArray, StepperHook
+
+if TYPE_CHECKING:
+    from ..fields.base import FieldBase
+    from ..pdes.base import PDEBase
+    from ..tools.typing import BackendType, NumericArray, StepperHook
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for solvers."""
@@ -78,7 +79,7 @@ class SolverBase:
         # register all subclasses to reconstruct them later
         if not isabstract(cls):
             if cls.__name__ in cls._subclasses:
-                warnings.warn(f"Redefining class {cls.__name__}")
+                warnings.warn(f"Redefining class {cls.__name__}", stacklevel=2)
             cls._subclasses[cls.__name__] = cls
         if hasattr(cls, "name") and cls.name:
             if cls.name in cls._subclasses:
@@ -235,9 +236,8 @@ class SolverBase:
             applicable) a realization of the associated noise.
         """
         if getattr(self.pde, "is_sde", False):
-            raise RuntimeError(
-                "Cannot create a deterministic stepper for a stochastic equation"
-            )
+            msg = "Cannot create a deterministic stepper for a stochastic equation"
+            raise RuntimeError(msg)
 
         rhs = self.pde.make_pde_rhs(state, backend=backend)  # type: ignore
 
@@ -296,7 +296,8 @@ class SolverBase:
             dt (float):
                 Time step of the explicit stepping.
         """
-        raise NotImplementedError("Fixed stepper has not been defined")
+        msg = "Fixed stepper has not been defined"
+        raise NotImplementedError(msg)
 
     def _make_fixed_stepper(
         self, state: FieldBase, dt: float
@@ -385,7 +386,7 @@ class SolverBase:
             # retrieve last post_step_data and continue with this
             post_step_data = self.info["post_step_data"]
             # calculate number of steps that lead to an end time closest to t_end
-            steps = max(1, int(round((t_end - t_start) / dt_float)))
+            steps = max(1, round((t_end - t_start) / dt_float))
             # call the stepper with fixed time steps
             t_last = fixed_stepper(state.data, t_start, steps, post_step_data)
             # keep some stats and data
@@ -469,8 +470,7 @@ class AdaptiveSolverBase(SolverBase):
             elif dt < dt_min:
                 if np.isnan(error_rel):
                     raise RuntimeError(dt_min_nan_err)
-                else:
-                    raise RuntimeError(dt_min_err)
+                raise RuntimeError(dt_min_err)
 
             return dt
 
@@ -513,7 +513,8 @@ class AdaptiveSolverBase(SolverBase):
                 be extracted
         """
         if getattr(self.pde, "is_sde", False):
-            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
+            msg = "Cannot use adaptive stepper with stochastic equation"
+            raise RuntimeError(msg)
 
         single_step = self._make_single_step_variable_dt(state)
         if self._compiled:
@@ -651,7 +652,8 @@ class AdaptiveSolverBase(SolverBase):
 
         if getattr(self.pde, "is_sde", False):
             # adaptive steppers cannot deal with stochastic PDEs
-            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
+            msg = "Cannot use adaptive stepper with stochastic equation"
+            raise RuntimeError(msg)
 
         # Support `None` as a default value, so the controller can signal that
         # the solver should use a default time step.

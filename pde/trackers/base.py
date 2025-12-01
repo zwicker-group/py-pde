@@ -12,8 +12,6 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Sequence
 from typing import Any, Callable, Optional, Union
 
-import numpy as np
-
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
@@ -69,15 +67,16 @@ class TrackerBase(metaclass=ABCMeta):
         """
         if isinstance(data, TrackerBase):
             return data
-        elif isinstance(data, str):
+        if isinstance(data, str):
             try:
                 tracker_cls = cls._subclasses[data]
             except KeyError as err:
                 trackers = sorted(cls._subclasses)
-                raise ValueError(f"Tracker `{data}` is not in {trackers}") from err
+                msg = f"Tracker `{data}` is not in {trackers}"
+                raise ValueError(msg) from err
             return tracker_cls(**kwargs)
-        else:
-            raise ValueError(f"Unsupported tracker format: `{data}`.")
+        msg = f"Unsupported tracker format: `{data}`."
+        raise TypeError(msg)
 
     def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """Initialize the tracker with information about the simulation.
@@ -148,7 +147,8 @@ class TransformedTrackerBase(TrackerBase):
         """
         super().__init__(interrupts=interrupts)
         if transformation is not None and not callable(transformation):
-            raise TypeError("`transformation` must be callable")
+            msg = "`transformation` must be callable"
+            raise TypeError(msg)
         self.transformation = transformation
         self._emitted_type_warning = False
 
@@ -168,7 +168,9 @@ class TransformedTrackerBase(TrackerBase):
 
         # check whether transformed data is a proper field
         if not (self._emitted_type_warning or isinstance(transformed_field, FieldBase)):
-            warnings.warn("Applied `transformation` did not return a field.")
+            warnings.warn(
+                "Applied `transformation` did not return a field.", stacklevel=2
+            )
             self._emitted_type_warning = True
         return transformed_field
 
@@ -197,7 +199,8 @@ class TrackerCollection:
         if trackers is None:
             self.trackers: list[TrackerBase] = []
         elif not hasattr(trackers, "__iter__"):
-            raise ValueError(f"`trackers` must be a list of trackers, not {trackers}")
+            msg = f"`trackers` must be a list of trackers, not {trackers}"
+            raise ValueError(msg)
         else:
             self.trackers = trackers
 
@@ -247,7 +250,8 @@ class TrackerCollection:
                     interrupt_ids.add(id(tracker_obj.interrupt))
                     trackers.append(tracker_obj)
         else:
-            raise TypeError(f"Cannot initialize trackers from class `{data.__class__}`")
+            msg = f"Cannot initialize trackers from class `{data.__class__}`"
+            raise TypeError(msg)
 
         return cls(trackers)
 

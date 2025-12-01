@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import inspect
 import math
-import os.path
 import sys
 import time
 from datetime import timedelta
@@ -33,13 +32,10 @@ from typing import IO, TYPE_CHECKING, Any, Callable
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..tools.output import get_progress_bar_class
 from ..tools.parse_duration import parse_duration
-from ..tools.typing import NumericArray, Real
-from ..visualization.movies import Movie
 from .base import (
     FinishedSimulation,
     InfoDict,
@@ -51,6 +47,10 @@ from .interrupts import InterruptData, RealtimeInterrupts
 
 if TYPE_CHECKING:
     import pandas  # noqa: ICN001
+
+    from ..fields.base import FieldBase
+    from ..tools.typing import NumericArray, Real
+    from ..visualization.movies import Movie
 
 
 class CallbackTracker(TrackerBase):
@@ -93,10 +93,11 @@ class CallbackTracker(TrackerBase):
         self._callback = func
         self._num_args = len(inspect.signature(func).parameters)
         if not 0 < self._num_args < 3:
-            raise ValueError(
+            msg = (
                 "`func` must be a function accepting one or two arguments, not "
                 f"{self._num_args}"
             )
+            raise ValueError(msg)
 
     def handle(self, field: FieldBase, t: float) -> None:
         """Handle data supplied to this tracker.
@@ -310,7 +311,8 @@ class PlotTracker(TransformedTrackerBase):
                 Title text of the figure. If this is a string, it is shown with a
                 potential placeholder named `time` being replaced by the current
                 simulation time. Conversely, if `title` is a function, it is called with
-                the current (potentially transformed) state and the time as arguments. This function is expected to return a string.
+                the current (potentially transformed) state and the time as arguments.
+                This function is expected to return a string.
             output_file (str, optional):
                 Specifies a single image file, which is updated periodically, so that
                 the progress can be monitored (e.g. on a compute cluster)
@@ -390,7 +392,8 @@ class PlotTracker(TransformedTrackerBase):
             self._save_movie = True
 
         else:
-            raise TypeError(f"Unknown type of `movie`: {movie.__class__.__name__}")
+            msg = f"Unknown type of `movie`: {movie.__class__.__name__}"
+            raise TypeError(msg)
 
         # determine whether to show the images interactively
         self._write_images = self._save_movie or self.output_file
@@ -439,17 +442,17 @@ class PlotTracker(TransformedTrackerBase):
                         self._update_method = "update_fig"
                     else:
                         mpl_class = plot_data.plot.mpl_class  # type: ignore
-                        raise RuntimeError(
-                            f"Unknown mpl_class on plot method: {mpl_class}"
-                        )
+                        msg = f"Unknown mpl_class on plot method: {mpl_class}"
+                        raise RuntimeError(msg)
                 else:
                     self._update_method = "update_data"
             else:
-                raise RuntimeError(
+                msg = (
                     "PlotTracker does not  work since the state of type "
                     f"{plot_data.__class__.__name__} does not use the plot protocol of "
                     "`pde.tools.plotting`."
                 )
+                raise RuntimeError(msg)
         else:
             self._update_method = "replot"
 
@@ -508,7 +511,8 @@ class PlotTracker(TransformedTrackerBase):
                     plt.gcf().tight_layout()
 
             else:
-                raise RuntimeError(f"Unknown update method `{self._update_method}`")
+                msg = f"Unknown update method `{self._update_method}`"
+                raise RuntimeError(msg)
 
         if self.output_file and self._context.fig is not None:
             self._context.fig.savefig(self.output_file)
@@ -563,7 +567,8 @@ class LivePlotTracker(PlotTracker):
                 Title text of the figure. If this is a string, it is shown with a
                 potential placeholder named `time` being replaced by the current
                 simulation time. Conversely, if `title` is a function, it is called with
-                the current (potentially transformed) state and the time as arguments. This function is expected to return a string.
+                the current (potentially transformed) state and the time as arguments.
+                This function is expected to return a string.
             output_file (str, optional):
                 Specifies a single image file, which is updated periodically, so
                 that the progress can be monitored (e.g. on a compute cluster)
@@ -732,7 +737,8 @@ class DataTracker(CallbackTracker):
         elif extension in {".xls", ".xlsx"}:
             self.dataframe.to_excel(filename, **kwargs)
         else:
-            raise ValueError(f"Unsupported file extension `{extension}`")
+            msg = f"Unsupported file extension `{extension}`"
+            raise ValueError(msg)
 
 
 class SteadyStateTracker(TrackerBase):
@@ -842,7 +848,8 @@ class SteadyStateTracker(TrackerBase):
                     self._progress_bar.disp(bar_style="success", check_delay=False)
                 except (TypeError, AttributeError):
                     self._progress_bar.close()
-            raise FinishedSimulation("Reached stationary state")
+            msg = "Reached stationary state"
+            raise FinishedSimulation(msg)
 
         if self.progress:
             # show progress of the convergence
@@ -911,7 +918,8 @@ class RuntimeTracker(TrackerBase):
         """
         if time.monotonic() > self.max_time:
             dt = timedelta(seconds=self.max_runtime)
-            raise FinishedSimulation(f"Reached maximal runtime of {str(dt)}")
+            msg = f"Reached maximal runtime of {dt!s}"
+            raise FinishedSimulation(msg)
 
 
 class ConsistencyTracker(TrackerBase):
@@ -942,7 +950,8 @@ class ConsistencyTracker(TrackerBase):
                 The associated time
         """
         if not np.all(np.isfinite(field.data)):
-            raise StopIteration("Field was not finite")
+            msg = "Field was not finite"
+            raise StopIteration(msg)
 
 
 class MaterialConservationTracker(TrackerBase):
@@ -1010,13 +1019,13 @@ class MaterialConservationTracker(TrackerBase):
 
 __all__ = [
     "CallbackTracker",
-    "ProgressTracker",
-    "PrintTracker",
-    "PlotTracker",
-    "LivePlotTracker",
-    "DataTracker",
-    "SteadyStateTracker",
-    "RuntimeTracker",
     "ConsistencyTracker",
+    "DataTracker",
+    "LivePlotTracker",
     "MaterialConservationTracker",
+    "PlotTracker",
+    "PrintTracker",
+    "ProgressTracker",
+    "RuntimeTracker",
+    "SteadyStateTracker",
 ]

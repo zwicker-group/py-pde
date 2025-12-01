@@ -5,18 +5,20 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import numba as nb
 import numpy as np
 
 from ..fields import FieldCollection, ScalarField
 from ..grids.boundaries import set_default_bc
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
-from ..tools.typing import NumericArray
 from .base import PDEBase, expr_prod
+
+if TYPE_CHECKING:
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import NumericArray
 
 
 class WavePDE(PDEBase):
@@ -29,7 +31,7 @@ class WavePDE(PDEBase):
         \partial_t u &= v \\
         \partial_t v &= c^2 \nabla^2 u
 
-    where :math:`c` sets the wave speed and :math:`v` is an auxiallary field. Note that
+    where :math:`c` sets the wave speed and :math:`v` is an axillary field. Note that
     the class expects an initial condition specifying both fields, which can be created
     using the :meth:`WavePDE.get_initial_condition` method. The result will also return
     two fields.
@@ -95,9 +97,11 @@ class WavePDE(PDEBase):
             Fields describing the evolution rates of the PDE
         """
         if not isinstance(state, FieldCollection):
-            raise ValueError("`state` must be FieldCollection")
+            msg = "`state` must be FieldCollection"
+            raise TypeError(msg)
         if len(state) != 2:
-            raise ValueError("`state` must contain two fields")
+            msg = "`state` must contain two fields"
+            raise ValueError(msg)
         u, v = state
         u_t = v.copy()
         v_t = self.speed**2 * u.laplace(self.bc, args={"t": t})  # type: ignore

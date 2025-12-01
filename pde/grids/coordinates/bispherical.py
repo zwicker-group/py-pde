@@ -4,11 +4,16 @@
 
 from __future__ import annotations
 
-import numpy as np
-from numpy.typing import ArrayLike
+from typing import TYPE_CHECKING
 
-from ...tools.typing import FloatingArray
+import numpy as np
+
 from .base import CoordinatesBase
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+
+    from ...tools.typing import FloatingArray
 
 
 class BisphericalCoordinates(CoordinatesBase):
@@ -22,7 +27,8 @@ class BisphericalCoordinates(CoordinatesBase):
     def __init__(self, scale_parameter: float = 1):
         super().__init__()
         if scale_parameter <= 0:
-            raise ValueError("Scale parameter must be positive")
+            msg = "Scale parameter must be positive"
+            raise ValueError(msg)
         self.scale_parameter = scale_parameter
 
     def __repr__(self) -> str:

@@ -17,22 +17,22 @@ except ImportError:
     del PackageNotFoundError, version  # clean name space
 
 # initialize the configuration
-from .tools.config import Config, Parameter, environment
+from .tools.config import Config, Parameter, environment  # noqa: F401
 
 config = Config()  # initialize the default configuration
 
 import contextlib
 
 # import all other modules that should occupy the main name space
-from .fields import *
-from .grids import *
-from .pdes import *
-from .solvers import *
-from .storage import *
-from .trackers import *
-from .visualization import *
+from .fields import *  # noqa: F403
+from .grids import *  # noqa: F403
+from .pdes import *  # noqa: F403
+from .solvers import *  # noqa: F403
+from .storage import *  # noqa: F403
+from .trackers import *  # noqa: F403
+from .visualization import *  # noqa: F403
 
 with contextlib.suppress(ImportError):
-    from .tools.modelrunner import *
+    from .tools.modelrunner import *  # noqa: F403
 
 del contextlib, Config  # clean name space

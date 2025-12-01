@@ -5,14 +5,16 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 
-from ..fields.base import FieldBase
-from ..pdes.base import PDEBase
-from ..tools.typing import BackendType, NumericArray
 from .base import SolverBase
+
+if TYPE_CHECKING:
+    from ..fields.base import FieldBase
+    from ..pdes.base import PDEBase
+    from ..tools.typing import BackendType, NumericArray
 
 
 class ScipySolverError(RuntimeError): ...
@@ -61,7 +63,8 @@ class ScipySolver(SolverBase):
             `t_start` to time `t_end`.
         """
         if self.pde.is_sde:
-            raise RuntimeError("Cannot use scipy stepper for a stochastic equation")
+            msg = "Cannot use scipy stepper for a stochastic equation"
+            raise RuntimeError(msg)
 
         from scipy import integrate
 
@@ -81,7 +84,8 @@ class ScipySolver(SolverBase):
                 # this check is necessary, since solve_ivp does not deal correctly with
                 # NaN, which might result in odd error messages or even a stalled
                 # program
-                raise RuntimeError("Encountered Not-A-Number (NaN) in evolution")
+                msg = "Encountered Not-A-Number (NaN) in evolution"
+                raise RuntimeError(msg)
             return y  # type: ignore
 
         def stepper(state: FieldBase, t_start: float, t_end: float) -> float:

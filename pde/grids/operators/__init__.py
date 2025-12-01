@@ -15,5 +15,5 @@ methods defined on fields and grids.
    common.make_derivative2
 """
 
-from . import cartesian, cylindrical_sym, polar_sym, spherical_sym
-from .common import make_derivative, make_derivative2
+from . import cartesian, cylindrical_sym, polar_sym, spherical_sym  # noqa: F401
+from .common import make_derivative, make_derivative2  # noqa: F401

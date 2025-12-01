@@ -2,8 +2,8 @@ r"""
 Logarithmic kymograph
 =====================
 
-This example demonstrates a space-time plot with a logarithmic time axis, which is useful
-to analyze coarsening processes. Here, we use :func:`utilitiez.densityplot` for plotting.
+This example demonstrates a space-time plot with a logarithmic time axis (using
+:func:`utilitiez.densityplot`), which is useful to analyze coarsening processes.
 """
 
 import matplotlib.pyplot as plt

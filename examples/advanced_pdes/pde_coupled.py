@@ -3,7 +3,7 @@ Custom Class for coupled PDEs
 =============================
 
 This example shows how to solve a set of coupled PDEs, the
-spatially coupled `FitzHugh–Nagumo model 
+spatially coupled `FitzHugh–Nagumo model
 <https://en.wikipedia.org/wiki/FitzHugh–Nagumo_model>`_, which is a simple model
 for the excitable dynamics of coupled Neurons:
 

@@ -78,8 +78,7 @@ else:
         def id(self, name_or_id: int | str) -> int:
             if isinstance(name_or_id, int):
                 return name_or_id
-            else:
-                return self._name_ids[name_or_id]
+            return self._name_ids[name_or_id]
 
         def operator(self, name_or_id: int | str) -> MPI.Op:
             if isinstance(name_or_id, str):
@@ -90,7 +89,8 @@ else:
             try:
                 return self._name_ids[name]
             except KeyError:
-                raise AttributeError(f"MPI operator `{name}` not registered") from None
+                msg = f"MPI operator `{name}` not registered"
+                raise AttributeError(msg) from None
 
     Operator = _OperatorRegistry()
     Operator.register("MAX", MPI.MAX)
@@ -184,9 +184,8 @@ def mpi_allreduce(data, operator):
         MPI.COMM_WORLD.Allreduce(data, out, op=Operator.operator(operator))
         return out
 
-    else:
-        # synchronize a single value
-        return MPI.COMM_WORLD.allreduce(data, op=Operator.operator(operator))
+    # synchronize a single value
+    return MPI.COMM_WORLD.allreduce(data, op=Operator.operator(operator))
 
 
 @overload(mpi_allreduce)
@@ -214,7 +213,8 @@ def ol_mpi_allreduce(data, operator):
     elif isinstance(operator, nb.types.Integer):
         op_id = None  # use given value of operator
     else:
-        raise RuntimeError(f"`operator` must be a literal type, not {operator}")
+        msg = f"`operator` must be a literal type, not {operator}"
+        raise TypeError(msg)
 
     import numba_mpi
 
@@ -223,8 +223,7 @@ def ol_mpi_allreduce(data, operator):
         """Helper function that calls `numba_mpi.allreduce`"""
         if op_id is None:
             return numba_mpi.allreduce(sendobj, recvobj, operator)  # type: ignore
-        else:
-            return numba_mpi.allreduce(sendobj, recvobj, op_id)  # type: ignore
+        return numba_mpi.allreduce(sendobj, recvobj, op_id)  # type: ignore
 
     if isinstance(data, types.Number):
         # implementation of the reduction for a single number
@@ -250,6 +249,7 @@ def ol_mpi_allreduce(data, operator):
             return recvobj
 
     else:
-        raise TypeError(f"Unsupported type {data.__class__.__name__}")
+        msg = f"Unsupported type {data.__class__.__name__}"
+        raise TypeError(msg)
 
     return impl

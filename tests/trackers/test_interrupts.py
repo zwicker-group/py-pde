@@ -184,7 +184,7 @@ def test_interrupt_integrated(t_start, adaptive):
     storage = pde.MemoryStorage()
     eq = pde.DiffusionPDE()
     dt = 0.001
-    final_state = eq.solve(
+    eq.solve(
         state,
         t_range=[t_start, t_start + 0.25],
         dt=dt,

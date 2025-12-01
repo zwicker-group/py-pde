@@ -26,7 +26,7 @@ class DiffusionCustomNoisePDE(DiffusionPDE):
 
         @jit
         def noise_realization(state_data, t):
-            return x_values * np.random.uniform(-noise, noise, size=state_data.shape)
+            return x_values * np.random.uniform(-noise, noise, size=state_data.shape)  # noqa: NPY002
 
         return noise_realization
 

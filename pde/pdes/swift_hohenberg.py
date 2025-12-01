@@ -5,18 +5,19 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import numba as nb
-import numpy as np
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
-from ..tools.typing import NumericArray
 from .base import PDEBase, expr_prod
+
+if TYPE_CHECKING:
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import NumericArray
 
 
 class SwiftHohenbergPDE(PDEBase):
@@ -98,7 +99,8 @@ class SwiftHohenbergPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         if not isinstance(state, ScalarField):
-            raise ValueError("`state` must be ScalarField")
+            msg = "`state` must be ScalarField"
+            raise TypeError(msg)
         state_laplace = state.laplace(bc=self.bc, args={"t": t})
         state_laplace2 = state_laplace.laplace(bc=self.bc_lap, args={"t": t})
 

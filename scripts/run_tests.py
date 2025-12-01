@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import os
 import subprocess as sp
 import sys
 import tempfile
-from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 PACKAGE = "pde"  # name of the package that needs to be tested
 PACKAGE_PATH = Path(__file__).resolve().parents[1]  # base path of the package
@@ -25,8 +29,7 @@ def _most_severe_exit_code(retcodes: Sequence[int]) -> int:
     """
     if all(retcode == 0 for retcode in retcodes):
         return 0
-    else:
-        return max(retcodes, key=lambda retcode: abs(retcode))
+    return max(retcodes, key=lambda retcode: abs(retcode))
 
 
 def show_config():
@@ -119,7 +122,7 @@ def run_unit_tests(
     num_cores: str | int = 1,
     coverage: bool = False,
     nojit: bool = False,
-    pattern: str = None,
+    pattern: str | None = None,
     use_memray: bool = False,
     pytest_args: list[str] | None = None,
 ) -> int:
@@ -194,13 +197,11 @@ def run_unit_tests(
     if runinteractive:
         args.append("--runinteractive")  # also run interactive tests
     if use_mpi:
-        try:
-            import numba_mpi
-        except ImportError as err:
-            raise RuntimeError(
-                "Module `numba_mpi` is required to test with MPI"
-            ) from err
-        args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
+        if importlib.util.find_spec("numba_mpi"):
+            args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
+        else:
+            msg = "Module `numba_mpi` is required to test with MPI"
+            raise RuntimeError(msg)
 
     # run tests using multiple cores?
     if num_cores == "auto":

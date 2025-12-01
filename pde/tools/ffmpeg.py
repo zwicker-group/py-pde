@@ -13,12 +13,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
-from numpy.typing import DTypeLike
 
-from .typing import NumericArray
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from .typing import NumericArray
 
 
 @dataclass
@@ -56,8 +58,7 @@ class FFmpegFormat:
         """Maximal value stored in a color channel."""
         if np.issubdtype(self.dtype, np.integer):
             return 2**self.bits_per_channel - 1  # type: ignore
-        else:
-            return 1.0
+        return 1.0
 
     def data_to_frame(self, normalized_data: NumericArray) -> NumericArray:
         """Converts normalized data to data being stored in a color channel."""

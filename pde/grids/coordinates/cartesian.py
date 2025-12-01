@@ -4,11 +4,16 @@
 
 from __future__ import annotations
 
-import numpy as np
-from numpy.typing import ArrayLike
+from typing import TYPE_CHECKING
 
-from ...tools.typing import FloatingArray
+import numpy as np
+
 from .base import CoordinatesBase
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+
+    from ...tools.typing import FloatingArray
 
 
 class CartesianCoordinates(CoordinatesBase):
@@ -32,7 +37,8 @@ class CartesianCoordinates(CoordinatesBase):
                 Dimension of the Cartesian coordinate system
         """
         if dim <= 0:
-            raise ValueError("`dim` must be positive integer")
+            msg = "`dim` must be positive integer"
+            raise ValueError(msg)
         self.dim = dim
         if self.dim <= 3:
             self.axes = list("xyz"[: self.dim])
@@ -54,7 +60,7 @@ class CartesianCoordinates(CoordinatesBase):
         return points
 
     def _mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
-        jac = np.zeros((self.dim, self.dim) + points.shape[:-1])
+        jac = np.zeros((self.dim, self.dim, *points.shape[:-1]))
         jac[range(self.dim), range(self.dim)] = 1
         return jac  # type: ignore
 
