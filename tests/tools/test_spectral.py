@@ -34,7 +34,7 @@ def spectral_density(data, dx=1.0):
 
     res = fftpack.fftn(data) / data.size
 
-    return np.sqrt(k2s), np.abs(res) ** 2
+    return np.sqrt(k2s), np.abs(res) ** 2 / np.prod(dx)
 
 
 def test_colored_noise(rng):
