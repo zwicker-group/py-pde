@@ -91,7 +91,7 @@ def test_movie_storage_vector(dim, tmp_path, rng):
     for i, field in enumerate(reader):
         assert field.grid == grid
         assert isinstance(field, pde.VectorField)
-        assert field.data.shape == (dim,) + grid.shape
+        assert field.data.shape == (dim, *grid.shape)
         np.testing.assert_allclose(field.data, storage[i].data, atol=0.01)
 
 

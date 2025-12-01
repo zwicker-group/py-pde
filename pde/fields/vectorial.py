@@ -337,8 +337,8 @@ class VectorField(DataFieldBase):
                 # get (and check) rank of the input arrays
                 check_rank(a)
                 check_rank(b)
-                in_shape = (dim,) + self.grid.shape
-                out_shape = (dim, dim) + self.grid.shape
+                in_shape = (dim, *self.grid.shape)
+                out_shape = (dim, dim, *self.grid.shape)
 
                 if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                     # function is called without `out` -> allocate memory
@@ -621,9 +621,8 @@ class VectorField(DataFieldBase):
         if (
             self.grid.num_axes == grid.num_axes
             and self.grid.__class__ is grid.__class__
-            or (  # UnitGrid and CartesianGrid should be treated the same here
-                isinstance(self.grid, CartesianGrid) and isinstance(grid, CartesianGrid)
-            )
+        ) or (  # UnitGrid and CartesianGrid should be treated the same here
+            isinstance(self.grid, CartesianGrid) and isinstance(grid, CartesianGrid)
         ):
             # convert within the same grid class
             points = grid.cell_coords

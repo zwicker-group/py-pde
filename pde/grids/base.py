@@ -78,7 +78,7 @@ def _check_shape(shape: int | Sequence[int]) -> tuple[int, ...]:
         if dim == int(dim) and dim >= 1:
             result.append(int(dim))
         else:
-            msg = f"{repr(dim)} is not a valid number of support points"
+            msg = f"{dim!r} is not a valid number of support points"
             raise ValueError(msg)
     return tuple(result)
 
@@ -690,7 +690,7 @@ class GridBase(metaclass=ABCMeta):
 
         # assemble into array
         shape_bndry = tuple(self.shape[i] for i in range(self.num_axes) if i != axis)
-        shape = shape_bndry + (self.num_axes,)
+        shape = (*shape_bndry, self.num_axes)
         return np.stack(points, -1).reshape(shape)  # type: ignore
 
     @property
@@ -746,16 +746,17 @@ class GridBase(metaclass=ABCMeta):
             msg = f"`points` must have {self.dim} coordinates"
             raise DimensionError(msg)
         shape = points.shape[:-1]  # shape of array describing the different points
-        vec_shape = (self.dim,) + shape
+        vec_shape = (self.dim, *shape)
         if components.shape != vec_shape:
             msg = f"`components` must have shape {vec_shape}"
             raise DimensionError(msg)
 
         # convert the basis of the vectors to Cartesian
         rot_mat = self.c.basis_rotation(points)
-        assert (
-            rot_mat.shape == (self.dim, self.dim)
-            or rot_mat.shape == (self.dim, self.dim) + shape
+        assert rot_mat.shape == (self.dim, self.dim) or rot_mat.shape == (
+            self.dim,
+            self.dim,
+            *shape,
         )
         return np.einsum("j...,ji...->i...", components, rot_mat)  # type: ignore
 
@@ -862,7 +863,7 @@ class GridBase(metaclass=ABCMeta):
             if points.shape[-1] != self.num_axes:
                 msg = f"Points need to be specified as {self.axes}"
                 raise DimensionError(msg)
-            res = np.empty(points.shape[:-1] + (self.dim,), dtype=points.dtype)
+            res = np.empty((*points.shape[:-1], self.dim), dtype=points.dtype)
             j = 0
             for i in range(self.dim):
                 if i in self._axes_described:
@@ -1101,7 +1102,7 @@ class GridBase(metaclass=ABCMeta):
         if self.dim != 2:
             msg = "Can only plot generic vector fields for dim=2"
             raise DimensionError(msg)
-        if data.shape != (self.dim,) + self.shape:
+        if data.shape != (self.dim, *self.shape):
             msg = (
                 f"Shape {data.shape} of the data array is not compatible with grid "
                 f"shape {self.shape}"
@@ -1400,7 +1401,7 @@ class GridBase(metaclass=ABCMeta):
 
             # prepare input with boundary conditions
             arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-            arr_full[(...,) + self._idx_valid] = arr
+            arr_full[(..., *self._idx_valid)] = arr
             bcs.set_ghost_cells(arr_full, args=args)
 
             # apply operator
@@ -2167,5 +2168,7 @@ def registered_operators() -> dict[str, list[str]]:
     return {
         name: sorted(cls.operators)
         for name, cls in GridBase._subclasses.items()
-        if not (name.endswith("Base") or hasattr(cls, "deprecated") and cls.deprecated)
+        if not (
+            name.endswith("Base") or (hasattr(cls, "deprecated") and cls.deprecated)
+        )
     }

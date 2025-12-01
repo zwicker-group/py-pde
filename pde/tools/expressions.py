@@ -88,7 +88,7 @@ def parse_number(
     except TypeError as err:
         if not err.args:
             err.args = ("",)
-        err.args = err.args + (f"Expression: `{expr}`",)
+        err.args = (*err.args, f"Expression: `{expr}`")
         raise
 
     return value
@@ -899,7 +899,7 @@ class TensorExpression(ExpressionBase):
     @cached_property()
     def derivatives(self) -> TensorExpression:
         """Differentiate the expression with respect to all variables."""
-        shape = (len(self.vars),) + self.shape
+        shape = (len(self.vars), *self.shape)
 
         if self.constant:
             # return empty expression
@@ -930,7 +930,7 @@ class TensorExpression(ExpressionBase):
         shape = self._sympy_expr.shape
 
         lines = [
-            f"    out[{str(idx + (...,))[1:-1]}] = {self._sympy_expr[idx]}"
+            f"    out[{str((*idx, ...))[1:-1]}] = {self._sympy_expr[idx]}"
             for idx in np.ndindex(*self._sympy_expr.shape)
         ]
         # TODO: replace the np.ndindex with np.ndenumerate eventually. This does not
@@ -1143,7 +1143,7 @@ def evaluate(
         _base_logger.warning("Unused BCs: %s", sorted(bcs_left))
 
     # obtain the function to calculate the right hand side
-    signature = tuple(fields_keys) + ("none", "bc_args")
+    signature = (*tuple(fields_keys), "none", "bc_args")
 
     # check whether this function depends on additional input
     if any(expr.depends_on(c) for c in grid.axes):
@@ -1187,6 +1187,6 @@ __all__ = [
     "ExpressionBase",
     "ScalarExpression",
     "TensorExpression",
-    "parse_number",
     "evaluate",
+    "parse_number",
 ]

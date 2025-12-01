@@ -37,7 +37,7 @@ BoundariesData = Union[
     BoundaryPairData, Sequence[BoundaryPairData], Callable, "BoundariesBase"
 ]
 
-BC_LOCAL_KEYS = ["type", "value"] + list(BCBase._conditions)
+BC_LOCAL_KEYS = ["type", "value", *list(BCBase._conditions)]
 
 
 def _is_local_bc_data(data: dict[str, Any]) -> bool:

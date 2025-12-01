@@ -240,7 +240,7 @@ def test_spherical(shape: int) -> None:
         laplace = grid.make_operator("laplace", bcs, conservative=conservative)
         laplace(field.data)  # call once to pre-compile
         speed = estimate_computation_speed(laplace, field.data)
-        print(f" numba (conservative={str(conservative):<5}): {int(speed):>9d}")
+        print(f" numba (conservative={conservative!s:<5}): {int(speed):>9d}")
     print()
 
 

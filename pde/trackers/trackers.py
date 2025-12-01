@@ -918,7 +918,7 @@ class RuntimeTracker(TrackerBase):
         """
         if time.monotonic() > self.max_time:
             dt = timedelta(seconds=self.max_runtime)
-            msg = f"Reached maximal runtime of {str(dt)}"
+            msg = f"Reached maximal runtime of {dt!s}"
             raise FinishedSimulation(msg)
 
 
@@ -1019,13 +1019,13 @@ class MaterialConservationTracker(TrackerBase):
 
 __all__ = [
     "CallbackTracker",
-    "ProgressTracker",
-    "PrintTracker",
-    "PlotTracker",
-    "LivePlotTracker",
-    "DataTracker",
-    "SteadyStateTracker",
-    "RuntimeTracker",
     "ConsistencyTracker",
+    "DataTracker",
+    "LivePlotTracker",
     "MaterialConservationTracker",
+    "PlotTracker",
+    "PrintTracker",
+    "ProgressTracker",
+    "RuntimeTracker",
+    "SteadyStateTracker",
 ]

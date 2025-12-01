@@ -228,7 +228,7 @@ def test_storing_collection(storage_factory, rng):
 
 
 @pytest.mark.parametrize(
-    "atol,can_clear,storage_class", STORAGE_CLASSES_ALL + [(0, False, None)]
+    "atol,can_clear,storage_class", [*STORAGE_CLASSES_ALL, (0, False, None)]
 )
 def test_storage_apply(atol, can_clear, storage_factory):
     """Test the apply function of StorageBase."""
@@ -258,7 +258,7 @@ def test_storage_apply(atol, can_clear, storage_factory):
 
 
 @pytest.mark.parametrize(
-    "atol,can_clear,storage_class", STORAGE_CLASSES_ALL + [(0, False, None)]
+    "atol,can_clear,storage_class", [*STORAGE_CLASSES_ALL, (0, False, None)]
 )
 def test_storage_copy(atol, can_clear, storage_factory):
     """Test the copy function of StorageBase."""

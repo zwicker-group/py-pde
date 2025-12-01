@@ -885,7 +885,7 @@ def plot_interactive(
 
     if viewer_args is None:
         viewer_args = {}
-    viewer_args.setdefault("axis_labels", ["Time"] + grid.axes)
+    viewer_args.setdefault("axis_labels", ["Time", *grid.axes])
 
     # actually display the data using napari
     with napari_viewer(grid, **viewer_args) as viewer:

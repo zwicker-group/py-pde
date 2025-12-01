@@ -341,7 +341,7 @@ class PDE(PDEBase):
             )
 
         # obtain the function to calculate the right hand side
-        signature = self.variables + ("t", "none", "bc_args")
+        signature = (*self.variables, "t", "none", "bc_args")
 
         # check whether this function depends on additional input
         if any(expr.depends_on(c) for c in state.grid.axes):
@@ -763,7 +763,7 @@ class PDE(PDEBase):
                     exprF0_val = float(exprF0.subs(state_dict))
                 except Exception as e:
                     if len(e.args) >= 1:
-                        e.args = (e.args[0] + f" (Expression: {exprF0})",) + e.args[1:]
+                        e.args = (e.args[0] + f" (Expression: {exprF0})", *e.args[1:])
                     raise
                 if not np.isclose(exprF0_val, 0):
                     msg = "State is not a stationary state"

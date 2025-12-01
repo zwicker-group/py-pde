@@ -97,7 +97,7 @@ class ModelrunnerStorage(StorageBase):
     @property
     def data(self):
         """:class:`~numpy.ndarray`: The actual data for all time."""
-        return self._io._storage.read_array(self._io._loc + ["data"])
+        return self._io._storage.read_array([*self._io._loc, "data"])
 
     def clear(self, clear_data_shape: bool = False):
         """Truncate the storage by removing all stored data.

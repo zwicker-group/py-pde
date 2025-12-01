@@ -266,7 +266,7 @@ class Tensor2Field(DataFieldBase):
         Returns:
             :class:`~pde.fields.tensorial.Tensor2Field`: transpose of the tensor field
         """
-        axes = (1, 0) + tuple(range(2, 2 + self.grid.num_axes))
+        axes = (1, 0, *tuple(range(2, 2 + self.grid.num_axes)))
         return Tensor2Field(self.grid, self.data.transpose(axes), label=label)
 
     def is_symmetric(self, rtol=1e-05, atol=1e-08) -> bool:
@@ -279,7 +279,7 @@ class Tensor2Field(DataFieldBase):
                 The absolute tolerance parameter (see :func:`~numpy.allclose`).
         """
         # transpose the tensor data for each grid point
-        data_T = self.data.transpose((1, 0) + tuple(range(2, 2 + self.grid.num_axes)))
+        data_T = self.data.transpose((1, 0, *tuple(range(2, 2 + self.grid.num_axes))))
         return np.allclose(self.data, data_T, rtol=rtol, atol=atol)
 
     def symmetrize(
@@ -387,7 +387,7 @@ class Tensor2Field(DataFieldBase):
                 # in principle use the definition of np.linalg.det without the
                 # multiple checks to gain some speed
                 for idx in np.ndindex(*self.grid.shape):
-                    data[idx] = np.linalg.det(self.data[(...,) + idx])
+                    data[idx] = np.linalg.det(self.data[(..., *idx)])
 
         else:
             msg = (

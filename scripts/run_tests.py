@@ -123,7 +123,7 @@ def run_unit_tests(
     num_cores: str | int = 1,
     coverage: bool = False,
     nojit: bool = False,
-    pattern: str = None,
+    pattern: str | None = None,
     use_memray: bool = False,
     pytest_args: list[str] | None = None,
 ) -> int:

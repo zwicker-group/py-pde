@@ -58,7 +58,7 @@ def test_interpolation_natural(grid, field_class, rng):
     c = (1,) * len(grid.axes)
     p = f.grid.cell_coords[c]
     val = f.interpolate(p)
-    np.testing.assert_allclose(val, f.data[(Ellipsis,) + c], err_msg=msg)
+    np.testing.assert_allclose(val, f.data[(Ellipsis, *c)], err_msg=msg)
 
 
 @pytest.mark.parametrize("num", [1, 3])
@@ -67,7 +67,7 @@ def test_shapes_nfields(num, grid, rng):
     """Test single component field."""
     fields = [ScalarField.random_uniform(grid, rng=rng) for _ in range(num)]
     field = FieldCollection(fields)
-    data_shape = (num,) + grid.shape
+    data_shape = (num, *grid.shape)
     np.testing.assert_equal(field.data.shape, data_shape)
     for pf_single in field:
         np.testing.assert_equal(pf_single.data.shape, grid.shape)

@@ -227,7 +227,7 @@ class CoordinatesBase:
         """
         # This general implementation assumes that the metric is diagonal!
         points = np.atleast_1d(points)
-        metric = np.zeros((self.dim, self.dim) + points.shape[:-1])
+        metric = np.zeros((self.dim, self.dim, *points.shape[:-1]))
         metric[range(self.dim), range(self.dim)] = self.scale_factors(points) ** 2
         return metric  # type:ignore
 
@@ -272,7 +272,7 @@ class CoordinatesBase:
             msg = f"Shape {points.shape} cannot denote points"
             raise DimensionError(msg)
         shape = points.shape[:-1]  # shape of array describing the different points
-        vec_shape = (self.dim,) + shape
+        vec_shape = (self.dim, *shape)
 
         components = np.atleast_1d(components)
         if components.shape != vec_shape:
@@ -281,7 +281,7 @@ class CoordinatesBase:
 
         # convert the basis of the vectors to Cartesian
         basis = self.basis_rotation(points)
-        if basis.shape != (self.dim, self.dim) + shape:
+        if basis.shape != (self.dim, self.dim, *shape):
             msg = "Incompatible dimensions in rotation matrix"
             raise DimensionError(msg)
         return np.einsum("j...,ji...->i...", components, basis)  # type: ignore

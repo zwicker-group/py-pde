@@ -680,7 +680,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # interpolate at every valid point
             out = np.empty(data_shape + point_shape, dtype=data.dtype)
             for idx in np.ndindex(*point_shape):
-                out[(...,) + idx] = interpolate_single(data, point[idx])
+                out[(..., *idx)] = interpolate_single(data, point[idx])
 
             return out  # type: ignore
 
@@ -814,7 +814,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # alter each point in second iteration
         for coords, weight in cells:
             chng = weight * amount / (total_weight * grid.cell_volumes[coords])
-            self.data[(Ellipsis,) + coords] += chng
+            self.data[(Ellipsis, *coords)] += chng
 
     @fill_in_docstring
     def get_boundary_values(
@@ -845,8 +845,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             l_wall[axis] = 1
             l_ghost[axis] = 0
-        i_wall = (...,) + tuple(l_wall)
-        i_ghost = (...,) + tuple(l_ghost)
+        i_wall = (..., *tuple(l_wall))
+        i_ghost = (..., *tuple(l_ghost))
 
         return (self._data_full[i_wall] + self._data_full[i_ghost]) / 2  # type: ignore
 
@@ -1222,7 +1222,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         # extract the line data
         data = self.grid.get_line_data(scalar_data, extract=extract)
-        if "label_y" in data and data["label_y"]:
+        if data.get("label_y"):
             if self.label:
                 data["label_y"] = f"{self.label} ({data['label_y']})"
         else:

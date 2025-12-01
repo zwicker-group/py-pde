@@ -157,7 +157,7 @@ class StorageBase(metaclass=ABCMeta):
     def shape(self) -> tuple[int, ...] | None:
         """The shape of the stored data."""
         if self._data_shape:
-            return (len(self),) + self._data_shape
+            return (len(self), *self._data_shape)
         else:
             return None
 

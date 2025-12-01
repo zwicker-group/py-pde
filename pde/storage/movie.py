@@ -406,7 +406,7 @@ class MovieStorage(StorageBase):
         self._ffmpeg = f_output.run_async(pipe_stdin=True)  # start process
 
         if self.write_times:
-            self._times_file = self._filename_times.open("w")  # noqa: SIM115
+            self._times_file = self._filename_times.open("w")
 
         self.info["num_frames"] = 0
         self._warned_normalization = False
@@ -449,7 +449,7 @@ class MovieStorage(StorageBase):
         if grid_dim > 2:
             raise NotImplementedError
         if grid_dim == 1:
-            data = data.reshape(data.shape + (1,))
+            data = data.reshape((*data.shape, 1))
         # check spatial dimensions
         assert data.ndim >= 2
         assert data.shape[-2:] == self._frame_shape[:2]
@@ -457,10 +457,10 @@ class MovieStorage(StorageBase):
         # ensure the data has the shape extra_dim x width x height
         # where `extra_dim` are separated fields or capture the rank of the field
         if data.ndim == 2:
-            data = data.reshape((1,) + data.shape)  # explicitly scalar data
+            data = data.reshape((1, *data.shape))  # explicitly scalar data
         elif data.ndim > 3:
             # collapse first dimensions, so we have three in total
-            data = data.reshape((-1,) + data.shape[-2:])
+            data = data.reshape((-1, *data.shape[-2:]))
         assert len(self._frame_shape) == data.ndim == 3
         assert len(self._norms) == data.shape[0]  # same non-spatial dimension
 
@@ -564,7 +564,7 @@ class MovieStorage(StorageBase):
         it = self._iter_data()  # get the iterator of all data
         first_frame = next(it)  # get the first frame to obtain necessary information
         # allocate memory for all data
-        data = np.empty((len(self),) + first_frame.shape, dtype=first_frame.dtype)
+        data = np.empty((len(self), *first_frame.shape), dtype=first_frame.dtype)
         data[0] = first_frame  # set the first frame
         for i, frame_data in enumerate(it, 1):  # set all subsequent frames
             data[i] = frame_data

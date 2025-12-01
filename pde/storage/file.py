@@ -133,19 +133,19 @@ class FileStorage(StorageBase):
             dtype: The data type of the dataset
         """
         if self.compression:
-            kwargs = {"chunks": (1,) + shape, "compression": "gzip"}
+            kwargs = {"chunks": (1, *shape), "compression": "gzip"}
         else:
             kwargs = {}
 
         if self._max_length:
-            shape = (self._max_length,) + shape
+            shape = (self._max_length, *shape)
             return self._file.create_dataset(name, shape=shape, dtype=dtype, **kwargs)
         else:
             return self._file.create_dataset(
                 name,
-                shape=(0,) + shape,
+                shape=(0, *shape),
                 dtype=dtype,
-                maxshape=(None,) + shape,
+                maxshape=(None, *shape),
                 **kwargs,
             )
 
@@ -393,7 +393,7 @@ class FileStorage(StorageBase):
 
         # write the new data
         if self._data_length >= len(self._data):
-            self._data.resize((self._data_length + 1,) + self.data_shape)
+            self._data.resize((self._data_length + 1, *self.data_shape))
         self._data[self._data_length] = data
 
         # write the new time

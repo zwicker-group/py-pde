@@ -128,7 +128,7 @@ def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> list[GridBa
 
     def replace_in_axis(arr, value):
         if isinstance(arr, tuple):
-            return arr[:axis] + (value,) + arr[axis + 1 :]
+            return (*arr[:axis], value, *arr[axis + 1 :])
         else:
             res = arr.copy()
             res[axis] = value
@@ -468,7 +468,7 @@ class GridMesh:
 
         node_idx = self._id2idx(node_id)
         idx = self._get_data_indices_1d(with_ghost_cells)
-        i = (...,) + tuple(idx[n][j] for n, j in enumerate(node_idx))
+        i = (..., *tuple(idx[n][j] for n, j in enumerate(node_idx)))
         return field_data[i]
 
     def extract_subfield(

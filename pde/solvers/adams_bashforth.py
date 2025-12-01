@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class AdamsBashforthSolver(SolverBase):
     """Explicit Adams-Bashforth multi-step solver."""
 
-    name = "adams–bashforth"
+    name = "adams-bashforth"
 
     def _make_fixed_stepper(
         self, state: FieldBase, dt: float

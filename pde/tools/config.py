@@ -300,7 +300,7 @@ class Config(collections.UserDict):
 
     def __repr__(self) -> str:
         """Represent the configuration as a string."""
-        return f"{self.__class__.__name__}({repr(self.to_dict())})"
+        return f"{self.__class__.__name__}({self.to_dict()!r})"
 
     @contextlib.contextmanager
     def __call__(self, values: dict[str, Any] | None = None, **kwargs):

@@ -60,7 +60,7 @@ class CartesianCoordinates(CoordinatesBase):
         return points
 
     def _mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
-        jac = np.zeros((self.dim, self.dim) + points.shape[:-1])
+        jac = np.zeros((self.dim, self.dim, *points.shape[:-1]))
         jac[range(self.dim), range(self.dim)] = 1
         return jac  # type: ignore
 

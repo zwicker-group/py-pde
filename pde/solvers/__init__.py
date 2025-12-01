@@ -53,11 +53,11 @@ def registered_solvers() -> list[str]:
 
 
 __all__ = [
+    "AdamsBashforthSolver",
     "Controller",
+    "CrankNicolsonSolver",
     "ExplicitSolver",
     "ImplicitSolver",
-    "CrankNicolsonSolver",
-    "AdamsBashforthSolver",
     "ScipySolver",
     "registered_solvers",
 ]

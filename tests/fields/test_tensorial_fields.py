@@ -14,8 +14,8 @@ def test_tensors_basic(rng):
     """Test some tensor calculations."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
 
-    t1 = Tensor2Field(grid, np.full((2, 2) + grid.shape, 1))
-    t2 = Tensor2Field(grid, np.full((2, 2) + grid.shape, 2))
+    t1 = Tensor2Field(grid, np.full((2, 2, *grid.shape), 1))
+    t2 = Tensor2Field(grid, np.full((2, 2, *grid.shape), 2))
     np.testing.assert_allclose(t2.average, [[2, 2], [2, 2]])
     assert t1.magnitude == pytest.approx(2)
 
@@ -122,7 +122,7 @@ def test_insert_tensor(grid, compiled, rng):
     a = rng.random(f.data_shape)
 
     c = grid.get_random_point(coords="cell", rng=rng).astype(int)  # pick a random cell
-    c_data = (Ellipsis,) + tuple(c)
+    c_data = (Ellipsis, *tuple(c))
     p = grid.transform(c + 0.5, "cell", "grid")  # point at cell center
     if compiled:
         insert = grid.make_inserter_compiled()
@@ -184,7 +184,7 @@ def test_tensor_invariants(rng):
 def test_complex_tensors(backend, rng):
     """Test some complex tensor fields."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
-    shape = (2, 2, 2) + grid.shape
+    shape = (2, 2, 2, *grid.shape)
     numbers = rng.random(shape) + rng.random(shape) * 1j
     t1 = Tensor2Field(grid, numbers[0])
     t2 = Tensor2Field(grid, numbers[1])

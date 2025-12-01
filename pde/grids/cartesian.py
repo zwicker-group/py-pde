@@ -400,7 +400,7 @@ class CartesianGrid(GridBase):
         if self.dim != 2:
             msg = "Vector data only available for dim==2"
             raise DimensionError(msg)
-        if data.shape != (2,) + self.shape:
+        if data.shape != (2, *self.shape):
             msg = (
                 f"Shape {data.shape} of the data array is not compatible with grid "
                 f"shape {self.shape}"

@@ -786,9 +786,9 @@ class _MPIBC(BCBase):
         # determine indices for reading and writing data
         idx: list[Any] = [slice(1, -1)] * self.grid.num_axes
         idx[self.axis] = -2 if self.upper else 1  # read valid data
-        self._idx_read = tuple([Ellipsis] + idx)
+        self._idx_read = (Ellipsis, *idx)
         idx[self.axis] = -1 if self.upper else 0  # write ghost cells
-        self._idx_write = tuple([Ellipsis] + idx)
+        self._idx_write = (Ellipsis, *idx)
 
     def _repr_value(self):
         return [f"neighbor={self._neighbor_id}"]
@@ -1181,7 +1181,7 @@ class ExpressionBC(BCBase):
             "target": target,
             "user_funcs": user_funcs,
         }
-        signature = ["value", "dx"] + grid.axes + ["t"]
+        signature = ["value", "dx", *grid.axes, "t"]
 
         if callable(value) or callable(const):
             # the coefficients are given as functions

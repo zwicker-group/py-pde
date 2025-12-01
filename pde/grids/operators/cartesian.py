@@ -630,7 +630,7 @@ def _make_gradient_scipy_nd(
 
     scaling = 1 / grid.discretization
     dim = grid.dim
-    shape_out = (dim,) + grid.shape
+    shape_out = (dim, *grid.shape)
 
     if method == "central":
         stencil = [-0.5, 0, 0.5]
@@ -1416,11 +1416,11 @@ def make_poisson_solver(
 
 
 __all__ = [
-    "make_laplace",
-    "make_gradient",
     "make_divergence",
+    "make_gradient",
+    "make_laplace",
+    "make_poisson_solver",
+    "make_tensor_divergence",
     "make_vector_gradient",
     "make_vector_laplace",
-    "make_tensor_divergence",
-    "make_poisson_solver",
 ]
