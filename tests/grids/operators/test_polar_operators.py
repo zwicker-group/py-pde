@@ -52,7 +52,7 @@ def test_conservative_laplace_polar(rng):
 
 
 @pytest.mark.parametrize(
-    "op_name,field",
+    ("op_name", "field"),
     [
         ("laplace", ScalarField),
         ("divergence", VectorField),

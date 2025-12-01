@@ -65,10 +65,13 @@ def _import_ffmpeg() -> types.ModuleType:
                 warnings.warn(
                     f"Expected `ffmpeg-python` package, but found `{name}`",
                     ImportWarning,
+                    stacklevel=2,
                 )
         elif len(packages) > 1:
             warnings.warn(
-                f"Expected `ffmpeg-python` package, but found {packages}", ImportWarning
+                f"Expected `ffmpeg-python` package, but found {packages}",
+                ImportWarning,
+                stacklevel=2,
             )
 
     # import package

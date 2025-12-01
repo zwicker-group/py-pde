@@ -197,7 +197,7 @@ def test_data_managment(field_class):
     np.testing.assert_allclose(c.data, 6)
 
     # nested collections
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TypeError):
         FieldCollection([c])
 
 

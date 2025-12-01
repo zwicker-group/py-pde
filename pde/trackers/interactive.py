@@ -51,7 +51,7 @@ def napari_process(
         import napari
         from napari.qt import thread_worker
     except ModuleNotFoundError:
-        logger.error(
+        logger.exception(
             "The `napari` python module could not be found. This module needs to be "
             "installed to use the interactive tracker."
         )

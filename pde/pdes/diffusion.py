@@ -92,7 +92,7 @@ class DiffusionPDE(PDEBase):
         """
         if not isinstance(state, ScalarField):
             msg = "`state` must be ScalarField"
-            raise ValueError(msg)
+            raise TypeError(msg)
         laplace = state.laplace(bc=self.bc, label="evolution rate", args={"t": t})
         return self.diffusivity * laplace  # type: ignore
 

@@ -323,7 +323,7 @@ def test_method_cache(serializer, cache_factory):
             return a + b
 
     # test what happens when the decorator is applied wrongly
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         cache.cached_method(CacheTest.cached)
 
     # try to objects to make sure caching is done on the instance level and

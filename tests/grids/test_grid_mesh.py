@@ -36,7 +36,7 @@ def test_basic_mpi_methods():
     assert value == list(range(mpi.size))
 
 
-@pytest.mark.parametrize("grid, decomposition", GRIDS)
+@pytest.mark.parametrize(("grid", "decomposition"), GRIDS)
 def test_generic_meshes(grid, decomposition):
     """Test generic functions of the grid mesh."""
     mesh = GridMesh.from_grid(grid, decomposition)
@@ -218,7 +218,7 @@ def test_vector_boundary_conditions(rng):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("grid, decomposition", GRIDS)
+@pytest.mark.parametrize(("grid", "decomposition"), GRIDS)
 def test_noncartesian_grids(grid, decomposition, rng):
     """Test whether we can deal with non-cartesian grids."""
     field = ScalarField.random_uniform(grid, rng=rng)
@@ -240,7 +240,7 @@ def test_noncartesian_grids(grid, decomposition, rng):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("grid, decomposition", GRIDS)
+@pytest.mark.parametrize(("grid", "decomposition"), GRIDS)
 @pytest.mark.parametrize("rank", [0, 2])
 def test_integration_parallel(grid, decomposition, rank):
     """Test integration of fields over grids."""

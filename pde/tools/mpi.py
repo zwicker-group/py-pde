@@ -216,7 +216,7 @@ def ol_mpi_allreduce(data, operator):
         op_id = None  # use given value of operator
     else:
         msg = f"`operator` must be a literal type, not {operator}"
-        raise RuntimeError(msg)
+        raise TypeError(msg)
 
     import numba_mpi
 

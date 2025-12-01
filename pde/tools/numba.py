@@ -333,5 +333,6 @@ def random_seed(seed: int = 0) -> None:
 
 if NUMBA_VERSION < [0, 59]:
     warnings.warn(
-        "Your numba version is outdated. Please install at least version 0.59"
+        "Your numba version is outdated. Please install at least version 0.59",
+        stacklevel=2,
     )

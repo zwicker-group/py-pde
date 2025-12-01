@@ -31,7 +31,7 @@ class WavePDE(PDEBase):
         \partial_t u &= v \\
         \partial_t v &= c^2 \nabla^2 u
 
-    where :math:`c` sets the wave speed and :math:`v` is an auxiallary field. Note that
+    where :math:`c` sets the wave speed and :math:`v` is an axillary field. Note that
     the class expects an initial condition specifying both fields, which can be created
     using the :meth:`WavePDE.get_initial_condition` method. The result will also return
     two fields.
@@ -98,7 +98,7 @@ class WavePDE(PDEBase):
         """
         if not isinstance(state, FieldCollection):
             msg = "`state` must be FieldCollection"
-            raise ValueError(msg)
+            raise TypeError(msg)
         if len(state) != 2:
             msg = "`state` must contain two fields"
             raise ValueError(msg)

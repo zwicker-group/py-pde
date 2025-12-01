@@ -450,6 +450,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             "`random_colored` method is deprecated. Use `random_normal` with "
             "correlation='power law' instead",
             DeprecationWarning,
+            stacklevel=2,
         )
 
         # get function making colored noise
@@ -1343,7 +1344,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         else:
             msg = f"Unsupported plot reference {reference}"
-            raise ValueError(msg)
+            raise TypeError(msg)
 
     def _plot_image(
         self,
@@ -1557,7 +1558,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             self._update_vector_plot(reference)
         else:
             msg = f"Unknown plot element {el.__class__.__name__}"
-            raise ValueError(msg)
+            raise TypeError(msg)
 
     @plot_on_axes(update_method="_update_plot")
     def plot(self, kind: str = "auto", **kwargs) -> PlotReference:

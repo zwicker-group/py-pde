@@ -100,7 +100,7 @@ class SwiftHohenbergPDE(PDEBase):
         """
         if not isinstance(state, ScalarField):
             msg = "`state` must be ScalarField"
-            raise ValueError(msg)
+            raise TypeError(msg)
         state_laplace = state.laplace(bc=self.bc, args={"t": t})
         state_laplace2 = state_laplace.laplace(bc=self.bc_lap, args={"t": t})
 

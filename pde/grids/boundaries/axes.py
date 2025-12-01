@@ -166,6 +166,7 @@ class BoundariesList(BoundariesBase):
             warnings.warn(
                 "Deprecated format for boundary conditions. " + cls.get_help(),
                 DeprecationWarning,
+                stacklevel=2,
             )
             return [
                 get_boundary_axis(grid, i, data, rank=rank)
@@ -311,6 +312,7 @@ class BoundariesList(BoundariesBase):
             warnings.warn(
                 "Deprecated format for boundary conditions. " + cls.get_help(),
                 DeprecationWarning,
+                stacklevel=2,
             )
             if len(data) == grid.num_axes:
                 # assume that data is given for each boundary

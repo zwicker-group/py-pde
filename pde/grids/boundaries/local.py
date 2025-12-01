@@ -297,7 +297,7 @@ class BCBase(metaclass=ABCMeta):
 
         if cls is not BCBase:
             if cls.__name__ in cls._subclasses:
-                warnings.warn(f"Redefining class {cls.__name__}")
+                warnings.warn(f"Redefining class {cls.__name__}", stacklevel=2)
             cls._subclasses[cls.__name__] = cls
 
             if hasattr(cls, "names"):
@@ -1268,7 +1268,7 @@ class ExpressionBC(BCBase):
                 if os.environ.get("PYPDE_TESTRUN"):
                     # ensure that the except path is also tested
                     msg = "Force except"
-                    raise nb.NumbaError(msg)
+                    raise nb.NumbaError(msg)  # noqa: TRY301
 
             except nb.NumbaError:
                 # if compilation fails, we simply fall back to pure-python mode
@@ -1355,7 +1355,7 @@ class ExpressionBC(BCBase):
             if os.environ.get("PYPDE_TESTRUN"):
                 # ensure that the except path is also tested
                 msg = "Force except"
-                raise nb.NumbaError(msg)
+                raise nb.NumbaError(msg)  # noqa: TRY301
 
         except nb.NumbaError:
             # if compilation fails, we simply fall back to pure-python mode

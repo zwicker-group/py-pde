@@ -179,7 +179,7 @@ class GridBase(metaclass=ABCMeta):
         # register all subclasses to reconstruct them later
         if cls is not GridBase:
             if cls.__name__ in cls._subclasses:
-                warnings.warn(f"Redefining class {cls.__name__}")
+                warnings.warn(f"Redefining class {cls.__name__}", stacklevel=2)
             cls._subclasses[cls.__name__] = cls
         cls._operators = {}
 

@@ -490,7 +490,7 @@ class _class_cache:
                 f"Missing function call. Call this decorator as {class_name}() instead "
                 f"of {class_name}"
             )
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         else:
             self.factory = factory

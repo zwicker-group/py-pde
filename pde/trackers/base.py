@@ -77,7 +77,7 @@ class TrackerBase(metaclass=ABCMeta):
             return tracker_cls(**kwargs)
         else:
             msg = f"Unsupported tracker format: `{data}`."
-            raise ValueError(msg)
+            raise TypeError(msg)
 
     def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """Initialize the tracker with information about the simulation.
@@ -169,7 +169,9 @@ class TransformedTrackerBase(TrackerBase):
 
         # check whether transformed data is a proper field
         if not (self._emitted_type_warning or isinstance(transformed_field, FieldBase)):
-            warnings.warn("Applied `transformation` did not return a field.")
+            warnings.warn(
+                "Applied `transformation` did not return a field.", stacklevel=2
+            )
             self._emitted_type_warning = True
         return transformed_field
 

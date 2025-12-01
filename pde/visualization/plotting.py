@@ -107,7 +107,7 @@ def extract_field(
 
     if isinstance(field, FieldCollection):
         msg = "Extract field is a collection"
-        raise RuntimeError(msg)
+        raise TypeError(msg)
 
     # test whether the rank is as expected
     if check_rank is not None and field.rank != check_rank:  # type: ignore
@@ -213,7 +213,7 @@ class ScalarFieldPlot:
         fields = storage[0]
         if not isinstance(fields, FieldBase):
             msg = "Storage must contain fields"
-            raise RuntimeError(msg)
+            raise TypeError(msg)
 
         # prepare the data that needs to be plotted
         quantities = cls._prepare_quantities(fields, quantities=quantities, scale=scale)

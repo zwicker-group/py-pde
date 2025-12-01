@@ -123,7 +123,7 @@ def test_movie_storage_containers(ext, tmp_path, rng):
 
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
-@pytest.mark.parametrize("name,video_format", formats.items())
+@pytest.mark.parametrize(("name", "video_format"), formats.items())
 def test_video_format(name, video_format, tmp_path, rng):
     """Test all video_formats."""
     if np.issubdtype(video_format.dtype, np.integer):
@@ -210,7 +210,7 @@ def test_stored_files(path):
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
 @pytest.mark.parametrize(
-    "interrupt, expected",
+    ("interrupt", "expected"),
     [
         (pde.FixedInterrupts([0.5, 0.7, 1.4]), [0.5, 0.7, 1.4]),
         (pde.ConstantInterrupts(1, t_start=1), [1, 2]),

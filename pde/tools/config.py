@@ -258,6 +258,7 @@ class Config(collections.UserDict):
                 "Boolean options are deprecated for `numba.multithreading`. Use "
                 f"config['numba.multithreading'] = '{value}' instead.",
                 DeprecationWarning,
+                stacklevel=2,
             )
         return value
 
@@ -393,12 +394,12 @@ def check_package_version(package_name: str, min_version: str):
         version = importlib.import_module(package_name).__version__
 
     except ImportError:
-        warnings.warn(f"{msg} (but none installed)")
+        warnings.warn(f"{msg} (but none installed)", stacklevel=2)
 
     else:
         # check whether it is installed and works
         if parse_version_str(version) < parse_version_str(min_version):
-            warnings.warn(f"{msg} (installed: {version})")
+            warnings.warn(f"{msg} (installed: {version})", stacklevel=2)
 
 
 def packages_from_requirements(requirements_file: Path | str) -> list[str]:

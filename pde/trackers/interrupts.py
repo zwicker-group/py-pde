@@ -104,11 +104,12 @@ class FixedInterrupts(InterruptsBase):
                 t_next = self.interrupts[self._index]
 
             self.dt = t_next - t_last
-            return t_next
 
         except IndexError:
             # iterator has been exhausted -> never break again
             return math.inf
+
+        return t_next
 
 
 class ConstantInterrupts(InterruptsBase):

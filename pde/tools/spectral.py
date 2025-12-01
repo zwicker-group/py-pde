@@ -262,6 +262,7 @@ def make_colored_noise(
         "`make_colored_noise` is deprecated. Use `make_correlated_noise` with "
         "correlation='power law' instead",
         DeprecationWarning,
+        stacklevel=2,
     )
     rng = np.random.default_rng(rng)
 

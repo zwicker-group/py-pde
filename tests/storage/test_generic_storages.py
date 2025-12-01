@@ -75,7 +75,7 @@ def storage_factory(tmp_path, storage_class):
     return storage_class
 
 
-@pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
 def test_storage_write(atol, can_clear, storage_factory):
     """Test simple memory storage."""
     dim = 5
@@ -148,7 +148,7 @@ def test_storage_truncation(tmp_path, rng):
         assert not storage.has_collection
 
 
-@pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
 def test_storing_extract_range(atol, can_clear, storage_factory):
     """Test methods specific to FieldCollections in memory storage."""
     sf = ScalarField(UnitGrid([1]))
@@ -228,7 +228,7 @@ def test_storing_collection(storage_factory, rng):
 
 
 @pytest.mark.parametrize(
-    "atol,can_clear,storage_class", [*STORAGE_CLASSES_ALL, (0, False, None)]
+    ("atol", "can_clear", "storage_class"), [*STORAGE_CLASSES_ALL, (0, False, None)]
 )
 def test_storage_apply(atol, can_clear, storage_factory):
     """Test the apply function of StorageBase."""
@@ -258,7 +258,7 @@ def test_storage_apply(atol, can_clear, storage_factory):
 
 
 @pytest.mark.parametrize(
-    "atol,can_clear,storage_class", [*STORAGE_CLASSES_ALL, (0, False, None)]
+    ("atol", "can_clear", "storage_class"), [*STORAGE_CLASSES_ALL, (0, False, None)]
 )
 def test_storage_copy(atol, can_clear, storage_factory):
     """Test the copy function of StorageBase."""
@@ -309,7 +309,7 @@ def test_storage_types(storage_factory, dtype, rng):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
 def test_storage_mpi(atol, can_clear, storage_factory, rng):
     """Test writing data using MPI."""
     eq = DiffusionPDE()
@@ -326,7 +326,7 @@ def test_storage_mpi(atol, can_clear, storage_factory, rng):
         assert len(storage) == 11
 
 
-@pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
 def test_storing_transformation_collection(atol, can_clear, storage_factory, rng):
     """Test transformation yielding field collections in storage classes."""
     grid = UnitGrid([8])
@@ -352,7 +352,7 @@ def test_storing_transformation_collection(atol, can_clear, storage_factory, rng
         np.testing.assert_allclose(a2.data, 2 * a.data + t, atol=atol)
 
 
-@pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
 def test_storing_transformation_scalar(atol, can_clear, storage_factory, rng):
     """Test transformations yielding scalar fields in storage classes."""
     grid = UnitGrid([8])
@@ -371,7 +371,7 @@ def test_storing_transformation_scalar(atol, can_clear, storage_factory, rng):
             np.testing.assert_allclose(sol.data, field.data**2)
 
 
-@pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
 def test_storage_view(atol, can_clear, storage_factory, rng):
     """Test StorageView."""
     grid = UnitGrid([2, 2])

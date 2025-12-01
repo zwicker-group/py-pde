@@ -79,7 +79,7 @@ class SolverBase:
         # register all subclasses to reconstruct them later
         if not isabstract(cls):
             if cls.__name__ in cls._subclasses:
-                warnings.warn(f"Redefining class {cls.__name__}")
+                warnings.warn(f"Redefining class {cls.__name__}", stacklevel=2)
             cls._subclasses[cls.__name__] = cls
         if hasattr(cls, "name") and cls.name:
             if cls.name in cls._subclasses:

@@ -116,7 +116,7 @@ class FieldCollection(FieldBase):
                     "Individual fields must be of type DataFieldBase. Field "
                     "collections cannot be nested."
                 )
-                raise RuntimeError(msg)
+                raise TypeError(msg)
             start = len(fields_data)
             this_data = field._data_flat
             fields_data.extend(this_data)
@@ -332,7 +332,7 @@ class FieldCollection(FieldBase):
         for field_class in field_classes:
             if not issubclass(field_class, DataFieldBase):
                 msg = "Individual fields must be of type DataFieldBase."
-                raise RuntimeError(msg)
+                raise TypeError(msg)
             field = field_class(grid)
             end = start + grid.num_axes**field.rank
             if with_ghost_cells:

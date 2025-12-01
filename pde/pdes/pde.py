@@ -323,7 +323,7 @@ class PDE(PDEBase):
                     f"Problems in boundary condition `{bc}` for operator `{func}` in "
                     f"PDE for `{var}`",
                 )
-                raise err
+                raise
 
             # add `bc_args` as an argument to the call of the operators to be able
             # to pass additional information, like time
@@ -432,7 +432,7 @@ class PDE(PDEBase):
                 raise ValueError(msg)
         else:
             msg = f"Unknown state class {state.__class__.__name__}"
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         # check compatibility of constants and update the rhs accordingly
         for name, value in self.consts.items():

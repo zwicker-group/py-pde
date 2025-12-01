@@ -355,7 +355,7 @@ class Controller:
                 self._run_main_process(state, dt)
             except Exception as err:
                 print(err)  # simply print the exception to show some info
-                _logger.error("Error in main node", exc_info=err)
+                _logger.exception("Error in main node", exc_info=err)
                 time.sleep(0.5)  # give some time for info to propagate
                 MPI.COMM_WORLD.Abort()  # abort all other nodes
                 raise
@@ -368,7 +368,7 @@ class Controller:
                 self._run_client_process(state, dt)
             except Exception as err:
                 print(err)  # simply print the exception to show some info
-                _logger.error("Error in node %d", mpi.rank, exc_info=err)
+                _logger.exception("Error in node %d", mpi.rank, exc_info=err)
                 time.sleep(0.5)  # give some time for info to propagate
                 MPI.COMM_WORLD.Abort()  # abort all other (and main) nodes
                 raise

@@ -102,7 +102,7 @@ class KuramotoSivashinskyPDE(PDEBase):
         """
         if not isinstance(state, ScalarField):
             msg = "`state` must be ScalarField"
-            raise ValueError(msg)
+            raise TypeError(msg)
         state_lap = state.laplace(bc=self.bc, args={"t": t})
         result = (
             -self.nu * state_lap.laplace(bc=self.bc_lap, args={"t": t})

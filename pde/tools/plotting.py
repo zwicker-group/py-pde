@@ -839,7 +839,9 @@ def napari_viewer(
 
     # close the viewer if requested
     if close:
-        warnings.warn("Closing napari does not work reliably and is thus disabled")
+        warnings.warn(
+            "Closing napari does not work reliably and is thus disabled", stacklevel=2
+        )
         # viewer.close()
 
 
