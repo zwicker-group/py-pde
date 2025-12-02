@@ -87,9 +87,8 @@ def _make_isotropic_correlated_noise(
 
     def noise_corr() -> NumericArray:
         """Return array of correlated noise."""
-        # initialize uncorrelated random field
+        # initialize uncorrelated random field in reciprocal space
         arr: NumericArray = rng.normal(size=shape) + 1j * rng.normal(size=shape)
-
         # scale frequency according to transformed correlation function
         arr *= scaling
         # backward transform to return to real space

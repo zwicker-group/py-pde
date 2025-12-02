@@ -25,6 +25,7 @@ import numpy as np
 from numba.core.types import npytypes, scalars
 from numba.extending import is_jitted, overload, register_jitable
 from numba.typed import Dict as NumbaDict
+from typing_extensions import Self
 
 from .. import config
 from ..tools.misc import decorator_arguments
@@ -57,7 +58,7 @@ class Counter:
     def __int__(self):
         return self._counter
 
-    def __iadd__(self, value):
+    def __iadd__(self, value) -> Self:
         self._counter += value
         return self
 

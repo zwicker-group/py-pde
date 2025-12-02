@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numpy as np
 from matplotlib.colors import Normalize
+from typing_extensions import Self
 
 from ..fields import FieldCollection
 from ..tools import ffmpeg as FFmpeg
@@ -199,7 +200,7 @@ class MovieStorage(StorageBase):
 
         self._state = "closed"
 
-    def __enter__(self) -> MovieStorage:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
