@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from ..grids import BoundariesBase, GridBase
     from ..pdes.base import PDEBase
     from ..solvers.base import SolverBase
+    from ..tools.expressions import ExpressionBase
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
@@ -349,4 +350,29 @@ class BackendBase:
             t_start: float, t_end: float)`
         """
         msg = f"Steppers are not defined for backend {self.name}"
+        raise NotImplementedError(msg)
+
+    def make_expression_function(
+        self,
+        expression: ExpressionBase,
+        *,
+        single_arg: bool = False,
+        user_funcs: dict[str, Callable] | None = None,
+    ) -> Callable[..., NumberOrArray]:
+        """Return a function evaluating an expression for a particular backend.
+
+        Args:
+            expression (:class:`~pde.tools.expression.ExpressionBase`):
+                The expression that is converted to a function
+            single_arg (bool):
+                Determines whether the returned function accepts all variables in a
+                single argument as an array or whether all variables need to be
+                supplied separately.
+            user_funcs (dict):
+                Additional functions that can be used in the expression.
+
+        Returns:
+            function: the function
+        """
+        msg = f"Expressions are not supported by backend {self.name}"
         raise NotImplementedError(msg)

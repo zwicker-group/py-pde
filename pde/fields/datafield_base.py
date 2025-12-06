@@ -889,7 +889,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             label (str, optional):
                 Name of the returned field
             backend (str):
-                The name of the backend to use to define this operator
+                Backend (e.g., `numba` or `numpy`) for constructing the operator
             args (dict):
                 Additional arguments for the boundary conditions
             **kwargs:
@@ -937,7 +937,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         Args:
             backend (str):
-                Can be `numba` or `numpy`, deciding how the function is constructed
+                Backend (e.g., `numba` or `numpy`) for constructing the operator
             conjugate (bool):
                 Whether to use the complex conjugate for the second operand
 

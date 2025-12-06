@@ -16,7 +16,14 @@ from ..base import BackendBase, OperatorInfo
 if TYPE_CHECKING:
     from ...grids import BoundariesBase, GridBase
     from ...pdes import PDEBase
-    from ...tools.typing import DataSetter, GhostCellSetter, NumericArray, TField
+    from ...tools.expressions import ExpressionBase
+    from ...tools.typing import (
+        DataSetter,
+        GhostCellSetter,
+        NumberOrArray,
+        NumericArray,
+        TField,
+    )
 
 
 class NumpyBackend(BackendBase):
@@ -320,3 +327,80 @@ class NumpyBackend(BackendBase):
             return solver._make_adaptive_stepper(state)
         msg = f"Numpy backend cannot handle stepper style {stepper_style}"
         raise NotImplementedError(msg)
+
+    def make_expression_function(
+        self,
+        expression: ExpressionBase,
+        *,
+        single_arg: bool = False,
+        user_funcs: dict[str, Callable] | None = None,
+    ) -> Callable[..., NumberOrArray]:
+        """Return a function evaluating an expression for a particular backend.
+
+        Args:
+            expression (:class:`~pde.tools.expression.ExpressionBase`):
+                The expression that is converted to a function
+            single_arg (bool):
+                Determines whether the returned function accepts all variables in a
+                single argument as an array or whether all variables need to be
+                supplied separately.
+            user_funcs (dict):
+                Additional functions that can be used in the expression.
+
+        Returns:
+            function: the function
+        """
+        import sympy
+        from sympy.printing.pycode import PythonCodePrinter
+
+        from ...tools.expressions import SPECIAL_FUNCTIONS
+
+        # collect all the user functions
+        user_functions = expression.user_funcs.copy()
+        if user_funcs is not None:
+            user_functions.update(user_funcs)
+        user_functions.update(SPECIAL_FUNCTIONS)
+
+        class NumpyArrayPrinter(PythonCodePrinter):
+            """Special sympy printer returning numpy arrays."""
+
+            def _print_ImmutableDenseNDimArray(self, arr):
+                arrays = ", ".join(f"asarray({self._print(expr)})" for expr in arr)
+                return f"array(broadcast_arrays({arrays}))"
+
+        printer = NumpyArrayPrinter(
+            {
+                "fully_qualified_modules": False,
+                "inline": True,
+                "allow_unknown_functions": True,
+                "user_functions": {k: k for k in user_functions},
+            }
+        )
+
+        # determine the list of variables that the function depends on
+        variables = (expression.vars,) if single_arg else tuple(expression.vars)
+        constants = tuple(expression.consts)
+
+        # turn the expression into a callable function
+        self._logger.info("Parse sympy expression `%s`", expression._sympy_expr)
+        func = sympy.lambdify(
+            variables + constants,
+            expression._sympy_expr,
+            modules=[user_functions, "numpy"],
+            printer=printer,
+        )
+
+        # Apply the constants if there are any. Note that we use this pattern of a
+        # partial function instead of replacing the constants in the sympy expression
+        # directly since sympy does not work well with numpy arrays.
+        if constants:
+            const_values = tuple(expression.consts[c] for c in constants)
+
+            # TODO: support keyword arguments
+
+            def result(*args):
+                return func(*args, *const_values)
+
+        else:
+            result = func
+        return result

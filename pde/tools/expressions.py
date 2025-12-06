@@ -17,21 +17,17 @@ representations using :mod:`sympy`.
 
 from __future__ import annotations
 
-import builtins
 import copy
 import logging
-import math
 import numbers
 import re
+import warnings
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, Union
 
 import numpy as np
 import sympy
-from numba import vectorize
 from sympy.core import basic
-from sympy.printing.pycode import PythonCodePrinter
-from sympy.utilities.lambdify import _get_namespace
 
 from ..fields.base import FieldBase
 from ..fields.collection import FieldCollection
@@ -40,19 +36,14 @@ from ..grids.boundaries.local import BCDataError
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
 from .misc import number, number_array
-from .numba import jit
 from .typing import Number, NumberOrArray, NumericArray
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
+    from ..grids.base import GridBase
     from ..grids.boundaries.axes import BoundariesData
 
-try:
-    from numba.core.extending import overload
-except ImportError:
-    # assume older numba module structure
-    from numba.extending import overload
 
 _base_logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger for expressions."""
@@ -93,69 +84,12 @@ def parse_number(
     return value
 
 
-@vectorize()
-def _heaviside_implementation_ufunc(x1, x2):
-    """Ufunc implementation of the Heaviside function used for numba and sympy.
-
-    Args:
-        x1 (float): Argument of the function
-        x2 (float): Value returned when the argument is zero
-
-    Returns:
-        float: 0 if x1 is negative, 1 if x1 is positive, and x2 if x1 == 0
-    """
-    if np.isnan(x1):
-        return math.nan
-    if x1 == 0:
-        return x2
-    if x1 < 0:
-        return 0.0
-    return 1.0
-
-
-def _heaviside_implementation(x1, x2):
-    """Normal implementation of the Heaviside function used for numba and sympy.
-
-    Args:
-        x1 (float): Argument of the function
-        x2 (float): Value returned when the argument is zero
-
-    Returns:
-        float: 0 if x1 is negative, 1 if x1 is positive, and x2 if x1 == 0
-    """
-    # this extra function is necessary since the `overload` wrapper cannot deal properly
-    # with the `_DUFunc` returned by `vectorize`
-    return _heaviside_implementation_ufunc(x1, x2)
-
-
-@overload(np.heaviside)
-def np_heaviside(x1, x2):
-    """Numba implementation of the Heaviside function."""
-    return _heaviside_implementation
-
-
 # special functions that we want to support in expressions but that are not defined by
 # sympy version 1.6 or have a different signature than expected by numba/numpy
 SPECIAL_FUNCTIONS: dict[str, Callable] = {
-    "Heaviside": _heaviside_implementation,
+    "Heaviside": np.heaviside,  # _heaviside_implementation,
     "hypot": np.hypot,
 }
-
-
-class ListArrayPrinter(PythonCodePrinter):
-    """Special sympy printer returning arrays as lists."""
-
-    def _print_ImmutableDenseNDimArray(self, arr):
-        arrays = ", ".join(f"{self._print(expr)}" for expr in arr)
-        return f"[{arrays}]"
-
-
-class NumpyArrayPrinter(PythonCodePrinter):
-    """Special sympy printer returning numpy arrays."""
-
-    def _print_ImmutableDenseNDimArray(self, arr):
-        arrays = ", ".join(f"asarray({self._print(expr)})" for expr in arr)
-        return f"array(broadcast_arrays({arrays}))"
 
 
 def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.Basic:
@@ -400,6 +334,35 @@ class ExpressionBase(metaclass=ABCMeta):
             return False
         return any(variable == str(symbol) for symbol in self._free_symbols)
 
+    def get_function(
+        self,
+        backend: str = "numpy",
+        *,
+        single_arg: bool = False,
+        user_funcs: dict[str, Callable] | None = None,
+    ) -> Callable[..., NumberOrArray]:
+        """Return a function evaluating expression for a particular backend.
+
+        Args:
+            backend (str):
+                Backend (e.g., `numba` or `numpy`) for constructing the operator
+            single_arg (bool):
+                Determines whether the returned function accepts all variables in a
+                single argument as an array or whether all variables need to be
+                supplied separately.
+            user_funcs (dict):
+                Additional functions that can be used in the expression.
+
+        Returns:
+            function: the function
+        """
+        from ..backends import backends
+        # TODO add caching
+
+        return backends[backend].make_expression_function(
+            self, single_arg=single_arg, user_funcs=user_funcs
+        )
+
     def _get_function(
         self,
         single_arg: bool = False,
@@ -422,66 +385,15 @@ class ExpressionBase(metaclass=ABCMeta):
         Returns:
             function: the function
         """
-        # collect all the user functions
-        user_functions = self.user_funcs.copy()
-        if user_funcs is not None:
-            user_functions.update(user_funcs)
-        user_functions.update(SPECIAL_FUNCTIONS)
-
-        if prepare_compilation:
-            # transform the user functions, so they can be compiled using numba
-            def compile_func(func):
-                if isinstance(func, np.ufunc):
-                    # this is a work-around that allows to compile numpy ufuncs
-                    return jit(lambda *args: func(*args))
-                return jit(func)
-
-            user_functions = {k: compile_func(v) for k, v in user_functions.items()}
-
-        # initialize the printer that deals with numpy arrays correctly
-        if prepare_compilation:
-            printer_class: type[PythonCodePrinter] = ListArrayPrinter
-        else:
-            printer_class = NumpyArrayPrinter
-        printer = printer_class(
-            {
-                "fully_qualified_modules": False,
-                "inline": True,
-                "allow_unknown_functions": True,
-                "user_functions": {k: k for k in user_functions},
-            }
+        # deprecated since 2025-12-06
+        warnings.warn(
+            "`_get_function` is deprecated. Use `get_function` instead.", stacklevel=2
         )
-
-        # determine the list of variables that the function depends on
-        variables = (self.vars,) if single_arg else tuple(self.vars)
-        constants = tuple(self.consts)
-
-        # turn the expression into a callable function
-        self._logger.info("Parse sympy expression `%s`", self._sympy_expr)
-        func = sympy.lambdify(
-            variables + constants,
-            self._sympy_expr,
-            modules=[user_functions, "numpy"],
-            printer=printer,
-        )
-
-        # Apply the constants if there are any. Note that we use this pattern of a
-        # partial function instead of replacing the constants in the sympy expression
-        # directly since sympy does not work well with numpy arrays.
-        if constants:
-            const_values = tuple(self.consts[c] for c in constants)
-
-            if prepare_compilation:
-                func = jit(func)
-
-            # TODO: support keyword arguments
-
-            def result(*args):
-                return func(*args, *const_values)
-
-        else:
-            result = func
-        return result
+        if prepare_compilation:
+            return self.get_function(
+                "numba", single_arg=single_arg, user_funcs=user_funcs
+            )
+        return self.get_function("numpy", single_arg=single_arg, user_funcs=user_funcs)
 
     @cached_method()
     def _get_function_cached(
@@ -518,11 +430,11 @@ class ExpressionBase(metaclass=ABCMeta):
         Returns:
             function: the compiled function
         """
-        # compile the actual expression
-        func = self._get_function_cached(
-            single_arg=single_arg, prepare_compilation=True
+        # deprecated since 2025-12-06
+        warnings.warn(
+            "`get_compiled` is deprecated. Use `get_function` instead.", stacklevel=2
         )
-        return jit(func)  # type: ignore
+        return self.get_function("numba", single_arg=single_arg)
 
 
 class ScalarExpression(ExpressionBase):
@@ -912,63 +824,16 @@ class TensorExpression(ExpressionBase):
                 Whether the compiled function expects all arguments as a single array
                 or whether they are supplied individually.
         """
-        if not isinstance(self._sympy_expr, sympy.Array):
-            msg = "Expression must be an array"
-            raise TypeError(msg)
-        variables = ", ".join(v for v in self.vars)
-        shape = self._sympy_expr.shape
+        from ..backends.numba import numba_backend
 
-        lines = [
-            f"    out[{str((*idx, ...))[1:-1]}] = {self._sympy_expr[idx]}"
-            for idx in np.ndindex(*self._sympy_expr.shape)
-        ]
-        # TODO: replace the np.ndindex with np.ndenumerate eventually. This does not
-        # work with numpy 1.18, so we have the work around using np.ndindex
+        # deprecated since 2025-12-06
+        warnings.warn(
+            "`get_compiled_array` is deprecated. Use `_make_expression_array` of the "
+            "`numba` backend instead.",
+            stacklevel=2,
+        )
 
-        # TODO: We should also support constants similar to ScalarExpressions. They
-        # could be written in separate lines and prepended to the actual code. However,
-        # we would need to make sure to print numpy arrays correctly.
-
-        if variables:
-            # the expression takes variables as input
-
-            if single_arg:
-                # the function takes a single input array
-                first_dim = 0 if len(self.vars) == 1 else 1
-                code = "def _generated_function(arr, out=None):\n"
-                code += "    arr = asarray(arr)\n"
-                code += f"    {variables} = arr\n"
-                code += "    if out is None:\n"
-                code += f"        out = empty({shape} + arr.shape[{first_dim}:])\n"
-
-            else:
-                # the function takes each variables as an argument
-                code = f"def _generated_function({variables}, out=None):\n"
-                code += "    if out is None:\n"
-                code += f"        out = empty({shape} + shape({self.vars[0]}))\n"
-
-        else:
-            # the expression is constant
-            if single_arg:
-                code = "def _generated_function(arr=None, out=None):\n"
-            else:
-                code = "def _generated_function(out=None):\n"
-            code += "    if out is None:\n"
-            code += f"        out = empty({shape})\n"
-
-        code += "\n".join(lines) + "\n"
-        code += "    return out"
-
-        self._logger.debug("Code for `get_compiled_array`: %s", code)
-
-        namespace = _get_namespace("numpy")
-        namespace["builtins"] = builtins
-        namespace.update(self.user_funcs)
-        local_vars: dict[str, Any] = {}
-        exec(code, namespace, local_vars)
-        function = local_vars["_generated_function"]
-
-        return jit(function)  # type: ignore
+        return numba_backend._make_expression_array(self, single_arg=single_arg)
 
 
 @fill_in_docstring
@@ -1067,7 +932,7 @@ def evaluate(
         bcs["*"] = bc  # append default boundary conditions
 
     # check whether all fields have the same grid
-    grid = None
+    grid: GridBase | None = None
     for field in fields_values:
         if grid is None:
             grid = field.grid
@@ -1115,7 +980,7 @@ def evaluate(
 
             # create the function evaluating the operator
             try:
-                ops[func] = grid.make_operator(func, bc=bc)
+                ops[func] = grid.make_operator(func, bc=bc, backend="numba")
             except BCDataError:
                 # wrong data was supplied for the boundary condition
                 raise
@@ -1167,7 +1032,9 @@ def evaluate(
     # turn result into a proper field
     if np.isscalar(result_data):
         result_data = np.broadcast_to(result_data, grid.shape)
-    result_rank = result_data.ndim - grid.num_axes  # type: ignore
+    elif TYPE_CHECKING:
+        result_data = np.asanyarray(result_data)
+    result_rank = result_data.ndim - grid.num_axes
     result_cls = DataFieldBase.get_class_by_rank(result_rank)
     return result_cls(grid, result_data, label=label)
 

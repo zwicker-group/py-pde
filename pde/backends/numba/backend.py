@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numba as nb
 import numpy as np
@@ -21,6 +21,7 @@ from ..numpy.backend import NumpyBackend, OperatorInfo
 
 if TYPE_CHECKING:
     from ...pdes import PDEBase
+    from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
         DataSetter,
         FloatingArray,
@@ -746,3 +747,168 @@ class NumbaBackend(NumpyBackend):
             assert isinstance(solver, AdaptiveSolverBase)
             return make_adaptive_stepper(solver, state)
         raise NotImplementedError
+
+    def make_expression_function(
+        self,
+        expression: ExpressionBase,
+        *,
+        single_arg: bool = False,
+        user_funcs: dict[str, Callable] | None = None,
+    ) -> Callable[..., NumberOrArray]:
+        """Return a function evaluating an expression for a particular backend.
+
+        Args:
+            expression (:class:`~pde.tools.expression.ExpressionBase`):
+                The expression that is converted to a function
+            single_arg (bool):
+                Determines whether the returned function accepts all variables in a
+                single argument as an array or whether all variables need to be
+                supplied separately.
+            user_funcs (dict):
+                Additional functions that can be used in the expression.
+
+        Returns:
+            function: the function
+        """
+        import sympy
+        from sympy.printing.pycode import PythonCodePrinter
+
+        from ...tools.expressions import SPECIAL_FUNCTIONS
+
+        # collect all the user functions
+        user_functions = expression.user_funcs.copy()
+        if user_funcs is not None:
+            user_functions.update(user_funcs)
+        user_functions.update(SPECIAL_FUNCTIONS)
+
+        # transform the user functions, so they can be compiled using numba
+        def compile_func(func):
+            if isinstance(func, np.ufunc):
+                # this is a work-around that allows to compile numpy ufuncs
+                return jit(lambda *args: func(*args))
+            return jit(func)
+
+        user_functions = {k: compile_func(v) for k, v in user_functions.items()}
+
+        # initialize the printer that deals with numpy arrays correctly
+
+        class ListArrayPrinter(PythonCodePrinter):
+            """Special sympy printer returning arrays as lists."""
+
+            def _print_ImmutableDenseNDimArray(self, arr):
+                arrays = ", ".join(f"{self._print(expr)}" for expr in arr)
+                return f"[{arrays}]"
+
+        printer = ListArrayPrinter(
+            {
+                "fully_qualified_modules": False,
+                "inline": True,
+                "allow_unknown_functions": True,
+                "user_functions": {k: k for k in user_functions},
+            }
+        )
+
+        # determine the list of variables that the function depends on
+        variables = (expression.vars,) if single_arg else tuple(expression.vars)
+        constants = tuple(expression.consts)
+
+        # turn the expression into a callable function
+        self._logger.info("Parse sympy expression `%s`", expression._sympy_expr)
+        func = sympy.lambdify(
+            variables + constants,
+            expression._sympy_expr,
+            modules=[user_functions, "numpy"],
+            printer=printer,
+        )
+
+        # Apply the constants if there are any. Note that we use this pattern of a
+        # partial function instead of replacing the constants in the sympy expression
+        # directly since sympy does not work well with numpy arrays.
+        if constants:
+            const_values = tuple(expression.consts[c] for c in constants)
+
+            func = register_jitable(func)
+
+            # TODO: support keyword arguments
+
+            def result(*args):
+                return func(*args, *const_values)
+
+        else:
+            result = func
+        return jit(result)  # type: ignore
+
+    def _make_expression_array(
+        self, expression: ExpressionBase, *, single_arg: bool = True
+    ) -> Callable[[NumericArray, NumericArray | None], NumericArray]:
+        """Compile the tensor expression such that a numpy array is returned.
+
+        Args:
+            expression (:class:`~pde.tools.expression.ExpressionBase`):
+                The expression that is converted to a function
+            single_arg (bool):
+                Whether the compiled function expects all arguments as a single array
+                or whether they are supplied individually.
+        """
+        import builtins
+
+        import sympy
+        from sympy.utilities.lambdify import _get_namespace
+
+        if not isinstance(expression._sympy_expr, sympy.Array):
+            msg = "Expression must be an array"
+            raise TypeError(msg)
+        variables = ", ".join(v for v in expression.vars)
+        shape = expression._sympy_expr.shape
+
+        lines = [
+            f"    out[{str((*idx, ...))[1:-1]}] = {expression._sympy_expr[idx]}"
+            for idx in np.ndindex(*expression._sympy_expr.shape)
+        ]
+        # TODO: replace the np.ndindex with np.ndenumerate eventually. This does not
+        # work with numpy 1.18, so we have the work around using np.ndindex
+
+        # TODO: We should also support constants similar to ScalarExpressions. They
+        # could be written in separate lines and prepended to the actual code. However,
+        # we would need to make sure to print numpy arrays correctly.
+
+        if variables:
+            # the expression takes variables as input
+
+            if single_arg:
+                # the function takes a single input array
+                first_dim = 0 if len(expression.vars) == 1 else 1
+                code = "def _generated_function(arr, out=None):\n"
+                code += "    arr = asarray(arr)\n"
+                code += f"    {variables} = arr\n"
+                code += "    if out is None:\n"
+                code += f"        out = empty({shape} + arr.shape[{first_dim}:])\n"
+
+            else:
+                # the function takes each variables as an argument
+                code = f"def _generated_function({variables}, out=None):\n"
+                code += "    if out is None:\n"
+                code += f"        out = empty({shape} + shape({expression.vars[0]}))\n"
+
+        else:
+            # the expression is constant
+            if single_arg:
+                code = "def _generated_function(arr=None, out=None):\n"
+            else:
+                code = "def _generated_function(out=None):\n"
+            code += "    if out is None:\n"
+            code += f"        out = empty({shape})\n"
+
+        code += "\n".join(lines) + "\n"
+        code += "    return out"
+
+        self._logger.debug("Code for `get_compiled_array`: %s", code)
+
+        namespace = _get_namespace("numpy")
+        namespace["builtins"] = builtins
+        namespace.update(expression.user_funcs)
+        local_vars: dict[str, Any] = {}
+        exec(code, namespace, local_vars)
+        function = local_vars["_generated_function"]
+
+        return jit(function)  # type: ignore
