@@ -15,12 +15,10 @@ from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, Literal, overload
 
 import numpy as np
-from numba.extending import register_jitable
 
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import hybridmethod
-from ..tools.numba import jit
 from .coordinates import CoordinatesBase, DimensionError
 
 if TYPE_CHECKING:
@@ -1343,105 +1341,17 @@ class GridBase(metaclass=ABCMeta):
         Returns:
             function: returning the volume of the chosen cell
         """
-        from ..backends.numba import numba_backend
+        from ..backends.numba.grids import make_cell_volume_getter
 
         # deprecated since 2025-11-19
         warnings.warn(
             "`make_cell_volume_compiled` is deprecated. Use "
-            "`pde.backends.numba._make_cell_volume_getter` instead",
+            "`pde.backends.numba.grids.make_cell_volume_getter` instead",
             DeprecationWarning,
             stacklevel=2,
         )
 
-        return numba_backend._make_cell_volume_getter(self, flat_index=flat_index)
-
-    def _make_interpolation_axis_data(
-        self,
-        axis: int,
-        *,
-        with_ghost_cells: bool = False,
-        cell_coords: bool = False,
-    ) -> Callable[[float], tuple[int, int, float, float]]:
-        """Factory for obtaining interpolation information.
-
-        Args:
-            axis (int):
-                The axis along which interpolation is performed
-            with_ghost_cells (bool):
-                Flag indicating that the interpolator should work on the full data array
-                that includes values for the ghost points. If this is the case, the
-                boundaries are not checked and the coordinates are used as is.
-            cell_coords (bool):
-                Flag indicating whether points are given in cell coordinates or actual
-                point coordinates.
-
-        Returns:
-            callable: A function that is called with a coordinate value for the axis.
-            The function returns the indices of the neighboring support points as well
-            as the associated weights.
-        """
-        # obtain information on how this axis is discretized
-        size = self.shape[axis]
-        periodic = self.periodic[axis]
-        lo = self.axes_bounds[axis][0]
-        dx = self.discretization[axis]
-
-        @register_jitable
-        def get_axis_data(coord: float) -> tuple[int, int, float, float]:
-            """Determines data for interpolating along one axis."""
-            # determine the index of the left cell and the fraction toward the right
-            if cell_coords:
-                c_l, d_l = divmod(coord, 1.0)
-            else:
-                c_l, d_l = divmod((coord - lo) / dx - 0.5, 1.0)
-
-            # determine the indices of the two cells whose value affect interpolation
-            if periodic:
-                # deal with periodic domains, which is easy
-                c_li = int(c_l) % size  # left support point
-                c_hi = (c_li + 1) % size  # right support point
-
-            elif with_ghost_cells:
-                # deal with edge cases using the values of ghost cells
-                if -0.5 <= c_l + d_l <= size - 0.5:  # in bulk part of domain
-                    c_li = int(c_l)  # left support point
-                    c_hi = c_li + 1  # right support point
-                else:
-                    return -42, -42, 0.0, 0.0  # indicates out of bounds
-
-            else:
-                # deal with edge cases using nearest-neighbor interpolation at boundary
-                if 0 <= c_l + d_l < size - 1:  # in bulk part of domain
-                    c_li = int(c_l)  # left support point
-                    c_hi = c_li + 1  # right support point
-                elif size - 1 <= c_l + d_l <= size - 0.5:  # close to upper boundary
-                    c_li = c_hi = int(c_l)  # both support points close to boundary
-                    # This branch also covers the special case, where size == 1 and data
-                    # is evaluated at the only support point (c_l == d_l == 0.)
-                elif -0.5 <= c_l + d_l <= 0:  # close to lower boundary
-                    c_li = c_hi = int(c_l) + 1  # both support points close to boundary
-                else:
-                    return -42, -42, 0.0, 0.0  # indicates out of bounds
-
-            # determine the weights of the two cells
-            w_l, w_h = 1 - d_l, d_l
-            # set small weights to zero. If this is not done, invalid data at the corner
-            # of the grid (where two rows of ghost cells intersect) could be accessed.
-            # If this random data is very large, e.g., 1e100, it contributes
-            # significantly, even if the weight is low, e.g., 1e-16.
-            if w_l < 1e-15:
-                w_l = 0
-            if w_h < 1e-15:
-                w_h = 0
-
-            # shift points to allow accessing data with ghost points
-            if with_ghost_cells:
-                c_li += 1
-                c_hi += 1
-
-            return c_li, c_hi, w_l, w_h
-
-        return get_axis_data  # type: ignore
+        return make_cell_volume_getter(grid=self, flat_index=flat_index)
 
     @cached_method()
     def _make_interpolator_compiled(
@@ -1472,130 +1382,20 @@ class GridBase(metaclass=ABCMeta):
             function is (data, point), where `data` is the numpy array containing the
             field data and position denotes the position in grid coordinates.
         """
-        args = {"with_ghost_cells": with_ghost_cells, "cell_coords": cell_coords}
+        # deprecated on 2025-12-06
+        from ..backends.numba.grids import make_single_interpolator
 
-        if self.num_axes == 1:
-            # specialize for 1-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0, **args)
-
-            @jit
-            def interpolate_single(
-                data: NumericArray, point: FloatingArray
-            ) -> NumberOrArray:
-                """Obtain interpolated value of data at a point.
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        A 1d array of valid values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate system
-
-                Returns:
-                    :class:`~numpy.ndarray`: The interpolated value at the point
-                """
-                c_li, c_hi, w_l, w_h = data_x(float(point[0]))
-
-                if c_li == -42:  # out of bounds
-                    if fill is None:  # outside the domain
-                        print("POINT", point)
-                        msg = "Point lies outside the grid domain"
-                        raise DomainError(msg)
-                    return fill
-
-                # do the linear interpolation
-                return w_l * data[..., c_li] + w_h * data[..., c_hi]  # type: ignore
-
-        elif self.num_axes == 2:
-            # specialize for 2-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0, **args)
-            data_y = self._make_interpolation_axis_data(1, **args)
-
-            @jit
-            def interpolate_single(
-                data: NumericArray, point: FloatingArray
-            ) -> NumberOrArray:
-                """Obtain interpolated value of data at a point.
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        A 2d array of valid values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate system
-
-                Returns:
-                    :class:`~numpy.ndarray`: The interpolated value at the point
-                """
-                # determine surrounding points and their weights
-                c_xli, c_xhi, w_xl, w_xh = data_x(float(point[0]))
-                c_yli, c_yhi, w_yl, w_yh = data_y(float(point[1]))
-
-                if c_xli == -42 or c_yli == -42:  # out of bounds
-                    if fill is None:  # outside the domain
-                        print("POINT", point)
-                        msg = "Point lies outside the grid domain"
-                        raise DomainError(msg)
-                    return fill
-
-                # do the linear interpolation
-                return (  # type: ignore
-                    w_xl * w_yl * data[..., c_xli, c_yli]
-                    + w_xl * w_yh * data[..., c_xli, c_yhi]
-                    + w_xh * w_yl * data[..., c_xhi, c_yli]
-                    + w_xh * w_yh * data[..., c_xhi, c_yhi]
-                )
-
-        elif self.num_axes == 3:
-            # specialize for 3-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0, **args)
-            data_y = self._make_interpolation_axis_data(1, **args)
-            data_z = self._make_interpolation_axis_data(2, **args)
-
-            @jit
-            def interpolate_single(
-                data: NumericArray, point: FloatingArray
-            ) -> NumberOrArray:
-                """Obtain interpolated value of data at a point.
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        A 2d array of valid values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate system
-
-                Returns:
-                    :class:`~numpy.ndarray`: The interpolated value at the point
-                """
-                # determine surrounding points and their weights
-                c_xli, c_xhi, w_xl, w_xh = data_x(float(point[0]))
-                c_yli, c_yhi, w_yl, w_yh = data_y(float(point[1]))
-                c_zli, c_zhi, w_zl, w_zh = data_z(float(point[2]))
-
-                if c_xli == -42 or c_yli == -42 or c_zli == -42:  # out of bounds
-                    if fill is None:  # outside the domain
-                        print("POINT", point)
-                        msg = "Point lies outside the grid domain"
-                        raise DomainError(msg)
-                    return fill
-
-                # do the linear interpolation
-                return (  # type: ignore
-                    w_xl * w_yl * w_zl * data[..., c_xli, c_yli, c_zli]
-                    + w_xl * w_yl * w_zh * data[..., c_xli, c_yli, c_zhi]
-                    + w_xl * w_yh * w_zl * data[..., c_xli, c_yhi, c_zli]
-                    + w_xl * w_yh * w_zh * data[..., c_xli, c_yhi, c_zhi]
-                    + w_xh * w_yl * w_zl * data[..., c_xhi, c_yli, c_zli]
-                    + w_xh * w_yl * w_zh * data[..., c_xhi, c_yli, c_zhi]
-                    + w_xh * w_yh * w_zl * data[..., c_xhi, c_yhi, c_zli]
-                    + w_xh * w_yh * w_zh * data[..., c_xhi, c_yhi, c_zhi]
-                )
-
-        else:
-            msg = (
-                f"Compiled interpolation not implemented for dimension {self.num_axes}"
-            )
-            raise NotImplementedError(msg)
-
-        return interpolate_single  # type: ignore
+        warnings.warn(
+            "`_make_interpolator_compiled` is deprecated. Use "
+            "`pde.backends.numba_backend.make_single_interpolator` instead.",
+            stacklevel=2,
+        )
+        return make_single_interpolator(
+            grid=self,
+            fill=fill,
+            with_ghost_cells=with_ghost_cells,
+            cell_coords=cell_coords,
+        )
 
     def make_inserter_compiled(
         self, *, with_ghost_cells: bool = False
@@ -1614,152 +1414,17 @@ class GridBase(metaclass=ABCMeta):
             position in grid coordinates, and `amount` is the  that is to be added to
             the field.
         """
-        cell_volume = self.make_cell_volume_compiled()
+        from ..backends.numba import numba_backend
 
-        if self.num_axes == 1:
-            # specialize for 1-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(
-                0, with_ghost_cells=with_ghost_cells
-            )
+        # deprecated since 2025-11-19
+        warnings.warn(
+            "`make_inserter_compiled` is deprecated. Use "
+            "`pde.backends.numba_backend.make_inserter` instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-            @jit
-            def insert(
-                data: NumericArray, point: FloatingArray, amount: NumberOrArray
-            ) -> None:
-                """Add an amount to a field at an interpolated position.
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        The values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate system
-                    amount (Number or :class:`~numpy.ndarray`):
-                        The amount that will be added to the data. This value describes
-                        an integrated quantity (given by the field value times the
-                        discretization volume). This is important for consistency with
-                        different discretizations and in particular grids with
-                        non-uniform discretizations
-                """
-                c_li, c_hi, w_l, w_h = data_x(float(point[0]))
-
-                if c_li == -42:  # out of bounds
-                    msg = "Point lies outside the grid domain"
-                    raise DomainError(msg)
-
-                data[..., c_li] += w_l * amount / cell_volume(c_li)
-                data[..., c_hi] += w_h * amount / cell_volume(c_hi)
-
-        elif self.num_axes == 2:
-            # specialize for 2-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(
-                0, with_ghost_cells=with_ghost_cells
-            )
-            data_y = self._make_interpolation_axis_data(
-                1, with_ghost_cells=with_ghost_cells
-            )
-
-            @jit
-            def insert(
-                data: NumericArray, point: FloatingArray, amount: NumberOrArray
-            ) -> None:
-                """Add an amount to a field at an interpolated position.
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        The values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate system
-                    amount (Number or :class:`~numpy.ndarray`):
-                        The amount that will be added to the data. This value describes
-                        an integrated quantity (given by the field value times the
-                        discretization volume). This is important for consistency with
-                        different discretizations and in particular grids with
-                        non-uniform discretizations
-                """
-                # determine surrounding points and their weights
-                c_xli, c_xhi, w_xl, w_xh = data_x(float(point[0]))
-                c_yli, c_yhi, w_yl, w_yh = data_y(float(point[1]))
-
-                if c_xli == -42 or c_yli == -42:  # out of bounds
-                    msg = "Point lies outside the grid domain"
-                    raise DomainError(msg)
-
-                cell_vol = cell_volume(c_xli, c_yli)
-                data[..., c_xli, c_yli] += w_xl * w_yl * amount / cell_vol
-                cell_vol = cell_volume(c_xli, c_yhi)
-                data[..., c_xli, c_yhi] += w_xl * w_yh * amount / cell_vol
-
-                cell_vol = cell_volume(c_xhi, c_yli)
-                data[..., c_xhi, c_yli] += w_xh * w_yl * amount / cell_vol
-                cell_vol = cell_volume(c_xhi, c_yhi)
-                data[..., c_xhi, c_yhi] += w_xh * w_yh * amount / cell_vol
-
-        elif self.num_axes == 3:
-            # specialize for 3-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(
-                0, with_ghost_cells=with_ghost_cells
-            )
-            data_y = self._make_interpolation_axis_data(
-                1, with_ghost_cells=with_ghost_cells
-            )
-            data_z = self._make_interpolation_axis_data(
-                2, with_ghost_cells=with_ghost_cells
-            )
-
-            @jit
-            def insert(
-                data: NumericArray, point: FloatingArray, amount: NumberOrArray
-            ) -> None:
-                """Add an amount to a field at an interpolated position.
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        The values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate system
-                    amount (Number or :class:`~numpy.ndarray`):
-                        The amount that will be added to the data. This value describes
-                        an integrated quantity (given by the field value times the
-                        discretization volume). This is important for consistency with
-                        different discretizations and in particular grids with
-                        non-uniform discretizations
-                """
-                # determine surrounding points and their weights
-                c_xli, c_xhi, w_xl, w_xh = data_x(float(point[0]))
-                c_yli, c_yhi, w_yl, w_yh = data_y(float(point[1]))
-                c_zli, c_zhi, w_zl, w_zh = data_z(float(point[2]))
-
-                if c_xli == -42 or c_yli == -42 or c_zli == -42:  # out of bounds
-                    msg = "Point lies outside the grid domain"
-                    raise DomainError(msg)
-
-                cell_vol = cell_volume(c_xli, c_yli, c_zli)
-                data[..., c_xli, c_yli, c_zli] += w_xl * w_yl * w_zl * amount / cell_vol
-                cell_vol = cell_volume(c_xli, c_yli, c_zhi)
-                data[..., c_xli, c_yli, c_zhi] += w_xl * w_yl * w_zh * amount / cell_vol
-
-                cell_vol = cell_volume(c_xli, c_yhi, c_zli)
-                data[..., c_xli, c_yhi, c_zli] += w_xl * w_yh * w_zl * amount / cell_vol
-                cell_vol = cell_volume(c_xli, c_yhi, c_zhi)
-                data[..., c_xli, c_yhi, c_zhi] += w_xl * w_yh * w_zh * amount / cell_vol
-
-                cell_vol = cell_volume(c_xhi, c_yli, c_zli)
-                data[..., c_xhi, c_yli, c_zli] += w_xh * w_yl * w_zl * amount / cell_vol
-                cell_vol = cell_volume(c_xhi, c_yli, c_zhi)
-                data[..., c_xhi, c_yli, c_zhi] += w_xh * w_yl * w_zh * amount / cell_vol
-
-                cell_vol = cell_volume(c_xhi, c_yhi, c_zli)
-                data[..., c_xhi, c_yhi, c_zli] += w_xh * w_yh * w_zl * amount / cell_vol
-                cell_vol = cell_volume(c_xhi, c_yhi, c_zhi)
-                data[..., c_xhi, c_yhi, c_zhi] += w_xh * w_yh * w_zh * amount / cell_vol
-
-        else:
-            msg = (
-                f"Compiled interpolation not implemented for dimension {self.num_axes}"
-            )
-            raise NotImplementedError(msg)
-
-        return insert  # type: ignore
+        return numba_backend.make_inserter(grid=self, with_ghost_cells=with_ghost_cells)
 
     def make_integrator(
         self, backend: str = "numpy"
