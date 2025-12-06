@@ -15,6 +15,34 @@ if TYPE_CHECKING:
     from ...grids.base import GridBase
 
 
+def make_get_valid(grid: GridBase) -> Callable[[NumericArray], NumericArray]:
+    """Create a function to extract the valid part of a full data array.
+
+    Returns:
+        callable: Mapping a numpy array containing the full data of the grid to a
+            numpy array of only the valid data
+    """
+    num_axes = grid.num_axes
+
+    @register_jitable
+    def get_valid(data_full: NumericArray) -> NumericArray:
+        """Return valid part of the data (without ghost cells)
+
+        Args:
+            data_full (:class:`~numpy.ndarray`):
+                The array with ghost cells from which the valid data is extracted
+        """
+        if num_axes == 1:
+            return data_full[..., 1:-1]
+        if num_axes == 2:
+            return data_full[..., 1:-1, 1:-1]
+        if num_axes == 3:
+            return data_full[..., 1:-1, 1:-1, 1:-1]
+        raise NotImplementedError
+
+    return get_valid  # type: ignore
+
+
 def make_get_arr_1d(
     dim: int, axis: int
 ) -> Callable[[NumericArray, tuple[int, ...]], tuple[NumericArray, int, tuple]]:

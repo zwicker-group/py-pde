@@ -3,7 +3,6 @@
 """
 
 import random
-from functools import partial
 
 import numpy as np
 import pytest
@@ -70,22 +69,14 @@ def test_unit_grid_1d(periodic, rng):
     assert grid.dim == 1
     assert grid.volume == 8
 
-    norm_numba = grid.make_normalize_point_compiled(reflect=False)
-
-    def norm_numba_wrap(x):
-        y = np.array([x])
-        norm_numba(y)
-        return y
-
-    for normalize in [partial(grid.normalize_point, reflect=False), norm_numba_wrap]:
-        if periodic:
-            np.testing.assert_allclose(normalize(-1e-10), 8 - 1e-10)
-            np.testing.assert_allclose(normalize(1e-10), 1e-10)
-            np.testing.assert_allclose(normalize(8 - 1e-10), 8 - 1e-10)
-            np.testing.assert_allclose(normalize(8 + 1e-10), 1e-10)
-        else:
-            for x in [-1e-10, 1e-10, 8 - 1e-10, 8 + 1e-10]:
-                np.testing.assert_allclose(normalize(x), x)
+    if periodic:
+        np.testing.assert_allclose(grid.normalize_point(-1e-10), 8 - 1e-10)
+        np.testing.assert_allclose(grid.normalize_point(1e-10), 1e-10)
+        np.testing.assert_allclose(grid.normalize_point(8 - 1e-10), 8 - 1e-10)
+        np.testing.assert_allclose(grid.normalize_point(8 + 1e-10), 1e-10)
+    else:
+        for x in [-1e-10, 1e-10, 8 - 1e-10, 8 + 1e-10]:
+            np.testing.assert_allclose(grid.normalize_point(x), x)
 
     grid = UnitGrid(8, periodic=periodic)
 
@@ -283,28 +274,6 @@ def test_setting_domain_rect():
         grid.get_boundary_conditions("derivative")
     with pytest.raises(RuntimeError):
         grid.get_boundary_conditions({"x": "derivative", "y": "periodic"})
-
-
-@pytest.mark.parametrize("reflect", [True, False])
-def test_normalize_point(reflect):
-    """Test normalize_point method for Cartesian Grids."""
-    grid = CartesianGrid([[1, 3]], [1], periodic=False)
-
-    norm_numba = grid.make_normalize_point_compiled(reflect=reflect)
-
-    def norm_numba_wrap(x):
-        y = np.array([x])
-        norm_numba(y)
-        return y
-
-    if reflect:
-        values = [(-2, 2), (0, 2), (1, 1), (2, 2), (3, 3), (4, 2), (5, 1), (6, 2)]
-    else:
-        values = [(-2, -2), (0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]
-
-    for norm in [norm_numba_wrap, partial(grid.normalize_point, reflect=reflect)]:
-        for x, y in values:
-            assert norm(x) == pytest.approx(y), (norm, x)
 
 
 @pytest.mark.parametrize("method", ["central", "forward", "backward"])

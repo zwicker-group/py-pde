@@ -326,25 +326,15 @@ class GridBase(metaclass=ABCMeta):
             callable: Mapping a numpy array containing the full data of the grid to a
                 numpy array of only the valid data
         """
-        num_axes = self.num_axes
+        # deprecated on 2025-12-06
+        from ..backends.numba.utils import make_get_valid
 
-        @jit
-        def get_valid(data_full: NumericArray) -> NumericArray:
-            """Return valid part of the data (without ghost cells)
-
-            Args:
-                data_full (:class:`~numpy.ndarray`):
-                    The array with ghost cells from which the valid data is extracted
-            """
-            if num_axes == 1:
-                return data_full[..., 1:-1]
-            if num_axes == 2:
-                return data_full[..., 1:-1, 1:-1]
-            if num_axes == 3:
-                return data_full[..., 1:-1, 1:-1, 1:-1]
-            raise NotImplementedError
-
-        return get_valid  # type: ignore
+        warnings.warn(
+            "`_make_get_valid` is deprecated. Use "
+            "`pde.backends.numba.utils.make_get_valid` instead.",
+            stacklevel=2,
+        )
+        return make_get_valid(self)
 
     @overload
     def _make_set_valid(self) -> Callable[[NumericArray, NumericArray], None]: ...
@@ -1317,7 +1307,6 @@ class GridBase(metaclass=ABCMeta):
         COMM_WORLD.Allreduce(integral, integral_full)
         return integral_full  # type: ignore
 
-    @cached_method()
     def make_normalize_point_compiled(
         self, reflect: bool = True
     ) -> Callable[[FloatingArray], None]:
@@ -1339,26 +1328,9 @@ class GridBase(metaclass=ABCMeta):
             which describes the coordinates of the points. This array is modified
             in-place!
         """
-        num_axes = self.num_axes
-        periodic = np.array(self.periodic)  # using a tuple instead led to a numba error
-        bounds = np.array(self.axes_bounds)
-        xmin = bounds[:, 0]
-        xmax = bounds[:, 1]
-        size = bounds[:, 1] - bounds[:, 0]
-
-        @jit
-        def normalize_point(point: FloatingArray) -> None:
-            """Helper function normalizing a single point."""
-            assert point.ndim == 1  # only support single points
-            for i in range(num_axes):
-                if periodic[i]:
-                    point[i] = (point[i] - xmin[i]) % size[i] + xmin[i]
-                elif reflect:
-                    arg = (point[i] - xmax[i]) % (2 * size[i]) - size[i]
-                    point[i] = xmin[i] + abs(arg)
-                # else: do nothing
-
-        return normalize_point  # type: ignore
+        # Removed on 2025-12-06
+        msg = "This method is no longer supported"
+        raise NotImplementedError(msg)
 
     @cached_method()
     def make_cell_volume_compiled(self, flat_index: bool = False) -> CellVolume:
