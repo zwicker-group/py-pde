@@ -22,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 # Requirements for setuptools
@@ -64,25 +65,54 @@ docstring-code-format = true
 
 [tool.ruff.lint]
 select = [
-    "UP",  # pyupgrade
-    "I",  # isort
     "A",  # flake8-builtins 
     "B",  # flake8-bugbear
     "C4",  # flake8-comprehensions
+    "DTZ", # flake8-datetimez
+    "E", # pycodestyle errors
+    "EM", # flake8-errmsg
+    "EXE", # flake8-executable
+    "F",  # py-flakes
     "FA", # flake8-future-annotations
-    "ISC", # flake8-implicit-str-concat
-    "ICN", # flake8-import-conventions
-    "LOG", # flake8-logging
+    "FLY", # flynt
+    "FURB", # refurb
     "G", # flake8-logging-format
+    "I",  # isort
+    "ICN", # flake8-import-conventions
+    "INT", # flake8-gettext
+    "ISC", # flake8-implicit-str-concat
+    "LOG", # flake8-logging
+    "NPY", # numpy rules
+    "PD", # pandas-vet 
+    "PERF", # Perflint 
     "PIE", # flake8-pie
     "PT", # flake8-pytest-style
-    "Q", # flake8-quotes
-    "RSE", # flake8-raise
-    "RET", # flake8-return
-    "SIM", # flake8-simplify
     "PTH", # flake8-use-pathlib
+    "PYI", # flake8-pyi 
+    "Q", # flake8-quotes
+    "RET", # flake8-return
+    "RSE", # flake8-raise
+    "RUF", # general fixes by ruff
+    "SIM", # flake8-simplify
+    "SLOT", # flake8-slots
+    "TC", # flake8-type-checking
+    "TRY", # tryceratops 
+    "UP",  # pyupgrade
+    "W", # pycodestyle warnings
 ]
-ignore = ["A005", "B007", "B027", "B028", "SIM108", "ISC001", "PT006", "PT011", "RET504", "RET505", "RET506"]
+ignore = [
+    "A005",  # allow module names that shadow python built-ins
+    "B007",  # this check seems wrong since the loop variable could be used outside loop
+    "B027",  # allow empty methods
+    "E402",  # allow Module level import not at top of file
+    "PT011",  # allow broad exceptions
+    "PYI034",  # until python 3.11 is minimal version
+    "RET504",  # cannot use this because of numba
+    "RUF001",  # allow single greek letters
+    "RUF002",  # allow using prime in docstrings
+    "RUF012",  # allow using mixture of class and instance variables
+    "SIM108",  # don't use ternary operator too much
+]
 
 [tool.ruff.lint.isort]
 section-order = ["future", "standard-library", "third-party", "first-party", "self", "local-folder"]
