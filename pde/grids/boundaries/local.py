@@ -59,19 +59,17 @@ boundary.
 from __future__ import annotations
 
 import logging
-import os
 import warnings
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar, Union
 
-import numba as nb
 import numpy as np
 from numba.extending import register_jitable
 from typing_extensions import Self
 
 from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring
-from ...tools.numba import jit
+from ...tools.misc import number
 from ..base import GridBase, PeriodicityError
 
 if TYPE_CHECKING:
@@ -876,7 +874,7 @@ class ExpressionBC(BCBase):
 
         # quickly check whether the expression was parsed correctly
         try:
-            self._func(do_jit=False)(*self._test_values)
+            self._make_function()(*self._test_values)
         except Exception as err:
             if self._is_func:
                 msg = f"Could not evaluate BC function. Expected signature {signature}."
@@ -899,57 +897,27 @@ class ExpressionBC(BCBase):
         test_values.append(0)
         return tuple(test_values)
 
-    def _prepare_function(self, func: Callable | float, do_jit: bool) -> Callable:
+    def _prepare_function(self, func: Callable | str | complex) -> Callable:
         """Helper function that compiles a single function given as a parameter."""
         if not callable(func):
             # the function is just a number, which we also support
-            func_value = float(func)  # TODO: support complex numbers
+            func_value = number(func)
 
-            @register_jitable
             def value_func(*args):
                 return func_value
 
-            return value_func  # type: ignore
+            return value_func
 
-        if not do_jit:
-            # function is callable, but does not need to be compiled
-            return func
+        return func
 
-        # function is callable and needs to be compiled
-        try:
-            # try compiling the function
-            value_func = jit(func)
-            # and evaluate it, so compilation is forced
-            value_func(*self._test_values)
-
-            if os.environ.get("PYPDE_TESTRUN"):
-                # ensure that the except path is also tested
-                msg = "Force except"
-                raise nb.NumbaError(msg)  # noqa: TRY301
-
-        except nb.NumbaError:
-            # if compilation fails, we simply fall back to pure-python mode
-            _logger.warning("Cannot compile BC %s", self)
-
-            @register_jitable
-            def value_func(*args):
-                with nb.objmode(value="double"):
-                    value = func(*args)
-                return value
-
-        return value_func  # type: ignore
-
-    def _get_function_from_userfunc(self, do_jit: bool) -> Callable:
-        """Returns function from user function evaluating the value of the virtual
-        point.
-
-        Args:
-            do_jit (bool):
-                Determines whether the returned function is numba-compiled
-        """
+    @cached_method()
+    def _make_function(self) -> Callable:
+        """Returns function that evaluates the value of the virtual point."""
+        if not self._is_func:
+            return self._func_expression
         # `value` is a callable function
         target = self._input["target"]
-        value_func = self._prepare_function(self._input["value_expr"], do_jit=do_jit)
+        value_func = self._prepare_function(self._input["value_expr"])
 
         if target == "virtual_point":
             return value_func
@@ -957,28 +925,23 @@ class ExpressionBC(BCBase):
         if target == "value":
             # Dirichlet boundary condition
 
-            @register_jitable
             def virtual_from_value(adjacent_value, *args):
                 return 2 * value_func(adjacent_value, *args) - adjacent_value
 
-            return virtual_from_value  # type: ignore
+            return virtual_from_value
 
         if target == "derivative":
             # Neumann boundary condition
 
-            @register_jitable
             def virtual_from_derivative(adjacent_value, dx, *args):
                 return dx * value_func(adjacent_value, dx, *args) + adjacent_value
 
-            return virtual_from_derivative  # type: ignore
+            return virtual_from_derivative
 
         if target == "mixed":
             # special case of a Robin boundary condition, which also uses `const`
-            const_func = self._prepare_function(
-                self._input["const_expr"], do_jit=do_jit
-            )
+            const_func = self._prepare_function(self._input["const_expr"])
 
-            @register_jitable
             def virtual_from_mixed(adjacent_value, dx, *args):
                 value_dx = dx * value_func(adjacent_value, dx, *args)
                 const_value = const_func(adjacent_value, dx, *args)
@@ -986,87 +949,10 @@ class ExpressionBC(BCBase):
                 expr_B = (value_dx - 2) / (value_dx + 2)
                 return expr_A - expr_B * adjacent_value
 
-            return virtual_from_mixed  # type: ignore
+            return virtual_from_mixed
 
         msg = f"Unknown target `{target}` for expression"
         raise ValueError(msg)
-
-    def _get_function_from_expression(self, do_jit: bool) -> Callable:
-        """Returns function from expression evaluating the value of the virtual point.
-
-        Args:
-            do_jit (bool):
-                Determines whether the returned function is numba-compiled
-        """
-        if not do_jit:
-            return self._func_expression
-
-        func = self._func_expression._get_function_cached(single_arg=False)
-        try:
-            # try to compile the expression that was given
-            value_func = jit(func)
-            # call the function to actually trigger compilation
-            value_func(*self._test_values)
-
-            if os.environ.get("PYPDE_TESTRUN"):
-                # ensure that the except path is also tested
-                msg = "Force except"
-                raise nb.NumbaError(msg)  # noqa: TRY301
-
-        except nb.NumbaError:
-            # if compilation fails, we simply fall back to pure-python mode
-            _logger.warning("Cannot compile BC %s", self._func_expression)
-            # calculate the expected value to test this later (and fail early)
-            expected = func(*self._test_values)
-
-            num_axes = self.grid.num_axes
-            if num_axes == 1:
-
-                @jit
-                def value_func(grid_value, dx, x, t):
-                    with nb.objmode(value="double"):
-                        value = func(grid_value, dx, x, t)
-                    return value
-
-            elif num_axes == 2:
-
-                @jit
-                def value_func(grid_value, dx, x, y, t):
-                    with nb.objmode(value="double"):
-                        value = func(grid_value, dx, x, y, t)
-                    return value
-
-            elif num_axes == 3:
-
-                @jit
-                def value_func(grid_value, dx, x, y, z, t):
-                    with nb.objmode(value="double"):
-                        value = func(grid_value, dx, x, y, z, t)
-                    return value
-
-            else:
-                # cheap way to signal a problem
-                raise ValueError from None
-
-            # compile the actual function and check the result
-            result_compiled = value_func(*self._test_values)
-            if not np.allclose(result_compiled, expected):
-                msg = "Compiled function does not give same value"
-                raise RuntimeError(msg) from None
-
-        return value_func  # type: ignore
-
-    @cached_method()
-    def _func(self, do_jit: bool) -> Callable:
-        """Returns function that evaluates the value of the virtual point.
-
-        Args:
-            do_jit (bool):
-                Determines whether the returned function is numba-compiled
-        """
-        if self._is_func:
-            return self._get_function_from_userfunc(do_jit=do_jit)
-        return self._get_function_from_expression(do_jit=do_jit)
 
     def _repr_value(self):
         if self._input["target"] == "mixed":
@@ -1238,7 +1124,7 @@ class ExpressionBC(BCBase):
             t = float(args["t"])
 
         # calculate the virtual points
-        data_full[tuple(idx_write)] = self._func(do_jit=False)(values, dx, *coords, t)
+        data_full[tuple(idx_write)] = self._make_function()(values, dx, *coords, t)
 
 
 class ExpressionValueBC(ExpressionBC):

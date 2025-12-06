@@ -5,7 +5,9 @@
 
 from __future__ import annotations
 
+import logging
 import math
+import os
 from numbers import Number
 from typing import TYPE_CHECKING, Callable
 
@@ -25,6 +27,7 @@ from ....grids.boundaries.local import (
     UserBC,
     _PeriodicBC,
 )
+from ....tools.misc import number
 from ....tools.numba import address_as_void_pointer, jit, numba_dict
 from ..utils import make_get_arr_1d
 
@@ -35,6 +38,9 @@ if TYPE_CHECKING:
         NumericArray,
         VirtualPointEvaluator,
     )
+
+_logger = logging.getLogger(__name__)
+""":class:`logging.Logger`: Logger instance."""
 
 
 def make_local_ghost_cell_setter(bc: BCBase) -> GhostCellSetter:
@@ -265,6 +271,158 @@ def _make_user_virtual_point_evaluator(bc: UserBC) -> VirtualPointEvaluator:
     return virtual_point  # type: ignore
 
 
+def _prepare_function(bc: ExpressionBC, func: Callable | float) -> Callable:
+    """Helper function that compiles a single function given as a parameter."""
+    if not callable(func):
+        # the function is just a number, which we also need to support
+        func_value = number(func)
+
+        @register_jitable
+        def value_func(*args):
+            return func_value
+
+        return value_func  # type: ignore
+
+    # function is callable and needs to be compiled
+    try:
+        # try compiling the function
+        value_func = jit(func)
+        # and evaluate it, so compilation is forced
+        value_func(*bc._test_values)
+
+        if os.environ.get("PYPDE_TESTRUN"):
+            # ensure that the except path is also tested
+            msg = "Force except"
+            raise nb.NumbaError(msg)  # noqa: TRY301
+
+    except nb.NumbaError:
+        # if compilation fails, we simply fall back to pure-python mode
+        _logger.warning("Cannot compile BC %s", bc)
+
+        @register_jitable
+        def value_func(*args):
+            with nb.objmode(value="double"):
+                value = func(*args)
+            return value
+
+    return value_func  # type: ignore
+
+
+def _make_expression_function_from_userfunc(bc: ExpressionBC) -> Callable:
+    """Returns function from user function evaluating the value of the virtual point.
+
+    Args:
+        bc (:class:`~pde.grids.boundaries.local.ExpressionBC`):
+            Defines the boundary conditions for a particular side, for which the virtual
+            point evaluator should be defined.
+    """
+    # `value` is a callable function
+    target = bc._input["target"]
+    value_func = _prepare_function(bc, bc._input["value_expr"])
+
+    if target == "virtual_point":
+        return value_func
+
+    if target == "value":
+        # Dirichlet boundary condition
+
+        @register_jitable
+        def virtual_from_value(adjacent_value, *args):
+            return 2 * value_func(adjacent_value, *args) - adjacent_value
+
+        return virtual_from_value  # type: ignore
+
+    if target == "derivative":
+        # Neumann boundary condition
+
+        @register_jitable
+        def virtual_from_derivative(adjacent_value, dx, *args):
+            return dx * value_func(adjacent_value, dx, *args) + adjacent_value
+
+        return virtual_from_derivative  # type: ignore
+
+    if target == "mixed":
+        # special case of a Robin boundary condition, which also uses `const`
+        const_func = _prepare_function(bc, bc._input["const_expr"])
+
+        @register_jitable
+        def virtual_from_mixed(adjacent_value, dx, *args):
+            value_dx = dx * value_func(adjacent_value, dx, *args)
+            const_value = const_func(adjacent_value, dx, *args)
+            expr_A = 2 * dx / (value_dx + 2) * const_value
+            expr_B = (value_dx - 2) / (value_dx + 2)
+            return expr_A - expr_B * adjacent_value
+
+        return virtual_from_mixed  # type: ignore
+
+    msg = f"Unknown target `{target}` for expression"
+    raise ValueError(msg)
+
+
+def _make_expression_function_from_expression(bc: ExpressionBC) -> Callable:
+    """Returns function from expression evaluating the value of the virtual point.
+
+    Args:
+        bc (:class:`~pde.grids.boundaries.local.ExpressionBC`):
+            Defines the boundary conditions for a particular side, for which the virtual
+            point evaluator should be defined.
+    """
+    func = bc._func_expression.get_function(backend="numba", single_arg=False)
+    try:
+        # try to compile the expression that was given
+        value_func = jit(func)
+        # call the function to actually trigger compilation
+        value_func(*bc._test_values)
+
+        if os.environ.get("PYPDE_TESTRUN"):
+            # ensure that the except path is also tested
+            msg = "Force except"
+            raise nb.NumbaError(msg)  # noqa: TRY301
+
+    except nb.NumbaError:
+        # if compilation fails, we simply fall back to pure-python mode
+        _logger.warning("Cannot compile BC %s", bc._func_expression)
+        # calculate the expected value to test this later (and fail early)
+        expected = func(*bc._test_values)
+
+        num_axes = bc.grid.num_axes
+        if num_axes == 1:
+
+            @jit
+            def value_func(grid_value, dx, x, t):
+                with nb.objmode(value="double"):
+                    value = func(grid_value, dx, x, t)
+                return value
+
+        elif num_axes == 2:
+
+            @jit
+            def value_func(grid_value, dx, x, y, t):
+                with nb.objmode(value="double"):
+                    value = func(grid_value, dx, x, y, t)
+                return value
+
+        elif num_axes == 3:
+
+            @jit
+            def value_func(grid_value, dx, x, y, z, t):
+                with nb.objmode(value="double"):
+                    value = func(grid_value, dx, x, y, z, t)
+                return value
+
+        else:
+            # cheap way to signal a problem
+            raise ValueError from None
+
+        # compile the actual function and check the result
+        result_compiled = value_func(*bc._test_values)
+        if not np.allclose(result_compiled, expected):
+            msg = "Compiled function does not give same value"
+            raise RuntimeError(msg) from None
+
+    return value_func  # type: ignore
+
+
 def _make_expression_virtual_point_evaluator(bc: ExpressionBC) -> VirtualPointEvaluator:
     """Return function that sets evaluates the value of a virtual point.
 
@@ -289,7 +447,11 @@ def _make_expression_virtual_point_evaluator(bc: ExpressionBC) -> VirtualPointEv
         warn_if_time_not_set = False
     else:
         warn_if_time_not_set = bc._func_expression.depends_on("t")
-    func = bc._func(do_jit=True)
+
+    if bc._is_func:
+        func = _make_expression_function_from_userfunc(bc)
+    else:
+        func = _make_expression_function_from_expression(bc)
 
     @jit
     def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None) -> float:
