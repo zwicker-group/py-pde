@@ -278,6 +278,8 @@ def number(value: Number | str) -> Number:
     Result:
         Number: A complex number or a float if the imaginary part vanishes
     """
+    if isinstance(value, str):
+        value = value.replace(" ", "")
     result = complex(value)
     return result.real if result.imag == 0 else result
 

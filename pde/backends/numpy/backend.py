@@ -45,7 +45,10 @@ class NumpyBackend(BackendBase):
 
         def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
             """Default implementation that simply uses the python interface."""
-            boundaries.set_ghost_cells(data_full, *args)
+            if args is None:
+                boundaries.set_ghost_cells(data_full)
+            else:
+                boundaries.set_ghost_cells(data_full, *args)
 
         return ghost_cell_setter
 

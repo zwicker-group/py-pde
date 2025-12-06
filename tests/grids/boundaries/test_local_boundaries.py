@@ -601,7 +601,7 @@ def test_expression_bc_user_expr_nojit(dim):
     # check setting boundary conditions using compiled setup
     bcs = grid.get_boundary_conditions(bc)
     field = ScalarField(grid, 1)
-    backends["numba"].make_ghost_cell_setter(bcs)(field._data_full)
+    backends["numpy"].make_ghost_cell_setter(bcs)(field._data_full)
     if dim == 1:
         np.testing.assert_allclose(field._data_full, 1)
     elif dim == 2:
