@@ -348,6 +348,152 @@ class NumbaBackend(NumpyBackend):
         # return the compiled versions of the operator
         return apply_op_compiled  # type: ignore
 
+    def _make_cell_volume_getter(self, grid: GridBase, *, flat_index: bool = False):
+        """Return a compiled function returning the volume of a grid cell.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the function is defined
+            flat_index (bool):
+                When True, cell_volumes are indexed by a single integer into the
+                flattened array.
+
+        Returns:
+            function: returning the volume of the chosen cell
+        """
+        if grid.cell_volume_data is not None and all(
+            np.isscalar(d) for d in grid.cell_volume_data
+        ):
+            # all cells have the same volume
+            cell_volume = np.prod(grid.cell_volume_data)
+
+            @jit
+            def get_cell_volume(*args) -> float:
+                return cell_volume  # type: ignore
+
+        else:
+            # some cells have a different volume
+            cell_volumes = grid.cell_volumes
+
+            if flat_index:
+
+                @jit
+                def get_cell_volume(idx: int) -> float:
+                    return cell_volumes.flat[idx]  # type: ignore
+
+            else:
+
+                @jit
+                def get_cell_volume(*args) -> float:
+                    return cell_volumes[args]  # type: ignore
+
+        return get_cell_volume  # type: ignore
+
+    def make_integrator(
+        self, grid: GridBase
+    ) -> Callable[[NumericArray], NumberOrArray]:
+        """Return function that integrates discretized data over a grid.
+
+        If this function is used in a multiprocessing run (using MPI), the integrals are
+        performed on all subgrids and then accumulated. Each process then receives the
+        same value representing the global integral.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the integrator is defined
+
+        Returns:
+            A function that takes a numpy array and returns the integral with the
+            correct weights given by the cell volumes.
+        """
+        num_axes = grid.num_axes
+        # cell volume varies with position
+        get_cell_volume = self._make_cell_volume_getter(grid, flat_index=True)
+
+        def integrate_local(arr: NumericArray) -> NumberOrArray:
+            """Integrates data over a grid using numpy."""
+            # Dummy function so we can overwrite it using numba. This function will only
+            # be called when the numba backend is used with DISABLE_JIT=True
+            amounts = arr * grid.cell_volumes
+            return amounts.sum(axis=tuple(range(-num_axes, 0, 1)))  # type: ignore
+
+        # We need to overload the integrate function since we want to be able to
+        # integrate scalar and tensorial fields, which lead to different signatures.
+
+        @nb_overload(integrate_local)
+        def ol_integrate_local(
+            arr: NumericArray,
+        ) -> Callable[[NumericArray], NumberOrArray]:
+            """Integrates data over a grid using numba."""
+            if arr.ndim == num_axes:
+                # `arr` is a scalar field
+                grid_shape = grid.shape
+
+                def impl(arr: NumericArray) -> Number:
+                    """Integrate a scalar field."""
+                    assert arr.shape == grid_shape
+                    total = 0
+                    for i in range(arr.size):
+                        total += get_cell_volume(i) * arr.flat[i]  # type: ignore
+                    return total
+
+            else:
+                # `arr` is a tensorial field with rank >= 1
+                tensor_shape = (grid.dim,) * (arr.ndim - num_axes)
+                data_shape = tensor_shape + grid.shape
+
+                def impl(arr: NumericArray) -> NumericArray:  # type: ignore
+                    """Integrate a tensorial field."""
+                    assert arr.shape == data_shape
+                    total = np.zeros(tensor_shape)
+                    for idx in np.ndindex(*tensor_shape):
+                        arr_comp = arr[idx]
+                        for i in range(arr_comp.size):
+                            total[idx] += get_cell_volume(i) * arr_comp.flat[i]
+                    return total  # type: ignore
+
+            return impl
+
+        @jit
+        def integrate_global(arr: NumericArray) -> NumberOrArray:
+            """Integrate data.
+
+            Args:
+                arr (:class:`~numpy.ndarray`): discretized data on grid
+            """
+            return integrate_local(arr)
+
+        return integrate_global
+
+        # # deal with MPI multiprocessing
+        # if self._mesh is None or len(self._mesh) == 1:
+        #     # standard case of a single integral
+        #     @jit
+        #     def integrate_global(arr: NumericArray) -> NumberOrArray:
+        #         """Integrate data.
+
+        #         Args:
+        #             arr (:class:`~numpy.ndarray`): discretized data on grid
+        #         """
+        #         return integrate_local(arr)
+
+        # else:
+        #     # we are in a parallel run, so we need to gather the sub-integrals from
+        #     # all subgrids in the grid mesh
+        #     from ..tools.mpi import mpi_allreduce
+
+        #     @jit
+        #     def integrate_global(arr: NumericArray) -> NumberOrArray:
+        #         """Integrate data over MPI parallelized grid.
+
+        #         Args:
+        #             arr (:class:`~numpy.ndarray`): discretized data on grid
+        #         """
+        #         integral = integrate_local(arr)
+        #         return mpi_allreduce(integral, operator="SUM")  # type: ignore
+
+        # return integrate_global  # type: ignore
+
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
     ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:

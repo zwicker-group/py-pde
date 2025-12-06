@@ -481,7 +481,7 @@ class PDE(PDEBase):
 
         if "integral" in operators:
             # add an operator that integrates a field
-            ops_general["integral"] = state.grid.make_integrator()
+            ops_general["integral"] = state.grid.make_integrator(backend)
 
         # Create the right hand sides for all variables. It is important to do this in a
         # separate function, so the closures work reliably

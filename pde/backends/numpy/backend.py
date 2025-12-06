@@ -191,6 +191,34 @@ class NumpyBackend(BackendBase):
 
         return apply_operator
 
+    def make_integrator(
+        self, grid: GridBase
+    ) -> Callable[[NumericArray], NumberOrArray]:
+        """Return function that integrates discretized data over a grid.
+
+        If this function is used in a multiprocessing run (using MPI), the integrals are
+        performed on all subgrids and then accumulated. Each process then receives the
+        same value representing the global integral.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the operator is needed
+
+        Returns:
+            A function that takes a numpy array and returns the integral with the
+            correct weights given by the cell volumes.
+        """
+        num_axes = grid.num_axes
+        # cell volume varies with position
+        cell_volumes = np.broadcast_to(grid.cell_volumes, grid.shape)
+
+        def integrate(arr: NumericArray) -> NumberOrArray:
+            """Integrates data over a grid using numpy."""
+            amounts = arr * cell_volumes
+            return amounts.sum(axis=tuple(range(-num_axes, 0, 1)))  # type: ignore
+
+        return integrate
+
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
     ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:

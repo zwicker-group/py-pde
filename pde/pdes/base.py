@@ -412,11 +412,13 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             Function determining the right hand side of the PDE
         """
+        from ..backends.numba import numba_backend
+
         if self.is_sde:
             data_shape: tuple[int, ...] = state.data.shape
             noise_var: float
-            cell_volume: Callable[[int], float] = state.grid.make_cell_volume_compiled(
-                flat_index=True
+            cell_volume: Callable[[int], float] = (
+                numba_backend._make_cell_volume_getter(state.grid, flat_index=True)
             )
             if state.dtype != float:
                 msg = "Noise is only supported for float types"

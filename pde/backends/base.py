@@ -166,11 +166,11 @@ class BackendBase:
         """Create a function to set the valid part of a full data array.
 
         Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the data setter is defined
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 If supplied, the returned function also enforces boundary conditions by
                 setting the ghost cells to the correct values
-            backend (str):
-                The backend to use for making the operator
 
         Returns:
             callable:
@@ -180,6 +180,26 @@ class BackendBase:
                 given, a third argument is allowed, which sets arguments for the BCs.
         """
         msg = f"Data setter not defined for backend {self.name}"
+        raise NotImplementedError(msg)
+
+    def make_integrator(
+        self, grid: GridBase
+    ) -> Callable[[NumericArray], NumberOrArray]:
+        """Return function that integrates discretized data over a grid.
+
+        If this function is used in a multiprocessing run (using MPI), the integrals are
+        performed on all subgrids and then accumulated. Each process then receives the
+        same value representing the global integral.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the operator is needed
+
+        Returns:
+            A function that takes a numpy array and returns the integral with the
+            correct weights given by the cell volumes.
+        """
+        msg = f"Integrator not defined for backend {self.name}"
         raise NotImplementedError(msg)
 
     def make_operator(
