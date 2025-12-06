@@ -131,7 +131,7 @@ class ImplicitSolver(SolverBase):
         self.info["stochastic"] = True
 
         rhs = self.pde.make_pde_rhs(state, backend=self.backend)
-        rhs_sde = self._make_sde_rhs(state, backend=self.backend)
+        rhs_sde = self.pde.make_sde_rhs(state, backend=self.backend)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
 

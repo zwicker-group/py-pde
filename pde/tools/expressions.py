@@ -379,8 +379,7 @@ class ExpressionBase(metaclass=ABCMeta):
             user_funcs (dict):
                 Additional functions that can be used in the expression
             prepare_compilation (bool):
-                Determines whether all user functions are marked with
-                :func:`numba.extending.register_jitable` to prepare for compilation.
+                Determines whether user functions compiled with numba
 
         Returns:
             function: the function
@@ -406,8 +405,7 @@ class ExpressionBase(metaclass=ABCMeta):
                 Determines whether the function takes all variables in a single argument
                 as an array or whether all variables need to be supplied separately.
             prepare_compilation (bool):
-                Determines whether all user functions are marked with
-                :func:`numba.extending.register_jitable` to prepare for compilation.
+                Determines whether user functions compiled with numba
 
         Returns:
             function: the function

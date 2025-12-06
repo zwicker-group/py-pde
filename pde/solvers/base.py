@@ -320,36 +320,7 @@ class SolverBase:
             msg = "Cannot create a deterministic stepper for a stochastic equation"
             raise RuntimeError(msg)
 
-        rhs = self.pde.make_pde_rhs(state, backend=backend)
-        self._check_backend(rhs)
-        return rhs
-
-    def _make_sde_rhs(
-        self, state: TField, backend: str = "auto"
-    ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
-        """Obtain a function for evaluating the right hand side.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted.
-            backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
-
-        Raises:
-            RuntimeError: when a stochastic partial differential equation is encountered
-            but `allow_stochastic == False`.
-
-        Returns:
-            A function that is called with data given by a :class:`~numpy.ndarray` and a
-            time. The function returns the deterministic evolution rate and (if
-            applicable) a realization of the associated noise.
-        """
-        rhs = self.pde.make_sde_rhs(state, backend=backend)  # type: ignore
-        self._check_backend(rhs)
-        return rhs
+        return self.pde.make_pde_rhs(state, backend=backend)
 
     def _make_single_step_fixed_dt(
         self, state: TField, dt: float

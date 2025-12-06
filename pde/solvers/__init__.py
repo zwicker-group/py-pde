@@ -4,7 +4,7 @@
    :nosignatures:
 
    ~controller.Controller
-   ~explicit.EulerSolve
+   ~explicit.EulerSolver
    ~explicit.RungeKuttaSolver
    ~explicit_mpi.ExplicitMPISolver
    ~implicit.ImplicitSolver
