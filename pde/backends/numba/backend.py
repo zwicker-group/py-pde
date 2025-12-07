@@ -21,6 +21,7 @@ from ...solvers import AdaptiveSolverBase, SolverBase
 from ...tools.numba import get_common_numba_dtype, jit, make_array_constructor
 from ..numpy.backend import NumpyBackend, OperatorInfo
 from . import grids
+from .overloads import OnlineStatistics
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -1248,6 +1249,8 @@ class NumbaBackend(NumpyBackend):
         assert solver.backend == self.name
 
         from ._solvers import make_adaptive_stepper, make_fixed_stepper
+
+        solver.info["dt_statistics"] = OnlineStatistics()
 
         if stepper_style == "fixed":
             return make_fixed_stepper(solver, state, dt=dt)

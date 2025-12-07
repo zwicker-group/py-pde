@@ -7,12 +7,15 @@ from __future__ import annotations
 
 import math
 
+import numba as nb
 import numpy as np
-from numba import vectorize
+from numba.experimental import jitclass
 from numba.extending import overload
 
+from ...tools.math import OnlineStatistics as OnlineStatistics_np
 
-@vectorize()
+
+@nb.vectorize()
 def _heaviside_implementation_ufunc(x1, x2):
     """Ufunc implementation of the Heaviside function used for numba and sympy.
 
@@ -53,4 +56,16 @@ def np_heaviside(x1, x2):
     return _heaviside_implementation
 
 
-__all__ = []
+# make the `OnlineStatistics` class usable from numba
+OnlineStatistics = jitclass(
+    [
+        ("min", nb.double),
+        ("max", nb.double),
+        ("mean", nb.double),
+        ("_mean2", nb.double),
+        ("count", nb.uint),
+    ]
+)(OnlineStatistics_np)
+
+
+__all__ = ["OnlineStatistics"]

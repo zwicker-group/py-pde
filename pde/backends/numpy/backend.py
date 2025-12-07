@@ -11,6 +11,7 @@ import numpy as np
 
 from ...fields import DataFieldBase, VectorField
 from ...solvers import AdaptiveSolverBase, SolverBase
+from ...tools.math import OnlineStatistics
 from ..base import BackendBase, OperatorInfo
 
 if TYPE_CHECKING:
@@ -350,6 +351,8 @@ class NumpyBackend(BackendBase):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
+        solver.info["dt_statistics"] = OnlineStatistics()
+
         assert solver.backend == self.name
         if stepper_style == "fixed":
             return solver._make_fixed_stepper(state, dt)

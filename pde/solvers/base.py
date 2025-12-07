@@ -602,8 +602,6 @@ class AdaptiveSolverBase(SolverBase):
         else:
             dt_float = float(dt)  # explicit casting to help type checking
 
-        # create stepper with adaptive steps
-        self.info["dt_statistics"] = OnlineStatistics()
         # create stepper with fixed steps
         adaptive_stepper: AdaptiveStepperType = self._backend_obj.make_inner_stepper(
             solver=self, stepper_style="adaptive", state=state, dt=dt_float

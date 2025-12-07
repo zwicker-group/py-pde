@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 
-from ..tools.math import OnlineStatistics
 from .explicit import EulerSolver
 
 if TYPE_CHECKING:
@@ -172,7 +171,6 @@ class ExplicitMPISolver(EulerSolver):
 
         if self.adaptive:
             # create stepper with adaptive steps
-            self.info["dt_statistics"] = OnlineStatistics()
             adaptive_stepper: AdaptiveStepperType = (
                 self._backend_obj.make_inner_stepper(
                     solver=self, stepper_style="adaptive", state=sub_state, dt=dt
