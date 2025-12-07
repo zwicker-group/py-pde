@@ -9,14 +9,45 @@ import numba as nb
 import numpy as np
 from numba import types
 from numba.extending import SentryLiteralArgs, overload, register_jitable
-from numba_mpi import Operator
 
-from ...tools.mpi import mpi_allreduce, size
+from ...tools.mpi import Operator, mpi_allreduce, mpi_recv, mpi_send, size
 
 try:
     from numba.types import Literal
 except ImportError:
     from numba.types.misc import Literal
+
+
+@overload(mpi_send)
+def ol_mpi_send(data, dest: int, tag: int):
+    """Overload the `mpi_send` function."""
+    import numba_mpi
+
+    def impl(data, dest: int, tag: int) -> None:
+        """Reduce a single number across all cores."""
+        status = numba_mpi.send(data, dest, tag)
+        assert status == 0
+
+    return impl
+
+
+@overload(mpi_recv)
+def ol_mpi_recv(data, source: int, tag: int):
+    """Overload the `mpi_recv` function."""
+    import numba_mpi
+
+    def impl(data, source: int, tag: int) -> None:
+        """Receive data from another MPI node.
+
+        Args:
+            data: A buffer into which the received data is written
+            dest (int): The ID of the sending node
+            tag (int): A numeric tag identifying the message
+        """
+        status = numba_mpi.recv(data, source, tag)
+        assert status == 0
+
+    return impl
 
 
 @overload(mpi_allreduce)

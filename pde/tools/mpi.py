@@ -22,7 +22,6 @@ import sys
 from typing import TYPE_CHECKING
 
 import numpy as np
-from numba.extending import overload
 
 if TYPE_CHECKING:
     from numba_mpi import Operator
@@ -108,19 +107,6 @@ def mpi_send(data, dest: int, tag: int) -> None:
     MPI.COMM_WORLD.send(data, dest=dest, tag=tag)
 
 
-@overload(mpi_send)
-def ol_mpi_send(data, dest: int, tag: int):
-    """Overload the `mpi_send` function."""
-    import numba_mpi
-
-    def impl(data, dest: int, tag: int) -> None:
-        """Reduce a single number across all cores."""
-        status = numba_mpi.send(data, dest, tag)
-        assert status == 0
-
-    return impl
-
-
 def mpi_recv(data, source, tag) -> None:
     """Receive data from another MPI node.
 
@@ -130,25 +116,6 @@ def mpi_recv(data, source, tag) -> None:
         tag (int): A numeric tag identifying the message
     """
     data[...] = MPI.COMM_WORLD.recv(source=source, tag=tag)
-
-
-@overload(mpi_recv)
-def ol_mpi_recv(data, source: int, tag: int):
-    """Overload the `mpi_recv` function."""
-    import numba_mpi
-
-    def impl(data, source: int, tag: int) -> None:
-        """Receive data from another MPI node.
-
-        Args:
-            data: A buffer into which the received data is written
-            dest (int): The ID of the sending node
-            tag (int): A numeric tag identifying the message
-        """
-        status = numba_mpi.recv(data, source, tag)
-        assert status == 0
-
-    return impl
 
 
 def mpi_allreduce(data, operator):
