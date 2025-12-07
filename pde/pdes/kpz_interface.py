@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Callable
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
 from .base import PDEBase, expr_prod
 
 if TYPE_CHECKING:
@@ -18,6 +17,8 @@ if TYPE_CHECKING:
 
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import NumericArray
+
+import numba as nb
 
 
 class KPZInterfacePDE(PDEBase):
@@ -119,8 +120,6 @@ class KPZInterfacePDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
-        import numba as nb
-
         arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)
 
@@ -128,7 +127,7 @@ class KPZInterfacePDE(PDEBase):
         laplace = state.grid.make_operator("laplace", bc=self.bc)
         gradient_squared = state.grid.make_operator("gradient_squared", bc=self.bc)
 
-        @jit(signature)
+        @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float):
             """Compiled helper function evaluating right hand side."""
             result = nu_value * laplace(state_data, args={"t": t})

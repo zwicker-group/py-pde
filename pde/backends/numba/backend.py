@@ -1247,7 +1247,7 @@ class NumbaBackend(NumpyBackend):
         """
         assert solver.backend == self.name
 
-        from .solvers import make_adaptive_stepper, make_fixed_stepper
+        from ._solvers import make_adaptive_stepper, make_fixed_stepper
 
         if stepper_style == "fixed":
             return make_fixed_stepper(solver, state, dt=dt)
