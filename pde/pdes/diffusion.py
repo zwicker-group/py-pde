@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Callable
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
 from .base import PDEBase, expr_prod
 
 if TYPE_CHECKING:
@@ -117,7 +116,7 @@ class DiffusionPDE(PDEBase):
         diffusivity_value = self.diffusivity
         laplace = state.grid.make_operator("laplace", bc=self.bc)
 
-        @jit(signature)
+        @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float):
             """Compiled helper function evaluating right hand side."""
             return diffusivity_value * laplace(state_data, args={"t": t})

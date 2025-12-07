@@ -14,7 +14,6 @@ import numpy as np
 
 from ..fields import FieldCollection
 from ..fields.datafield_base import DataFieldBase
-from ..tools.numba import jit
 
 if TYPE_CHECKING:
     from ..fields.base import FieldBase
@@ -412,6 +411,8 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             Function determining the right hand side of the PDE
         """
+        import numba as nb
+
         from ..backends.numba.grids import make_cell_volume_getter
 
         if self.is_sde:
@@ -431,7 +432,7 @@ class PDEBase(metaclass=ABCMeta):
                 for n, noise_var in enumerate(np.broadcast_to(self.noise, len(state))):
                     noises_var[state._slices[n]] = noise_var
 
-                @jit
+                @nb.jit
                 def noise_realization(
                     state_data: NumericArray, t: float
                 ) -> NumericArray:
@@ -450,7 +451,7 @@ class PDEBase(metaclass=ABCMeta):
                 # a single noise value is given for all fields
                 noise_var = float(self.noise)
 
-                @jit
+                @nb.jit
                 def noise_realization(
                     state_data: NumericArray, t: float
                 ) -> NumericArray:
@@ -463,7 +464,7 @@ class PDEBase(metaclass=ABCMeta):
 
         else:
 
-            @jit
+            @nb.jit
             def noise_realization(state_data: NumericArray, t: float) -> None:
                 """Helper function returning a noise realization."""
 
@@ -482,10 +483,12 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             Function determining the right hand side of the PDE
         """
+        import numba as nb
+
         evolution_rate = self._make_pde_rhs_numba_cached(state, **kwargs)
         noise_realization = self._make_noise_realization_numba(state, **kwargs)
 
-        @jit
+        @nb.jit
         def sde_rhs(
             state_data: NumericArray, t: float
         ) -> tuple[NumericArray, NumericArray]:

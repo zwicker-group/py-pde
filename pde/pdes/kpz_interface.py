@@ -18,8 +18,6 @@ if TYPE_CHECKING:
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import NumericArray
 
-import numba as nb
-
 
 class KPZInterfacePDE(PDEBase):
     r"""The Kardar–Parisi–Zhang (KPZ) equation.
@@ -120,6 +118,8 @@ class KPZInterfacePDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
+        import numba as nb
+
         arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)
 

@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable
 
-import numba as nb
-
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
@@ -128,6 +126,7 @@ class SwiftHohenbergPDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
+        import numba as nb
 
         arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)

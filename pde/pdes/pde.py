@@ -9,10 +9,7 @@ import numbers
 import re
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
-import numba as nb
 import numpy as np
-from numba.extending import register_jitable
-from numba.typed import Dict as NumbaDict
 from sympy import Symbol
 from sympy.core.function import UndefinedFunction
 
@@ -291,6 +288,8 @@ class PDE(PDEBase):
         Returns:
             callable: The function calculating the RHS
         """
+        from numba.typed import Dict as NumbaDict
+
         # modify a copy of the expression and the general operator array
         expr = self._rhs_expr[var].copy()
 
@@ -574,6 +573,8 @@ class PDE(PDEBase):
         Raises:
             NotImplementedError: When :attr:`post_step_hook` is `None`.
         """
+        from numba.extending import register_jitable
+
         if self.post_step_hook is None:
             msg = "`post_step_hook` not set"
             raise NotImplementedError(msg)
@@ -604,9 +605,11 @@ class PDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
+        import numba as nb
+
         num_fields = len(state)
         data_shape = state.data.shape
-        rhs_list = tuple(jit(cache["rhs_funcs"][i]) for i in range(num_fields))
+        rhs_list = tuple(nb.jit(cache["rhs_funcs"][i]) for i in range(num_fields))
 
         starts = tuple(slc.start for slc in state._slices)
         stops = tuple(slc.stop for slc in state._slices)
