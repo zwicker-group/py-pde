@@ -662,35 +662,6 @@ class NumbaBackend(NumpyBackend):
 
         return integrate_global  # type: ignore
 
-        # # deal with MPI multiprocessing
-        # if self._mesh is None or len(self._mesh) == 1:
-        #     # standard case of a single integral
-        #     @jit
-        #     def integrate_global(arr: NumericArray) -> NumberOrArray:
-        #         """Integrate data.
-
-        #         Args:
-        #             arr (:class:`~numpy.ndarray`): discretized data on grid
-        #         """
-        #         return integrate_local(arr)
-
-        # else:
-        #     # we are in a parallel run, so we need to gather the sub-integrals from
-        #     # all subgrids in the grid mesh
-        #     from ..tools.mpi import mpi_allreduce
-
-        #     @jit
-        #     def integrate_global(arr: NumericArray) -> NumberOrArray:
-        #         """Integrate data over MPI parallelized grid.
-
-        #         Args:
-        #             arr (:class:`~numpy.ndarray`): discretized data on grid
-        #         """
-        #         integral = integrate_local(arr)
-        #         return mpi_allreduce(integral, operator="SUM")  # type: ignore
-
-        # return integrate_global  # type: ignore
-
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
     ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
