@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from pde import UnitGrid
-from pde.backends.numba.boundaries.local import make_virtual_point_evaluator
+from pde.backends.numba._boundaries import make_virtual_point_evaluator
 from pde.grids.boundaries.local import BCBase
 
 

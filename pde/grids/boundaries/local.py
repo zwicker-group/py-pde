@@ -64,7 +64,6 @@ from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar, Union
 
 import numpy as np
-from numba.extending import register_jitable
 from typing_extensions import Self
 
 from ...tools.cache import cached_method
@@ -74,7 +73,6 @@ from ..base import GridBase, PeriodicityError
 
 if TYPE_CHECKING:
     from ...tools.typing import (
-        GhostCellSetter,
         NumberOrArray,
         NumericArray,
     )
@@ -511,16 +509,6 @@ class BCBase(metaclass=ABCMeta):
                 boundary (`derivative`).
         """
 
-    def make_ghost_cell_sender(self) -> GhostCellSetter:
-        """Return function that might mpi_send data to set ghost cells for this
-        boundary."""
-
-        @register_jitable
-        def noop(data_full: NumericArray, args=None) -> None:
-            """No-operation as the default case."""
-
-        return noop  # type: ignore
-
     def _get_value_cell_index(self, with_ghost_cells: bool) -> int:
         """Determine index of the cell from which field value is read.
 
@@ -617,53 +605,6 @@ class _MPIBC(BCBase):
         from ...tools.mpi import mpi_recv
 
         mpi_recv(data_full[self._idx_write], self._neighbor_id, self._mpi_flag)
-
-    def make_ghost_cell_sender(self) -> GhostCellSetter:
-        """Return function that sends data to set ghost cells for other boundaries."""
-        from ...tools.mpi import mpi_send
-
-        cell = self._neighbor_id
-        flag = self._mpi_flag
-        num_axes = self.grid.num_axes
-        axis = self.axis
-        idx = -2 if self.upper else 1  # index for reading data
-
-        if num_axes == 1:
-
-            def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
-                mpi_send(data_full[..., idx], cell, flag)
-
-        elif num_axes == 2:
-            if axis == 0:
-
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
-                    mpi_send(data_full[..., idx, 1:-1], cell, flag)
-
-            else:
-
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
-                    mpi_send(data_full[..., 1:-1, idx], cell, flag)
-
-        elif num_axes == 3:
-            if axis == 0:
-
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
-                    mpi_send(data_full[..., idx, 1:-1, 1:-1], cell, flag)
-
-            elif axis == 1:
-
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
-                    mpi_send(data_full[..., 1:-1, idx, 1:-1], cell, flag)
-
-            else:
-
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
-                    mpi_send(data_full[..., 1:-1, 1:-1, idx], cell, flag)
-
-        else:
-            raise NotImplementedError
-
-        return register_jitable(ghost_cell_sender)  # type: ignore
 
 
 class UserBC(BCBase):

@@ -396,3 +396,26 @@ class BackendBase:
         """
         msg = f"Expressions are not supported by backend {self.name}"
         raise NotImplementedError(msg)
+
+    def make_mpi_synchronizer(
+        self, operator: int | str = "MAX"
+    ) -> Callable[[float], float]:
+        """Return function that synchronizes values between multiple MPI processes.
+
+        Warning:
+            The default implementation does not synchronize anything. This is simply a
+            hook, which can be used by backends that support MPI
+
+        Args:
+            operator (str or int):
+                Flag determining how the value from multiple nodes is combined.
+                Possible values include "MAX", "MIN", and "SUM".
+
+        Returns:
+            Function that can be used to synchronize values across nodes
+        """
+
+        def synchronize_value(value: float) -> float:
+            return value
+
+        return synchronize_value

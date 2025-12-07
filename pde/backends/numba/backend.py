@@ -14,13 +14,18 @@ from numba.extending import is_jitted, register_jitable
 from numba.extending import overload as nb_overload
 
 from ...fields import DataFieldBase, VectorField
-from ...grids import BoundariesBase, DimensionError, DomainError, GridBase
+from ...grids import DimensionError, DomainError, GridBase
+from ...grids.boundaries.axes import BoundariesBase, BoundariesList, BoundariesSetter
+from ...grids.boundaries.local import BCBase, UserBC
 from ...solvers import AdaptiveSolverBase, SolverBase
 from ...tools.numba import get_common_numba_dtype, jit, make_array_constructor
 from ..numpy.backend import NumpyBackend, OperatorInfo
 from . import grids
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ...grids.boundaries.axis import BoundaryAxisBase
     from ...pdes import PDEBase
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
@@ -121,6 +126,171 @@ class NumbaBackend(NumpyBackend):
         )
         raise NotImplementedError(msg)
 
+    def _make_local_ghost_cell_setter(self, bc: BCBase) -> GhostCellSetter:
+        """Return function that sets the ghost cells for a particular side of an axis.
+
+        Args:
+            bc (:class:`~pde.grids.boundaries.local.BCBase`):
+                Defines the boundary conditions for a particular side, for which the
+                setter should be defined.
+
+        Returns:
+            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
+            sets the ghost cells of the full data, potentially using additional
+            information in `args` (e.g., the time `t` during solving a PDE)
+        """
+        from ._boundaries import make_virtual_point_evaluator
+
+        normal = bc.normal
+        axis = bc.axis
+
+        # get information of the virtual points (ghost cells)
+        vp_idx = bc.grid.shape[bc.axis] + 1 if bc.upper else 0
+        np_idx = bc._get_value_cell_index(with_ghost_cells=False)
+        vp_value = make_virtual_point_evaluator(bc)
+
+        if bc.grid.num_axes == 1:  # 1d grid
+
+            @register_jitable
+            def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                """Helper function setting the conditions on all axes."""
+                data_valid = data_full[..., 1:-1]
+                val = vp_value(data_valid, (np_idx,), args=args)
+                if normal:
+                    data_full[..., axis, vp_idx] = val
+                else:
+                    data_full[..., vp_idx] = val
+
+        elif bc.grid.num_axes == 2:  # 2d grid
+            if bc.axis == 0:
+                num_y = bc.grid.shape[1]
+
+                @register_jitable
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                    """Helper function setting the conditions on all axes."""
+                    data_valid = data_full[..., 1:-1, 1:-1]
+                    for j in range(num_y):
+                        val = vp_value(data_valid, (np_idx, j), args=args)
+                        if normal:
+                            data_full[..., axis, vp_idx, j + 1] = val
+                        else:
+                            data_full[..., vp_idx, j + 1] = val
+
+            elif bc.axis == 1:
+                num_x = bc.grid.shape[0]
+
+                @register_jitable
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                    """Helper function setting the conditions on all axes."""
+                    data_valid = data_full[..., 1:-1, 1:-1]
+                    for i in range(num_x):
+                        val = vp_value(data_valid, (i, np_idx), args=args)
+                        if normal:
+                            data_full[..., axis, i + 1, vp_idx] = val
+                        else:
+                            data_full[..., i + 1, vp_idx] = val
+
+        elif bc.grid.num_axes == 3:  # 3d grid
+            if bc.axis == 0:
+                num_y, num_z = bc.grid.shape[1:]
+
+                @register_jitable
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                    """Helper function setting the conditions on all axes."""
+                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
+                    for j in range(num_y):
+                        for k in range(num_z):
+                            val = vp_value(data_valid, (np_idx, j, k), args=args)
+                            if normal:
+                                data_full[..., axis, vp_idx, j + 1, k + 1] = val
+                            else:
+                                data_full[..., vp_idx, j + 1, k + 1] = val
+
+            elif bc.axis == 1:
+                num_x, num_z = bc.grid.shape[0], bc.grid.shape[2]
+
+                @register_jitable
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                    """Helper function setting the conditions on all axes."""
+                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
+                    for i in range(num_x):
+                        for k in range(num_z):
+                            val = vp_value(data_valid, (i, np_idx, k), args=args)
+                            if normal:
+                                data_full[..., axis, i + 1, vp_idx, k + 1] = val
+                            else:
+                                data_full[..., i + 1, vp_idx, k + 1] = val
+
+            elif bc.axis == 2:
+                num_x, num_y = bc.grid.shape[:2]
+
+                @register_jitable
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                    """Helper function setting the conditions on all axes."""
+                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
+                    for i in range(num_x):
+                        for j in range(num_y):
+                            val = vp_value(data_valid, (i, j, np_idx), args=args)
+                            if normal:
+                                data_full[..., axis, i + 1, j + 1, vp_idx] = val
+                            else:
+                                data_full[..., i + 1, j + 1, vp_idx] = val
+
+        else:
+            msg = "Too many axes"
+            raise NotImplementedError(msg)
+
+        if isinstance(bc, UserBC):
+            # the (pretty uncommon) UserBC needs a special check, which we add here
+
+            @register_jitable
+            def ghost_cell_setter_wrapped(data_full: NumericArray, args=None) -> None:
+                """Helper function setting the conditions on all axes."""
+                if args is None:
+                    return  # no-op when no specific arguments are given
+
+                if "virtual_point" in args or "value" in args or "derivative" in args:
+                    # ghost cells will only be set if any of the above keys are supplied
+                    ghost_cell_setter(data_full, args=args)
+                # else: no-op for the default case where BCs are not set by user
+
+            return ghost_cell_setter_wrapped  # type: ignore
+        # the standard case just uses the ghost_cell_setter as defined above
+        return ghost_cell_setter  # type: ignore
+
+    def _make_axis_ghost_cell_setter(
+        self, bc_axis: BoundaryAxisBase
+    ) -> GhostCellSetter:
+        """Return function that sets the ghost cells for a particular axis.
+
+        Args:
+            bc_axis (:class:`~pde.grids.boundaries.axis.BoundaryAxisBase`):
+                Defines the boundary conditions for a particular axis, for which the
+                setter should be defined.
+
+        Returns:
+            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
+            sets the ghost cells of the full data, potentially using additional
+            information in `args` (e.g., the time `t` during solving a PDE)
+        """
+        # get the functions that handle the data
+        # ghost_cell_sender_low = make_local_ghost_cell_sender(bc_axis.low)
+        # ghost_cell_sender_high = make_local_ghost_cell_sender(bc_axis.high)
+        ghost_cell_setter_low = self._make_local_ghost_cell_setter(bc_axis.low)
+        ghost_cell_setter_high = self._make_local_ghost_cell_setter(bc_axis.high)
+
+        @register_jitable
+        def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+            """Helper function setting the conditions on all axes."""
+            # send boundary information to other nodes if using MPI
+            # ghost_cell_sender_low(data_full, args=args)
+            # ghost_cell_sender_high(data_full, args=args)
+            # set the actual ghost cells
+            ghost_cell_setter_high(data_full, args=args)
+            ghost_cell_setter_low(data_full, args=args)
+
+        return ghost_cell_setter  # type: ignore
+
     def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
 
@@ -134,9 +304,54 @@ class NumbaBackend(NumpyBackend):
             sets the ghost cells of the full data, potentially using additional
             information in `args` (e.g., the time `t` during solving a PDE)
         """
-        from .boundaries.axes import make_axes_ghost_cell_setter
+        if isinstance(boundaries, BoundariesList):
+            ghost_cell_setters = tuple(
+                self._make_axis_ghost_cell_setter(bc_axis) for bc_axis in boundaries
+            )
 
-        return make_axes_ghost_cell_setter(boundaries)
+            # TODO: use numba.literal_unroll
+            # # get the setters for all axes
+            #
+            # from pde.tools.numba import jit
+            #
+            # @jit
+            # def set_ghost_cells(data_full: NumericArray, args=None) -> None:
+            #     for f in nb.literal_unroll(ghost_cell_setters):
+            #         f(data_full, args=args)
+            #
+            # return set_ghost_cells
+
+            def chain(
+                fs: Sequence[GhostCellSetter], inner: GhostCellSetter | None = None
+            ) -> GhostCellSetter:
+                """Helper function composing setters of all axes recursively."""
+
+                first, rest = fs[0], fs[1:]
+
+                if inner is None:
+
+                    @register_jitable
+                    def wrap(data_full: NumericArray, args=None) -> None:
+                        first(data_full, args=args)
+
+                else:
+
+                    @register_jitable
+                    def wrap(data_full: NumericArray, args=None) -> None:
+                        inner(data_full, args=args)
+                        first(data_full, args=args)
+
+                if rest:
+                    return chain(rest, wrap)
+                return wrap  # type: ignore
+
+            return chain(ghost_cell_setters)
+
+        if isinstance(boundaries, BoundariesSetter):
+            return jit(boundaries._setter)  # type: ignore
+
+        msg = "Cannot handle boundaries {boundaries.__class__}"
+        raise NotImplementedError(msg)
 
     def make_data_setter(
         self, grid: GridBase, bcs: BoundariesBase | None = None
@@ -349,7 +564,7 @@ class NumbaBackend(NumpyBackend):
         # return the compiled versions of the operator
         return apply_op_compiled  # type: ignore
 
-    def make_integrator(
+    def _make_local_integrator(
         self, grid: GridBase
     ) -> Callable[[NumericArray], NumberOrArray]:
         """Return function that integrates discretized data over a grid.
@@ -413,6 +628,27 @@ class NumbaBackend(NumpyBackend):
                     return total  # type: ignore
 
             return impl
+
+        return integrate_local
+
+    def make_integrator(
+        self, grid: GridBase
+    ) -> Callable[[NumericArray], NumberOrArray]:
+        """Return function that integrates discretized data over a grid.
+
+        If this function is used in a multiprocessing run (using MPI), the integrals are
+        performed on all subgrids and then accumulated. Each process then receives the
+        same value representing the global integral.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the integrator is defined
+
+        Returns:
+            A function that takes a numpy array and returns the integral with the
+            correct weights given by the cell volumes.
+        """
+        integrate_local = self._make_local_integrator(grid)
 
         @jit
         def integrate_global(arr: NumericArray) -> NumberOrArray:
@@ -1184,3 +1420,22 @@ class NumbaBackend(NumpyBackend):
         function = local_vars["_generated_function"]
 
         return jit(function)  # type: ignore
+
+    def make_mpi_synchronizer(
+        self, operator: int | str = "MAX"
+    ) -> Callable[[float], float]:
+        """Return function that synchronizes values between multiple MPI processes.
+
+        Warning:
+            The default implementation does not synchronize anything. This is simply a
+            hook, which can be used by backends that support MPI
+
+        Args:
+            operator (str or int):
+                Flag determining how the value from multiple nodes is combined.
+                Possible values include "MAX", "MIN", and "SUM".
+
+        Returns:
+            Function that can be used to synchronize values across nodes
+        """
+        return register_jitable(super().make_mpi_synchronizer(operator=operator))  # type: ignore

@@ -14,11 +14,9 @@ from inspect import isabstract
 from typing import TYPE_CHECKING, Any, Callable, Union
 
 import numpy as np
-from numba.extending import register_jitable
 
 from ..tools.math import OnlineStatistics
 from ..tools.misc import classproperty
-from ..tools.numba import is_jitted
 from ..tools.typing import BackendType, NumericArray, StepperHook, TField
 
 if TYPE_CHECKING:
@@ -206,11 +204,13 @@ class SolverBase:
         return self.__backend_obj
 
     def _make_error_synchronizer(
-        self, operator: int | str = "MAX"
+        self, backend: str = "numpy", *, operator: int | str = "MAX"
     ) -> Callable[[float], float]:
         """Return function that synchronizes errors between multiple processes.
 
         Args:
+            backend (str):
+                The backend to use for making the synchronizer
             operator (str or int):
                 Flag determining how the value from multiple nodes is combined.
                 Possible values include "MAX", "MIN", and "SUM".
@@ -218,22 +218,17 @@ class SolverBase:
         Returns:
             Function that can be used to synchronize errors across nodes
         """
-        if self._mpi_synchronization:  # mpi.parallel_run:
-            # in a parallel run, we need to synchronize values
-            from ..tools.mpi import mpi_allreduce
+        from ..backends import backends
 
-            @register_jitable
-            def synchronize_errors(error: float) -> float:
-                """Return error synchronized across all cores."""
-                return mpi_allreduce(error, operator=operator)  # type: ignore
+        # deprecated on 2025-12-07
+        warnings.warn(
+            "`_make_error_synchronizer` is deprecated. Use `make_mpi_synchronizer` "
+            "from an appropriate backend instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-        else:
-
-            @register_jitable
-            def synchronize_errors(value: float) -> float:
-                return value
-
-        return synchronize_errors  # type: ignore
+        return backends[backend].make_mpi_synchronizer(operator=operator)
 
     def _make_post_step_hook(self, state: TField) -> StepperHook:
         """Create a function that calls the post-step hook of the PDE.
@@ -247,7 +242,7 @@ class SolverBase:
                 be extracted.
 
         Returns:
-            callable: The jit-able function that calls the post-step hook
+            callable: The function that calls the post-step hook
         """
         post_step_hook: StepperHook | None = None
 
@@ -278,20 +273,6 @@ class SolverBase:
             self._post_step_data_init = np.array(self._post_step_data_init, copy=True)
 
         return post_step_hook  # type: ignore
-
-    def _check_backend(self, rhs: Callable) -> None:
-        """Helper function that checks the backend requested by the rhs."""
-        # check whether the rhs has specified a particular backend
-        if hasattr(rhs, "_backend"):
-            self.info["backend"] = rhs._backend
-        elif is_jitted(rhs):
-            self.info["backend"] = "numba"
-        else:
-            self.info["backend"] = "undetermined"
-
-        # adjust the backend of the solver to the one requested by the PDE
-        if self.info["backend"] != "undetermined":
-            self.backend = self.info["backend"]
 
     def _make_pde_rhs(
         self, state: TField, backend: BackendType = "auto"
