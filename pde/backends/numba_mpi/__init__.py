@@ -1,4 +1,4 @@
-"""Defines the :mod:`numba` backend.
+"""Defines the :mod:`numba_mpi` backend.
 
 .. autosummary::
    :nosignatures:
@@ -24,3 +24,8 @@ from .backend import NumbaMPIBackend
 
 # add the loaded numba backend to the registry
 backends.add(NumbaMPIBackend("numba_mpi"))
+
+# register some numba overloads
+from . import overloads
+
+del overloads

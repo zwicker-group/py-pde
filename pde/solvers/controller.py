@@ -11,7 +11,6 @@ import time
 from typing import TYPE_CHECKING, Any, Callable, Union
 
 from .. import __version__
-from ..tools.numba import JIT_COUNT
 from ..trackers.base import (
     FinishedSimulation,
     TrackerCollection,
@@ -165,7 +164,6 @@ class Controller:
         self.diagnostics["solver"] = getattr(self.solver, "info", {})
 
         # initialize profilers
-        jit_count_base = int(JIT_COUNT)
         profiler = {"solver": 0.0, "tracker": 0.0}
         self.info["profiler"] = profiler
         prof_start_compile = get_time()
@@ -178,8 +176,6 @@ class Controller:
         stepper = self.solver.make_stepper(state=state, dt=dt)
 
         # store intermediate profiling information before starting simulation
-        jit_count_after_init = int(JIT_COUNT)
-        self.info["jit_count"] = {"make_stepper": jit_count_after_init - jit_count_base}
         prof_start_tracker = get_time()
         profiler["compilation"] = prof_start_tracker - prof_start_compile
         solver_start = datetime.datetime.now(datetime.timezone.utc)
@@ -254,7 +250,6 @@ class Controller:
         duration = datetime.datetime.now(datetime.timezone.utc) - solver_start
         self.info["solver_duration"] = str(duration)
         self.info["t_final"] = t
-        self.info["jit_count"]["simulation"] = int(JIT_COUNT) - jit_count_after_init
         self.trackers.finalize(info=self.diagnostics)
         if "dt_statistics" in getattr(self.solver, "info", {}):
             dt_statistics = dict(self.solver.info["dt_statistics"].to_dict())

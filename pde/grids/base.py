@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import itertools
 import json
@@ -1097,7 +1098,8 @@ class GridBase(metaclass=ABCMeta):
         # get all operators registered on the class
         operators = set()
         for name in backends:
-            operators |= backends[name].get_registered_operators(cls)
+            with contextlib.suppress(ImportError):
+                operators |= backends[name].get_registered_operators(cls)
         return operators
 
     @operators.instancemethod  # type: ignore
@@ -1109,7 +1111,8 @@ class GridBase(metaclass=ABCMeta):
         # get all operators registered on the class
         operators = set()
         for name in backends:
-            operators |= backends[name].get_registered_operators(self)
+            with contextlib.suppress(ImportError):
+                operators |= backends[name].get_registered_operators(self)
         return operators
 
     @cached_method()
