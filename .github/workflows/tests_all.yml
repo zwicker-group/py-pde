@@ -19,7 +19,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.13'
+        python-version: '3.14'
 
     - if: runner.os != 'macOS' || runner.arch != 'ARM64'
       name: Setup FFmpeg for ${{ runner.os }} on ${{ runner.arch }}
