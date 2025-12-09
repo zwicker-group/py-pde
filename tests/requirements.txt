@@ -1,12 +1,8 @@
 -r ../requirements.txt
-docformatter>=1.7
 importlib-metadata>=5
 jupyter_contrib_nbextensions>=0.5
-mypy>=1.8
 notebook>=7
-pre-commit>=3
 pytest>=5.4
 pytest-cov>=2.8
 pytest-xdist>=1.30
-ruff>=0.6
 utilitiez>=0.3
