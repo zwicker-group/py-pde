@@ -19,7 +19,6 @@ def test_cylindrical_grid(periodic, r_inner, rng):
     rs, zs = grid.axes_coords
 
     assert grid.dim == 3
-    assert grid.numba_type == "f8[:, :]"
     assert grid.shape == (8, 9)
     assert grid.length == pytest.approx(3)
     assert grid.discretization[1] == pytest.approx(1 / 3)

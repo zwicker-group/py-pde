@@ -1,5 +1,13 @@
 """Compiled functions for dealing with grids.
 
+.. autosummary::
+   :nosignatures:
+
+   get_grid_numba_type
+   make_cell_volume_getter
+   make_interpolation_axis_data
+   make_single_interpolator
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -21,6 +29,22 @@ if TYPE_CHECKING:
         NumberOrArray,
         NumericArray,
     )
+
+
+def get_grid_numba_type(grid: GridBase, rank: int = 0) -> str:
+    """Return numba type corresponding to a particular grid.
+
+    Args:
+        grid (GridBase):
+            The grid for which we determine the type
+        rank (int):
+            The rank of the data stored in the grid
+
+    Returns:
+        _type_: _description_
+    """
+    dim = grid.num_axes + rank
+    return "f8[" + ", ".join([":"] * dim) + "]"
 
 
 def make_cell_volume_getter(grid: GridBase, *, flat_index: bool = False) -> CellVolume:

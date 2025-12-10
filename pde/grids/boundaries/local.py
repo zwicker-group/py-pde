@@ -702,11 +702,11 @@ ExpressionBCTargetType = Literal["value", "derivative", "mixed", "virtual_point"
 class ExpressionBC(BCBase):
     """Represents a boundary whose virtual point is calculated from an expression.
 
-    The expression is given as a string and will be parsed by :mod:`sympy` or a function
-    that is optionally compiled with :mod:`numba`. The expression can contain typical
-    mathematical operators and may depend on the value at the last support point next to
-    the boundary (`value`), spatial coordinates defined by the grid marking the boundary
-    point (e.g., `x` or `r`), and time `t`.
+    The expression is given as a string that can be parsed by :mod:`sympy` or as a
+    function. The expression can contain typical mathematical operators and may depend
+    on the value at the last support point next to the boundary (`value`), spatial
+    coordinates defined by the grid marking the boundary point (e.g., `x` or `r`), and
+    time `t`.
     """
 
     names = ["virtual_point"]

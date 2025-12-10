@@ -1,5 +1,11 @@
 """Defines utilities for the numba backend.
 
+.. autosummary::
+   :nosignatures:
+
+   make_get_valid
+   make_get_arr_1d
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -127,19 +133,3 @@ def make_get_arr_1d(
         raise NotImplementedError
 
     return register_jitable(inline="always")(get_arr_1d)  # type: ignore
-
-
-def get_grid_numba_type(grid: GridBase, rank: int = 0):
-    """Return numba type corresponding to a particular grid.
-
-    Args:
-        grid (GridBase):
-            The grid for which we determine the type
-        rank (int):
-            The rank of the data stored in the grid
-
-    Returns:
-        _type_: _description_
-    """
-    dim = grid.num_axes + rank
-    return "f8[" + ", ".join([":"] * dim) + "]"

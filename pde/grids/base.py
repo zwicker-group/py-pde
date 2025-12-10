@@ -466,7 +466,9 @@ class GridBase(metaclass=ABCMeta):
             DeprecationWarning,
             stacklevel=2,
         )
-        return "f8[" + ", ".join([":"] * self.num_axes) + "]"
+        from ..backends.numba.grids import get_grid_numba_type
+
+        return get_grid_numba_type(self)
 
     @cached_property()
     def coordinate_arrays(self) -> tuple[FloatingArray, ...]:

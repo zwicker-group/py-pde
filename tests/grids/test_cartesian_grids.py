@@ -61,7 +61,6 @@ def test_unit_grid_1d(periodic, rng):
     """Test 1D grids."""
     grid = UnitGrid(4, periodic=periodic)
     assert grid.dim == 1
-    assert grid.numba_type == "f8[:]"
     assert grid.volume == 4
     np.testing.assert_array_equal(grid.discretization, np.ones(1))
 
@@ -90,7 +89,6 @@ def test_unit_grid_2d(rng):
     # test special case
     grid = UnitGrid([4, 4], periodic=True)
     assert grid.dim == 2
-    assert grid.numba_type == "f8[:, :]"
     assert grid.volume == 16
     np.testing.assert_array_equal(grid.discretization, np.ones(2))
     assert grid.get_image_data(np.zeros(grid.shape))["extent"] == [0, 4, 0, 4]
@@ -127,7 +125,6 @@ def test_unit_grid_3d(rng):
     """Test 3D grids."""
     grid = UnitGrid([4, 4, 4])
     assert grid.dim == 3
-    assert grid.numba_type == "f8[:, :, :]"
     assert grid.volume == 64
     np.testing.assert_array_equal(grid.discretization, np.ones(3))
     assert grid.get_image_data(np.zeros(grid.shape))["extent"] == [0, 4, 0, 4]
