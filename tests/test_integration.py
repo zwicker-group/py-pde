@@ -82,7 +82,7 @@ def test_custom_pde_mpi(rng):
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
 
-        def _make_pde_rhs_numba(self, state):
+        def make_pde_rhs_numba(self, state):
             @numba.jit
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
@@ -139,7 +139,7 @@ def test_stop_iteration_hook(backend):
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
 
-        def _make_pde_rhs_numba(self, state):
+        def make_pde_rhs_numba(self, state):
             @numba.jit
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
@@ -171,7 +171,7 @@ def test_custom_data_hook(backend):
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
 
-        def _make_pde_rhs_numba(self, state):
+        def make_pde_rhs_numba(self, state):
             @numba.jit
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
@@ -204,7 +204,7 @@ def test_array_data_hook(backend):
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
 
-        def _make_pde_rhs_numba(self, state):
+        def make_pde_rhs_numba(self, state):
             @numba.jit
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)

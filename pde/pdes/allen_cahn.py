@@ -93,7 +93,7 @@ class AllenCahnPDE(PDEBase):
         rhs = self.interface_width * laplace - state**3 + state
         return self.mobility * rhs  # type: ignore
 
-    def _make_pde_rhs_numba(  # type: ignore
+    def make_pde_rhs_numba(  # type: ignore
         self, state: ScalarField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.

@@ -17,7 +17,7 @@ from ..fields import FieldCollection, VectorField
 from ..fields.datafield_base import DataFieldBase
 from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.local import BCDataError
-from ..pdes.base import PDEBase
+from ..pdes.base import SDEBase
 from ..tools.docstrings import fill_in_docstring
 
 if TYPE_CHECKING:
@@ -56,7 +56,7 @@ _OPERATOR_FOURIER_MAPPING = {
 }
 
 
-class PDE(PDEBase):
+class PDE(SDEBase):
     """PDE defined by mathematical expressions.
 
     Attributes:
@@ -585,7 +585,7 @@ class PDE(PDEBase):
 
         return post_step_hook_impl, 0  # hook function and initial value
 
-    def _make_pde_rhs_numba_collection(
+    def make_pde_rhs_numba_collection(
         self, state: FieldCollection, cache: dict[str, Any]
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create the compiled rhs if `state` is a field collection.
@@ -652,7 +652,7 @@ class PDE(PDEBase):
         # compile the recursive chain
         return chain()
 
-    def _make_pde_rhs_numba(  # type: ignore
+    def make_pde_rhs_numba(  # type: ignore
         self, state: TField, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
@@ -674,7 +674,7 @@ class PDE(PDEBase):
 
         if isinstance(state, FieldCollection):
             # state is a collection of fields
-            return self._make_pde_rhs_numba_collection(state, cache)
+            return self.make_pde_rhs_numba_collection(state, cache)
 
         msg = f"Unsupported field {state.__class__.__name__}"
         raise TypeError(msg)

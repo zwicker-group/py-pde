@@ -13,7 +13,7 @@ import numpy as np
 from numba.extending import is_jitted, register_jitable
 from numba.extending import overload as nb_overload
 
-from ...fields import DataFieldBase, FieldCollection, VectorField
+from ...fields import DataFieldBase, VectorField
 from ...grids import DimensionError, DomainError, GridBase
 from ...grids.boundaries.axes import BoundariesBase, BoundariesList, BoundariesSetter
 from ...grids.boundaries.local import BCBase, UserBC
@@ -1180,7 +1180,7 @@ class NumbaBackend(NumpyBackend):
         Returns:
             Function returning deterministic part of the right hand side of the PDE
         """
-        return eq._make_pde_rhs_numba_cached(state, **kwargs)
+        return eq.make_pde_rhs_numba_cached(state, **kwargs)
 
     def make_noise_realization(
         self, eq: PDEBase, state: TField
@@ -1200,64 +1200,11 @@ class NumbaBackend(NumpyBackend):
         if hasattr(eq, "make_noise_realization_numba"):
             return eq.make_noise_realization_numba(state)  # type: ignore
 
-        if getattr(eq, "noise", None) is None or not eq.is_sde:
-
-            @jit
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-                return None
-
-            return noise_realization  # type: ignore
-
-        data_shape: tuple[int, ...] = state.data.shape
-        noise_var: float
-        cell_volume: Callable[[int], float] = grids.make_cell_volume_getter(
-            state.grid, flat_index=True
+        msg = (
+            "Noise needs to be implemented by defining the "
+            "`make_noise_realization_numba` method for the PDE class."
         )
-
-        if state.dtype != float:
-            msg = "Noise is only supported for float types"
-            raise TypeError(msg)
-
-        if isinstance(state, FieldCollection):
-            # different noise strengths, assuming one for each field
-            noises_var: NumericArray = np.empty(data_shape[0])
-            for n, noise_var in enumerate(np.broadcast_to(eq.noise, len(state))):
-                noises_var[state._slices[n]] = noise_var
-
-            @jit
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-                out = np.empty(data_shape)
-                for n in range(len(state_data)):
-                    if noises_var[n] == 0:
-                        out[n].fill(0)
-                    else:
-                        for i in range(state_data[n].size):
-                            scale = noises_var[n] / cell_volume(i)
-                            out[n].flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
-                return out  # type: ignore
-
-        else:
-            # a single noise value is given for all fields
-            noise_var = float(eq.noise)
-
-            @jit
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-                out = np.empty(state_data.shape)
-                for i in range(state_data.size):
-                    scale = noise_var / cell_volume(i)
-                    out.flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
-                return out  # type: ignore
-
-        return noise_realization  # type: ignore
+        raise NotImplementedError(msg)
 
     def make_expression_function(
         self,

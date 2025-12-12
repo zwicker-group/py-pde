@@ -32,7 +32,7 @@ def test_pde_consistency(pde_class, dim, rng):
     state = ScalarField.random_uniform(grid, rng=rng)
     field = eq.evolution_rate(state)
     assert field.grid == grid
-    rhs = eq._make_pde_rhs_numba(state)
+    rhs = eq.make_pde_rhs_numba(state)
     res = rhs(state.data, 0)
     np.testing.assert_allclose(field.data, res)
 
@@ -49,7 +49,7 @@ def test_pde_consistency_test(rng):
         def evolution_rate(self, field, t=0):
             return 2 * field
 
-        def _make_pde_rhs_numba(self, state):
+        def make_pde_rhs_numba(self, state):
             def impl(state_data, t):
                 return 3 * state_data
 

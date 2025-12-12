@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Callable
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
-from .base import PDEBase, expr_prod
+from .base import SDEBase, expr_prod
 
 if TYPE_CHECKING:
     import numpy as np
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from ..tools.typing import NumericArray
 
 
-class KuramotoSivashinskyPDE(PDEBase):
+class KuramotoSivashinskyPDE(SDEBase):
     r"""The Kuramoto-Sivashinsky equation.
 
     The mathematical definition is
@@ -109,7 +109,7 @@ class KuramotoSivashinskyPDE(PDEBase):
         result.label = "evolution rate"
         return result  # type: ignore
 
-    def _make_pde_rhs_numba(  # type: ignore
+    def make_pde_rhs_numba(  # type: ignore
         self, state: ScalarField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.

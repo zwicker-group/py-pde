@@ -333,7 +333,10 @@ class NumpyBackend(BackendBase):
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
                 fields = state.__class__.from_state(attributes.copy(), state_data)
-                return eq.noise_realization(fields, t).data
+                noise = eq.noise_realization(fields, t)
+                if noise is None:
+                    return None
+                return noise.data  # type: ignore
 
             return noise_realization
 

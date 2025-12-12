@@ -49,7 +49,7 @@ class BrusselatorPDE(PDEBase):
         rhs[1] = d1 * v.laplace(self.bc) + self.b * u - u**2 * v
         return rhs
 
-    def _make_pde_rhs_numba(self, state):
+    def make_pde_rhs_numba(self, state):
         """Nunmba-compiled implementation of the PDE."""
         d0, d1 = self.diffusivity
         a, b = self.a, self.b

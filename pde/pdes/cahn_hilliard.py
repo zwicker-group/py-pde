@@ -89,7 +89,7 @@ class CahnHilliardPDE(PDEBase):
         result = state**3 - state - self.interface_width * c_laplace
         return result.laplace(bc=self.bc_mu, args={"t": t})  # type: ignore
 
-    def _make_pde_rhs_numba(  # type: ignore
+    def make_pde_rhs_numba(  # type: ignore
         self, state: ScalarField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.

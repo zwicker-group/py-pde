@@ -24,7 +24,6 @@ deal with raw data for faster simulations.
 
 Additionally, we offer two solvers for typical elliptical PDEs:
 
-
 .. autosummary::
    :nosignatures:
 
@@ -32,11 +31,22 @@ Additionally, we offer two solvers for typical elliptical PDEs:
    ~laplace.solve_poisson_equation
 
 
+.. inheritance-diagram::
+      pde.PDE
+      allen_cahn.AllenCahnPDE
+      cahn_hilliard.CahnHilliardPDE
+      diffusion.DiffusionPDE
+      kpz_interface.KPZInterfacePDE
+      kuramoto_sivashinsky.KuramotoSivashinskyPDE
+      swift_hohenberg.SwiftHohenbergPDE
+      wave.WavePDE
+   :parts: 1
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from .allen_cahn import AllenCahnPDE  # noqa: F401
-from .base import PDEBase  # noqa: F401
+from .base import PDEBase, SDEBase  # noqa: F401
 from .cahn_hilliard import CahnHilliardPDE  # noqa: F401
 from .diffusion import DiffusionPDE  # noqa: F401
 from .kpz_interface import KPZInterfacePDE  # noqa: F401

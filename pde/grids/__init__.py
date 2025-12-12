@@ -18,8 +18,12 @@ using the method :meth:`transform`.
 
 Inheritance structure of the classes:
 
-.. inheritance-diagram:: cartesian.UnitGrid cartesian.CartesianGrid
-        spherical.PolarSymGrid spherical.SphericalSymGrid cylindrical.CylindricalSymGrid
+.. inheritance-diagram::
+      cartesian.UnitGrid
+      cartesian.CartesianGrid
+      spherical.PolarSymGrid
+      spherical.SphericalSymGrid
+      cylindrical.CylindricalSymGrid
    :parts: 1
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>

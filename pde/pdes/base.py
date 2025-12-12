@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import warnings
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -27,11 +28,11 @@ _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 
 
 class PDEBase(metaclass=ABCMeta):
-    """Base class for defining partial differential equations (PDEs)
+    """Base class for defining deterministic partial differential equations (PDEs)
 
     Custom PDEs can be implemented by subclassing :class:`PDEBase` to specify the
     evolution rate. In the simple case of deterministic PDEs, the methods
-    :meth:`PDEBase.evolution_rate` and :meth:`PDEBase._make_pde_rhs_numba` need to be
+    :meth:`PDEBase.evolution_rate` and :meth:`PDEBase.make_pde_rhs_numba` need to be
     overwritten for supporting the `numpy` and `numba` backend, respectively.
     """
 
@@ -68,14 +69,9 @@ class PDEBase(metaclass=ABCMeta):
 
     _logger: logging.Logger
 
-    def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator | None = None):
+    def __init__(self, *, rng: np.random.Generator | None = None):
         """
         Args:
-            noise (float or :class:`~numpy.ndarray`):
-                Variance of the additive Gaussian white noise that is supported for all
-                PDEs by default. If set to zero, a deterministic partial differential
-                equation will be solved. Different noise magnitudes can be supplied for
-                each field in coupled PDEs.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
                 used for stochastic simulations. Note that this random number generator
@@ -83,16 +79,9 @@ class PDEBase(metaclass=ABCMeta):
                 Moreover, in simulations using multiprocessing, setting the same
                 generator in all processes might yield unintended correlations in the
                 simulation results.
-
-        Note:
-            If more complicated noise structures are required, the methods
-            :meth:`PDEBase.noise_realization` and
-            :meth:`PDEBase._make_noise_realization_numba` need to be overwritten for the
-            `numpy` and `numba` backend, respectively.
         """
         self._cache: dict[str, Any] = {}
         self.diagnostics = {}
-        self.noise = np.asanyarray(noise)
         self.rng = np.random.default_rng(rng)
 
     def __init_subclass__(cls, **kwargs):
@@ -112,16 +101,8 @@ class PDEBase(metaclass=ABCMeta):
 
     @property
     def is_sde(self) -> bool:
-        """bool: flag indicating whether this is a stochastic differential equation
-
-        The :class:`BasePDF` class supports additive Gaussian white noise, whose
-        magnitude is controlled by the `noise` property. In this case, `is_sde` is
-        `True` if `self.noise != 0`.
-        """
-        # check for self.noise, but do not assume it is defined in case __init__ is not
-        # called in a subclass
-        noise = getattr(self, "noise", 0)
-        return not np.allclose(noise, 0, atol=1e-14)
+        """bool: flag indicating whether this is a stochastic differential equation"""
+        return False
 
     def make_post_step_hook(
         self, state: FieldBase, backend: BackendType = "numpy"
@@ -186,17 +167,39 @@ class PDEBase(metaclass=ABCMeta):
                 Field describing the evolution rate of the PDE
         """
 
+    def make_pde_rhs_numba(
+        self, state: FieldBase, **kwargs
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Create a compiled function for evaluating the right hand side.
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                The field at the current time point
+
+        Returns:
+            A function that takes two arguments (the current state as a numpy array and
+            the current time) and returns the associated evolution rate as a numpy array
+            of the same shape and dtype.
+        """
+        msg = (
+            "The right-hand side of the PDE is not implemented using the `numba` "
+            "backend. To add the implementation, provide the method "
+            "`make_pde_rhs_numba`, which should return a numba-compiled function "
+            "calculating the right-hand side using numpy arrays as input and output."
+        )
+        raise NotImplementedError(msg)
+
     def _make_pde_rhs_numba(
         self, state: FieldBase, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function for evaluating the right hand side."""
-        msg = (
-            "The right-hand side of the PDE is not implemented using the `numba` "
-            "backend. To add the implementation, provide the method "
-            "`_make_pde_rhs_numba`, which should return a numba-compiled function "
-            "calculating the right-hand side using numpy arrays as input and output."
+        warnings.warn(
+            "Method `_make_pde_rhs_numba` is deprecated in favor of "
+            "`make_pde_rhs_numba`",
+            DeprecationWarning,
+            stacklevel=2,
         )
-        raise NotImplementedError(msg)
+        return self.make_pde_rhs_numba(state, **kwargs)
 
     def check_rhs_consistency(
         self,
@@ -220,7 +223,7 @@ class PDEBase(metaclass=ABCMeta):
             rhs_numba (callable):
                 The implementation of the numba variant that is to be checked. If
                 omitted, an implementation is obtained by calling
-                :meth:`PDEBase._make_pde_rhs_numba_cached`.
+                :meth:`PDEBase.make_pde_rhs_numba_cached`.
         """
         # obtain evolution rate from the numpy implementation
         res_numpy = self.evolution_rate(state.copy(), t, **kwargs).data
@@ -231,7 +234,7 @@ class PDEBase(metaclass=ABCMeta):
 
         # obtain evolution rate from the numba implementation
         if rhs_numba is None:
-            rhs_numba = self._make_pde_rhs_numba_cached(state, **kwargs)
+            rhs_numba = self.make_pde_rhs_numba_cached(state, **kwargs)
         test_state = state.copy()
         res_numba = rhs_numba(test_state.data, t)
         if not np.all(np.isfinite(res_numba)):
@@ -265,13 +268,13 @@ class PDEBase(metaclass=ABCMeta):
             # re-raise the exception
             raise
 
-    def _make_pde_rhs_numba_cached(
+    def make_pde_rhs_numba_cached(
         self, state: TField, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function for evaluating the right hand side.
 
         This method implements caching and checking of the actual method, which is
-        defined by overwriting the method `_make_pde_rhs_numba`.
+        defined by overwriting the method `make_pde_rhs_numba`.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -294,15 +297,15 @@ class PDEBase(metaclass=ABCMeta):
                 # cache was not hit
                 self._logger.info("Write compiled rhs to cache")
                 self._cache["pde_rhs_numba_state"] = grid_state
-                self._cache["pde_rhs_numba"] = self._make_pde_rhs_numba(state, **kwargs)
+                self._cache["pde_rhs_numba"] = self.make_pde_rhs_numba(state, **kwargs)
             rhs = self._cache["pde_rhs_numba"]
 
         else:
             # caching was skipped
-            rhs = self._make_pde_rhs_numba(state, **kwargs)
+            rhs = self.make_pde_rhs_numba(state, **kwargs)
 
         if rhs is None:
-            msg = "`_make_pde_rhs_numba` returned None"
+            msg = "`make_pde_rhs_numba` returned None"
             raise RuntimeError(msg)
 
         if check_implementation:
@@ -333,7 +336,7 @@ class PDEBase(metaclass=ABCMeta):
 
         if backend == "auto":
             try:
-                self._make_pde_rhs_numba_cached(state, **kwargs)
+                self.make_pde_rhs_numba_cached(state, **kwargs)
             except NotImplementedError:
                 backend = "numpy"
             else:
@@ -343,96 +346,6 @@ class PDEBase(metaclass=ABCMeta):
         pde_rhs = backend_obj.make_pde_rhs(self, state, **kwargs)
         pde_rhs._backend = backend_obj.name  # type: ignore
         return pde_rhs
-
-    def make_noise_realization(
-        self,
-        state: TField,
-        backend: BackendType = "auto",
-        **kwargs,
-    ) -> Callable[[NumericArray, float], NumericArray | None]:
-        """Return a function for determining one realization of the noise term.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted.
-            backend (str):
-                Determines how the function is created. Accepted values are 'numpy' and
-                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
-
-        Returns:
-            callable: Function calculating the noise realization
-        """
-        from ..backends import backends
-
-        if backend == "auto":
-            if hasattr(self, "_make_noise_realization_numba"):
-                backend = "numba"
-            else:
-                backend = "numpy"
-
-        backend_obj = backends[backend]
-        pde_rhs = backend_obj.make_noise_realization(self, state, **kwargs)
-        pde_rhs._backend = backend_obj.name  # type: ignore
-        return pde_rhs
-
-    def noise_realization(
-        self, state: TField, t: float = 0, *, label: str = "Noise realization"
-    ) -> TField:
-        """Returns a realization for the noise.
-
-        Args:
-            state (:class:`~pde.fields.ScalarField`):
-                The scalar field describing the concentration distribution
-            t (float):
-                The current time point
-            label (str):
-                The label for the returned field
-
-        Returns:
-            :class:`~pde.fields.ScalarField`:
-            Scalar field describing the evolution rate of the PDE
-        """
-        result: TField
-        if self.is_sde:
-            if isinstance(state, FieldCollection):
-                # multiple fields with potentially different noise strengths
-                result = state.copy(label=label)
-                noises_var = np.broadcast_to(self.noise, len(state))
-
-                for field, noise_var in zip(result, noises_var):
-                    if noise_var == 0:
-                        field.data.fill(0)
-                    else:
-                        field.data = field.random_normal(  # type: ignore
-                            state.grid,
-                            std=np.sqrt(noise_var),
-                            scaling="physical",
-                            dtype=state.dtype,
-                            rng=self.rng,
-                        )
-
-            elif isinstance(state, DataFieldBase):
-                # a single field
-                noise_var = self.noise
-                result = state.random_normal(
-                    state.grid,
-                    std=np.sqrt(self.noise),
-                    scaling="physical",
-                    dtype=state.dtype,
-                    rng=self.rng,
-                )
-
-            else:
-                raise TypeError
-
-        else:
-            # no noise
-            result = state.from_state(state.attributes, data="zeros")
-
-        if label:
-            result.label = label
-        return result
 
     def solve(
         self,
@@ -549,6 +462,215 @@ class PDEBase(metaclass=ABCMeta):
             # by a repeated call to `solve()`.
             return final_state, copy.deepcopy(self.diagnostics)
         return final_state
+
+
+class SDEBase(PDEBase):
+    """Base class for defining stochastic partial differential equations (SDEs)"""
+
+    def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator | None = None):
+        """
+        Args:
+            noise (float or :class:`~numpy.ndarray`):
+                Variance of the additive Gaussian white noise that is supported for all
+                PDEs by default. If set to zero, a deterministic partial differential
+                equation will be solved. Different noise magnitudes can be supplied for
+                each field in coupled PDEs.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
+                used for stochastic simulations. Note that this random number generator
+                is only used for numpy function, while other backends might not use it.
+                Moreover, in simulations using multiprocessing, setting the same
+                generator in all processes might yield unintended correlations in the
+                simulation results.
+
+        Note:
+            If more complicated noise structures are required, the methods
+            :meth:`SDEBase.noise_realization` and
+            :meth:`SDEBase.make_noise_realization_numba` need to be overwritten for the
+            `numpy` and `numba` backend, respectively. Alternatively, one can generally
+            overwrite :meth:`SDEBase.make_noise_realization` for a general backend.
+        """
+        super().__init__(rng=rng)
+        self.noise = np.asanyarray(noise)
+
+    @property
+    def is_sde(self) -> bool:
+        """bool: flag indicating whether this is a stochastic differential equation
+
+        The :class:`SDEBase` class supports additive Gaussian white noise, whose
+        magnitude is controlled by the `noise` property. In this case, `is_sde` is
+        `True` if `self.noise != 0`.
+        """
+        # check for self.noise, but do not assume it is defined in case __init__ is not
+        # called in a subclass
+        noise = getattr(self, "noise", 0)
+        return not np.allclose(noise, 0, atol=1e-14)
+
+    def noise_realization(
+        self, state: TField, t: float = 0, *, label: str = "Noise realization"
+    ) -> TField:
+        """Returns a realization for the noise.
+
+        Args:
+            state (:class:`~pde.fields.ScalarField`):
+                The scalar field describing the concentration distribution
+            t (float):
+                The current time point
+            label (str):
+                The label for the returned field
+
+        Returns:
+            :class:`~pde.fields.ScalarField`:
+            Scalar field describing the evolution rate of the PDE
+        """
+        result: TField
+        if self.is_sde:
+            if isinstance(state, FieldCollection):
+                # multiple fields with potentially different noise strengths
+                result = state.copy(label=label)
+                noises_var = np.broadcast_to(self.noise, len(state))
+
+                for field, noise_var in zip(result, noises_var):
+                    if noise_var == 0:
+                        field.data.fill(0)
+                    else:
+                        field.data = field.random_normal(  # type: ignore
+                            state.grid,
+                            std=np.sqrt(noise_var),
+                            scaling="physical",
+                            dtype=state.dtype,
+                            rng=self.rng,
+                        )
+
+            elif isinstance(state, DataFieldBase):
+                # a single field
+                noise_var = self.noise
+                result = state.random_normal(
+                    state.grid,
+                    std=np.sqrt(self.noise),
+                    scaling="physical",
+                    dtype=state.dtype,
+                    rng=self.rng,
+                )
+
+            else:
+                raise TypeError
+
+        else:
+            # no noise
+            result = state.from_state(state.attributes, data="zeros")
+
+        if label:
+            result.label = label
+        return result
+
+    def make_noise_realization_numba(
+        self, state: TField
+    ) -> Callable[[NumericArray, float], NumericArray | None]:
+        """Return a function for determining one realization of the noise term.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+            backend (str):
+                Determines how the function is created. Accepted values are 'numpy' and
+                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
+
+        Returns:
+            callable: Function calculating the noise realization
+        """
+        from ..backends.numba.grids import make_cell_volume_getter
+        from ..backends.numba.utils import jit
+
+        if getattr(self, "noise", None) is None or not self.is_sde:
+
+            @jit
+            def noise_realization(
+                state_data: NumericArray, t: float
+            ) -> NumericArray | None:
+                """Helper function returning a noise realization."""
+                return None
+
+            return noise_realization  # type: ignore
+
+        data_shape: tuple[int, ...] = state.data.shape
+        noise_var: float
+        cell_volume = make_cell_volume_getter(state.grid, flat_index=True)
+
+        if state.dtype != float:
+            msg = "Noise is only supported for float types"
+            raise TypeError(msg)
+
+        if isinstance(state, FieldCollection):
+            # different noise strengths, assuming one for each field
+            noises_var: NumericArray = np.empty(data_shape[0])
+            for n, noise_var in enumerate(np.broadcast_to(self.noise, len(state))):
+                noises_var[state._slices[n]] = noise_var
+
+            @jit
+            def noise_realization(
+                state_data: NumericArray, t: float
+            ) -> NumericArray | None:
+                """Helper function returning a noise realization."""
+                out = np.empty(data_shape)
+                for n in range(len(state_data)):
+                    if noises_var[n] == 0:
+                        out[n].fill(0)
+                    else:
+                        for i in range(state_data[n].size):
+                            scale = noises_var[n] / cell_volume(i)
+                            out[n].flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
+                return out  # type: ignore
+
+        else:
+            # a single noise value is given for all fields
+            noise_var = float(self.noise)
+
+            @jit
+            def noise_realization(
+                state_data: NumericArray, t: float
+            ) -> NumericArray | None:
+                """Helper function returning a noise realization."""
+                out = np.empty(state_data.shape)
+                for i in range(state_data.size):
+                    scale = noise_var / cell_volume(i)
+                    out.flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
+                return out  # type: ignore
+
+        return noise_realization  # type: ignore
+
+    def make_noise_realization(
+        self,
+        state: TField,
+        backend: BackendType = "auto",
+        **kwargs,
+    ) -> Callable[[NumericArray, float], NumericArray | None]:
+        """Return a function for determining one realization of the noise term.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+            backend (str):
+                Determines how the function is created. Accepted values are 'numpy' and
+                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
+
+        Returns:
+            callable: Function calculating the noise realization
+        """
+        from ..backends import backends
+
+        if backend == "auto":
+            if hasattr(self, "make_noise_realization_numba"):
+                backend = "numba"
+            else:
+                backend = "numpy"
+
+        backend_obj = backends[backend]
+        noise_realization = backend_obj.make_noise_realization(self, state, **kwargs)
+        noise_realization._backend = backend_obj.name  # type: ignore
+        return noise_realization
 
 
 def expr_prod(factor: float, expression: str) -> str:

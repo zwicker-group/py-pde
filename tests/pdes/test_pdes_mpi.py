@@ -125,7 +125,7 @@ def test_pde_const_mpi_class(backend):
         def evolution_rate(self, state, t):
             return ScalarField(state.grid, state.grid.axes_coords[0])
 
-        def _make_pde_rhs_numba(self, state):
+        def make_pde_rhs_numba(self, state):
             x = state.grid.axes_coords[0]
 
             @nb.jit
