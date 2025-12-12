@@ -162,14 +162,14 @@ def test_custom_operators(rng):
         return op
 
     # register the function with the numba backend
-    backends.register_operator("numba", grids.UnitGrid, "undefined", make_op)
+    backends["numba"].register_operator(grids.UnitGrid, "undefined", make_op)
 
     eq._cache = {}  # reset cache to force recompilation
     res = eq.evolution_rate(field)
     np.testing.assert_allclose(field.data, res.data)
 
     # reset original state
-    del backends._operators["numba"][grids.UnitGrid]["undefined"]
+    del backends["numba"]._operators[grids.UnitGrid]["undefined"]
 
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])

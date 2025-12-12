@@ -22,16 +22,14 @@ import numba as nb
 from .... import config
 from ....grids.cylindrical import CylindricalSymGrid
 from ....tools.docstrings import fill_in_docstring
-from ...registry import backends
+from .. import numba_backend
 from ..utils import jit
 
 if TYPE_CHECKING:
     from ....tools.typing import NumericArray, OperatorType
 
 
-@backends.register_operator(
-    "numba", CylindricalSymGrid, "laplace", rank_in=0, rank_out=0
-)
+@numba_backend.register_operator(CylindricalSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
     """Make a discretized laplace operator for a cylindrical grid.
@@ -70,9 +68,7 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
     return laplace  # type: ignore
 
 
-@backends.register_operator(
-    "numba", CylindricalSymGrid, "gradient", rank_in=0, rank_out=1
-)
+@numba_backend.register_operator(CylindricalSymGrid, "gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(grid: CylindricalSymGrid) -> OperatorType:
     """Make a discretized gradient operator for a cylindrical grid.
@@ -105,8 +101,8 @@ def make_gradient(grid: CylindricalSymGrid) -> OperatorType:
     return gradient  # type: ignore
 
 
-@backends.register_operator(
-    "numba", CylindricalSymGrid, "gradient_squared", rank_in=0, rank_out=0
+@numba_backend.register_operator(
+    CylindricalSymGrid, "gradient_squared", rank_in=0, rank_out=0
 )
 @fill_in_docstring
 def make_gradient_squared(
@@ -162,8 +158,8 @@ def make_gradient_squared(
     return gradient_squared  # type: ignore
 
 
-@backends.register_operator(
-    "numba", CylindricalSymGrid, "divergence", rank_in=1, rank_out=0
+@numba_backend.register_operator(
+    CylindricalSymGrid, "divergence", rank_in=1, rank_out=0
 )
 @fill_in_docstring
 def make_divergence(grid: CylindricalSymGrid) -> OperatorType:
@@ -202,8 +198,8 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorType:
     return divergence  # type: ignore
 
 
-@backends.register_operator(
-    "numba", CylindricalSymGrid, "vector_gradient", rank_in=1, rank_out=2
+@numba_backend.register_operator(
+    CylindricalSymGrid, "vector_gradient", rank_in=1, rank_out=2
 )
 @fill_in_docstring
 def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorType:
@@ -252,8 +248,8 @@ def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorType:
     return vector_gradient  # type: ignore
 
 
-@backends.register_operator(
-    "numba", CylindricalSymGrid, "vector_laplace", rank_in=1, rank_out=1
+@numba_backend.register_operator(
+    CylindricalSymGrid, "vector_laplace", rank_in=1, rank_out=1
 )
 @fill_in_docstring
 def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
@@ -314,8 +310,8 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
     return vector_laplace  # type: ignore
 
 
-@backends.register_operator(
-    "numba", CylindricalSymGrid, "tensor_divergence", rank_in=2, rank_out=1
+@numba_backend.register_operator(
+    CylindricalSymGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
 @fill_in_docstring
 def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorType:

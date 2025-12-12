@@ -19,14 +19,14 @@ from typing import TYPE_CHECKING, Literal
 
 from ....grids.spherical import PolarSymGrid
 from ....tools.docstrings import fill_in_docstring
-from ...registry import backends
+from .. import numba_backend
 from ..utils import jit
 
 if TYPE_CHECKING:
     from ....tools.typing import NumericArray, OperatorType
 
 
-@backends.register_operator("numba", PolarSymGrid, "laplace", rank_in=0, rank_out=0)
+@numba_backend.register_operator(PolarSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(grid: PolarSymGrid) -> OperatorType:
     """Make a discretized laplace operator for a polar grid.
@@ -58,7 +58,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorType:
     return laplace  # type: ignore
 
 
-@backends.register_operator("numba", PolarSymGrid, "gradient", rank_in=0, rank_out=1)
+@numba_backend.register_operator(PolarSymGrid, "gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(
     grid: PolarSymGrid, *, method: Literal["central", "forward", "backward"] = "central"
@@ -104,8 +104,8 @@ def make_gradient(
     return gradient  # type: ignore
 
 
-@backends.register_operator(
-    "numba", PolarSymGrid, "gradient_squared", rank_in=0, rank_out=0
+@numba_backend.register_operator(
+    PolarSymGrid, "gradient_squared", rank_in=0, rank_out=0
 )
 @fill_in_docstring
 def make_gradient_squared(grid: PolarSymGrid, *, central: bool = True) -> OperatorType:
@@ -155,7 +155,7 @@ def make_gradient_squared(grid: PolarSymGrid, *, central: bool = True) -> Operat
     return gradient_squared  # type: ignore
 
 
-@backends.register_operator("numba", PolarSymGrid, "divergence", rank_in=1, rank_out=0)
+@numba_backend.register_operator(PolarSymGrid, "divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(grid: PolarSymGrid) -> OperatorType:
     """Make a discretized divergence operator for a polar grid.
@@ -188,9 +188,7 @@ def make_divergence(grid: PolarSymGrid) -> OperatorType:
     return divergence  # type: ignore
 
 
-@backends.register_operator(
-    "numba", PolarSymGrid, "vector_gradient", rank_in=1, rank_out=2
-)
+@numba_backend.register_operator(PolarSymGrid, "vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
 def make_vector_gradient(grid: PolarSymGrid) -> OperatorType:
     """Make a discretized vector gradient operator for a polar grid.
@@ -229,8 +227,8 @@ def make_vector_gradient(grid: PolarSymGrid) -> OperatorType:
     return vector_gradient  # type: ignore
 
 
-@backends.register_operator(
-    "numba", PolarSymGrid, "tensor_divergence", rank_in=2, rank_out=1
+@numba_backend.register_operator(
+    PolarSymGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
 @fill_in_docstring
 def make_tensor_divergence(grid: PolarSymGrid) -> OperatorType:

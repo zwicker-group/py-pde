@@ -24,7 +24,7 @@ from numba.extending import overload, register_jitable
 from .... import config
 from ....grids.cartesian import CartesianGrid
 from ....tools.misc import module_available
-from ...registry import backends
+from .. import numba_backend
 from ..utils import jit
 
 if TYPE_CHECKING:
@@ -134,13 +134,13 @@ def _make_laplace_numba_2d(
     else:
         # use 9-point stencil with interpolated boundary conditions
         w = corner_weight
-        backends["numba"]._logger.info(
+        numba_backend._logger.info(
             "Create 2D Cartesian Laplacian with 9-point stencil (w=%.3g)", w
         )
 
         if not np.isclose(*grid.discretization):
             # we have not yet found a good expression for the 9-point stencil for dx!=dy
-            backends["numba"]._logger.warning(
+            numba_backend._logger.warning(
                 "9-point stencils with anisotropic grids are not tested and might "
                 "produce wrong results."
             )
@@ -292,7 +292,7 @@ def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorType:
     return laplace  # type: ignore
 
 
-@backends.register_operator("numba", CartesianGrid, "laplace", rank_in=0, rank_out=0)
+@numba_backend.register_operator(CartesianGrid, "laplace", rank_in=0, rank_out=0)
 def make_laplace(
     grid: CartesianGrid, *, spectral: bool | None = None, **kwargs
 ) -> OperatorType:
@@ -482,7 +482,7 @@ def _make_gradient_numba_3d(
     return gradient  # type: ignore
 
 
-@backends.register_operator("numba", CartesianGrid, "gradient", rank_in=0, rank_out=1)
+@numba_backend.register_operator(CartesianGrid, "gradient", rank_in=0, rank_out=1)
 def make_gradient(
     grid: CartesianGrid,
     *,
@@ -677,8 +677,8 @@ def _make_gradient_squared_numba_3d(
     return gradient_squared  # type: ignore
 
 
-@backends.register_operator(
-    "numba", CartesianGrid, "gradient_squared", rank_in=0, rank_out=0
+@numba_backend.register_operator(
+    CartesianGrid, "gradient_squared", rank_in=0, rank_out=0
 )
 def make_gradient_squared(grid: CartesianGrid, *, central: bool = True) -> OperatorType:
     """Make a gradient operator on a Cartesian grid.
@@ -838,7 +838,7 @@ def _make_divergence_numba_3d(
     return divergence  # type: ignore
 
 
-@backends.register_operator("numba", CartesianGrid, "divergence", rank_in=1, rank_out=0)
+@numba_backend.register_operator(CartesianGrid, "divergence", rank_in=1, rank_out=0)
 def make_divergence(
     grid: CartesianGrid,
     *,
@@ -899,8 +899,8 @@ def _vectorize_operator(
     return register_jitable(vectorized_operator)  # type: ignore
 
 
-@backends.register_operator(
-    "numba", CartesianGrid, "vector_gradient", rank_in=1, rank_out=2
+@numba_backend.register_operator(
+    CartesianGrid, "vector_gradient", rank_in=1, rank_out=2
 )
 def make_vector_gradient(
     grid: CartesianGrid,
@@ -922,9 +922,7 @@ def make_vector_gradient(
     return _vectorize_operator(make_gradient, grid, method=method)
 
 
-@backends.register_operator(
-    "numba", CartesianGrid, "vector_laplace", rank_in=1, rank_out=1
-)
+@numba_backend.register_operator(CartesianGrid, "vector_laplace", rank_in=1, rank_out=1)
 def make_vector_laplace(grid: CartesianGrid) -> OperatorType:
     """Make a vector Laplacian on a Cartesian grid.
 
@@ -938,8 +936,8 @@ def make_vector_laplace(grid: CartesianGrid) -> OperatorType:
     return _vectorize_operator(make_laplace, grid)
 
 
-@backends.register_operator(
-    "numba", CartesianGrid, "tensor_divergence", rank_in=2, rank_out=1
+@numba_backend.register_operator(
+    CartesianGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
 def make_tensor_divergence(
     grid: CartesianGrid,

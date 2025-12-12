@@ -8,6 +8,7 @@ from __future__ import annotations
 import inspect
 import logging
 from abc import abstractmethod
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
 from ..tools.typing import (
@@ -39,9 +40,12 @@ class BackendBase:
     """Basic backend from which all other backends inherit."""
 
     _logger: logging.Logger  # logger instance to output information
+    _operators: dict[type[GridBase], dict[str, OperatorInfo]]
+    """dict: all operators registered for all backends"""
 
-    def __init__(self, name: str = "numpy"):
+    def __init__(self, name: str = ""):
         self.name = name
+        self._operators = defaultdict(dict)
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Initialize class-level attributes of subclasses."""
@@ -59,7 +63,9 @@ class BackendBase:
         grid_cls: type[GridBase],
         name: str,
         factory_func: OperatorFactory | None = None,
-        **kwargs,
+        *,
+        rank_in: int = 0,
+        rank_out: int = 0,
     ):
         """Register an operator for a particular grid.
 
@@ -94,9 +100,20 @@ class BackendBase:
             rank_out (int):
                 The rank of the field that is returned by the operator
         """
-        from .registry import backends
 
-        backends.register_operator(self.name, grid_cls, name, factory_func, **kwargs)
+        def register_operator(factor_func_arg: OperatorFactory):
+            """Helper function to register the operator."""
+            self._operators[grid_cls][name] = OperatorInfo(
+                factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out, name=name
+            )
+            return factor_func_arg
+
+        if factory_func is None:
+            # method is used as a decorator, so return the helper function
+            return register_operator
+        # method is used directly
+        register_operator(factory_func)
+        return None
 
     def get_registered_operators(self, grid_id: GridBase | type[GridBase]) -> set[str]:
         """Returns all operators defined for a grid.
@@ -105,8 +122,6 @@ class BackendBase:
             grid (:class:`~pde.grid.base.GridBase` or its type):
                 Grid for which the operator need to be returned
         """
-        from . import backends
-
         grid_cls = grid_id if inspect.isclass(grid_id) else grid_id.__class__
 
         # get all operators registered on the class
@@ -114,7 +129,7 @@ class BackendBase:
         # add all custom defined operators
         classes = inspect.getmro(grid_cls)[:-1]  # type: ignore
         for cls in classes:
-            operators |= set(backends._operators[self.name][cls].keys())
+            operators |= set(self._operators[cls].keys())
 
         return operators
 
@@ -138,16 +153,18 @@ class BackendBase:
             return operator
         assert isinstance(operator, str)
 
-        from . import backends
-
         # look for defined operators on all parent grid classes (except `object`)
         classes = inspect.getmro(grid.__class__)[:-1]
         for cls in classes:
-            if operator in backends._operators[self.name][cls]:
-                return backends._operators[self.name][cls][operator]
+            if operator in self._operators[cls]:
+                return self._operators[cls][operator]
 
         # throw an error since operator was not found
-        msg = f"Operator '{operator}' is not defined for backend {self.name}"
+        msg = (
+            f"Backend `{self.name}` does not define operator '{operator}' for grid "
+            f"`{grid.__class__.__name__}`. Defined operators are: "
+            f"{sorted(self.get_registered_operators(cls))}."
+        )
         raise NotImplementedError(msg)
 
     @abstractmethod

@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Literal
 
 from ....grids.spherical import PolarSymGrid
 from ....tools.docstrings import fill_in_docstring
-from ...registry import backends
+from .. import scipy_backend
 from .common import make_general_poisson_solver
 
 if TYPE_CHECKING:
@@ -79,9 +79,7 @@ def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray
     return matrix, vector
 
 
-@backends.register_operator(
-    "scipy", PolarSymGrid, "poisson_solver", rank_in=0, rank_out=0
-)
+@scipy_backend.register_operator(PolarSymGrid, "poisson_solver", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_poisson_solver(
     bcs: BoundariesList, *, method: Literal["auto", "scipy"] = "auto"
