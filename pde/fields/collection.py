@@ -109,11 +109,10 @@ class FieldCollection(FieldBase):
         # extract data from individual fields
         fields_data: list[NumericArray] = []
         self._slices: list[slice] = []
-        dof = 0  # count local degrees of freedom
         for field in self.fields:
             if not isinstance(field, DataFieldBase):
                 msg = (
-                    "Individual fields must be of type DataFieldBase. Field "
+                    "Individual fields must be of type `DataFieldBase`. Field "
                     "collections cannot be nested."
                 )
                 raise TypeError(msg)
@@ -121,7 +120,6 @@ class FieldCollection(FieldBase):
             this_data = field._data_flat
             fields_data.extend(this_data)
             self._slices.append(slice(start, len(fields_data)))
-            dof += len(this_data)
 
         # initialize the data from the individual fields
         data_arr = number_array(fields_data, dtype=dtype, copy=None)
@@ -264,7 +262,9 @@ class FieldCollection(FieldBase):
 
     @classmethod
     def from_state(
-        cls, attributes: dict[str, Any], data: NumericArray | None = None
+        cls,
+        attributes: dict[str, Any],
+        data: NumericArray | Literal["empty", "zeros", "ones"] | None = None,
     ) -> FieldCollection:
         """Create a field collection from given state.
 
@@ -277,6 +277,7 @@ class FieldCollection(FieldBase):
         if "class" in attributes:
             class_name = attributes.pop("class")
             assert class_name == cls.__name__
+        attributes["copy_fields"] = False  # fields will be created from scratch
 
         # restore the individual fields (without data)
         fields = [
@@ -287,8 +288,20 @@ class FieldCollection(FieldBase):
         # create the collection
         collection = cls(fields, **attributes)  # type: ignore
 
-        if data is not None:
-            collection.data = data  # set the data of all fields
+        if data is None:
+            pass  # data will not be set
+        elif isinstance(data, str):
+            if data == "empty":
+                pass  # data will not be set
+            elif data == "zeros":
+                collection.data = 0
+            elif data == "ones":
+                collection.data = 1
+            else:
+                msg = f"Data `{data}` is not accepted."
+                raise ValueError(msg)
+        else:
+            collection.data = np.asanyarray(data)  # set the data of all fields
 
         return collection
 

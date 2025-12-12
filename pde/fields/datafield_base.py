@@ -491,7 +491,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def from_state(
         cls,
         attributes: dict[str, Any],
-        data: NumericArray | None = None,
+        data: NumericArray | Literal["empty", "zeros", "ones"] | None = None,
     ) -> Self:
         """Create a field from given state.
 

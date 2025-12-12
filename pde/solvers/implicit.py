@@ -131,7 +131,7 @@ class ImplicitSolver(SolverBase):
         self.info["stochastic"] = True
 
         rhs = self.pde.make_pde_rhs(state, backend=self.backend)
-        rhs_sde = self.pde.make_sde_rhs(state, backend=self.backend)
+        rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
 
@@ -145,7 +145,8 @@ class ImplicitSolver(SolverBase):
             state_prev = np.empty_like(state_data)
 
             # estimate state at next time point
-            evolution_rate, noise_realization = rhs_sde(state_data, t)
+            evolution_rate = rhs(state_data, t)
+            noise_realization = rhs_noise(state_data, t)
             if noise_realization is not None:
                 # add the noise to the reference state at the current time point and
                 # adept the state at the next time point iteratively below

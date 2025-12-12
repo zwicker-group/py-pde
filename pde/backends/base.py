@@ -311,6 +311,24 @@ class BackendBase:
         msg = f"Interpolator not defined for backend {self.name}"
         raise NotImplementedError(msg)
 
+    def make_noise_realization(
+        self, eq: PDEBase, state: TField
+    ) -> Callable[[NumericArray, float], NumericArray | None]:
+        """Return a function for evaluating the noise term of the PDE.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            noise (float or :class:`~numpy.ndarray` or None):
+                Variance of the additive Gaussian white noise
+
+        Returns:
+            Function calculating noise
+        """
+        msg = f"Noise terms not defined for backend {self.name}"
+        raise NotImplementedError(msg)
+
     def make_pde_rhs(
         self, eq: PDEBase, state: TField, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
@@ -326,24 +344,6 @@ class BackendBase:
             Function returning deterministic part of the right hand side of the PDE
         """
         msg = f"PDE right hand side not defined for backend {self.name}"
-        raise NotImplementedError(msg)
-
-    def make_sde_rhs(
-        self, eq: PDEBase, state: TField, **kwargs
-    ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
-        """Return a function for evaluating the right hand side of the SDE.
-
-        Args:
-            eq (:class:`~pde.pdes.base.PDEBase`):
-                The object describing the differential equation
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which information can be extracted
-
-        Returns:
-            Function returning deterministic part of the right hand side of the PDE
-            together with a noise realization.
-        """
-        msg = f"SDE right hand side not defined for backend {self.name}"
         raise NotImplementedError(msg)
 
     def make_inner_stepper(

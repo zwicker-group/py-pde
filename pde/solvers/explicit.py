@@ -43,11 +43,13 @@ class EulerSolver(AdaptiveSolverBase):
         if self.pde.is_sde:
             # handle stochastic version of the pde
             self.info["scheme"] = "euler-maruyama"
-            rhs_sde = self.pde.make_sde_rhs(state, backend=self.backend)
+            rhs_pde = self.pde.make_pde_rhs(state, backend=self.backend)
+            rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)
 
             def stepper(state_data: NumericArray, t: float) -> None:
                 """Perform a single Euler-Maruyama step."""
-                evolution_rate, noise_realization = rhs_sde(state_data, t)
+                evolution_rate = rhs_pde(state_data, t)
+                noise_realization = rhs_noise(state_data, t)
                 state_data += dt * evolution_rate
                 if noise_realization is not None:
                     state_data += np.sqrt(dt) * noise_realization

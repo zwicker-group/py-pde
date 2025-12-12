@@ -121,7 +121,7 @@ class PDEBase(metaclass=ABCMeta):
         # check for self.noise, but do not assume it is defined in case __init__ is not
         # called in a subclass
         noise = getattr(self, "noise", 0)
-        return bool(np.any(noise != 0))
+        return not np.allclose(noise, 0, atol=1e-14)
 
     def make_post_step_hook(self, state: FieldBase) -> tuple[StepperHook, Any]:
         """Returns a function that is called after each step.
@@ -340,6 +340,38 @@ class PDEBase(metaclass=ABCMeta):
         pde_rhs._backend = backend_obj.name  # type: ignore
         return pde_rhs
 
+    def make_noise_realization(
+        self,
+        state: TField,
+        backend: BackendType = "auto",
+        **kwargs,
+    ) -> Callable[[NumericArray, float], NumericArray | None]:
+        """Return a function for determining one realization of the noise term.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+            backend (str):
+                Determines how the function is created. Accepted values are 'numpy' and
+                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
+
+        Returns:
+            callable: Function calculating the noise realization
+        """
+        from ..backends import backends
+
+        if backend == "auto":
+            if hasattr(self, "_make_noise_realization_numba"):
+                backend = "numba"
+            else:
+                backend = "numpy"
+
+        backend_obj = backends[backend]
+        pde_rhs = backend_obj.make_noise_realization(self, state, **kwargs)
+        pde_rhs._backend = backend_obj.name  # type: ignore
+        return pde_rhs
+
     def noise_realization(
         self, state: TField, t: float = 0, *, label: str = "Noise realization"
     ) -> TField:
@@ -383,7 +415,6 @@ class PDEBase(metaclass=ABCMeta):
                     state.grid,
                     std=np.sqrt(self.noise),
                     scaling="physical",
-                    label=label,
                     dtype=state.dtype,
                     rng=self.rng,
                 )
@@ -393,9 +424,10 @@ class PDEBase(metaclass=ABCMeta):
 
         else:
             # no noise
-            result = state.copy(label=label)
-            result.data[:] = 0
+            result = state.from_state(state.attributes, data="zeros")
 
+        if label:
+            result.label = label
         return result
 
     def _make_noise_realization_numba(
@@ -469,117 +501,6 @@ class PDEBase(metaclass=ABCMeta):
                 """Helper function returning a noise realization."""
 
         return noise_realization  # type: ignore
-
-    def _make_sde_rhs_numba(
-        self, state: TField, **kwargs
-    ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
-        """Return a function for evaluating the noise term of the PDE.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-
-        Returns:
-            Function determining the right hand side of the PDE
-        """
-        import numba as nb
-
-        evolution_rate = self._make_pde_rhs_numba_cached(state, **kwargs)
-        noise_realization = self._make_noise_realization_numba(state, **kwargs)
-
-        @nb.jit
-        def sde_rhs(
-            state_data: NumericArray, t: float
-        ) -> tuple[NumericArray, NumericArray]:
-            """Compiled helper function returning a noise realization."""
-            return (evolution_rate(state_data, t), noise_realization(state_data, t))
-
-        return sde_rhs  # type: ignore
-
-    def _make_sde_rhs_numba_cached(
-        self, state: TField, **kwargs
-    ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
-        """Create a compiled function for evaluating the noise term of the PDE.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which information can be extracted
-
-        This method implements caching and checking of the actual method, which is
-        defined by overwriting the method `_make_pde_rhs_numba`.
-        """
-        if self.cache_rhs:
-            # support caching of the noise term
-            grid_state = state.grid.state_serialized
-            if self._cache.get("sde_rhs_numba_state") == grid_state:
-                # cache was successful
-                self._logger.info("Use compiled noise term from cache")
-            else:
-                # cache was not hit
-                self._logger.info("Write compiled noise term to cache")
-                self._cache["sde_rhs_numba_state"] = grid_state
-                self._cache["sde_rhs_numba"] = self._make_sde_rhs_numba(state, **kwargs)
-            sde_rhs = self._cache["sde_rhs_numba"]
-
-        else:
-            # caching was skipped
-            sde_rhs = self._make_sde_rhs_numba(state, **kwargs)
-
-        return sde_rhs  # type: ignore
-
-    def make_sde_rhs(
-        self,
-        state: TField,
-        backend: BackendType = "auto",
-        **kwargs,
-    ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
-        """Return a function for evaluating the right hand side of the SDE.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which information can be extracted
-            backend (str):
-                Determines how the function is created. Accepted values are 'numpy' and
-                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
-
-        Returns:
-            Function determining the deterministic part of the right hand side of the
-            PDE together with a noise realization.
-        """
-        if backend == "auto":
-            try:
-                sde_rhs = self._make_sde_rhs_numba_cached(state, **kwargs)
-            except NotImplementedError:
-                backend = "numpy"
-            else:
-                sde_rhs._backend = "numba"  # type: ignore
-                return sde_rhs
-
-        if backend == "numba":
-            sde_rhs = self._make_sde_rhs_numba_cached(state, **kwargs)
-            sde_rhs._backend = "numba"  # type: ignore
-
-        elif backend == "numpy":
-            state = state.copy()
-
-            def sde_rhs(
-                state_data: NumericArray, t: float
-            ) -> tuple[NumericArray, NumericArray]:
-                """Evaluate the rhs given only a state without the grid."""
-                state.data = state_data
-                return (
-                    self.evolution_rate(state, t, **kwargs).data,
-                    self.noise_realization(state, t, **kwargs).data,
-                )
-
-            sde_rhs._backend = "numpy"  # type: ignore
-
-        else:
-            msg = f"Unsupported backend `{backend}`"
-            raise ValueError(msg)
-
-        return sde_rhs
 
     def solve(
         self,

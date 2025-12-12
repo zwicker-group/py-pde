@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numpy as np
 
-from ...fields import DataFieldBase, VectorField
+from ...fields import DataFieldBase, FieldCollection, VectorField
 from ...solvers import AdaptiveSolverBase, SolverBase
 from ...tools.math import OnlineStatistics
 from ..base import BackendBase, OperatorInfo
@@ -303,6 +303,90 @@ class NumpyBackend(BackendBase):
             return np.einsum("i...,j...->ij...", a, b, out=out)
 
         return outer
+
+    def make_noise_realization(
+        self, eq: PDEBase, state: TField
+    ) -> Callable[[NumericArray, float], NumericArray | None]:
+        """Return a function for evaluating the noise term of the PDE.
+
+        Args:
+            eq (:class:`~pde.pdes.base.PDEBase`):
+                The object describing the differential equation
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+
+        Returns:
+            Function calculating noise
+        """
+        if hasattr(eq, "make_noise_realization_numpy"):
+            return eq.make_noise_realization_numpy(state)  # type:ignore
+
+        if hasattr(eq, "noise_realization"):
+            attributes = state.attributes
+
+            def noise_realization(
+                state_data: NumericArray, t: float
+            ) -> NumericArray | None:
+                fields = state.__class__.from_state(attributes.copy(), state_data)
+                return eq.noise_realization(fields, t).data
+
+            return noise_realization
+
+        if getattr(eq, "noise", None) is None or np.allclose(eq.noise, 0):
+
+            def noise_realization(
+                state_data: NumericArray, t: float
+            ) -> NumericArray | None:
+                """Helper function returning a noise realization."""
+
+            return noise_realization
+
+        if state.dtype != float:
+            msg = "Noise is only supported for float types"
+            raise TypeError(msg)
+
+        if isinstance(state, FieldCollection):
+            # different noise strengths, assuming one for each field
+            noises_std: NumericArray = np.empty(state.data.shape[0])
+            for n, noise_var in enumerate(np.broadcast_to(eq.noise, len(state))):
+                noises_std[state._slices[n]] = np.sqrt(noise_var)
+
+            def noise_realization(
+                state_data: NumericArray, t: float
+            ) -> NumericArray | None:
+                """Helper function returning a noise realization."""
+                result = np.empty_like(state_data)
+                for i, field in enumerate(state):
+                    if noise_var == 0:
+                        result[state._slices[i]].fill(0)
+                    else:
+                        result[state._slices[i]] = field[i].random_normal(  # type: ignore
+                            state.grid,
+                            std=noises_std[i],
+                            scaling="physical",
+                            dtype=state.dtype,
+                            rng=eq.rng,
+                        )
+                return field.data
+
+        else:
+            # a single noise value is given for all fields
+            noise_std = np.sqrt(float(eq.noise))
+
+            def noise_realization(
+                state_data: NumericArray, t: float
+            ) -> NumericArray | None:
+                """Helper function returning a noise realization."""
+                return state.random_normal(
+                    state.grid,
+                    std=noise_std,
+                    scaling="physical",
+                    dtype=state.dtype,
+                    rng=eq.rng,
+                ).data
+
+        return noise_realization
 
     def make_pde_rhs(
         self, eq: PDEBase, state: TField, **kwargs
