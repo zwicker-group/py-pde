@@ -8,7 +8,7 @@ from __future__ import annotations
 import inspect
 import logging
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
 from ..tools.typing import (
     DataSetter,
@@ -32,6 +32,8 @@ if TYPE_CHECKING:
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
 
+TFunc = TypeVar("TFunc", bound=Callable)
+
 
 class BackendBase:
     """Basic backend from which all other backends inherit."""
@@ -46,6 +48,11 @@ class BackendBase:
         super().__init_subclass__(**kwargs)
         # create logger for this specific field class
         cls._logger = _base_logger.getChild(cls.__qualname__)
+
+    def compile_function(self, func: TFunc) -> TFunc:
+        """General method that compiles a user function."""
+        msg = f"Compiling functions is not supported by backend `{self.name}`"
+        raise NotImplementedError(msg)
 
     def register_operator(
         self,

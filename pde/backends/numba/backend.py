@@ -38,10 +38,15 @@ if TYPE_CHECKING:
         NumericArray,
         TField,
     )
+    from ..base import TFunc
 
 
 class NumbaBackend(NumpyBackend):
     """Defines numba backend."""
+
+    def compile_function(self, func: TFunc) -> TFunc:
+        """General method that compiles a user function."""
+        return jit(func)  # type: ignore
 
     def get_registered_operators(self, grid_id: GridBase | type[GridBase]) -> set[str]:
         """Returns all operators defined for a grid.

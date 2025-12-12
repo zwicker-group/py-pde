@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numpy as np
 
-from ...fields import DataFieldBase, FieldCollection, VectorField
+from ...fields import DataFieldBase, VectorField
 from ...solvers import AdaptiveSolverBase, SolverBase
 from ...tools.math import OnlineStatistics
-from ..base import BackendBase, OperatorInfo
+from ..base import BackendBase, OperatorInfo, TFunc
 
 if TYPE_CHECKING:
     from ...grids import BoundariesBase, GridBase
@@ -29,6 +29,10 @@ if TYPE_CHECKING:
 
 class NumpyBackend(BackendBase):
     """Basic backend from which all other backends inherit."""
+
+    def compile_function(self, func: TFunc) -> TFunc:
+        """General method that compiles a user function."""
+        return func
 
     def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
@@ -333,60 +337,8 @@ class NumpyBackend(BackendBase):
 
             return noise_realization
 
-        if getattr(eq, "noise", None) is None or np.allclose(eq.noise, 0):
-
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-
-            return noise_realization
-
-        if state.dtype != float:
-            msg = "Noise is only supported for float types"
-            raise TypeError(msg)
-
-        if isinstance(state, FieldCollection):
-            # different noise strengths, assuming one for each field
-            noises_std: NumericArray = np.empty(state.data.shape[0])
-            for n, noise_var in enumerate(np.broadcast_to(eq.noise, len(state))):
-                noises_std[state._slices[n]] = np.sqrt(noise_var)
-
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-                result = np.empty_like(state_data)
-                for i, field in enumerate(state):
-                    if noise_var == 0:
-                        result[state._slices[i]].fill(0)
-                    else:
-                        result[state._slices[i]] = field[i].random_normal(  # type: ignore
-                            state.grid,
-                            std=noises_std[i],
-                            scaling="physical",
-                            dtype=state.dtype,
-                            rng=eq.rng,
-                        )
-                return field.data
-
-        else:
-            # a single noise value is given for all fields
-            noise_std = np.sqrt(float(eq.noise))
-
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-                return state.random_normal(
-                    state.grid,
-                    std=noise_std,
-                    scaling="physical",
-                    dtype=state.dtype,
-                    rng=eq.rng,
-                ).data
-
-        return noise_realization
+        msg = f"Noise realization is not implemented for {eq}"
+        raise NotImplementedError(msg)
 
     def make_pde_rhs(
         self, eq: PDEBase, state: TField, **kwargs

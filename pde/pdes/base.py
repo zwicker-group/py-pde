@@ -79,10 +79,10 @@ class PDEBase(metaclass=ABCMeta):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
                 used for stochastic simulations. Note that this random number generator
-                is only used for numpy function, while compiled numba code uses the
-                random number generator of numba. Moreover, in simulations using
-                multiprocessing, setting the same generator in all processes might yield
-                unintended correlations in the simulation results.
+                is only used for numpy function, while other backends might not use it.
+                Moreover, in simulations using multiprocessing, setting the same
+                generator in all processes might yield unintended correlations in the
+                simulation results.
 
         Note:
             If more complicated noise structures are required, the methods
@@ -123,7 +123,9 @@ class PDEBase(metaclass=ABCMeta):
         noise = getattr(self, "noise", 0)
         return not np.allclose(noise, 0, atol=1e-14)
 
-    def make_post_step_hook(self, state: FieldBase) -> tuple[StepperHook, Any]:
+    def make_post_step_hook(
+        self, state: FieldBase, backend: BackendType = "numpy"
+    ) -> tuple[StepperHook, Any]:
         """Returns a function that is called after each step.
 
         This function receives three arguments: the current state as a numpy array, the
@@ -146,7 +148,7 @@ class PDEBase(metaclass=ABCMeta):
 
             .. code-block:: python
 
-                def make_post_step_hook(self, state):
+                def make_post_step_hook(self, state, backend):
                     def post_step_hook(state_data, t, post_step_data):
                         i = state_data > 1  # get violating entries
                         overshoot = (state_data[i] - 1).sum()  # get total correction
@@ -159,6 +161,8 @@ class PDEBase(metaclass=ABCMeta):
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
+            backend (str):
+                Determines how the function is created (like 'numpy' and 'numba')
 
         Returns:
             tuple: The first entry is the function that implements the hook. The second
@@ -429,78 +433,6 @@ class PDEBase(metaclass=ABCMeta):
         if label:
             result.label = label
         return result
-
-    def _make_noise_realization_numba(
-        self, state: TField, **kwargs
-    ) -> Callable[[NumericArray, float], NumericArray]:
-        """Return a function for evaluating the noise term of the PDE.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-
-        Returns:
-            Function determining the right hand side of the PDE
-        """
-        import numba as nb
-
-        from ..backends.numba.grids import make_cell_volume_getter
-
-        if self.is_sde:
-            data_shape: tuple[int, ...] = state.data.shape
-            noise_var: float
-            cell_volume: Callable[[int], float] = make_cell_volume_getter(
-                state.grid, flat_index=True
-            )
-
-            if state.dtype != float:
-                msg = "Noise is only supported for float types"
-                raise TypeError(msg)
-
-            if isinstance(state, FieldCollection):
-                # different noise strengths, assuming one for each field
-                noises_var: NumericArray = np.empty(data_shape[0])
-                for n, noise_var in enumerate(np.broadcast_to(self.noise, len(state))):
-                    noises_var[state._slices[n]] = noise_var
-
-                @nb.jit
-                def noise_realization(
-                    state_data: NumericArray, t: float
-                ) -> NumericArray:
-                    """Helper function returning a noise realization."""
-                    out = np.empty(data_shape)
-                    for n in range(len(state_data)):
-                        if noises_var[n] == 0:
-                            out[n].fill(0)
-                        else:
-                            for i in range(state_data[n].size):
-                                scale = noises_var[n] / cell_volume(i)
-                                out[n].flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
-                    return out  # type: ignore
-
-            else:
-                # a single noise value is given for all fields
-                noise_var = float(self.noise)
-
-                @nb.jit
-                def noise_realization(
-                    state_data: NumericArray, t: float
-                ) -> NumericArray:
-                    """Helper function returning a noise realization."""
-                    out = np.empty(state_data.shape)
-                    for i in range(state_data.size):
-                        scale = noise_var / cell_volume(i)
-                        out.flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
-                    return out  # type: ignore
-
-        else:
-
-            @nb.jit
-            def noise_realization(state_data: NumericArray, t: float) -> None:
-                """Helper function returning a noise realization."""
-
-        return noise_realization  # type: ignore
 
     def solve(
         self,

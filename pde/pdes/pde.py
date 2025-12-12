@@ -19,7 +19,6 @@ from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.local import BCDataError
 from ..pdes.base import PDEBase
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -30,12 +29,12 @@ if TYPE_CHECKING:
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import (
         ArrayLike,
+        BackendType,
         NumberOrArray,
         NumericArray,
         StepperHook,
         TField,
     )
-
 
 # Define short notations that can appear in mathematical equations and need to be
 # expanded. Since these replacements are replaced in order, it's advisable to start with
@@ -374,16 +373,9 @@ class PDE(PDEBase):
         self._logger.info("RHS for `%s` has signature %s", var, signature)
 
         # prepare the actual function being called in the end
-        if backend == "numpy":
-            func_inner = expr._get_function(single_arg=False, user_funcs=ops)
-        elif backend == "numba":
-            func_pure = expr._get_function(
-                single_arg=False, user_funcs=ops, prepare_compilation=True
-            )
-            func_inner = jit(func_pure)
-        else:
-            msg = f"Unsupported backend {backend}"
-            raise ValueError(msg)
+        func_inner = expr.get_function(
+            backend=backend, single_arg=False, user_funcs=ops
+        )
 
         def rhs_func(*args) -> NumericArray:
             """Wrapper that inserts the extra arguments and initialized bc_args."""
@@ -557,13 +549,17 @@ class PDE(PDEBase):
 
         return result
 
-    def make_post_step_hook(self, state: FieldBase) -> tuple[StepperHook, Any]:
+    def make_post_step_hook(
+        self, state: FieldBase, backend: BackendType = "numpy"
+    ) -> tuple[StepperHook, Any]:
         """Returns a function that is called after each step.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
+            backend (str):
+                Determines how the function is created (like 'numpy' and 'numba')
 
         Returns:
             tuple: The first entry is the function that implements the hook. The second
@@ -573,21 +569,20 @@ class PDE(PDEBase):
         Raises:
             NotImplementedError: When :attr:`post_step_hook` is `None`.
         """
-        from numba.extending import register_jitable
-
         if self.post_step_hook is None:
             msg = "`post_step_hook` not set"
             raise NotImplementedError(msg)
-        post_step_hook = register_jitable(self.post_step_hook)
 
-        @register_jitable
+        from ..backends import backends
+
+        post_step_hook = backends[backend].compile_function(self.post_step_hook)
+
         def post_step_hook_impl(state_data, t, post_step_data):
             post_step_hook(state_data, t)
 
         return post_step_hook_impl, 0  # hook function and initial value
 
-    # time will not be updated
-    def _make_pde_rhs_numba_coll(
+    def _make_pde_rhs_numba_collection(
         self, state: FieldCollection, cache: dict[str, Any]
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create the compiled rhs if `state` is a field collection.
@@ -609,7 +604,7 @@ class PDE(PDEBase):
 
         num_fields = len(state)
         data_shape = state.data.shape
-        rhs_list = tuple(nb.jit(cache["rhs_funcs"][i]) for i in range(num_fields))
+        rhs_list = tuple(cache["rhs_funcs"][i] for i in range(num_fields))
 
         starts = tuple(slc.start for slc in state._slices)
         stops = tuple(slc.stop for slc in state._slices)
@@ -625,13 +620,13 @@ class PDE(PDEBase):
 
             if inner is None:
                 # the innermost function does not need to call a child
-                @jit
+                @nb.jit
                 def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
             else:
                 # all other functions need to call one deeper in the chain
-                @jit
+                @nb.jit
                 def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
                     inner(data_tpl, t, out)
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
@@ -641,7 +636,7 @@ class PDE(PDEBase):
                 return chain(i + 1, inner=wrap)
 
             # this is the outermost function
-            @jit
+            @nb.jit
             def evolution_rate(state_data: NumericArray, t: float = 0) -> NumericArray:
                 out = np.empty(data_shape)
                 with nb.objmode():
@@ -672,11 +667,11 @@ class PDE(PDEBase):
 
         if isinstance(state, DataFieldBase):
             # state is a single field
-            return jit(cache["rhs_funcs"][0])  # type: ignore
+            return cache["rhs_funcs"][0]
 
         if isinstance(state, FieldCollection):
             # state is a collection of fields
-            return self._make_pde_rhs_numba_coll(state, cache)
+            return self._make_pde_rhs_numba_collection(state, cache)
 
         msg = f"Unsupported field {state.__class__.__name__}"
         raise TypeError(msg)

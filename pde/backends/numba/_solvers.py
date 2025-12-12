@@ -34,18 +34,18 @@ def _make_post_step_hook(solver: SolverBase, state: TField) -> StepperHook:
     after each completed time step. If the PDE implements make_post_step_hook,
     this method attempts to obtain both the hook function and an initial value
     for the hook's mutable data by calling
-    ``post_step_hook, post_step_data_init = self.pde.make_post_step_hook(state)``.
-    The initial data is stored on the solver instance as ``self._post_step_data_init``
+    `post_step_hook, post_step_data_init = self.pde.make_post_step_hook(state, backend)`
+    The initial data is stored on the solver instance as `self._post_step_data_init`
     (copied to ensure mutability) and will be passed to the hook when the stepper
     is executed.
 
-    If no hook is provided by the PDE (i.e., ``make_post_step_hook`` raises
-    :class:`NotImplementedError`) or if the solver's ``_use_post_step_hook`` flag
-    is ``False``, a no-op hook is returned and ``self._post_step_data_init`` is set
-    to ``None``.
+    If no hook is provided by the PDE (i.e., `make_post_step_hook` raises
+    :class:`NotImplementedError`) or if the solver's `_use_post_step_hook` flag
+    is `False`, a no-op hook is returned and `self._post_step_data_init` is set
+    to `None`.
 
     The hook returned by this method always conforms to the signature
-    ``(state_data: numpy.ndarray, t: float, post_step_data: numpy.ndarray) -> None``
+    `(state_data: numpy.ndarray, t: float, post_step_data: numpy.ndarray) -> None`
     and is suitable for JIT compilation where supported.
 
     Args:

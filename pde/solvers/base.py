@@ -250,7 +250,7 @@ class SolverBase:
             try:
                 # try to get hook function and initial data from PDE instance
                 post_step_hook, self._post_step_data_init = (
-                    self.pde.make_post_step_hook(state)
+                    self.pde.make_post_step_hook(state, backend=self._backend_name)
                 )
                 self._logger.info("Created post-step hook from PDE")
 
