@@ -12,7 +12,6 @@
    math
    misc
    mpi
-   numba
    output
    parse_duration
    plotting

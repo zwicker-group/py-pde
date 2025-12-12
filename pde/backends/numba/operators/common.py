@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from ....tools.numba import jit
+from ..utils import jit
 
 if TYPE_CHECKING:
     from ....grids.base import GridBase

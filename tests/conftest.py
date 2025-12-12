@@ -8,8 +8,8 @@ import numpy as np
 import pytest
 
 from pde import config
+from pde.backends.numba.utils import random_seed
 from pde.tools.misc import module_available
-from pde.tools.numba import random_seed
 
 # ensure we use the Agg backend, so figures are not displayed
 plt.switch_backend("agg")

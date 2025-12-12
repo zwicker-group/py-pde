@@ -11,8 +11,8 @@ import numpy as np
 from numba.extending import register_jitable
 
 from ...grids.boundaries.local import _MPIBC, BCBase
-from ...tools.numba import jit
 from ..numba.backend import NumbaBackend
+from ..numba.utils import jit
 
 if TYPE_CHECKING:
     from ...grids.base import GridBase

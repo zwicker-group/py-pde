@@ -19,7 +19,7 @@ import numpy as np
 from numba.extending import register_jitable
 
 from ...grids import DomainError, GridBase
-from ...tools.numba import jit
+from .utils import jit
 
 if TYPE_CHECKING:
     from ...tools.typing import (

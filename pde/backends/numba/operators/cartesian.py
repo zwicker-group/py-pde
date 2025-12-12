@@ -24,8 +24,8 @@ from numba.extending import overload, register_jitable
 from .... import config
 from ....grids.cartesian import CartesianGrid
 from ....tools.misc import module_available
-from ....tools.numba import jit
 from ...registry import backends
+from ..utils import jit
 
 if TYPE_CHECKING:
     from ....tools.typing import NumericArray, OperatorType

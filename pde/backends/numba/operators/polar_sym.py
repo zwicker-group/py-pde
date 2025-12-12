@@ -19,8 +19,8 @@ from typing import TYPE_CHECKING, Literal
 
 from ....grids.spherical import PolarSymGrid
 from ....tools.docstrings import fill_in_docstring
-from ....tools.numba import jit
 from ...registry import backends
+from ..utils import jit
 
 if TYPE_CHECKING:
     from ....tools.typing import NumericArray, OperatorType

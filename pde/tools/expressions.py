@@ -395,26 +395,13 @@ class ExpressionBase(metaclass=ABCMeta):
         return self.get_function("numpy", single_arg=single_arg, user_funcs=user_funcs)
 
     @cached_method()
-    def _get_function_cached(
-        self, single_arg: bool = False, prepare_compilation: bool = False
-    ) -> Callable[..., NumberOrArray]:
-        """Return function evaluating expression.
-
-        Args:
-            single_arg (bool):
-                Determines whether the function takes all variables in a single argument
-                as an array or whether all variables need to be supplied separately.
-            prepare_compilation (bool):
-                Determines whether user functions compiled with numba
-
-        Returns:
-            function: the function
-        """
-        return self._get_function(single_arg, prepare_compilation=prepare_compilation)
+    def _get_function_cached(self) -> Callable[..., NumberOrArray]:
+        """Return a cached version of the function evaluating expression."""
+        return self.get_function(backend="numpy", single_arg=False)
 
     def __call__(self, *args, **kwargs) -> NumberOrArray:
         """Return the value of the expression for the given values."""
-        return self._get_function_cached(single_arg=False)(*args, **kwargs)
+        return self._get_function_cached()(*args, **kwargs)
 
     @cached_method()
     def get_compiled(self, single_arg: bool = False) -> Callable[..., NumberOrArray]:

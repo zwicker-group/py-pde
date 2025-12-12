@@ -1199,7 +1199,7 @@ class GridBase(metaclass=ABCMeta):
 
         .. code-block:: python
 
-            from pde.tools.numba import numba_dict
+            from pde.backends.numba.utils import numba_dict
 
             operator = grid.make_operator("laplace", bc={"value_expression": "t"})
             operator(field.data, args=numba_dict(t=t))

@@ -419,7 +419,7 @@ introduced above:
 
 .. code-block:: python
 
-    from pde.tools.numba import jit
+    from numba import jit
 
 
     class KuramotoSivashinskyPDE(PDEBase):

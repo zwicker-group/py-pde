@@ -383,7 +383,10 @@ class PDE(PDEBase):
             bc_args["t"] = args[-1]  # pass time to differential operators
             return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
 
-        return rhs_func
+        # compile the function if necessary
+        from ..backends import backends
+
+        return backends[backend].compile_function(rhs_func)
 
     def _prepare_cache(
         self, state: TField, backend: Literal["numpy", "numba"] = "numpy"
@@ -667,7 +670,7 @@ class PDE(PDEBase):
 
         if isinstance(state, DataFieldBase):
             # state is a single field
-            return cache["rhs_funcs"][0]
+            return cache["rhs_funcs"][0]  # type: ignore
 
         if isinstance(state, FieldCollection):
             # state is a collection of fields

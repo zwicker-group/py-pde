@@ -467,8 +467,8 @@ def environment() -> dict[str, Any]:
 
     from .. import __version__ as package_version
     from .. import config
+    from ..backends.numba.utils import numba_environment
     from . import mpi
-    from .numba import numba_environment
     from .plotting import get_plotting_context
 
     RESOURCE_PATH = Path(__file__).resolve().parents[1] / "tools" / "resources"

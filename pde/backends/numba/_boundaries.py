@@ -28,8 +28,7 @@ from ...grids.boundaries.local import (
     _PeriodicBC,
 )
 from ...tools.misc import number
-from ...tools.numba import address_as_void_pointer, jit, numba_dict
-from .utils import make_get_arr_1d
+from .utils import address_as_void_pointer, jit, make_get_arr_1d, numba_dict
 
 if TYPE_CHECKING:
     from ...tools.typing import (

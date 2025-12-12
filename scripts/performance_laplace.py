@@ -14,7 +14,6 @@ import numpy as np
 from pde import CylindricalSymGrid, ScalarField, SphericalSymGrid, UnitGrid, config
 from pde.grids.boundaries import BoundariesList
 from pde.tools.misc import estimate_computation_speed
-from pde.tools.numba import jit
 
 config["numba.multithreading"] = "never"  # disable multithreading for better comparison
 
@@ -25,7 +24,7 @@ def custom_laplace_2d_periodic(shape, dx=1):
     dim_x, dim_y = shape
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
-    @jit(parallel=parallel)
+    @nb.jit(parallel=parallel)
     def laplace(arr, out=None):
         """Apply laplace operator to array `arr`"""
         if out is None:
@@ -63,7 +62,7 @@ def custom_laplace_2d_neumann(shape, dx=1):
     dim_x, dim_y = shape
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
-    @jit(parallel=parallel)
+    @nb.jit(parallel=parallel)
     def laplace(arr, out=None):
         """Apply laplace operator to array `arr`"""
         if out is None:
@@ -97,11 +96,13 @@ def optimized_laplace_2d(bcs):
     The main optimization is that we expect the input to be a full array containing
     virtual boundary points. This avoids memory allocation and a copy of the data.
     """
-    set_ghost_cells = bcs.make_ghost_cell_setter()
+    from pde.backends.numba import numba_backend
+
+    set_ghost_cells = numba_backend.make_ghost_cell_setter(bcs)
     apply_laplace = bcs.grid.make_operator_no_bc("laplace")
     shape = bcs.grid.shape
 
-    @jit
+    @nb.jit
     def laplace(arr):
         """Apply laplace operator to array `arr`"""
         set_ghost_cells(arr)
@@ -118,7 +119,7 @@ def custom_laplace_cyl_neumann(shape, dr=1, dz=1):
     dr_2 = 1 / dr**2
     dz_2 = 1 / dz**2
 
-    @jit
+    @nb.jit
     def laplace(arr, out=None):
         """Apply laplace operator to array `arr`"""
         if out is None:

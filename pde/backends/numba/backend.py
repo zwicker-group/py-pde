@@ -18,10 +18,10 @@ from ...grids import DimensionError, DomainError, GridBase
 from ...grids.boundaries.axes import BoundariesBase, BoundariesList, BoundariesSetter
 from ...grids.boundaries.local import BCBase, UserBC
 from ...solvers import AdaptiveSolverBase, SolverBase
-from ...tools.numba import get_common_numba_dtype, jit, make_array_constructor
 from ..numpy.backend import NumpyBackend, OperatorInfo
 from . import grids
 from .overloads import OnlineStatistics
+from .utils import get_common_numba_dtype, jit, make_array_constructor
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -318,7 +318,7 @@ class NumbaBackend(NumpyBackend):
             # TODO: use numba.literal_unroll
             # # get the setters for all axes
             #
-            # from pde.tools.numba import jit
+            # from numba import jit
             #
             # @jit
             # def set_ghost_cells(data_full: NumericArray, args=None) -> None:

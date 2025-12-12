@@ -6,7 +6,7 @@ import numba
 import numpy as np
 import pytest
 
-from pde.tools.numba import (
+from pde.backends.numba.utils import (
     Counter,
     flat_idx,
     jit,

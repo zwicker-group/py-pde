@@ -18,8 +18,8 @@ from ...solvers.base import (
     SolverBase,
     _make_dt_adjuster,
 )
-from ...tools.numba import jit
 from ...tools.typing import NumericArray, StepperHook, TField
+from .utils import jit
 
 if TYPE_CHECKING:
     from ...tools.math import OnlineStatistics

@@ -6,9 +6,9 @@ This example solves a diffusion equation with a custom noise.
 """
 
 import numpy as np
+from numba import jit
 
 from pde import DiffusionPDE, ScalarField, UnitGrid
-from pde.tools.numba import jit
 
 
 class DiffusionCustomNoisePDE(DiffusionPDE):
