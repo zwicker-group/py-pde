@@ -43,7 +43,7 @@ class EulerSolver(AdaptiveSolverBase):
         if self.pde.is_sde:
             # handle stochastic version of the pde
             self.info["scheme"] = "euler-maruyama"
-            rhs_pde = self.pde.make_pde_rhs(state, backend=self.backend)
+            rhs_pde = self._make_pde_rhs(state)
             rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
 
             def stepper(state_data: NumericArray, t: float) -> None:
@@ -63,7 +63,7 @@ class EulerSolver(AdaptiveSolverBase):
                 raise RuntimeError(msg)
 
             self.info["scheme"] = "euler"
-            rhs_pde = self.pde.make_pde_rhs(state, backend=self.backend)
+            rhs_pde = self._make_pde_rhs(state)
 
             def stepper(state_data: NumericArray, t: float) -> None:
                 """Perform a single Euler step."""
@@ -106,7 +106,7 @@ class EulerSolver(AdaptiveSolverBase):
             raise RuntimeError(msg)
 
         # obtain functions determining how the PDE is evolved
-        rhs_pde = self.pde.make_pde_rhs(state, backend=self.backend)
+        rhs_pde = self._make_pde_rhs(state)
         if post_step_hook is None:
             post_step_hook = self._make_post_step_hook(state)
 
@@ -213,7 +213,7 @@ class RungeKuttaSolver(AdaptiveSolverBase):
             raise RuntimeError(msg)
 
         # obtain functions determining how the PDE is evolved
-        rhs = self.pde.make_pde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state)
 
         def stepper(state_data: NumericArray, t: float) -> None:
             """Compiled inner loop for speed."""
@@ -248,7 +248,7 @@ class RungeKuttaSolver(AdaptiveSolverBase):
             raise RuntimeError(msg)
 
         # obtain functions determining how the PDE is evolved
-        rhs = self.pde.make_pde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state)
 
         # use Runge-Kutta-Fehlberg method
         # define coefficients for RK4(5), formula 2 Table III in Fehlberg

@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import warnings
 from inspect import isabstract
-from typing import TYPE_CHECKING, Any, Callable, Union
+from typing import TYPE_CHECKING, Any, Callable, Literal, Union
 
 import numpy as np
 
@@ -57,10 +57,15 @@ class SolverBase:
     """dict: dictionary of all inheriting classes"""
 
     _logger: logging.Logger
-    _backend_name: BackendType
+    _backend_name: BackendType | Literal["auto"]
     __backend_obj: BackendBase | None
 
-    def __init__(self, pde: PDEBase, *, backend: BackendBase | BackendType = "auto"):
+    def __init__(
+        self,
+        pde: PDEBase,
+        *,
+        backend: BackendBase | BackendType | Literal["auto"] = "auto",
+    ):
         """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
@@ -141,7 +146,7 @@ class SolverBase:
         return sorted(cls._subclasses)
 
     @property
-    def backend(self) -> BackendType:
+    def backend(self) -> BackendType | Literal["auto"]:
         """str: The name of the backend used for this solver."""
         return self._backend_name
 
@@ -197,11 +202,49 @@ class SolverBase:
             from ..backends import backends
 
             if self._backend_name == "auto":
+                self._logger.warning(
+                    "Automatic backend has not been selected yet. Choosing `numpy` "
+                    "backend as a safe option."
+                )
                 self._backend_name = "numpy"  # conservative fall-back
 
             self.__backend_obj = backends[self._backend_name]
 
         return self.__backend_obj
+
+    def _make_pde_rhs(
+        self, state: TField
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Return a function for evaluating the right hand side of the PDE.
+
+        This function also decides which backend will be used.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+            backend (str):
+                Determines how the function is created. Accepted values are 'numpy' and
+                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
+
+        Returns:
+            callable: Function determining the right hand side of the PDE
+        """
+        from ..backends import backends
+
+        if self.backend == "auto":
+            # try using the numba backend, if it implemented
+            try:
+                rhs = backends["numba"].make_pde_rhs(self.pde, state)
+            except NotImplementedError:
+                rhs = backends["numpy"].make_pde_rhs(self.pde, state)
+                self.backend = "numpy"
+            else:
+                self.backend = "numba"
+            return rhs
+
+        # get a function evaluating the rhs of the PDE
+        return self._backend_obj.make_pde_rhs(self.pde, state)
 
     def _make_error_synchronizer(
         self, backend: str = "numpy", *, operator: int | str = "MAX"
@@ -247,6 +290,13 @@ class SolverBase:
         post_step_hook: StepperHook | None = None
 
         if self._use_post_step_hook:
+            if self._backend_name == "auto":
+                msg = (
+                    "Backend has not been chosen automatically, yet. Please specify a "
+                    "backend explicitly."
+                )
+
+                raise ValueError(msg)
             try:
                 # try to get hook function and initial data from PDE instance
                 post_step_hook, self._post_step_data_init = (
@@ -385,7 +435,7 @@ class AdaptiveSolverBase(SolverBase):
         self,
         pde: PDEBase,
         *,
-        backend: BackendType = "auto",
+        backend: BackendType | Literal["auto"] = "auto",
         adaptive: bool = False,
         tolerance: float = 1e-4,
     ):
@@ -428,13 +478,13 @@ class AdaptiveSolverBase(SolverBase):
             msg = "Deterministic stepper does not support stochastic equations"
             raise RuntimeError(msg)
 
-        rhs_pde = self.pde.make_pde_rhs(state, backend=self.backend)
+        rhs_pde = self._make_pde_rhs(state)
 
         def single_step(state_data: NumericArray, t: float, dt: float) -> NumericArray:
             """Basic implementation of Euler scheme."""
             return state_data + dt * rhs_pde(state_data, t)  # type: ignore
 
-        return single_step
+        return self._backend_obj.compile_function(single_step)
 
     def _make_single_step_error_estimate(
         self, state: TField

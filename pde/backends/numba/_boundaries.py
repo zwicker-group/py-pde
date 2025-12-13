@@ -62,6 +62,8 @@ def make_virtual_point_evaluator(bc: BCBase) -> VirtualPointEvaluator:
         return _make_const2ndorder_virtual_point_evaluator(bc)
     if isinstance(bc, ConstBC1stOrderBase):
         return _make_const1storder_virtual_point_evaluator(bc)
+    if hasattr(bc, "make_virtual_point_evaluator"):
+        return bc.make_virtual_point_evaluator()  # type: ignore
     msg = f"Cannot handle local boundary {bc.__class__}"
     raise NotImplementedError(msg)
 

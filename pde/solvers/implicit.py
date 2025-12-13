@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 
@@ -27,7 +27,7 @@ class ImplicitSolver(SolverBase):
         *,
         maxiter: int = 100,
         maxerror: float = 1e-4,
-        backend: BackendType = "auto",
+        backend: BackendType | Literal["auto"] = "auto",
     ):
         """
         Args:
@@ -66,7 +66,7 @@ class ImplicitSolver(SolverBase):
         self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
 
-        rhs = self.pde.make_pde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
 
@@ -122,7 +122,7 @@ class ImplicitSolver(SolverBase):
         self.info["scheme"] = "implicit-euler-maruyama"
         self.info["stochastic"] = True
 
-        rhs = self.pde.make_pde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state)
         rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2

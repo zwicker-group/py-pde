@@ -82,7 +82,7 @@ class ExplicitMPISolver(EulerSolver):
         # scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
         decomposition: Literal["auto"] | int | list[int] = "auto",
         *,
-        backend: BackendType = "auto",
+        backend: BackendType | Literal["auto"] = "auto",
         adaptive: bool = False,
         tolerance: float = 1e-4,
     ):

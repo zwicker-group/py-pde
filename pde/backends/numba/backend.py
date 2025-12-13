@@ -45,7 +45,12 @@ class NumbaBackend(NumpyBackend):
     """Defines numba backend."""
 
     def compile_function(self, func: TFunc) -> TFunc:
-        """General method that compiles a user function."""
+        """General method that compiles a user function.
+
+        Args:
+            func (callable):
+                The function that needs to be compiled for this backend
+        """
         return jit(func)  # type: ignore
 
     def get_registered_operators(self, grid_id: GridBase | type[GridBase]) -> set[str]:
@@ -519,8 +524,7 @@ class NumbaBackend(NumpyBackend):
                 ) -> NumericArray:
                     """Allocates `out` and applies operator to the data."""
                     if arr.shape != shape_in_valid:
-                        msg = "Incompatible shapes of input array"
-                        raise ValueError(msg)
+                        raise ValueError("Incompatible shapes of input array")  # noqa: EM101, TRY003
 
                     out = np.empty(shape_out, dtype=arr.dtype)
                     # prepare input with boundary conditions
@@ -540,13 +544,12 @@ class NumbaBackend(NumpyBackend):
                     arr: NumericArray, out: NumericArray | None = None, args=None
                 ) -> NumericArray:
                     """Applies operator to the data without allocating out."""
-                    assert isinstance(out, np.ndarray)  # help type checker
+                    if TYPE_CHECKING:
+                        assert isinstance(out, np.ndarray)  # help type checker
                     if arr.shape != shape_in_valid:
-                        msg = "Incompatible shapes of input array"
-                        raise ValueError(msg)
+                        raise ValueError("Incompatible shapes of input array")  # noqa: EM101, TRY003
                     if out.shape != shape_out:
-                        msg = "Incompatible shapes of output array"
-                        raise ValueError(msg)
+                        raise ValueError("Incompatible shapes of output array")  # noqa: EM101, TRY003
 
                     # prepare input with boundary conditions
                     arr_full = np.empty(shape_in_full, dtype=arr.dtype)

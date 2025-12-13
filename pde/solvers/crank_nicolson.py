@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 
@@ -28,7 +28,7 @@ class CrankNicolsonSolver(SolverBase):
         maxiter: int = 100,
         maxerror: float = 1e-4,
         explicit_fraction: float = 0,
-        backend: BackendType = "auto",
+        backend: BackendType | Literal["auto"] = "auto",
     ):
         """
         Args:
@@ -72,7 +72,7 @@ class CrankNicolsonSolver(SolverBase):
         self.info["function_evaluations"] = 0
         self.info["stochastic"] = False
 
-        rhs = self.pde.make_pde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
         α = self.explicit_fraction

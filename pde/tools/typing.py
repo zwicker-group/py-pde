@@ -26,7 +26,7 @@ FloatingArray = np.ndarray[Any, np.dtype[np.floating]]
 FloatOrArray = Union[float, np.ndarray[Any, np.dtype[np.floating]]]
 
 # miscellaneous types:
-BackendType = Literal["auto", "numpy", "numba"]
+BackendType = Literal["scipy", "numpy", "numba", "numba_mpi"]
 TField = TypeVar("TField", "FieldCollection", "DataFieldBase", covariant=True)
 
 

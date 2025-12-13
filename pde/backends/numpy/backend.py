@@ -31,7 +31,12 @@ class NumpyBackend(BackendBase):
     """Basic backend from which all other backends inherit."""
 
     def compile_function(self, func: TFunc) -> TFunc:
-        """General method that compiles a user function."""
+        """General method that compiles a user function.
+
+        Args:
+            func (callable):
+                The function that needs to be compiled for this backend
+        """
         return func
 
     def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
@@ -350,12 +355,12 @@ class NumpyBackend(BackendBase):
             return eq.make_noise_realization_numpy(state)  # type:ignore
 
         if hasattr(eq, "noise_realization"):
-            attributes = state.attributes
+            fields = state.copy()
 
             def noise_realization(
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
-                fields = state.__class__.from_state(attributes.copy(), state_data)
+                fields.data = state_data
                 noise = eq.noise_realization(fields, t)
                 if noise is None:
                     return None

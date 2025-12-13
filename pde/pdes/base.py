@@ -9,7 +9,7 @@ import copy
 import logging
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numpy as np
 
@@ -327,7 +327,7 @@ class PDEBase(metaclass=ABCMeta):
         return rhs  # type: ignore
 
     def make_pde_rhs(
-        self, state: TField, backend: BackendType = "auto"
+        self, state: TField, backend: BackendType | Literal["auto"] = "auto"
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
@@ -352,8 +352,7 @@ class PDEBase(metaclass=ABCMeta):
                 backend = "numpy"
 
         # get a function evaluating the rhs of the PDE
-        backend_obj = backends[backend]
-        return backend_obj.make_pde_rhs(self, state)
+        return backends[backend].make_pde_rhs(self, state)
 
     def solve(
         self,
@@ -362,7 +361,7 @@ class PDEBase(metaclass=ABCMeta):
         dt: float | None = None,
         tracker: TrackerCollectionDataType = "auto",
         *,
-        backend: BackendType = "auto",
+        backend: BackendType | Literal["auto"] = "auto",
         solver: str | SolverBase = "euler",
         ret_info: bool = False,
         **kwargs,
@@ -566,7 +565,7 @@ class SDEBase(PDEBase):
 
         else:
             # no noise
-            result = state.from_state(state.attributes, data="zeros")
+            result = state.from_state(state.attributes.copy(), data="zeros")
 
         if label:
             result.label = label
@@ -651,7 +650,7 @@ class SDEBase(PDEBase):
     def make_noise_realization(
         self,
         state: TField,
-        backend: BackendType = "auto",
+        backend: BackendType | Literal["auto"] = "auto",
         **kwargs,
     ) -> Callable[[NumericArray, float], NumericArray | None]:
         """Return a function for determining one realization of the noise term.

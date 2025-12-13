@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 
@@ -29,7 +29,9 @@ class ScipySolver(SolverBase):
 
     name = "scipy"
 
-    def __init__(self, pde: PDEBase, *, backend: BackendType = "auto", **kwargs):
+    def __init__(
+        self, pde: PDEBase, *, backend: BackendType | Literal["auto"] = "auto", **kwargs
+    ):
         r"""
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
@@ -73,7 +75,7 @@ class ScipySolver(SolverBase):
         self.info["stochastic"] = False
 
         # obtain function for evaluating the right hand side
-        rhs = self.pde.make_pde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state)
 
         def rhs_helper(t: float, state_flat: NumericArray) -> NumericArray:
             """Helper function to provide the correct call convention."""

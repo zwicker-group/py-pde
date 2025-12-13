@@ -54,7 +54,12 @@ class BackendBase:
         cls._logger = _base_logger.getChild(cls.__qualname__)
 
     def compile_function(self, func: TFunc) -> TFunc:
-        """General method that compiles a user function."""
+        """General method that compiles a user function.
+
+        Args:
+            func (callable):
+                The function that needs to be compiled for this backend
+        """
         msg = f"Compiling functions is not supported by backend `{self.name}`"
         raise NotImplementedError(msg)
 
