@@ -197,10 +197,7 @@ class SolverBase:
             from ..backends import backends
 
             if self._backend_name == "auto":
-                if hasattr(self.pde, "make_pde_rhs_numba"):
-                    self._backend_name = "numba"  # use numba if the rhs seems available
-                else:
-                    self._backend_name = "numpy"  # conservative fall-back
+                self._backend_name = "numpy"  # conservative fall-back
 
             self.__backend_obj = backends[self._backend_name]
 
