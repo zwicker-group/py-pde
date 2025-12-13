@@ -42,25 +42,6 @@ def test_pde_consistency(pde_class, dim, rng):
     np.testing.assert_allclose(field.data, eq2.evolution_rate(state).data)
 
 
-def test_pde_consistency_test(rng):
-    """Test whether the consistency of a pde implementation is checked."""
-
-    class TestPDE(pdes.PDEBase):
-        def evolution_rate(self, field, t=0):
-            return 2 * field
-
-        def make_pde_rhs_numba(self, state):
-            def impl(state_data, t):
-                return 3 * state_data
-
-            return impl
-
-    eq = TestPDE()
-    state = ScalarField.random_uniform(UnitGrid([4]), rng=rng)
-    with pytest.raises(AssertionError):
-        eq.solve(state, t_range=5, backend="numba", tracker=None)
-
-
 def test_pde_automatic_adaptive_solver():
     """Test whether adaptive solver is enabled as expected."""
     eq = pdes.DiffusionPDE()

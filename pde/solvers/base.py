@@ -197,7 +197,10 @@ class SolverBase:
             from ..backends import backends
 
             if self._backend_name == "auto":
-                self._backend_name = "numpy"  # conservative fall-back
+                if hasattr(self.pde, "make_pde_rhs_numba"):
+                    self._backend_name = "numba"  # use numba if the rhs seems available
+                else:
+                    self._backend_name = "numpy"  # conservative fall-back
 
             self.__backend_obj = backends[self._backend_name]
 
@@ -273,56 +276,6 @@ class SolverBase:
             self._post_step_data_init = np.array(self._post_step_data_init, copy=True)
 
         return post_step_hook  # type: ignore
-
-    def _make_pde_rhs(
-        self, state: TField, backend: BackendType = "auto", stochastic: bool = False
-    ) -> Callable[[NumericArray, float], NumericArray]:
-        """Obtain a function for evaluating the right hand side.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted.
-            backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
-            stochastic (bool):
-                Flag determining whether the stepper requesting this rhs supports
-                stochasticity. If so, we try to check whether the PDE is a SDE.
-
-        Raises:
-            RuntimeError: when a stochastic partial differential equation is encountered
-            but `allow_stochastic == False`.
-
-        Returns:
-            A function that is called with data given by a :class:`~numpy.ndarray` and a
-            time. The function returns the deterministic evolution rate and (if
-            applicable) a realization of the associated noise.
-        """
-        if not stochastic and getattr(self.pde, "is_sde", False):
-            msg = (
-                f"Cannot create deterministic stepper using {self.__class__.__name__} "
-                "for a stochastic equation"
-            )
-            raise RuntimeError(msg)
-
-        from ..backends import backends
-
-        if backend == "auto":
-            # try using the numba implementation of the rhs or fall-back to `numpy`
-            try:
-                self.pde._make_pde_rhs_numba_cached(state)
-            except NotImplementedError:
-                backend = "numpy"
-            else:
-                backend = "numba"
-
-        # get a function evaluating the rhs of the PDE
-        backend_obj = backends[backend]
-        pde_rhs = backend_obj.make_pde_rhs(self.pde, state)
-        pde_rhs._backend = backend_obj.name  # type: ignore
-        return pde_rhs
 
     def _make_single_step_fixed_dt(
         self, state: TField, dt: float
@@ -474,7 +427,11 @@ class AdaptiveSolverBase(SolverBase):
             time `t_end`. The function call signature is
             `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
-        rhs_pde = self._make_pde_rhs(state, backend=self.backend)
+        if self.pde.is_sde:
+            msg = "Deterministic stepper does not support stochastic equations"
+            raise RuntimeError(msg)
+
+        rhs_pde = self.pde.make_pde_rhs(state, backend=self.backend)
 
         def single_step(state_data: NumericArray, t: float, dt: float) -> NumericArray:
             """Basic implementation of Euler scheme."""

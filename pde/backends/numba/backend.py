@@ -1180,7 +1180,7 @@ class NumbaBackend(NumpyBackend):
         Returns:
             Function returning deterministic part of the right hand side of the PDE
         """
-        return eq._make_pde_rhs_numba_cached(state)
+        return eq.make_pde_rhs_numba(state)
 
     def make_noise_realization(
         self, eq: PDEBase, state: TField

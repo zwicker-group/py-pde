@@ -65,10 +65,14 @@ class CrankNicolsonSolver(SolverBase):
             dt (float):
                 Time step of the implicit step
         """
+        if self.pde.is_sde:
+            msg = "Deterministic Crank-Nicolson does not support stochastic equations"
+            raise RuntimeError(msg)
+
         self.info["function_evaluations"] = 0
         self.info["stochastic"] = False
 
-        rhs = self._make_pde_rhs(state, backend=self.backend, stochastic=False)
+        rhs = self.pde.make_pde_rhs(state, backend=self.backend)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
         α = self.explicit_fraction

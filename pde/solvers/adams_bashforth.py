@@ -33,9 +33,10 @@ class AdamsBashforthSolver(SolverBase):
                 Time step of the explicit stepping
         """
         if self.pde.is_sde:
-            raise NotImplementedError
+            msg = "Deterministic Adams-Bashforth does not support stochastic equations"
+            raise RuntimeError(msg)
 
-        rhs_pde = self._make_pde_rhs(state, backend=self.backend, stochastic=False)
+        rhs_pde = self.pde.make_pde_rhs(state, backend=self.backend)
         post_step_hook = self._make_post_step_hook(state)
 
         def single_step(

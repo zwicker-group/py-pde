@@ -131,9 +131,10 @@ def _make_adams_bashforth_stepper(
             Time step of the explicit stepping.
     """
     if solver.pde.is_sde:
-        raise NotImplementedError
+        msg = "Deterministic Adams-Bashforth does not support stochastic equations"
+        raise RuntimeError(msg)
 
-    rhs_pde = solver._make_pde_rhs(state, backend=solver.backend)
+    rhs_pde = solver.pde.make_pde_rhs(state, backend=solver.backend)
     post_step_hook = _make_post_step_hook(solver, state)
     sig_single_step = (nb.typeof(state.data), nb.double, nb.typeof(state.data))
 

@@ -63,13 +63,17 @@ class ScipySolver(SolverBase):
         """
         from scipy import integrate
 
+        if self.pde.is_sde:
+            msg = "Deterministic scipy stepper does not support stochastic equations"
+            raise RuntimeError(msg)
+
         shape = state.data.shape
         self.info["dt"] = dt
         self.info["steps"] = 0
         self.info["stochastic"] = False
 
         # obtain function for evaluating the right hand side
-        rhs = self._make_pde_rhs(state, backend=self.backend, stochastic=False)
+        rhs = self.pde.make_pde_rhs(state, backend=self.backend)
 
         def rhs_helper(t: float, state_flat: NumericArray) -> NumericArray:
             """Helper function to provide the correct call convention."""

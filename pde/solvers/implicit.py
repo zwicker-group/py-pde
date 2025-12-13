@@ -58,11 +58,15 @@ class ImplicitSolver(SolverBase):
             dt (float):
                 Time step of the implicit step
         """
+        if self.pde.is_sde:
+            msg = "Deterministic implicit Euler does not support stochastic equations"
+            raise RuntimeError(msg)
+
         self.info["function_evaluations"] = 0
         self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
 
-        rhs = self._make_pde_rhs(state, backend=self.backend, stochastic=False)
+        rhs = self.pde.make_pde_rhs(state, backend=self.backend)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
 
@@ -118,7 +122,7 @@ class ImplicitSolver(SolverBase):
         self.info["scheme"] = "implicit-euler-maruyama"
         self.info["stochastic"] = True
 
-        rhs = self._make_pde_rhs(state, backend=self.backend, stochastic=True)
+        rhs = self.pde.make_pde_rhs(state, backend=self.backend)
         rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2

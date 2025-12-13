@@ -42,7 +42,11 @@ class PDEBase(metaclass=ABCMeta):
     check_implementation: bool = True
     """bool: Flag determining whether numba-compiled functions should be checked against
     their numpy counter-parts. This can help with implementing a correct compiled
-    version for a PDE class."""
+    version for a PDE class.
+
+    Warning: This flag is deprecated since 2025-12-13 and this check will not be
+    performed automatically anymore.
+    """
 
     cache_rhs: bool = False
     """bool: Flag indicating whether the right hand side of the equation should be
@@ -50,7 +54,11 @@ class PDEBase(metaclass=ABCMeta):
     Note that the cache is only invalidated when the grid of the underlying state
     changes. Consequently, the simulation might lead to wrong results if the parameters
     of the PDE are changed after the first call. This option is thus disabled by default
-    and should be used with care."""
+    and should be used with care.
+
+    Warning: This flag is deprecated since 2025-12-13 and caching is not implemented
+    anymore.
+    """
 
     explicit_time_dependence: bool | None = None
     """bool: Flag indicating whether the right hand side of the PDE has an explicit
@@ -279,6 +287,16 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             callable: Function determining the right hand side of the PDE
         """
+        # deprecated on 2025-12-13
+        # If this deprecation is removed, we can also get rid of the properties
+        # `cache_rhs` and `check_implementation`
+        warnings.warn(
+            "Method `_make_pde_rhs_numba_cached` is deprecated. Use the uncached "
+            "method `make_pde_rhs_numba` instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         check_implementation = self.check_implementation
 
         if self.cache_rhs:
@@ -326,18 +344,16 @@ class PDEBase(metaclass=ABCMeta):
         """
         from ..backends import backends
 
+        # determine suitable backend if none is given
         if backend == "auto":
-            try:
-                self._make_pde_rhs_numba_cached(state)
-            except NotImplementedError:
-                backend = "numpy"
-            else:
+            if hasattr(self, "make_pde_rhs_numba"):
                 backend = "numba"
+            else:
+                backend = "numpy"
 
+        # get a function evaluating the rhs of the PDE
         backend_obj = backends[backend]
-        pde_rhs = backend_obj.make_pde_rhs(self, state)
-        pde_rhs._backend = backend_obj.name  # type: ignore
-        return pde_rhs
+        return backend_obj.make_pde_rhs(self, state)
 
     def solve(
         self,
@@ -660,9 +676,7 @@ class SDEBase(PDEBase):
                 backend = "numpy"
 
         backend_obj = backends[backend]
-        noise_realization = backend_obj.make_noise_realization(self, state, **kwargs)
-        noise_realization._backend = backend_obj.name  # type: ignore
-        return noise_realization
+        return backend_obj.make_noise_realization(self, state, **kwargs)
 
 
 def expr_prod(factor: float, expression: str) -> str:
