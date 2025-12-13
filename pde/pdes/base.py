@@ -344,11 +344,11 @@ class PDEBase(metaclass=ABCMeta):
         """
         from ..backends import backends
 
-        # determine suitable backend if none is given
         if backend == "auto":
-            if hasattr(self, "make_pde_rhs_numba"):
-                backend = "numba"
-            else:
+            # try using the numba backend, if it implemented
+            try:
+                return backends["numba"].make_pde_rhs(self, state)
+            except NotImplementedError:
                 backend = "numpy"
 
         # get a function evaluating the rhs of the PDE
