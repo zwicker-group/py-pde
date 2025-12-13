@@ -648,10 +648,7 @@ class SDEBase(PDEBase):
         return noise_realization  # type: ignore
 
     def make_noise_realization(
-        self,
-        state: TField,
-        backend: BackendType | Literal["auto"] = "auto",
-        **kwargs,
+        self, state: TField, backend: BackendType | Literal["auto"] = "auto"
     ) -> Callable[[NumericArray, float], NumericArray | None]:
         """Return a function for determining one realization of the noise term.
 
@@ -675,7 +672,7 @@ class SDEBase(PDEBase):
                 backend = "numpy"
 
         backend_obj = backends[backend]
-        return backend_obj.make_noise_realization(self, state, **kwargs)
+        return backend_obj.make_noise_realization(self, state)
 
 
 def expr_prod(factor: float, expression: str) -> str:
