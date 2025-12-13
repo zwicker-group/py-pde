@@ -1167,7 +1167,7 @@ class NumbaBackend(NumpyBackend):
         return insert  # type: ignore
 
     def make_pde_rhs(
-        self, eq: PDEBase, state: TField, **kwargs
+        self, eq: PDEBase, state: TField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
@@ -1180,7 +1180,7 @@ class NumbaBackend(NumpyBackend):
         Returns:
             Function returning deterministic part of the right hand side of the PDE
         """
-        return eq.make_pde_rhs_numba_cached(state, **kwargs)
+        return eq._make_pde_rhs_numba_cached(state)
 
     def make_noise_realization(
         self, eq: PDEBase, state: TField

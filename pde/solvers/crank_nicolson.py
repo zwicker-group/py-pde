@@ -65,14 +65,10 @@ class CrankNicolsonSolver(SolverBase):
             dt (float):
                 Time step of the implicit step
         """
-        if self.pde.is_sde:
-            msg = "Cannot use implicit stepper with stochastic equation"
-            raise RuntimeError(msg)
-
         self.info["function_evaluations"] = 0
         self.info["stochastic"] = False
 
-        rhs = self._make_pde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state, backend=self.backend, stochastic=False)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
         α = self.explicit_fraction

@@ -308,6 +308,29 @@ class NumpyBackend(BackendBase):
 
         return outer
 
+    def make_pde_rhs(
+        self, eq: PDEBase, state: TField
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Return a function for evaluating the right hand side of the PDE.
+
+        Args:
+            eq (:class:`~pde.pdes.base.PDEBase`):
+                The object describing the differential equation
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which information can be extracted
+
+        Returns:
+            Function returning deterministic part of the right hand side of the PDE
+        """
+        state = state.copy()  # save this exact state for the closure
+
+        def pde_rhs(state_data: NumericArray, t: float) -> NumericArray:
+            """Evaluate the rhs given only a state without the grid."""
+            state.data = state_data
+            return eq.evolution_rate(state, t).data
+
+        return pde_rhs
+
     def make_noise_realization(
         self, eq: PDEBase, state: TField
     ) -> Callable[[NumericArray, float], NumericArray | None]:
@@ -342,30 +365,6 @@ class NumpyBackend(BackendBase):
 
         msg = f"Noise realization is not implemented for {eq}"
         raise NotImplementedError(msg)
-
-    def make_pde_rhs(
-        self, eq: PDEBase, state: TField, **kwargs
-    ) -> Callable[[NumericArray, float], NumericArray]:
-        """Return a function for evaluating the right hand side of the PDE.
-
-        Args:
-            eq (:class:`~pde.pdes.base.PDEBase`):
-                The object describing the differential equation
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which information can be extracted
-
-        Returns:
-            Function returning deterministic part of the right hand side of the PDE
-        """
-        state = state.copy()  # save this exact state for the closure
-
-        def pde_rhs(state_data: NumericArray, t: float) -> NumericArray:
-            """Evaluate the rhs given only a state without the grid."""
-            state.data = state_data
-            return eq.evolution_rate(state, t, **kwargs).data
-
-        pde_rhs._backend = "numpy"  # type: ignore
-        return pde_rhs
 
     def make_inner_stepper(
         self,

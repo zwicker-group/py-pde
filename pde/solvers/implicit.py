@@ -58,15 +58,11 @@ class ImplicitSolver(SolverBase):
             dt (float):
                 Time step of the implicit step
         """
-        if self.pde.is_sde:
-            msg = "Cannot use implicit stepper with stochastic equation"
-            raise RuntimeError(msg)
-
         self.info["function_evaluations"] = 0
         self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
 
-        rhs = self._make_pde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state, backend=self.backend, stochastic=False)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
 
@@ -99,14 +95,6 @@ class ImplicitSolver(SolverBase):
                     # fix point iteration converged
                     break
             else:
-                # with nb.objmode:
-                #     self._logger.warning(
-                #         "Implicit Euler step did not converge after %d iterations "
-                #         "at t=%g (error=%g)",
-                #         maxiter,
-                #         t,
-                #         err,
-                #     )
                 msg = "Implicit Euler step did not converge."
                 raise ConvergenceError(msg)
             nfev += n + 1
@@ -130,7 +118,7 @@ class ImplicitSolver(SolverBase):
         self.info["scheme"] = "implicit-euler-maruyama"
         self.info["stochastic"] = True
 
-        rhs = self.pde.make_pde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state, backend=self.backend, stochastic=True)
         rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
@@ -170,14 +158,6 @@ class ImplicitSolver(SolverBase):
                     # fix point iteration converged
                     break
             else:
-                # with nb.objmode:
-                #     self._logger.warning(
-                #         "Semi-implicit Euler-Maruyama step did not converge after %d "
-                #         "iterations at t=%g (error=%g)",
-                #         maxiter,
-                #         t,
-                #         err,
-                #     )
                 msg = "Semi-implicit Euler-Maruyama step did not converge."
                 raise ConvergenceError(msg)
             nfev += n + 1

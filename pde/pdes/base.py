@@ -168,7 +168,7 @@ class PDEBase(metaclass=ABCMeta):
         """
 
     def make_pde_rhs_numba(
-        self, state: FieldBase, **kwargs
+        self, state: FieldBase
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function for evaluating the right hand side.
 
@@ -190,7 +190,7 @@ class PDEBase(metaclass=ABCMeta):
         raise NotImplementedError(msg)
 
     def _make_pde_rhs_numba(
-        self, state: FieldBase, **kwargs
+        self, state: FieldBase
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function for evaluating the right hand side."""
         warnings.warn(
@@ -199,20 +199,21 @@ class PDEBase(metaclass=ABCMeta):
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.make_pde_rhs_numba(state, **kwargs)
+        return self.make_pde_rhs_numba(state)
 
     def check_rhs_consistency(
         self,
+        rhs_implementation: Callable,
         state: TField,
         t: float = 0,
         *,
         tol: float = 1e-7,
-        rhs_numba: Callable | None = None,
-        **kwargs,
     ) -> None:
-        """Check the numba compiled right hand side versus the numpy variant.
+        """Checks the a implementation the right hand side versus the numpy variant.
 
         Args:
+            rhs_implementation (callable):
+                The implementation of the numba variant that is to be checked.
             state (:class:`~pde.fields.FieldBase`):
                 The state for which the evolution rates should be compared
             t (float):
@@ -220,31 +221,25 @@ class PDEBase(metaclass=ABCMeta):
             tol (float):
                 Acceptance tolerance. The check passes if the evolution rates differ by
                 less then this value
-            rhs_numba (callable):
-                The implementation of the numba variant that is to be checked. If
-                omitted, an implementation is obtained by calling
-                :meth:`PDEBase.make_pde_rhs_numba_cached`.
         """
         # obtain evolution rate from the numpy implementation
-        res_numpy = self.evolution_rate(state.copy(), t, **kwargs).data
+        res_numpy = self.evolution_rate(state.copy(), t).data
         if not np.all(np.isfinite(res_numpy)):
             self._logger.warning(
                 "The numpy implementation of the PDE returned non-finite values."
             )
 
         # obtain evolution rate from the numba implementation
-        if rhs_numba is None:
-            rhs_numba = self.make_pde_rhs_numba_cached(state, **kwargs)
         test_state = state.copy()
-        res_numba = rhs_numba(test_state.data, t)
+        res_numba = rhs_implementation(test_state.data, t)
         if not np.all(np.isfinite(res_numba)):
             self._logger.warning(
-                "The numba implementation of the PDE returned non-finite values."
+                "The tested implementation of the PDE returned non-finite values."
             )
 
         # compare the two implementations
         msg = (
-            "The numba compiled implementation of the right hand side is not "
+            "The tested compiled implementation of the right hand side is not "
             "compatible with the numpy implementation. Additional information is "
             "available in `diagnostics['check']`. This check can be disabled by "
             "setting the class attribute `check_implementation` to `False`."
@@ -268,8 +263,8 @@ class PDEBase(metaclass=ABCMeta):
             # re-raise the exception
             raise
 
-    def make_pde_rhs_numba_cached(
-        self, state: TField, **kwargs
+    def _make_pde_rhs_numba_cached(
+        self, state: TField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function for evaluating the right hand side.
 
@@ -297,27 +292,24 @@ class PDEBase(metaclass=ABCMeta):
                 # cache was not hit
                 self._logger.info("Write compiled rhs to cache")
                 self._cache["pde_rhs_numba_state"] = grid_state
-                self._cache["pde_rhs_numba"] = self.make_pde_rhs_numba(state, **kwargs)
+                self._cache["pde_rhs_numba"] = self.make_pde_rhs_numba(state)
             rhs = self._cache["pde_rhs_numba"]
 
         else:
             # caching was skipped
-            rhs = self.make_pde_rhs_numba(state, **kwargs)
+            rhs = self.make_pde_rhs_numba(state)
 
         if rhs is None:
             msg = "`make_pde_rhs_numba` returned None"
             raise RuntimeError(msg)
 
         if check_implementation:
-            self.check_rhs_consistency(state, rhs_numba=rhs, **kwargs)
+            self.check_rhs_consistency(rhs_implementation=rhs, state=state)
 
         return rhs  # type: ignore
 
     def make_pde_rhs(
-        self,
-        state: TField,
-        backend: BackendType = "auto",
-        **kwargs,
+        self, state: TField, backend: BackendType = "auto"
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
@@ -336,14 +328,14 @@ class PDEBase(metaclass=ABCMeta):
 
         if backend == "auto":
             try:
-                self.make_pde_rhs_numba_cached(state, **kwargs)
+                self._make_pde_rhs_numba_cached(state)
             except NotImplementedError:
                 backend = "numpy"
             else:
                 backend = "numba"
 
         backend_obj = backends[backend]
-        pde_rhs = backend_obj.make_pde_rhs(self, state, **kwargs)
+        pde_rhs = backend_obj.make_pde_rhs(self, state)
         pde_rhs._backend = backend_obj.name  # type: ignore
         return pde_rhs
 

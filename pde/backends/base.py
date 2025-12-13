@@ -354,7 +354,7 @@ class BackendBase:
         raise NotImplementedError(msg)
 
     def make_pde_rhs(
-        self, eq: PDEBase, state: TField, **kwargs
+        self, eq: PDEBase, state: TField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
 

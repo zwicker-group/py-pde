@@ -275,7 +275,7 @@ class SolverBase:
         return post_step_hook  # type: ignore
 
     def _make_pde_rhs(
-        self, state: TField, backend: BackendType = "auto"
+        self, state: TField, backend: BackendType = "auto", stochastic: bool = False
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Obtain a function for evaluating the right hand side.
 
@@ -287,6 +287,9 @@ class SolverBase:
                 Determines how the function is created. Accepted  values are 'numpy` and
                 'numba'. Alternatively, 'auto' lets the code decide for the most optimal
                 backend.
+            stochastic (bool):
+                Flag determining whether the stepper requesting this rhs supports
+                stochasticity. If so, we try to check whether the PDE is a SDE.
 
         Raises:
             RuntimeError: when a stochastic partial differential equation is encountered
@@ -297,11 +300,29 @@ class SolverBase:
             time. The function returns the deterministic evolution rate and (if
             applicable) a realization of the associated noise.
         """
-        if getattr(self.pde, "is_sde", False):
-            msg = "Cannot create a deterministic stepper for a stochastic equation"
+        if not stochastic and getattr(self.pde, "is_sde", False):
+            msg = (
+                f"Cannot create deterministic stepper using {self.__class__.__name__} "
+                "for a stochastic equation"
+            )
             raise RuntimeError(msg)
 
-        return self.pde.make_pde_rhs(state, backend=backend)
+        from ..backends import backends
+
+        if backend == "auto":
+            # try using the numba implementation of the rhs or fall-back to `numpy`
+            try:
+                self.pde._make_pde_rhs_numba_cached(state)
+            except NotImplementedError:
+                backend = "numpy"
+            else:
+                backend = "numba"
+
+        # get a function evaluating the rhs of the PDE
+        backend_obj = backends[backend]
+        pde_rhs = backend_obj.make_pde_rhs(self.pde, state)
+        pde_rhs._backend = backend_obj.name  # type: ignore
+        return pde_rhs
 
     def _make_single_step_fixed_dt(
         self, state: TField, dt: float

@@ -35,7 +35,7 @@ class AdamsBashforthSolver(SolverBase):
         if self.pde.is_sde:
             raise NotImplementedError
 
-        rhs_pde = self._make_pde_rhs(state, backend=self.backend)
+        rhs_pde = self._make_pde_rhs(state, backend=self.backend, stochastic=False)
         post_step_hook = self._make_post_step_hook(state)
 
         def single_step(

@@ -61,10 +61,6 @@ class ScipySolver(SolverBase):
             Function that can be called to advance the `state` from time
             `t_start` to time `t_end`.
         """
-        if self.pde.is_sde:
-            msg = "Cannot use scipy stepper for a stochastic equation"
-            raise RuntimeError(msg)
-
         from scipy import integrate
 
         shape = state.data.shape
@@ -73,7 +69,7 @@ class ScipySolver(SolverBase):
         self.info["stochastic"] = False
 
         # obtain function for evaluating the right hand side
-        rhs = self._make_pde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state, backend=self.backend, stochastic=False)
 
         def rhs_helper(t: float, state_flat: NumericArray) -> NumericArray:
             """Helper function to provide the correct call convention."""

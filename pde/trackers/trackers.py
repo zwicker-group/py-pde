@@ -787,7 +787,7 @@ class SteadyStateTracker(TrackerBase):
                 Function to evaluate the current evolution rate. If omitted, the
                 evolution rate is estimate from the change in the state variable, which
                 can be less accurate. A suitable form of the function is returned by
-                `eq.make_pde_rhs(state)` when `eq` is the PDE class.
+                `eq.make_pde_rhs(state, backend="numpy")` when `eq` is the PDE class.
         """
         if interrupts is None:
             interrupts = RealtimeInterrupts(duration=1)
