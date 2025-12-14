@@ -11,7 +11,6 @@
 
 Inheritance structure of the classes:
 
-
 .. inheritance-diagram::
          numba.backend.NumbaBackend
          numba_mpi.backend.NumbaMPIBackend
@@ -25,12 +24,12 @@ Inheritance structure of the classes:
 # load the registry, which manages all backends
 from .registry import backends  # noqa: I001
 
-# load and register the default backend
-from .numpy.backend import NumpyBackend
+# load and register the numpy backend, which is the default
+from .numpy import numpy_backend
 
-backends.add(NumpyBackend("numpy"))
+backends.add(numpy_backend)
 
-# register the standard backends without loading them
+# register additional backends without loading them
 backends.register_package("pde.backends.numba", "numba")
 backends.register_package("pde.backends.numba_mpi", "numba_mpi")
 backends.register_package("pde.backends.scipy", "scipy")

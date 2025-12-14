@@ -23,6 +23,7 @@ config = Config()  # initialize the default configuration
 import contextlib
 
 # import most common classes into main name space
+from .backends import backends  # noqa: F401
 from .fields import *  # noqa: F403
 from .grids import *  # noqa: F403
 from .pdes import *  # noqa: F403

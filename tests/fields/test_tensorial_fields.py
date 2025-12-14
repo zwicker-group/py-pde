@@ -6,7 +6,14 @@ import numpy as np
 import pytest
 
 from fixtures.fields import iter_grids
-from pde import CartesianGrid, PolarSymGrid, ScalarField, Tensor2Field, UnitGrid
+from pde import (
+    CartesianGrid,
+    PolarSymGrid,
+    ScalarField,
+    Tensor2Field,
+    UnitGrid,
+    VectorField,
+)
 from pde.fields.base import FieldBase
 
 
@@ -188,12 +195,27 @@ def test_complex_tensors(backend, rng):
     numbers = rng.random(shape) + rng.random(shape) * 1j
     t1 = Tensor2Field(grid, numbers[0])
     t2 = Tensor2Field(grid, numbers[1])
+    vf = VectorField.random_uniform(grid)
     assert t1.is_complex
     assert t2.is_complex
 
     dot_op = t1.make_dot_operator(backend)
 
-    # test dot product
+    # test dot product with vector field
+    res = dot_op(t1.data, vf.data)
+    for t in (t1 @ vf, t1.dot(vf)):
+        assert isinstance(t, VectorField)
+        assert t.grid is grid
+        np.testing.assert_allclose(t.data, res)
+
+    # test dot product with vector field in other direction
+    res = dot_op(vf.data, t1.data)
+    for t in (vf @ t1, vf.dot(t1)):
+        assert isinstance(t, VectorField)
+        assert t.grid is grid
+        np.testing.assert_allclose(t.data, res)
+
+    # test dot product with tensor field
     res = dot_op(t1.data, t2.data)
     for t in (t1 @ t2, t1.dot(t2)):
         assert isinstance(t, Tensor2Field)

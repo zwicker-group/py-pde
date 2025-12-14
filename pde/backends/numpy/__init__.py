@@ -8,4 +8,6 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .backend import NumpyBackend  # noqa: F401
+from .backend import NumpyBackend
+
+numpy_backend = NumpyBackend("numpy")

@@ -569,6 +569,10 @@ def test_dot_product(grid, rng):
         vf @ sf
     with pytest.raises(TypeError):
         tf @ sf
+    with pytest.raises(TypeError):
+        sf @ vf
+    with pytest.raises(TypeError):
+        sf @ tf
     with pytest.raises((TypeError, nb.errors.TypingError)):
         dot(vf.data, sf.data)
     with pytest.raises((TypeError, nb.errors.TypingError)):
