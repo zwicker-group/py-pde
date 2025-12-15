@@ -10,7 +10,7 @@ import json
 import warnings
 from abc import ABCMeta, abstractmethod
 from inspect import isabstract
-from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import numpy as np
 from typing_extensions import Self
@@ -24,6 +24,8 @@ from ..tools.spectral import CorrelationType, make_correlated_noise
 from .base import FieldBase, RankError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from numpy.typing import DTypeLike
 
     from ..grids.boundaries.axes import BoundariesData
@@ -306,7 +308,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 print(out.shape, tensor_shape, grid)
                 for idx in np.ndindex(tensor_shape):
                     out[idx] = make_scalar_field()
-                return out  # type: ignore
+                return out
 
         # create random fields with correct mean and standard deviation
         if scaling == "none":
@@ -788,7 +790,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         i_wall = (..., *tuple(l_wall))
         i_ghost = (..., *tuple(l_ghost))
 
-        return (self._data_full[i_wall] + self._data_full[i_ghost]) / 2  # type: ignore
+        return (self._data_full[i_wall] + self._data_full[i_ghost]) / 2
 
     @fill_in_docstring
     def set_ghost_cells(self, bc: BoundariesData, *, args=None, **kwargs) -> None:
@@ -1498,13 +1500,13 @@ def _symmetrize_vmin_vmax(
     if vmin == "symmetric":
         # the lower boundary should mirror the upper boundary
         if vmax == "symmetric" or vmax is None:
-            vmax = np.abs(data).max()
+            vmax = np.abs(data).max()  # type: ignore
         vmin = -vmax if vmax >= 0 else None  # type: ignore
 
     elif vmax == "symmetric":
         # the upper boundary should mirror the lower boundary
         if vmin is None:
-            vmin = -np.abs(data).max()
+            vmin = -np.abs(data).max()  # type: ignore
         vmax = -vmin if vmin <= 0 else None  # type: ignore
 
     # set the values if they are numeric

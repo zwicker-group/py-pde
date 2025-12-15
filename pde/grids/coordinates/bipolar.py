@@ -46,7 +46,7 @@ class BipolarCoordinates(CoordinatesBase):
         denom = np.cosh(τ) - np.cos(σ)
         x = self.scale_parameter * np.sinh(τ) / denom
         y = self.scale_parameter * np.sin(σ) / denom
-        return np.stack((x, y), axis=-1)  # type: ignore
+        return np.stack((x, y), axis=-1)
 
     def _pos_from_cart(self, points: FloatingArray) -> FloatingArray:
         x, y = points[..., 0], points[..., 1]
@@ -55,7 +55,7 @@ class BipolarCoordinates(CoordinatesBase):
         denom = a**2 - h2 + np.sqrt((a**2 - h2) ** 2 + 4 * a**2 * y**2)
         σ = np.mod(np.pi - 2 * np.arctan2(2 * a * y, denom), 2 * np.pi)
         τ = 0.5 * np.log(((x + a) ** 2 + y**2) / ((x - a) ** 2 + y**2))
-        return np.stack((σ, τ), axis=-1)  # type: ignore
+        return np.stack((σ, τ), axis=-1)
 
     def _mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
         σ, τ = points[..., 0], points[..., 1]
@@ -75,12 +75,12 @@ class BipolarCoordinates(CoordinatesBase):
 
     def _volume_factor(self, points: FloatingArray) -> ArrayLike:
         σ, τ = points[..., 0], points[..., 1]
-        return self.scale_parameter**2 * (np.cosh(τ) - np.cos(σ)) ** -2
+        return self.scale_parameter**2 * (np.cosh(τ) - np.cos(σ)) ** -2  # type: ignore
 
     def _scale_factors(self, points: FloatingArray) -> FloatingArray:
         σ, τ = points[..., 0], points[..., 1]
         sf = self.scale_parameter / (np.cosh(τ) - np.cos(σ))
-        return np.array([sf, sf])  # type: ignore
+        return np.array([sf, sf])
 
     def _basis_rotation(self, points: FloatingArray) -> FloatingArray:
         σ, τ = points[..., 0], points[..., 1]

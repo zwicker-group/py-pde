@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -15,6 +15,8 @@ from ..tools.docstrings import fill_in_docstring
 from .base import PDEBase, expr_prod
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import NumericArray
 
@@ -120,7 +122,7 @@ class AllenCahnPDE(PDEBase):
         @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float) -> NumericArray:
             """Compiled helper function evaluating right hand side."""
-            return mobility * (  # type: ignore
+            return mobility * (
                 interface_width * laplace(state_data, args={"t": t})
                 - state_data**3
                 + state_data

@@ -24,8 +24,9 @@ import errno
 import functools
 import importlib
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import numpy as np
 
@@ -337,4 +338,4 @@ def number_array(
         # a specific dtype is requested
         result = np.array(data, dtype=np.dtype(dtype), copy=copy)
 
-    return result  # type: ignore
+    return result

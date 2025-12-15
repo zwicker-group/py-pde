@@ -9,8 +9,8 @@ import logging
 import math
 import warnings
 from abc import ABCMeta, abstractmethod
-from collections.abc import Sequence
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable, Sequence
+from typing import Any, Union
 
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
@@ -20,7 +20,7 @@ from .interrupts import InterruptData, parse_interrupt
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for trackers."""
 
-InfoDict = Optional[dict[str, Any]]
+InfoDict = dict[str, Any] | None
 TrackerDataType = Union["TrackerBase", str]
 
 
@@ -116,7 +116,7 @@ class TrackerBase(metaclass=ABCMeta):
         """
 
 
-TransformationType = Optional[Callable[[FieldBase, float], FieldBase]]
+TransformationType = Callable[[FieldBase, float], FieldBase] | None
 
 
 class TransformedTrackerBase(TrackerBase):
@@ -175,7 +175,7 @@ class TransformedTrackerBase(TrackerBase):
         return transformed_field
 
 
-TrackerCollectionDataType = Union[Sequence[TrackerDataType], TrackerDataType, None]
+TrackerCollectionDataType = Sequence[TrackerDataType] | TrackerDataType | None
 
 
 class TrackerCollection:

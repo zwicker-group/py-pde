@@ -7,13 +7,15 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ....grids.base import GridBase
-    from ....tools.typing import NumericArray, OperatorType
+    from ....tools.typing import NumericArray, OperatorImplType
 
 
 def uniform_discretization(grid: GridBase) -> float:
@@ -68,7 +70,7 @@ def make_laplace_from_matrix(
 
 def make_general_poisson_solver(
     matrix, vector, method: Literal["auto", "scipy"] = "auto"
-) -> OperatorType:
+) -> OperatorImplType:
     """Make an operator that solves Poisson's problem.
 
     Args:

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import numbers
 import re
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 from sympy import Symbol
@@ -21,7 +21,7 @@ from ..pdes.base import SDEBase
 from ..tools.docstrings import fill_in_docstring
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
 
     import sympy
 
@@ -78,7 +78,7 @@ class PDE(SDEBase):
         post_step_hook: Callable[[NumericArray, float], None] | None = None,
         user_funcs: dict[str, Callable] | None = None,
         consts: dict[str, NumberOrArray] | None = None,
-        noise: ArrayLike = 0,
+        noise: ArrayLike | dict[str, NumberOrArray] = 0,
         rng: np.random.Generator | None = None,
     ):
         r"""
@@ -154,12 +154,14 @@ class PDE(SDEBase):
 
         # parse noise strength
         if isinstance(noise, dict):
-            noise = [noise.get(var, 0) for var in rhs]
-        if hasattr(noise, "__iter__") and len(noise) != len(rhs):
+            noise_arr: ArrayLike = np.array([noise.get(var, 0) for var in rhs])
+        else:
+            noise_arr = noise
+        if hasattr(noise_arr, "__iter__") and len(noise_arr) != len(rhs):  # type: ignore
             msg = "Number of noise strengths does not match field count"
             raise ValueError(msg)
 
-        super().__init__(noise=noise, rng=rng)
+        super().__init__(noise=noise_arr, rng=rng)
 
         # validate input
         if not isinstance(rhs, dict):
@@ -452,7 +454,7 @@ class PDE(SDEBase):
                 raise TypeError(msg)
 
             for rhs in self._rhs_expr.values():
-                rhs.consts[name] = value
+                rhs.consts[name] = value  # type: ignore
 
         # obtain functions used in the expression
         ops_general: dict[str, Callable] = {}
@@ -645,7 +647,7 @@ class PDE(SDEBase):
                 with nb.objmode():
                     data_tpl = get_data_tuple(state_data)
                     wrap(data_tpl, t, out)
-                return out  # type: ignore
+                return out
 
             return evolution_rate  # type: ignore
 

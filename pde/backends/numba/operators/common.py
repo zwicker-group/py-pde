@@ -11,14 +11,14 @@ from ..utils import jit
 
 if TYPE_CHECKING:
     from ....grids.base import GridBase
-    from ....tools.typing import NumericArray, OperatorType
+    from ....tools.typing import NumericArray, OperatorImplType
 
 
 def make_derivative(
     grid: GridBase,
     axis: int = 0,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a derivative operator along a single axis using numba compilation.
 
     Args:
@@ -106,7 +106,7 @@ def make_derivative(
     return diff  # type: ignore
 
 
-def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorType:
+def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorImplType:
     """Make a second-order derivative operator along a single axis.
 
     Args:

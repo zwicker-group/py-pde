@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Iterator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Callable, Literal, overload
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
 from matplotlib import cm
@@ -251,7 +251,7 @@ class FieldCollection(FieldBase):
         if len(values) != len(self):
             msg = "Require a label for each field"
             raise ValueError(msg)
-        for field, value in zip(self.fields, values):
+        for field, value in zip(self.fields, values, strict=False):
             field.label = value
 
     def __eq__(self, other):
@@ -400,7 +400,7 @@ class FieldCollection(FieldBase):
 
         # check whether all sub fields are compatible
         if isinstance(other, FieldCollection):
-            for f1, f2 in zip(self, other):
+            for f1, f2 in zip(self, other, strict=False):
                 f1.assert_field_compatible(f2, accept_scalar=accept_scalar)
 
     @classmethod
@@ -461,7 +461,7 @@ class FieldCollection(FieldBase):
                 label=sublabel,
                 dtype=dtype,
             )
-            for expression, sublabel in zip(expressions, labels)
+            for expression, sublabel in zip(expressions, labels, strict=False)
         ]
 
         # create vector field from the data
@@ -710,7 +710,7 @@ class FieldCollection(FieldBase):
                 out.label = label
 
         # apply Gaussian smoothing for each axis
-        for f_in, f_out in zip(self, out):
+        for f_in, f_out in zip(self, out, strict=False):
             f_in.smooth(sigma=sigma, out=f_out)
 
         return out
@@ -728,7 +728,7 @@ class FieldCollection(FieldBase):
     @property
     def magnitudes(self) -> NumericArray:
         """:class:`~numpy.ndarray`: scalar magnitudes of all fields."""
-        return np.array([field.magnitude for field in self])  # type: ignore
+        return np.array([field.magnitude for field in self])
 
     def project(
         self, axes: str | Sequence[str], *, label: str | None = None, **kwargs
@@ -1004,7 +1004,7 @@ class FieldCollection(FieldBase):
         if reference[0].parameters.get("kind", None) == "merged_image":
             self._update_merged_image_plot(reference[0])
         else:
-            for field, ref in zip(self.fields, reference):
+            for field, ref in zip(self.fields, reference, strict=False):
                 field._update_plot(ref)
 
     @plot_on_figure(update_method="_update_plot")
@@ -1103,7 +1103,7 @@ class FieldCollection(FieldBase):
             reference = [
                 field.plot(kind=knd, ax=ax, action="none", **kwargs, **sp_args)
                 for field, knd, ax, sp_args in zip(
-                    self.fields, kind, axs.flat, subplot_args
+                    self.fields, kind, axs.flat, subplot_args, strict=False
                 )
             ]
 
@@ -1173,7 +1173,7 @@ class _FieldLabels:
             if len(fields) != len(value):
                 msg = "Require a label for each field"
                 raise ValueError(msg)
-            for field, label in zip(fields, value):
+            for field, label in zip(fields, value, strict=False):
                 field.label = label
         else:
             msg = "Unsupported index type"

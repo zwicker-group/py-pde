@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar
 
 import numpy as np
 from numpy.typing import ArrayLike  # noqa: F401
@@ -15,15 +15,15 @@ if TYPE_CHECKING:
     from ..grids.base import GridBase
 
 # types for single numbers:
-Real = Union[int, float]  # a real number (no complex number allowed)
-Number = Union[Real, complex, np.number]  # any number, including complex numbers
+Real = int | float  # a real number (no complex number allowed)
+Number = Real | complex | np.number  # any number, including complex numbers
 
 # array types:
 NumericArray = np.ndarray[Any, np.dtype[np.number]]  # array of numbers (incl complex)
-NumberOrArray = Union[Number, NumericArray]  # number or array of numbers (incl complex)
+NumberOrArray = Number | NumericArray  # number or array of numbers (incl complex)
 # a floating number or an array of floating (no integers and no complex numbers)
 FloatingArray = np.ndarray[Any, np.dtype[np.floating]]
-FloatOrArray = Union[float, np.ndarray[Any, np.dtype[np.floating]]]
+FloatOrArray = float | np.ndarray[Any, np.dtype[np.floating]]
 
 # miscellaneous types:
 BackendType = Literal["scipy", "numpy", "numba", "numba_mpi"]
@@ -39,7 +39,7 @@ class OperatorInfo(NamedTuple):
     name: str = ""  # attach a unique name to help caching
 
 
-class OperatorType(Protocol):
+class OperatorImplType(Protocol):
     """An operator that acts on an array."""
 
     def __call__(self, arr: NumericArray, out: NumericArray) -> None:
@@ -49,8 +49,20 @@ class OperatorType(Protocol):
 class OperatorFactory(Protocol):
     """A factory function that creates an operator for a particular grid."""
 
-    def __call__(self, grid: GridBase, **kwargs) -> OperatorType:
+    def __call__(self, grid: GridBase, **kwargs) -> OperatorImplType:
         """Create the operator."""
+
+
+class OperatorType(Protocol):
+    """An operator that acts on an array."""
+
+    def __call__(
+        self,
+        arr: NumericArray,
+        out: NumericArray | None = None,
+        args: dict[str, Any] | None = None,
+    ) -> NumericArray:
+        """Evaluate the operator."""
 
 
 class CellVolume(Protocol):

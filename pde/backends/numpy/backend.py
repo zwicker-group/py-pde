@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -15,6 +15,8 @@ from ...tools.math import OnlineStatistics
 from ..base import BackendBase, OperatorInfo, TFunc
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...grids import BoundariesBase, GridBase
     from ...pdes import PDEBase
     from ...tools.expressions import ExpressionBase
@@ -23,6 +25,7 @@ if TYPE_CHECKING:
         GhostCellSetter,
         NumberOrArray,
         NumericArray,
+        OperatorType,
         TField,
     )
 
@@ -134,7 +137,7 @@ class NumpyBackend(BackendBase):
         operator: str | OperatorInfo,
         bcs: BoundariesBase,
         **kwargs,
-    ) -> Callable[[NumericArray, NumericArray | None, Any], NumericArray]:
+    ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
 
         Args:
@@ -190,7 +193,7 @@ class NumpyBackend(BackendBase):
 
             # prepare input with boundary conditions
             arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-            arr_full[(..., *grid._idx_valid)] = arr
+            arr_full[(..., *grid._idx_valid)] = arr  # type: ignore
             bcs.set_ghost_cells(arr_full, args=args)
 
             # apply operator

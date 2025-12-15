@@ -152,7 +152,7 @@ class Cuboid:
 
     @property
     def bounds(self) -> tuple[tuple[float, float], ...]:
-        return tuple((p, p + s) for p, s in zip(self.pos, self.size))
+        return tuple((p, p + s) for p, s in zip(self.pos, self.size, strict=False))
 
     @property
     def vertices(self) -> list[list[float]]:
@@ -179,7 +179,7 @@ class Cuboid:
         null = sides == 0
         null_count = null.sum()
         if null_count == 0:
-            return 2 * np.sum(np.prod(sides) / sides)
+            return 2 * np.sum(np.prod(sides) / sides)  # type: ignore
         if null_count == 1:
             return 2 * np.prod(sides[~null])  # type: ignore
         return 0
@@ -201,7 +201,7 @@ class Cuboid:
         amount = np.asarray(amount)
         if inplace:
             self.pos -= amount
-            self.size += 2 * amount
+            self.size += 2 * amount  # type: ignore
             return self
         return self.__class__(self.pos - amount, self.size + 2 * amount)
 

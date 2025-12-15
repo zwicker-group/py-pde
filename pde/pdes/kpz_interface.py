@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
@@ -13,6 +13,8 @@ from ..tools.docstrings import fill_in_docstring
 from .base import SDEBase, expr_prod
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import numpy as np
 
     from ..grids.boundaries.axes import BoundariesData
@@ -131,7 +133,7 @@ class KPZInterfacePDE(SDEBase):
         def pde_rhs(state_data: NumericArray, t: float):
             """Compiled helper function evaluating right hand side."""
             result = nu_value * laplace(state_data, args={"t": t})
-            result += lambda_value * gradient_squared(state_data, args={"t": t})
+            result += lambda_value * gradient_squared(state_data, args={"t": t})  # type: ignore
             return result
 
         return pde_rhs  # type: ignore

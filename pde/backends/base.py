@@ -9,7 +9,8 @@ import inspect
 import logging
 from abc import abstractmethod
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 from ..tools.typing import (
     DataSetter,
@@ -20,6 +21,7 @@ from ..tools.typing import (
     NumericArray,
     OperatorFactory,
     OperatorInfo,
+    OperatorType,
     TField,
 )
 
@@ -237,7 +239,7 @@ class BackendBase:
         operator: str | OperatorInfo,
         bcs: BoundariesBase,
         **kwargs,
-    ) -> Callable[[NumericArray, NumericArray | None, Any], NumericArray]:
+    ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
 
         Args:

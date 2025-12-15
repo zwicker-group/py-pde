@@ -9,7 +9,7 @@ import copy
 import logging
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -17,6 +17,8 @@ from ..fields import FieldCollection
 from ..fields.datafield_base import DataFieldBase
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..fields.base import FieldBase
     from ..solvers.base import SolverBase
     from ..solvers.controller import TRangeType
@@ -537,7 +539,7 @@ class SDEBase(PDEBase):
                 result = state.copy(label=label)
                 noises_var = np.broadcast_to(self.noise, len(state))
 
-                for field, noise_var in zip(result, noises_var):
+                for field, noise_var in zip(result, noises_var, strict=False):
                     if noise_var == 0:
                         field.data.fill(0)
                     else:
@@ -628,7 +630,7 @@ class SDEBase(PDEBase):
                         for i in range(state_data[n].size):
                             scale = noises_var[n] / cell_volume(i)
                             out[n].flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
-                return out  # type: ignore
+                return out
 
         else:
             # a single noise value is given for all fields
@@ -643,7 +645,7 @@ class SDEBase(PDEBase):
                 for i in range(state_data.size):
                     scale = noise_var / cell_volume(i)
                     out.flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
-                return out  # type: ignore
+                return out
 
         return noise_realization  # type: ignore
 

@@ -5,13 +5,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from .base import SolverBase
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..tools.typing import NumericArray, TField
 
 

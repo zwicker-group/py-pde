@@ -265,7 +265,7 @@ class CylindricalSymGrid(GridBase):
             return self.transform(np.array([r, z]), "grid", "cell")
 
         if coords == "grid":
-            return np.array([r, z])  # type: ignore
+            return np.array([r, z])
 
         msg = f"Unknown coordinate system `{coords}`"
         raise ValueError(msg)

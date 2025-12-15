@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from abc import ABCMeta, abstractmethod
 from inspect import signature
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -19,7 +19,7 @@ from ..tools.output import display_progress
 from ..trackers.base import InfoDict, TransformationType, TransformedTrackerBase
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Sequence
+    from collections.abc import Callable, Iterator, Sequence
 
     from numpy.typing import DTypeLike
 

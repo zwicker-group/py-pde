@@ -10,7 +10,7 @@ from pathlib import Path
 from string import Template
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
-MIN_PYTHON_VERSION = "3.9"
+MIN_PYTHON_VERSION = "3.10"
 MAX_PYTHON_VERSION = "3.14"
 
 
@@ -24,6 +24,7 @@ class Requirement:
     relation: str | None = None  # relation used to compare version number
     essential: bool = False  # basic requirement for the package
     docs_only: bool = False  # only required for creating documentation
+    scripts_only: bool = False  # only required for running scripts
     tests_only: bool = False  # only required for running tests
     collections: set[str] = field(default_factory=set)  # collections where this fits
 
@@ -162,19 +163,20 @@ REQUIREMENTS = [
     Requirement(name="pydot", version_min="3", docs_only=True),
     Requirement(name="Pillow", version_min="7.0", docs_only=True),
     Requirement(name="utilitiez", version_min="0.3", docs_only=True, tests_only=True),
+    # for scripts only
+    Requirement(name="docformatter", version_min="1.7", scripts_only=True),
+    Requirement(name="mypy", version_min="1.8", scripts_only=True),
+    Requirement(name="pre-commit", version_min="3", scripts_only=True),
+    Requirement(name="ruff", version_min="0.6", scripts_only=True),
     # for tests only
     Requirement(
         name="jupyter_contrib_nbextensions", version_min="0.5", tests_only=True
     ),
-    Requirement(name="docformatter", version_min="1.7", tests_only=True),
     Requirement(name="importlib-metadata", version_min="5", tests_only=True),
-    Requirement(name="mypy", version_min="1.8", tests_only=True),
     Requirement(name="notebook", version_min="7", tests_only=True),
-    Requirement(name="pre-commit", version_min="3", tests_only=True),
     Requirement(name="pytest", version_min="5.4", tests_only=True),
     Requirement(name="pytest-cov", version_min="2.8", tests_only=True),
     Requirement(name="pytest-xdist", version_min="1.30", tests_only=True),
-    Requirement(name="ruff", version_min="0.6", tests_only=True),
 ]
 
 
@@ -355,6 +357,7 @@ def main():
         [r for r in REQUIREMENTS if r.essential or "full" in r.collections],
         comment="These are the full requirements used to test all functions",
     )
+
     # write full requirements to tests folder
     write_requirements_txt(
         root / "pde" / "tools" / "resources" / "requirements_full.txt",
@@ -374,6 +377,12 @@ def main():
         comment="These are requirements for supporting multiprocessing",
     )
 
+    # write requirements to tests folder
+    write_requirements_txt(
+        root / "scripts" / "requirements.txt",
+        [r for r in REQUIREMENTS if r.scripts_only or "scripts" in r.collections],
+        ref_base=True,
+    )
     # write requirements to tests folder
     write_requirements_txt(
         root / "tests" / "requirements.txt",
@@ -397,7 +406,11 @@ def main():
     # write requirements for documentation as CSV
     write_requirements_csv(
         root / "docs" / "source" / "_static" / "requirements_optional.csv",
-        [r for r in REQUIREMENTS if not (r.essential or r.tests_only or r.docs_only)],
+        [
+            r
+            for r in REQUIREMENTS
+            if not (r.essential or r.tests_only or r.scripts_only or r.docs_only)
+        ],
     )
 
     # write pyproject.toml

@@ -23,14 +23,14 @@ import re
 import time
 from abc import ABCMeta, abstractmethod
 from collections.abc import Sequence
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, TypeVar
 
 import numpy as np
 
 from ..tools.parse_duration import parse_duration
 from ..tools.typing import NumericArray
 
-InfoDict = Optional[dict[str, Any]]
+InfoDict = dict[str, Any] | None
 TInterrupt = TypeVar("TInterrupt", bound="InterruptsBase")
 
 
@@ -340,7 +340,7 @@ class RealtimeInterrupts(ConstantInterrupts):
         return super().next(t)
 
 
-InterruptData = Union[InterruptsBase, int, float, str, Sequence[float], NumericArray]
+InterruptData = InterruptsBase | int | float | str | Sequence[float] | NumericArray
 
 
 def parse_interrupt(data: InterruptData) -> InterruptsBase:

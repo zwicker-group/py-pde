@@ -13,11 +13,13 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .typing import NumberOrArray, NumericArray
 
 try:

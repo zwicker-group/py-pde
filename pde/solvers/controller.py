@@ -8,7 +8,7 @@ from __future__ import annotations
 import datetime
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Callable, Union
+from typing import TYPE_CHECKING, Any
 
 from .. import __version__
 from ..trackers.base import (
@@ -18,13 +18,15 @@ from ..trackers.base import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..tools.typing import TField
     from .base import SolverBase
 
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger for controller."""
 
-TRangeType = Union[float, tuple[float, float]]
+TRangeType = float | tuple[float, float]
 
 
 class Controller:

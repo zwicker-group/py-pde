@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numba as nb
 import numpy as np
@@ -24,7 +24,7 @@ from .overloads import OnlineStatistics
 from .utils import get_common_numba_dtype, jit, make_array_constructor
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from ...grids.boundaries.axis import BoundaryAxisBase
     from ...pdes import PDEBase
@@ -36,6 +36,7 @@ if TYPE_CHECKING:
         Number,
         NumberOrArray,
         NumericArray,
+        OperatorType,
         TField,
     )
     from ..base import TFunc
@@ -437,7 +438,7 @@ class NumbaBackend(NumpyBackend):
         operator: str | OperatorInfo,
         bcs: BoundariesBase,
         **kwargs,
-    ) -> Callable[..., NumericArray]:
+    ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
 
         Args:
@@ -496,7 +497,7 @@ class NumbaBackend(NumpyBackend):
 
             # prepare input with boundary conditions
             arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-            arr_full[(..., *grid._idx_valid)] = arr
+            arr_full[(..., *grid._idx_valid)] = arr  # type: ignore
             bcs.set_ghost_cells(arr_full, args=args)
 
             # apply operator
@@ -618,7 +619,7 @@ class NumbaBackend(NumpyBackend):
                     assert arr.shape == grid_shape
                     total = 0
                     for i in range(arr.size):
-                        total += get_cell_volume(i) * arr.flat[i]  # type: ignore
+                        total += get_cell_volume(i) * arr.flat[i]
                     return total
 
             else:
@@ -634,7 +635,7 @@ class NumbaBackend(NumpyBackend):
                         arr_comp = arr[idx]
                         for i in range(arr_comp.size):
                             total[idx] += get_cell_volume(i) * arr_comp.flat[i]
-                    return total  # type: ignore
+                    return total
 
             return impl
 
@@ -945,7 +946,7 @@ class NumbaBackend(NumpyBackend):
             if field.rank == 0:
                 fill = field.data.dtype.type(fill)  # type: ignore
             else:
-                fill = np.broadcast_to(fill, field.data_shape).astype(field.data.dtype)
+                fill = np.broadcast_to(fill, field.data_shape).astype(field.data.dtype)  # type: ignore
 
         # create the method to interpolate data at a single point
         interpolate_single = grids.make_single_interpolator(
@@ -996,7 +997,7 @@ class NumbaBackend(NumpyBackend):
             for idx in np.ndindex(*point_shape):
                 out[(..., *idx)] = interpolate_single(data, point[idx])
 
-            return out  # type: ignore
+            return out
 
         # store a reference to the data so it is not garbage collected too early
         interpolator._data = field.data

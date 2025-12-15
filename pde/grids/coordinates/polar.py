@@ -43,18 +43,18 @@ class PolarCoordinates(CoordinatesBase):
         r, φ = points[..., 0], points[..., 1]
         x = r * np.cos(φ)
         y = r * np.sin(φ)
-        return np.stack((x, y), axis=-1)  # type: ignore
+        return np.stack((x, y), axis=-1)
 
     def _pos_from_cart(self, points: FloatingArray) -> FloatingArray:
         x, y = points[..., 0], points[..., 1]
         r = np.hypot(x, y)
         φ = np.arctan2(y, x)
-        return np.stack((r, φ), axis=-1)  # type: ignore
+        return np.stack((r, φ), axis=-1)
 
     def _mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
         r, φ = points[..., 0], points[..., 1]
         sinφ, cosφ = np.sin(φ), np.cos(φ)
-        return np.array([[cosφ, -r * sinφ], [sinφ, r * cosφ]])  # type: ignore
+        return np.array([[cosφ, -r * sinφ], [sinφ, r * cosφ]])
 
     def _volume_factor(self, points: FloatingArray) -> ArrayLike:
         return points[..., 0]
@@ -64,13 +64,13 @@ class PolarCoordinates(CoordinatesBase):
     ) -> FloatingArray:
         r1, φ1 = c_low[..., 0], c_low[..., 1]
         r2, φ2 = c_high[..., 0], c_high[..., 1]
-        return (φ2 - φ1) * (r2**2 - r1**2) / 2  # type: ignore
+        return (φ2 - φ1) * (r2**2 - r1**2) / 2
 
     def _scale_factors(self, points: FloatingArray) -> FloatingArray:
         r = points[..., 0]
-        return np.array([np.ones_like(r), r])  # type: ignore
+        return np.array([np.ones_like(r), r])
 
     def _basis_rotation(self, points: FloatingArray) -> FloatingArray:
         φ = points[..., 1]
         sinφ, cosφ = np.sin(φ), np.cos(φ)
-        return np.array([[cosφ, sinφ], [-sinφ, cosφ]])  # type: ignore
+        return np.array([[cosφ, sinφ], [-sinφ, cosφ]])

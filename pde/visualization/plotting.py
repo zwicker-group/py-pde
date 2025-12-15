@@ -18,7 +18,7 @@ import logging
 import math
 import time
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, Literal, Union
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -36,12 +36,14 @@ from ..tools.plotting import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..fields.datafield_base import DataFieldBase
     from ..storage.base import StorageBase
     from ..tools.typing import NumericArray
 
 _logger = logging.getLogger(__name__)
-ScaleData = Union[str, float, tuple[float, float]]
+ScaleData = str | float | tuple[float, float]
 
 
 def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
@@ -367,7 +369,7 @@ class ScalarFieldPlot:
 
                 # initialize image
                 ax = self.axes[i, j]
-                img = ax.imshow(  # type: ignore
+                img = ax.imshow(
                     empty,
                     vmin=vmin,
                     vmax=vmax,
@@ -377,9 +379,9 @@ class ScalarFieldPlot:
                     interpolation="quadric",
                 )
                 _add_horizontal_colorbar(img, ax)
-                ax.set_title(panel.get("title", ""))  # type: ignore
-                ax.set_xlabel(example_image["label_x"])  # type: ignore
-                ax.set_ylabel(example_image["label_y"])  # type: ignore
+                ax.set_title(panel.get("title", ""))
+                ax.set_xlabel(example_image["label_x"])
+                ax.set_ylabel(example_image["label_y"])
 
                 # store the default value alongside
                 img._default_vmin_vmax = vmin, vmax

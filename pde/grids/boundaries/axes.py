@@ -16,8 +16,8 @@ from __future__ import annotations
 import itertools
 import logging
 import warnings
-from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, Any, Callable, Union
+from collections.abc import Callable, Iterator, Sequence
+from typing import TYPE_CHECKING, Any, Union
 
 from ... import config
 from ..base import GridBase, PeriodicityError

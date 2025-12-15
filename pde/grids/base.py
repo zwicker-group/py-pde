@@ -13,7 +13,7 @@ import logging
 import math
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
 
@@ -23,7 +23,7 @@ from ..tools.misc import hybridmethod
 from .coordinates import CoordinatesBase, DimensionError
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Sequence
+    from collections.abc import Callable, Iterator, Sequence
 
     from numpy.typing import ArrayLike, NDArray
 
@@ -35,6 +35,7 @@ if TYPE_CHECKING:
         Number,
         NumberOrArray,
         NumericArray,
+        OperatorImplType,
         OperatorType,
     )
     from ._mesh import GridMesh
@@ -478,7 +479,7 @@ class GridBase(metaclass=ABCMeta):
     @cached_property()
     def cell_coords(self) -> FloatingArray:
         """:class:`~numpy.ndarray`: coordinate values for all axes of each cell."""
-        return np.moveaxis(self.coordinate_arrays, 0, -1)  # type: ignore
+        return np.moveaxis(self.coordinate_arrays, 0, -1)
 
     @cached_property()
     def cell_volumes(self) -> FloatingArray:
@@ -492,7 +493,7 @@ class GridBase(metaclass=ABCMeta):
 
         # use cell_volume_data
         vols = functools.reduce(np.outer, self.cell_volume_data)
-        return np.broadcast_to(vols, self.shape)  # type: ignore
+        return np.broadcast_to(vols, self.shape)
 
     @cached_property()
     def uniform_cell_volumes(self) -> bool:
@@ -542,7 +543,7 @@ class GridBase(metaclass=ABCMeta):
             if per:
                 size = axes_bounds[i][1] - axes_bounds[i][0]
                 diff[..., i] = (diff[..., i] + size / 2) % size - size / 2
-        return diff  # type: ignore
+        return diff
 
     def difference_vector(
         self, p1: FloatingArray, p2: FloatingArray, *, coords: CoordsType = "grid"
@@ -635,7 +636,7 @@ class GridBase(metaclass=ABCMeta):
         # assemble into array
         shape_bndry = tuple(self.shape[i] for i in range(self.num_axes) if i != axis)
         shape = (*shape_bndry, self.num_axes)
-        return np.stack(points, -1).reshape(shape)  # type: ignore
+        return np.stack(points, -1).reshape(shape)
 
     @property
     def volume(self) -> float:
@@ -730,7 +731,7 @@ class GridBase(metaclass=ABCMeta):
         """
         point = np.asarray(point, dtype=np.double)
         if point.size == 0:
-            return np.zeros((0, self.num_axes))  # type: ignore
+            return np.zeros((0, self.num_axes))
 
         if point.ndim == 0:
             if self.num_axes > 1:
@@ -819,7 +820,7 @@ class GridBase(metaclass=ABCMeta):
                     res[..., i] = self.c.coordinate_limits[i][1]
                 else:
                     res[..., i] = value
-        return res  # type: ignore
+        return res
 
     def transform(
         self, coordinates: FloatingArray, source: CoordsType, target: CoordsType
@@ -895,7 +896,7 @@ class GridBase(metaclass=ABCMeta):
             grid_coords = c_min + cells * self.discretization
 
             if target == "grid":
-                return grid_coords  # type: ignore
+                return grid_coords
             if target == "cartesian":
                 return self.point_to_cartesian(grid_coords)
 
@@ -912,7 +913,7 @@ class GridBase(metaclass=ABCMeta):
                 c_min = np.array(self.axes_bounds)[:, 0]
                 return (grid_coords - c_min) / self.discretization  # type: ignore
             if target == "grid":
-                return grid_coords  # type: ignore
+                return grid_coords
 
         else:
             msg = f"Unknown source coordinates `{source}`"
@@ -939,7 +940,7 @@ class GridBase(metaclass=ABCMeta):
             the grid
         """
         cell_coords = self.transform(points, source=coords, target="cell")
-        return np.all((cell_coords >= 0) & (cell_coords <= self.shape), axis=-1)
+        return np.all((cell_coords >= 0) & (cell_coords <= self.shape), axis=-1)  # type: ignore
 
     def iter_mirror_points(
         self, point: FloatingArray, with_self: bool = False, only_periodic: bool = True
@@ -1124,7 +1125,7 @@ class GridBase(metaclass=ABCMeta):
         *,
         backend: str | BackendBase = "config",
         **kwargs,
-    ) -> OperatorType:
+    ) -> OperatorImplType:
         """Return a compiled function applying an operator without boundary conditions.
 
         A function that takes the discretized full data as an input and an array of
@@ -1167,7 +1168,7 @@ class GridBase(metaclass=ABCMeta):
         *,
         backend: str | BackendBase = "config",
         **kwargs,
-    ) -> Callable[..., NumericArray]:
+    ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
 
         Args:

@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -25,8 +25,10 @@ from .. import scipy_backend
 from .common import make_general_poisson_solver, uniform_discretization
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ....grids.boundaries.axes import BoundariesList
-    from ....tools.typing import NumericArray, OperatorType
+    from ....tools.typing import NumericArray, OperatorImplType
 
 
 def _get_laplace_matrix_1d(bcs: BoundariesList) -> tuple[NumericArray, NumericArray]:
@@ -254,7 +256,7 @@ def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray
 
 
 @scipy_backend.register_operator(CartesianGrid, "laplace", rank_in=0, rank_out=0)
-def make_laplace(grid: CartesianGrid, **kwargs) -> OperatorType:
+def make_laplace(grid: CartesianGrid, **kwargs) -> OperatorImplType:
     """Make a Laplace operator using the scipy module.
 
     This only supports uniform discretizations.
@@ -286,7 +288,7 @@ def make_gradient(
     grid: CartesianGrid,
     *,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a gradient operator using the scipy module.
 
     Args:
@@ -337,7 +339,7 @@ def make_divergence(
     grid: CartesianGrid,
     *,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a divergence operator using the scipy module.
 
     Args:
@@ -386,7 +388,7 @@ def make_divergence(
 
 def _vectorize_operator(
     make_operator: Callable, grid: CartesianGrid, **kwargs
-) -> OperatorType:
+) -> OperatorImplType:
     """Apply an operator to on all dimensions of a vector.
 
     Args:
@@ -418,7 +420,7 @@ def make_vector_gradient(
     grid: CartesianGrid,
     *,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a vector gradient operator on a Cartesian grid.
 
     Args:
@@ -439,7 +441,7 @@ def make_vector_gradient(
 
 
 @scipy_backend.register_operator(CartesianGrid, "vector_laplace", rank_in=1, rank_out=1)
-def make_vector_laplace(grid: CartesianGrid) -> OperatorType:
+def make_vector_laplace(grid: CartesianGrid) -> OperatorImplType:
     """Make a vector Laplacian on a Cartesian grid.
 
     Args:
@@ -461,7 +463,7 @@ def make_tensor_divergence(
     grid: CartesianGrid,
     *,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a tensor divergence operator on a Cartesian grid.
 
     Args:
@@ -482,7 +484,7 @@ def make_tensor_divergence(
 @scipy_backend.register_operator(CartesianGrid, "poisson_solver", rank_in=0, rank_out=0)
 def make_poisson_solver(
     bcs: BoundariesList, *, method: Literal["auto", "scipy"] = "auto"
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a operator that solves Poisson's equation.
 
     Args:

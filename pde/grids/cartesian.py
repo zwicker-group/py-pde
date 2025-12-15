@@ -125,7 +125,7 @@ class CartesianGrid(GridBase):
         p1, p2 = self.cuboid.corners
         axes_coords, discretization = [], []
         for d in range(self.dim):
-            c, dc = discretize_interval(p1[d], p2[d], self.shape[d])  # type: ignore
+            c, dc = discretize_interval(p1[d], p2[d], self.shape[d])
             axes_coords.append(c)
             discretization.append(dc)
         self._discretization = np.array(discretization)
@@ -231,7 +231,7 @@ class CartesianGrid(GridBase):
                 offsets.append([0])
             else:
                 s = self.cuboid.size[i]
-                offsets.append([-s, 0, s])  # type: ignore
+                offsets.append([-s, 0, s])
 
         # produce the respective mirrored points
         for offset in itertools.product(*offsets):

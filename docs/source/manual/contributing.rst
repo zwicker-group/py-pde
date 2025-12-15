@@ -12,6 +12,8 @@ methods for differential operators with various boundary conditions collected
 in :mod:`~pde.grids.boundaries`.
 The actual pdes are collected in :mod:`~pde.pdes` and the respective solvers
 are defined in :mod:`~pde.solvers`.
+The actual numerical computations are done in backends, which are implemented in
+:mod:`~pde.backends`.
 
 
 Extending functionality
@@ -25,11 +27,15 @@ mathematical expressions by creating instances of the class
 :class:`~pde.pdes.pde.PDE`.
 Moreover, new grids can be introduced by subclassing
 :class:`~pde.grids.base.GridBase`.
-It is also possible to only use parts of the package, e.g., the discretized
-differential operators from :mod:`~pde.grids.operators`.
 
-New operators can be associated with grids by registering them using
-:meth:`~pde.grids.base.GridBase.register_operator`.
+The actual calculations are done by backends, which offer an interface for doing the
+calculation details. These backends are defined in :mod:`~pde.backends` and allow
+accessing their details independently. For instance, the numba-accelerated operators
+can be used without any other part of the package by calling 
+the method :meth:`~pde.backends.numba.backend.NumbaBackend.make_operator` on the
+:meth:`~pde.backends.numba.numba_backend` object.
+Moreover, new operators can be associated with grids by registering them using
+:meth:`numba_backend.register_operator`.
 For instance, to create a new operator for the cylindrical grid one needs to 
 define a factory function that creates the operator. This factory function takes
 an instance of :class:`~pde.grids.boundaries.axes.BoundariesList` as an argument and
@@ -37,9 +43,9 @@ returns a function that takes as an argument the actual data array for the grid.
 Note that the grid itself is an attribute of
 :class:`~pde.grids.boundaries.axes.BoundariesList`.
 This operator would be registered with the grid by calling
-:code:`CylindricalSymGrid.register_operator("operator", make_operator)`, where the
-first argument is the name of the operator and the second argument is the
-factory function.
+:code:`numba_backend.register_operator(CylindricalSymGrid, "operator", make_operator)`,
+where the arguments denote the grid class, the name of the operator, and the factory
+function, respectively.
 
 
 Design choices
