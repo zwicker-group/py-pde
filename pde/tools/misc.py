@@ -338,4 +338,4 @@ def number_array(
         # a specific dtype is requested
         result = np.array(data, dtype=np.dtype(dtype), copy=copy)
 
-    return result  # type: ignore
+    return result

@@ -483,7 +483,7 @@ class AdaptiveSolverBase(SolverBase):
 
         def single_step(state_data: NumericArray, t: float, dt: float) -> NumericArray:
             """Basic implementation of Euler scheme."""
-            return state_data + dt * rhs_pde(state_data, t)  # type: ignore
+            return state_data + dt * rhs_pde(state_data, t)
 
         return self._backend_obj.compile_function(single_step)
 

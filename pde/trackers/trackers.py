@@ -803,7 +803,7 @@ class SteadyStateTracker(TrackerBase):
         self._pbar_offset: float = 0  # required for calculating progress
         self._last_data: NumericArray | None = None
         self._last_time: float | None = None
-        self._best_rate_max: NumericArray | None = None
+        self._best_rate_max: float | None = None
 
     def handle(self, field: FieldBase, t: float) -> None:
         """Handle data supplied to this tracker.

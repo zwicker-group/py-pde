@@ -62,7 +62,7 @@ class CartesianCoordinates(CoordinatesBase):
     def _mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
         jac = np.zeros((self.dim, self.dim, *points.shape[:-1]))
         jac[range(self.dim), range(self.dim)] = 1
-        return jac  # type: ignore
+        return jac
 
     def _volume_factor(self, points: FloatingArray) -> ArrayLike:
         return np.ones(points.shape[:-1])
@@ -74,4 +74,4 @@ class CartesianCoordinates(CoordinatesBase):
         return np.ones_like(points)
 
     def _basis_rotation(self, points: FloatingArray) -> FloatingArray:
-        return np.eye(self.dim)  # type: ignore
+        return np.eye(self.dim)

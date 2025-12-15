@@ -154,7 +154,7 @@ class PDE(SDEBase):
 
         # parse noise strength
         if isinstance(noise, dict):
-            noise_arr: ArrayLike = [noise.get(var, 0) for var in rhs]
+            noise_arr: ArrayLike = np.array([noise.get(var, 0) for var in rhs])
         else:
             noise_arr = noise
         if hasattr(noise_arr, "__iter__") and len(noise_arr) != len(rhs):  # type: ignore

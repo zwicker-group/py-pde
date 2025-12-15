@@ -46,20 +46,20 @@ class SphericalCoordinates(CoordinatesBase):
         x = rsinθ * np.cos(φ)
         y = rsinθ * np.sin(φ)
         z = r * np.cos(θ)
-        return np.stack((x, y, z), axis=-1)  # type:ignore
+        return np.stack((x, y, z), axis=-1)
 
     def _pos_from_cart(self, points: FloatingArray) -> FloatingArray:
         x, y, z = points[..., 0], points[..., 1], points[..., 2]
         r = np.linalg.norm(points, axis=-1)
         θ = np.arctan2(np.hypot(x, y), z)
         φ = np.arctan2(y, x)
-        return np.stack((r, θ, φ), axis=-1)  # type:ignore
+        return np.stack((r, θ, φ), axis=-1)
 
     def _mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
         r, θ, φ = points[..., 0], points[..., 1], points[..., 2]
         sinθ, cosθ = np.sin(θ), np.cos(θ)
         sinφ, cosφ = np.sin(φ), np.cos(φ)
-        return np.array(  # type:ignore
+        return np.array(
             [
                 [cosφ * sinθ, r * cosφ * cosθ, -r * sinφ * sinθ],
                 [sinφ * sinθ, r * sinφ * cosθ, r * cosφ * sinθ],
@@ -69,7 +69,7 @@ class SphericalCoordinates(CoordinatesBase):
 
     def _volume_factor(self, points: FloatingArray) -> ArrayLike:
         r, θ = points[..., 0], points[..., 1]
-        return r**2 * np.sin(θ)
+        return r**2 * np.sin(θ)  # type: ignore
 
     def _cell_volume(self, c_low: FloatingArray, c_high: FloatingArray):
         r1, θ1, φ1 = c_low[..., 0], c_low[..., 1], c_low[..., 2]
@@ -78,13 +78,13 @@ class SphericalCoordinates(CoordinatesBase):
 
     def _scale_factors(self, points: FloatingArray) -> FloatingArray:
         r, θ = points[..., 0], points[..., 1]
-        return np.array([np.ones_like(r), r, r * np.sin(θ)])  # type: ignore
+        return np.array([np.ones_like(r), r, r * np.sin(θ)])
 
     def _basis_rotation(self, points: FloatingArray) -> FloatingArray:
         θ, φ = points[..., 1], points[..., 2]
         sinθ, cosθ = np.sin(θ), np.cos(θ)
         sinφ, cosφ = np.sin(φ), np.cos(φ)
-        return np.array(  # type: ignore
+        return np.array(
             [
                 [cosφ * sinθ, sinφ * sinθ, cosθ],
                 [cosφ * cosθ, sinφ * cosθ, -sinθ],

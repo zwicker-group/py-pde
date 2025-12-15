@@ -62,7 +62,7 @@ class FFmpegFormat:
 
     def data_to_frame(self, normalized_data: NumericArray) -> NumericArray:
         """Converts normalized data to data being stored in a color channel."""
-        return np.ascontiguousarray(normalized_data * self.max_value, dtype=self.dtype)  # type:ignore
+        return np.ascontiguousarray(normalized_data * self.max_value, dtype=self.dtype)
 
     def data_from_frame(self, frame_data: NumericArray):
         """Converts data stored in a color channel to normalized data."""

@@ -47,7 +47,7 @@ class BisphericalCoordinates(CoordinatesBase):
         x = self.scale_parameter * np.sin(σ) / denom * np.cos(φ)
         y = self.scale_parameter * np.sin(σ) / denom * np.sin(φ)
         z = self.scale_parameter * np.sinh(τ) / denom
-        return np.stack((x, y, z), axis=-1)  # type: ignore
+        return np.stack((x, y, z), axis=-1)
 
     def _pos_from_cart(self, points: FloatingArray) -> FloatingArray:
         x, y, z = points[..., 0], points[..., 1], points[..., 2]
@@ -58,7 +58,7 @@ class BisphericalCoordinates(CoordinatesBase):
         σ = np.pi - 2 * np.arctan2(2 * a * d, denom)
         τ = 0.5 * np.log(((z + a) ** 2 + d**2) / ((z - a) ** 2 + d**2))
         φ = np.arctan2(y, x)
-        return np.stack((σ, τ, φ), axis=-1)  # type: ignore
+        return np.stack((σ, τ, φ), axis=-1)
 
     def _mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
         σ, τ, φ = points[..., 0], points[..., 1], points[..., 2]
@@ -82,12 +82,12 @@ class BisphericalCoordinates(CoordinatesBase):
 
     def _volume_factor(self, points: FloatingArray) -> ArrayLike:
         σ, τ = points[..., 0], points[..., 1]
-        return self.scale_parameter**3 * np.sin(σ) * (np.cosh(τ) - np.cos(σ)) ** -3
+        return self.scale_parameter**3 * np.sin(σ) * (np.cosh(τ) - np.cos(σ)) ** -3  # type: ignore
 
     def _scale_factors(self, points: FloatingArray) -> FloatingArray:
         σ, τ = points[..., 0], points[..., 1]
         sf = self.scale_parameter / (np.cosh(τ) - np.cos(σ))
-        return np.array([sf, sf, sf * np.sin(σ)])  # type: ignore
+        return np.array([sf, sf, sf * np.sin(σ)])
 
     def _basis_rotation(self, points: FloatingArray) -> FloatingArray:
         σ, τ, φ = points[..., 0], points[..., 1], points[..., 2]
@@ -100,7 +100,7 @@ class BisphericalCoordinates(CoordinatesBase):
         cosφ = np.cos(φ)
         d = cosσ - coshτ
 
-        return np.array(  # type: ignore
+        return np.array(
             [
                 [
                     cosφ * (1 - cosσ * coshτ) / d,

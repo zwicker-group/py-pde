@@ -637,7 +637,7 @@ class FieldBase(metaclass=ABCMeta):
         if not np.isscalar(exponent):
             msg = "Only scalar exponents are supported"
             raise NotImplementedError(msg)
-        self.data **= exponent
+        self.data **= exponent  # type: ignore
         return self
 
     def apply(
