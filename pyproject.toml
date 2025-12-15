@@ -109,7 +109,6 @@ ignore = [
     "B027",  # allow empty methods
     "E402",  # allow Module level import not at top of file
     "PT011",  # allow broad exceptions
-    "PYI034",  # until python 3.11 is minimal version
     "RET504",  # cannot use this because of numba
     "RUF001",  # allow single greek letters
     "RUF002",  # allow using prime in docstrings

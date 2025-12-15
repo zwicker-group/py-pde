@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Callable, Literal, TypeVar
 
 import numpy as np
 from scipy import sparse
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -612,7 +613,7 @@ class cached_property(_class_cache):
     Adapted from <https://wiki.python.org/moin/PythonDecoratorLibrary>.
     """
 
-    def __call__(self, method):
+    def __call__(self, method) -> Self:
         """Apply the cache decorator to the property."""
         # save name, e.g., to be able to delete cache later
         self._cache_name = self.name

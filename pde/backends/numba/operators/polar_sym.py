@@ -5,10 +5,10 @@ r"""This module implements differential operators on polar grids.
 
    make_laplace
    make_gradient
+   make_gradient_squared
    make_divergence
    make_vector_gradient
    make_tensor_divergence
-   make_poisson_solver
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -17,17 +17,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from ...tools.docstrings import fill_in_docstring
-from ...tools.numba import jit
-from ..spherical import PolarSymGrid
-from .common import make_general_poisson_solver
+from ....grids.spherical import PolarSymGrid
+from ....tools.docstrings import fill_in_docstring
+from .. import numba_backend
+from ..utils import jit
 
 if TYPE_CHECKING:
-    from ...tools.typing import NumericArray, OperatorType
-    from ..boundaries.axes import BoundariesList
+    from ....tools.typing import NumericArray, OperatorType
 
 
-@PolarSymGrid.register_operator("laplace", rank_in=0, rank_out=0)
+@numba_backend.register_operator(PolarSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(grid: PolarSymGrid) -> OperatorType:
     """Make a discretized laplace operator for a polar grid.
@@ -59,7 +58,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorType:
     return laplace  # type: ignore
 
 
-@PolarSymGrid.register_operator("gradient", rank_in=0, rank_out=1)
+@numba_backend.register_operator(PolarSymGrid, "gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(
     grid: PolarSymGrid, *, method: Literal["central", "forward", "backward"] = "central"
@@ -105,7 +104,9 @@ def make_gradient(
     return gradient  # type: ignore
 
 
-@PolarSymGrid.register_operator("gradient_squared", rank_in=0, rank_out=0)
+@numba_backend.register_operator(
+    PolarSymGrid, "gradient_squared", rank_in=0, rank_out=0
+)
 @fill_in_docstring
 def make_gradient_squared(grid: PolarSymGrid, *, central: bool = True) -> OperatorType:
     """Make a discretized gradient squared operator for a polar grid.
@@ -154,7 +155,7 @@ def make_gradient_squared(grid: PolarSymGrid, *, central: bool = True) -> Operat
     return gradient_squared  # type: ignore
 
 
-@PolarSymGrid.register_operator("divergence", rank_in=1, rank_out=0)
+@numba_backend.register_operator(PolarSymGrid, "divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(grid: PolarSymGrid) -> OperatorType:
     """Make a discretized divergence operator for a polar grid.
@@ -187,7 +188,7 @@ def make_divergence(grid: PolarSymGrid) -> OperatorType:
     return divergence  # type: ignore
 
 
-@PolarSymGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)
+@numba_backend.register_operator(PolarSymGrid, "vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
 def make_vector_gradient(grid: PolarSymGrid) -> OperatorType:
     """Make a discretized vector gradient operator for a polar grid.
@@ -226,7 +227,9 @@ def make_vector_gradient(grid: PolarSymGrid) -> OperatorType:
     return vector_gradient  # type: ignore
 
 
-@PolarSymGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
+@numba_backend.register_operator(
+    PolarSymGrid, "tensor_divergence", rank_in=2, rank_out=1
+)
 @fill_in_docstring
 def make_tensor_divergence(grid: PolarSymGrid) -> OperatorType:
     """Make a discretized tensor divergence operator for a polar grid.
@@ -264,82 +267,3 @@ def make_tensor_divergence(grid: PolarSymGrid) -> OperatorType:
             out_φ[i - 1] = (arr_φr[i + 1] - arr_φr[i - 1]) * scale_r + term
 
     return tensor_divergence  # type: ignore
-
-
-@fill_in_docstring
-def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray]:
-    """Get sparse matrix for laplace operator on a polar grid.
-
-    Args:
-        bcs (:class:`~pde.grids.boundaries.axes.BoundariesList`):
-            {ARG_BOUNDARIES_INSTANCE}
-
-    Returns:
-        tuple: A sparse matrix and a sparse vector that can be used to evaluate
-        the discretized laplacian
-    """
-    from scipy import sparse
-
-    assert isinstance(bcs.grid, PolarSymGrid)
-    bcs.check_value_rank(0)
-
-    # calculate preliminary quantities
-    dim_r = bcs.grid.shape[0]
-    dr = bcs.grid.discretization[0]
-    rs = bcs.grid.axes_coords[0]
-    r_min, _ = bcs.grid.axes_bounds[0]
-    scale = 1 / dr**2
-
-    matrix = sparse.dok_matrix((dim_r, dim_r))
-    vector = sparse.dok_matrix((dim_r, 1))
-
-    for i in range(dim_r):
-        matrix[i, i] += -2 * scale
-        scale_i = 1 / (2 * rs[i] * dr)
-
-        if i == 0:
-            if r_min == 0:
-                matrix[i, i + 1] = 2 * scale
-                continue  # the special case of the inner boundary is handled
-            const, entries = bcs[0].get_sparse_matrix_data((-1,))
-            factor = scale - scale_i
-            vector[i] += const * factor
-            for k, v in entries.items():
-                matrix[i, k] += v * factor
-
-        else:
-            matrix[i, i - 1] = scale - scale_i
-
-        if i == dim_r - 1:
-            const, entries = bcs[0].get_sparse_matrix_data((dim_r,))
-            factor = scale + scale_i
-            vector[i] += const * factor
-            for k, v in entries.items():
-                matrix[i, k] += v * factor
-
-        else:
-            matrix[i, i + 1] = scale + scale_i
-
-    return matrix, vector
-
-
-@PolarSymGrid.register_operator("poisson_solver", rank_in=0, rank_out=0)
-@fill_in_docstring
-def make_poisson_solver(
-    bcs: BoundariesList, *, method: Literal["auto", "scipy"] = "auto"
-) -> OperatorType:
-    """Make a operator that solves Poisson's equation.
-
-    {DESCR_POLAR_GRID}
-
-    Args:
-        bcs (:class:`~pde.grids.boundaries.axes.BoundariesList`):
-            {ARG_BOUNDARIES_INSTANCE}
-        method (str):
-            The chosen method for implementing the operator
-
-    Returns:
-        A function that can be applied to an array of values
-    """
-    matrix, vector = _get_laplace_matrix(bcs)
-    return make_general_poisson_solver(matrix, vector, method)

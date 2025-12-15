@@ -113,8 +113,8 @@ def test_stochastic_solvers(backend, rng):
     assert not solver1.info["stochastic"]
     assert solver2.info["stochastic"]
 
-    assert not solver1.info.get("dt_adaptive", False)
-    assert not solver2.info.get("dt_adaptive", False)
+    assert not solver1.info["dt_adaptive"]
+    assert not solver2.info["dt_adaptive"]
 
 
 def test_stochastic_adaptive_solver(caplog, rng):
@@ -164,6 +164,7 @@ def test_adaptive_solver_nan(scheme):
         1,
         dt=0.1,
         solver="explicit",
+        backend="numpy",
         scheme=scheme,
         tracker=None,
         adaptive=True,

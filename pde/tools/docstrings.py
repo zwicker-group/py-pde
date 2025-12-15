@@ -42,9 +42,9 @@ DOCSTRING_REPLACEMENTS = {
         Determines when the tracker interrupts the simulation. A single numbers
         determines an interval (measured in the simulation time unit) of regular
         interruption. A string is interpreted as a duration in real time assuming the
-        format 'hh:mm:ss'. A list of numbers is taken as explicit simulation time
-        points. More fine-grained control is possible by passing an instance of classes
-        defined in :mod:`~pde.trackers.interrupts`.
+        format 'hh:mm:ss'. A list of values is taken as explicit simulation time points.
+        More fine-grained control is possible by passing an instance of classes defined
+        in :mod:`~pde.trackers.interrupts`.
         """,
     "ARG_PLOT_QUANTITIES": """
         A 2d list of quantities that are shown in a rectangular arrangement.

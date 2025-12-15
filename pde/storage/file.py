@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
+from typing_extensions import Self
 
 from ..tools.misc import ensure_directory_exists, hdf_write_attributes
 from .base import InfoDict, StorageBase, WriteModeType
@@ -112,7 +113,7 @@ class FileStorage(StorageBase):
             self._file = None
             self._data_length = None  # type: ignore
 
-    def __enter__(self) -> FileStorage:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):

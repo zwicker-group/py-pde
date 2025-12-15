@@ -95,3 +95,20 @@ def test_hdf_write_attributes(tmp_path):
         misc.hdf_write_attributes(
             hdf_file, {"a": object()}, raise_serialization_error=True
         )
+
+
+def test_number():
+    """Test the conversion to a number."""
+    assert misc.number(1) == 1
+    assert misc.number(1.5) == 1.5
+    assert misc.number(-2 + 4.5j) == -2 + 4.5j
+    assert misc.number(1e2) == 1e2
+
+    assert misc.number("1") == 1
+    assert misc.number("1.5") == 1.5
+    assert misc.number("-2 + 4.5j") == -2 + 4.5j
+    assert misc.number("-2+4.5j") == -2 + 4.5j
+    assert misc.number("1e2") == 100
+
+    with pytest.raises(ValueError):
+        misc.number("invalid")

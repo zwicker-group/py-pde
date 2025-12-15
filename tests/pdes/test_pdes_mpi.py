@@ -2,6 +2,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import numba as nb
 import numpy as np
 import pytest
 
@@ -9,7 +10,6 @@ from pde import PDE, DiffusionPDE, grids
 from pde.fields import ScalarField, VectorField
 from pde.pdes.base import PDEBase
 from pde.tools import mpi
-from pde.tools.numba import jit
 
 
 @pytest.mark.multiprocessing
@@ -37,6 +37,7 @@ def test_pde_complex_bcs_mpi(dim, backend, rng):
         assert res is None
 
 
+@pytest.mark.slow
 @pytest.mark.multiprocessing
 def test_pde_vector_mpi(rng):
     """Test PDE with a single vector field using multiprocessing."""
@@ -124,10 +125,10 @@ def test_pde_const_mpi_class(backend):
         def evolution_rate(self, state, t):
             return ScalarField(state.grid, state.grid.axes_coords[0])
 
-        def _make_pde_rhs_numba(self, state):
+        def make_pde_rhs_numba(self, state):
             x = state.grid.axes_coords[0]
 
-            @jit
+            @nb.jit
             def pde_rhs(state_data, t):
                 return x
 

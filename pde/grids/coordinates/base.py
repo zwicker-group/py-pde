@@ -241,8 +241,8 @@ class CoordinatesBase:
 
         Returns:
             :class:`~numpy.ndarray`: Rotation matrices for all points. The returned
-            array has shape `(dim, dim) + points_shape`, assuming `points` has the shape
-            `points_shape + (dim,)`.
+            array has the shape `(dim, dim) + points_shape`, assuming `points` has the
+            shape `points_shape + (dim,)`.
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != self.dim:

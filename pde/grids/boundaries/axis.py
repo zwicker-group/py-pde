@@ -21,13 +21,11 @@ from __future__ import annotations
 import collections
 from typing import TYPE_CHECKING, Union
 
-from numba.extending import register_jitable
-
 from ..base import GridBase, PeriodicityError
 from .local import _MPIBC, BCBase, BCDataError, BoundaryData, _PeriodicBC
 
 if TYPE_CHECKING:
-    from ...tools.typing import GhostCellSetter, NumericArray
+    from ...tools.typing import NumericArray
 
 BoundaryPairData = Union[
     dict[str, BoundaryData],
@@ -225,26 +223,6 @@ class BoundaryAxisBase:
         # set the actual ghost cells
         self.high.set_ghost_cells(data_full, args=args)
         self.low.set_ghost_cells(data_full, args=args)
-
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells for this axis on a full array."""
-        # get the functions that handle the data
-        ghost_cell_sender_low = self.low.make_ghost_cell_sender()
-        ghost_cell_sender_high = self.high.make_ghost_cell_sender()
-        ghost_cell_setter_low = self.low.make_ghost_cell_setter()
-        ghost_cell_setter_high = self.high.make_ghost_cell_setter()
-
-        @register_jitable
-        def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-            """Helper function setting the conditions on all axes."""
-            # send boundary information to other nodes if using MPI
-            ghost_cell_sender_low(data_full, args=args)
-            ghost_cell_sender_high(data_full, args=args)
-            # set the actual ghost cells
-            ghost_cell_setter_high(data_full, args=args)
-            ghost_cell_setter_low(data_full, args=args)
-
-        return ghost_cell_setter  # type: ignore
 
 
 class BoundaryPair(BoundaryAxisBase):

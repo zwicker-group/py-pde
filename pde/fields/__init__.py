@@ -1,4 +1,4 @@
-"""Defines fields, which contain the actual data stored on a discrete grid.
+"""Package defining fields, which contain the actual data stored on discrete grids.
 
 .. autosummary::
    :nosignatures:
@@ -22,8 +22,10 @@ The details of the classes are explained below:
 """
 
 from .base import FieldBase  # noqa: F401
-from .collection import FieldCollection  # noqa: F401
+from .collection import FieldCollection
 from .datafield_base import DataFieldBase  # noqa: F401
-from .scalar import ScalarField  # noqa: F401
-from .tensorial import Tensor2Field  # noqa: F401
-from .vectorial import VectorField  # noqa: F401
+from .scalar import ScalarField
+from .tensorial import Tensor2Field
+from .vectorial import VectorField
+
+__all__ = ["FieldCollection", "ScalarField", "Tensor2Field", "VectorField"]

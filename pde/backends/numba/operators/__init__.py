@@ -1,4 +1,4 @@
-"""Package collecting modules defining discretized operators for different grids.
+"""Package collecting modules defining discretized operators using numba.
 
 These operators can either be used directly or they are imported by the  respective
 methods defined on fields and grids.
@@ -10,10 +10,6 @@ methods defined on fields and grids.
    cylindrical_sym
    polar_sym
    spherical_sym
-
-   common.make_derivative
-   common.make_derivative2
 """
 
 from . import cartesian, cylindrical_sym, polar_sym, spherical_sym  # noqa: F401
-from .common import make_derivative, make_derivative2  # noqa: F401

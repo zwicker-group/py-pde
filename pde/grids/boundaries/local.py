@@ -59,30 +59,23 @@ boundary.
 from __future__ import annotations
 
 import logging
-import math
-import os
 import warnings
 from abc import ABCMeta, abstractmethod
-from numbers import Number
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar, Union
 
-import numba as nb
 import numpy as np
-from numba.extending import overload, register_jitable
 from typing_extensions import Self
 
 from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring
-from ...tools.numba import address_as_void_pointer, jit, numba_dict
-from ...tools.typing import (
-    GhostCellSetter,
-    NumberOrArray,
-    NumericArray,
-    VirtualPointEvaluator,
-)
+from ...tools.misc import number
 from ..base import GridBase, PeriodicityError
 
 if TYPE_CHECKING:
+    from ...tools.typing import (
+        NumberOrArray,
+        NumericArray,
+    )
     from .._mesh import GridMesh
 
 _logger = logging.getLogger(__name__)
@@ -149,92 +142,7 @@ def _get_arr_1d(
     return arr_1d, i, bc_idx
 
 
-def _make_get_arr_1d(
-    dim: int, axis: int
-) -> Callable[[NumericArray, tuple[int, ...]], tuple[NumericArray, int, tuple]]:
-    """Create function that extracts a 1d array at a given position.
-
-    Args:
-        dim (int):
-            The dimension of the space, i.e., the number of axes in the supplied array
-        axis (int):
-            The axis that is returned as the 1d array
-
-    Returns:
-        function: A numba compiled function that takes the full array `arr` and
-        an index `idx` (a tuple of `dim` integers) specifying the point where
-        the 1d array is extract. The function returns a tuple (arr_1d, i, bc_i),
-        where `arr_1d` is the 1d array, `i` is the index `i` into this array
-        marking the current point and `bc_i` are the remaining components of
-        `idx`, which locate the point in the orthogonal directions.
-        Consequently, `i = idx[axis]` and `arr[..., idx] == arr_1d[..., i]`.
-    """
-    assert 0 <= axis < dim
-    ResultType = tuple[NumericArray, int, tuple]
-
-    # extract the correct indices
-    if dim == 1:
-
-        def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
-            """Extract the 1d array along axis at point idx."""
-            i = idx[0]
-            bc_idx: tuple = (...,)
-            arr_1d = arr
-            return arr_1d, i, bc_idx
-
-    elif dim == 2:
-        if axis == 0:
-
-            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                i, y = idx
-                bc_idx = (..., y)
-                arr_1d = arr[..., :, y]
-                return arr_1d, i, bc_idx
-
-        elif axis == 1:
-
-            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                x, i = idx
-                bc_idx = (..., x)
-                arr_1d = arr[..., x, :]
-                return arr_1d, i, bc_idx
-
-    elif dim == 3:
-        if axis == 0:
-
-            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                i, y, z = idx
-                bc_idx = (..., y, z)
-                arr_1d = arr[..., :, y, z]
-                return arr_1d, i, bc_idx
-
-        elif axis == 1:
-
-            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                x, i, z = idx
-                bc_idx = (..., x, z)
-                arr_1d = arr[..., x, :, z]
-                return arr_1d, i, bc_idx
-
-        elif axis == 2:
-
-            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                x, y, i = idx
-                bc_idx = (..., x, y)
-                arr_1d = arr[..., x, y, :]
-                return arr_1d, i, bc_idx
-
-    else:
-        raise NotImplementedError
-
-    return register_jitable(inline="always")(get_arr_1d)  # type: ignore
-
-
+# define generic type variable of type BCBase
 TBC = TypeVar("TBC", bound="BCBase")
 
 
@@ -532,8 +440,10 @@ class BCBase(metaclass=ABCMeta):
             bc = cls.from_str(grid, axis, upper=upper, condition=data, rank=rank)
 
         elif data is None:
-            sign = "-+"[int(upper)]
-            msg = f"Unspecified condition for boundary {grid.axes[axis]}{sign}"
+            msg = (
+                "Unspecified condition for boundary "
+                f"{grid.axes[axis]}{'-+'[int(upper)]}"
+            )
             raise BCDataError(msg)
 
         else:
@@ -584,17 +494,6 @@ class BCBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        """Returns a function evaluating the value at the virtual support point.
-
-        Returns:
-            function: A function that takes the data array and an index marking
-            the current point, which is assumed to be a virtual point. The
-            result is the data value at this point, which is calculated using
-            the boundary condition.
-        """
-
-    @abstractmethod
     def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         """Set the ghost cell values for this boundary.
 
@@ -609,16 +508,6 @@ class BCBase(metaclass=ABCMeta):
                 at the boundary (`value`) or the outward derivative of the field at the
                 boundary (`derivative`).
         """
-
-    def make_ghost_cell_sender(self) -> GhostCellSetter:
-        """Return function that might mpi_send data to set ghost cells for this
-        boundary."""
-
-        @register_jitable
-        def noop(data_full: NumericArray, args=None) -> None:
-            """No-operation as the default case."""
-
-        return noop  # type: ignore
 
     def _get_value_cell_index(self, with_ghost_cells: bool) -> int:
         """Determine index of the cell from which field value is read.
@@ -635,109 +524,6 @@ class BCBase(metaclass=ABCMeta):
         if with_ghost_cells:
             return 1
         return 0
-
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells for this boundary."""
-        normal = self.normal
-        axis = self.axis
-
-        # get information of the virtual points (ghost cells)
-        vp_idx = self.grid.shape[self.axis] + 1 if self.upper else 0
-        np_idx = self._get_value_cell_index(with_ghost_cells=False)
-        vp_value = self.make_virtual_point_evaluator()
-
-        if self.grid.num_axes == 1:  # 1d grid
-
-            @register_jitable
-            def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                """Helper function setting the conditions on all axes."""
-                data_valid = data_full[..., 1:-1]
-                val = vp_value(data_valid, (np_idx,), args=args)
-                if normal:
-                    data_full[..., axis, vp_idx] = val
-                else:
-                    data_full[..., vp_idx] = val
-
-        elif self.grid.num_axes == 2:  # 2d grid
-            if self.axis == 0:
-                num_y = self.grid.shape[1]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1]
-                    for j in range(num_y):
-                        val = vp_value(data_valid, (np_idx, j), args=args)
-                        if normal:
-                            data_full[..., axis, vp_idx, j + 1] = val
-                        else:
-                            data_full[..., vp_idx, j + 1] = val
-
-            elif self.axis == 1:
-                num_x = self.grid.shape[0]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1]
-                    for i in range(num_x):
-                        val = vp_value(data_valid, (i, np_idx), args=args)
-                        if normal:
-                            data_full[..., axis, i + 1, vp_idx] = val
-                        else:
-                            data_full[..., i + 1, vp_idx] = val
-
-        elif self.grid.num_axes == 3:  # 3d grid
-            if self.axis == 0:
-                num_y, num_z = self.grid.shape[1:]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
-                    for j in range(num_y):
-                        for k in range(num_z):
-                            val = vp_value(data_valid, (np_idx, j, k), args=args)
-                            if normal:
-                                data_full[..., axis, vp_idx, j + 1, k + 1] = val
-                            else:
-                                data_full[..., vp_idx, j + 1, k + 1] = val
-
-            elif self.axis == 1:
-                num_x, num_z = self.grid.shape[0], self.grid.shape[2]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
-                    for i in range(num_x):
-                        for k in range(num_z):
-                            val = vp_value(data_valid, (i, np_idx, k), args=args)
-                            if normal:
-                                data_full[..., axis, i + 1, vp_idx, k + 1] = val
-                            else:
-                                data_full[..., i + 1, vp_idx, k + 1] = val
-
-            elif self.axis == 2:
-                num_x, num_y = self.grid.shape[:2]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
-                    for i in range(num_x):
-                        for j in range(num_y):
-                            val = vp_value(data_valid, (i, j, np_idx), args=args)
-                            if normal:
-                                data_full[..., axis, i + 1, j + 1, vp_idx] = val
-                            else:
-                                data_full[..., i + 1, j + 1, vp_idx] = val
-
-        else:
-            msg = "Too many axes"
-            raise NotImplementedError(msg)
-
-        return ghost_cell_setter  # type: ignore
 
 
 class _MPIBC(BCBase):
@@ -819,110 +605,6 @@ class _MPIBC(BCBase):
         from ...tools.mpi import mpi_recv
 
         mpi_recv(data_full[self._idx_write], self._neighbor_id, self._mpi_flag)
-
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        raise NotImplementedError
-
-    def make_ghost_cell_sender(self) -> GhostCellSetter:
-        """Return function that sends data to set ghost cells for other boundaries."""
-        from ...tools.mpi import mpi_send
-
-        cell = self._neighbor_id
-        flag = self._mpi_flag
-        num_axes = self.grid.num_axes
-        axis = self.axis
-        idx = -2 if self.upper else 1  # index for reading data
-
-        if num_axes == 1:
-
-            def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
-                mpi_send(data_full[..., idx], cell, flag)
-
-        elif num_axes == 2:
-            if axis == 0:
-
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
-                    mpi_send(data_full[..., idx, 1:-1], cell, flag)
-
-            else:
-
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
-                    mpi_send(data_full[..., 1:-1, idx], cell, flag)
-
-        elif num_axes == 3:
-            if axis == 0:
-
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
-                    mpi_send(data_full[..., idx, 1:-1, 1:-1], cell, flag)
-
-            elif axis == 1:
-
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
-                    mpi_send(data_full[..., 1:-1, idx, 1:-1], cell, flag)
-
-            else:
-
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
-                    mpi_send(data_full[..., 1:-1, 1:-1, idx], cell, flag)
-
-        else:
-            raise NotImplementedError
-
-        return register_jitable(ghost_cell_sender)  # type: ignore
-
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells for this boundary."""
-        from ...tools.mpi import mpi_recv
-
-        cell = self._neighbor_id
-        flag = self._mpi_flag
-        num_axes = self.grid.num_axes
-        axis = self.axis
-        idx = -1 if self.upper else 0  # index for writing data
-
-        if num_axes == 1:
-
-            def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                if data_full.ndim == 1:
-                    # in this case, `data_full[..., idx]` is a scalar, which numba
-                    # treats differently, so `numba_mpi.mpi_recv` fails
-                    buffer = np.empty((), dtype=data_full.dtype)
-                    mpi_recv(buffer, cell, flag)
-                    data_full[..., idx] = buffer
-                else:
-                    mpi_recv(data_full[..., idx], cell, flag)
-
-        elif num_axes == 2:
-            if axis == 0:
-
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    mpi_recv(data_full[..., idx, 1:-1], cell, flag)
-
-            else:
-
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    mpi_recv(data_full[..., 1:-1, idx], cell, flag)
-
-        elif num_axes == 3:
-            if axis == 0:
-
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    mpi_recv(data_full[..., idx, 1:-1, 1:-1], cell, flag)
-
-            elif axis == 1:
-
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    mpi_recv(data_full[..., 1:-1, idx, 1:-1], cell, flag)
-
-            else:
-
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-                    mpi_recv(data_full[..., 1:-1, 1:-1, idx], cell, flag)
-
-        else:
-            raise NotImplementedError
-
-        return register_jitable(ghost_cell_setter)  # type: ignore
 
 
 class UserBC(BCBase):
@@ -1013,82 +695,6 @@ class UserBC(BCBase):
                 raise RuntimeError
         # else: no-op for the default case where BCs are not set by user
 
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-        dx = self.grid.discretization[self.axis]
-
-        def extract_value(values, arr: NumericArray, idx: tuple[int, ...]):
-            """Helper function that extracts the correct value from supplied ones."""
-            if isinstance(values, (nb.types.Number, Number)):
-                # scalar was supplied => simply return it
-                return values
-            if isinstance(arr, (nb.types.Array, np.ndarray)):
-                # array was supplied => extract value at current position
-                _, _, bc_idx = get_arr_1d(arr, idx)
-                return values[bc_idx]
-            msg = "Either a scalar or an array must be supplied"
-            raise TypeError(msg)
-
-        @overload(extract_value)
-        def ol_extract_value(values, arr: NumericArray, idx: tuple[int, ...]):
-            """Helper function that extracts the correct value from supplied ones."""
-            if isinstance(values, (nb.types.Number, Number)):
-                # scalar was supplied => simply return it
-                def impl(values, arr: NumericArray, idx: tuple[int, ...]):
-                    return values
-
-            elif isinstance(arr, (nb.types.Array, np.ndarray)):
-                # array was supplied => extract value at current position
-
-                def impl(values, arr: NumericArray, idx: tuple[int, ...]):
-                    _, _, bc_idx = get_arr_1d(arr, idx)
-                    return values[bc_idx]
-
-            else:
-                msg = "Either a scalar or an array must be supplied"
-                raise TypeError(msg)
-
-            return impl
-
-        @register_jitable
-        def virtual_point(arr: NumericArray, idx: tuple[int, ...], args):
-            """Evaluate the virtual point at `idx`"""
-            if "virtual_point" in args:
-                # set the virtual point directly
-                return extract_value(args["virtual_point"], arr, idx)
-
-            if "value" in args:
-                # set the value at the boundary
-                value = extract_value(args["value"], arr, idx)
-                return 2 * value - arr[idx]
-
-            if "derivative" in args:
-                # set the outward derivative at the boundary
-                value = extract_value(args["derivative"], arr, idx)
-                return dx * value + arr[idx]
-
-            # no-op for the default case where BCs are not set by user
-            return math.nan
-
-        return virtual_point  # type: ignore
-
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells for this boundary."""
-        ghost_cell_setter_inner = super().make_ghost_cell_setter()
-
-        @register_jitable
-        def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-            """Helper function setting the conditions on all axes."""
-            if args is None:
-                return  # no-op when no specific arguments are given
-
-            if "virtual_point" in args or "value" in args or "derivative" in args:
-                # ghost cells will only be set if any of the above keys were supplied
-                ghost_cell_setter_inner(data_full, args=args)
-            # else: no-op for the default case where BCs are not set by user
-
-        return ghost_cell_setter  # type: ignore
-
 
 ExpressionBCTargetType = Literal["value", "derivative", "mixed", "virtual_point"]
 
@@ -1096,11 +702,11 @@ ExpressionBCTargetType = Literal["value", "derivative", "mixed", "virtual_point"
 class ExpressionBC(BCBase):
     """Represents a boundary whose virtual point is calculated from an expression.
 
-    The expression is given as a string and will be parsed by :mod:`sympy` or a function
-    that is optionally compiled with :mod:`numba`. The expression can contain typical
-    mathematical operators and may depend on the value at the last support point next to
-    the boundary (`value`), spatial coordinates defined by the grid marking the boundary
-    point (e.g., `x` or `r`), and time `t`.
+    The expression is given as a string that can be parsed by :mod:`sympy` or as a
+    function. The expression can contain typical mathematical operators and may depend
+    on the value at the last support point next to the boundary (`value`), spatial
+    coordinates defined by the grid marking the boundary point (e.g., `x` or `r`), and
+    time `t`.
     """
 
     names = ["virtual_point"]
@@ -1209,7 +815,7 @@ class ExpressionBC(BCBase):
 
         # quickly check whether the expression was parsed correctly
         try:
-            self._func(do_jit=False)(*self._test_values)
+            self._make_function()(*self._test_values)
         except Exception as err:
             if self._is_func:
                 msg = f"Could not evaluate BC function. Expected signature {signature}."
@@ -1232,57 +838,27 @@ class ExpressionBC(BCBase):
         test_values.append(0)
         return tuple(test_values)
 
-    def _prepare_function(self, func: Callable | float, do_jit: bool) -> Callable:
+    def _prepare_function(self, func: Callable | str | complex) -> Callable:
         """Helper function that compiles a single function given as a parameter."""
         if not callable(func):
             # the function is just a number, which we also support
-            func_value = float(func)  # TODO: support complex numbers
+            func_value = number(func)
 
-            @register_jitable
             def value_func(*args):
                 return func_value
 
-            return value_func  # type: ignore
+            return value_func
 
-        if not do_jit:
-            # function is callable, but does not need to be compiled
-            return func
+        return func
 
-        # function is callable and needs to be compiled
-        try:
-            # try compiling the function
-            value_func = jit(func)
-            # and evaluate it, so compilation is forced
-            value_func(*self._test_values)
-
-            if os.environ.get("PYPDE_TESTRUN"):
-                # ensure that the except path is also tested
-                msg = "Force except"
-                raise nb.NumbaError(msg)  # noqa: TRY301
-
-        except nb.NumbaError:
-            # if compilation fails, we simply fall back to pure-python mode
-            _logger.warning("Cannot compile BC %s", self)
-
-            @register_jitable
-            def value_func(*args):
-                with nb.objmode(value="double"):
-                    value = func(*args)
-                return value
-
-        return value_func  # type: ignore
-
-    def _get_function_from_userfunc(self, do_jit: bool) -> Callable:
-        """Returns function from user function evaluating the value of the virtual
-        point.
-
-        Args:
-            do_jit (bool):
-                Determines whether the returned function is numba-compiled
-        """
+    @cached_method()
+    def _make_function(self) -> Callable:
+        """Returns function that evaluates the value of the virtual point."""
+        if not self._is_func:
+            return self._func_expression
         # `value` is a callable function
         target = self._input["target"]
-        value_func = self._prepare_function(self._input["value_expr"], do_jit=do_jit)
+        value_func = self._prepare_function(self._input["value_expr"])
 
         if target == "virtual_point":
             return value_func
@@ -1290,28 +866,23 @@ class ExpressionBC(BCBase):
         if target == "value":
             # Dirichlet boundary condition
 
-            @register_jitable
             def virtual_from_value(adjacent_value, *args):
                 return 2 * value_func(adjacent_value, *args) - adjacent_value
 
-            return virtual_from_value  # type: ignore
+            return virtual_from_value
 
         if target == "derivative":
             # Neumann boundary condition
 
-            @register_jitable
             def virtual_from_derivative(adjacent_value, dx, *args):
                 return dx * value_func(adjacent_value, dx, *args) + adjacent_value
 
-            return virtual_from_derivative  # type: ignore
+            return virtual_from_derivative
 
         if target == "mixed":
             # special case of a Robin boundary condition, which also uses `const`
-            const_func = self._prepare_function(
-                self._input["const_expr"], do_jit=do_jit
-            )
+            const_func = self._prepare_function(self._input["const_expr"])
 
-            @register_jitable
             def virtual_from_mixed(adjacent_value, dx, *args):
                 value_dx = dx * value_func(adjacent_value, dx, *args)
                 const_value = const_func(adjacent_value, dx, *args)
@@ -1319,87 +890,10 @@ class ExpressionBC(BCBase):
                 expr_B = (value_dx - 2) / (value_dx + 2)
                 return expr_A - expr_B * adjacent_value
 
-            return virtual_from_mixed  # type: ignore
+            return virtual_from_mixed
 
         msg = f"Unknown target `{target}` for expression"
         raise ValueError(msg)
-
-    def _get_function_from_expression(self, do_jit: bool) -> Callable:
-        """Returns function from expression evaluating the value of the virtual point.
-
-        Args:
-            do_jit (bool):
-                Determines whether the returned function is numba-compiled
-        """
-        if not do_jit:
-            return self._func_expression
-
-        func = self._func_expression._get_function_cached(single_arg=False)
-        try:
-            # try to compile the expression that was given
-            value_func = jit(func)
-            # call the function to actually trigger compilation
-            value_func(*self._test_values)
-
-            if os.environ.get("PYPDE_TESTRUN"):
-                # ensure that the except path is also tested
-                msg = "Force except"
-                raise nb.NumbaError(msg)  # noqa: TRY301
-
-        except nb.NumbaError:
-            # if compilation fails, we simply fall back to pure-python mode
-            _logger.warning("Cannot compile BC %s", self._func_expression)
-            # calculate the expected value to test this later (and fail early)
-            expected = func(*self._test_values)
-
-            num_axes = self.grid.num_axes
-            if num_axes == 1:
-
-                @jit
-                def value_func(grid_value, dx, x, t):
-                    with nb.objmode(value="double"):
-                        value = func(grid_value, dx, x, t)
-                    return value
-
-            elif num_axes == 2:
-
-                @jit
-                def value_func(grid_value, dx, x, y, t):
-                    with nb.objmode(value="double"):
-                        value = func(grid_value, dx, x, y, t)
-                    return value
-
-            elif num_axes == 3:
-
-                @jit
-                def value_func(grid_value, dx, x, y, z, t):
-                    with nb.objmode(value="double"):
-                        value = func(grid_value, dx, x, y, z, t)
-                    return value
-
-            else:
-                # cheap way to signal a problem
-                raise ValueError from None
-
-            # compile the actual function and check the result
-            result_compiled = value_func(*self._test_values)
-            if not np.allclose(result_compiled, expected):
-                msg = "Compiled function does not give same value"
-                raise RuntimeError(msg) from None
-
-        return value_func  # type: ignore
-
-    @cached_method()
-    def _func(self, do_jit: bool) -> Callable:
-        """Returns function that evaluates the value of the virtual point.
-
-        Args:
-            do_jit (bool):
-                Determines whether the returned function is numba-compiled
-        """
-        if self._is_func:
-            return self._get_function_from_userfunc(do_jit=do_jit)
-        return self._get_function_from_expression(do_jit=do_jit)
 
     def _repr_value(self):
         if self._input["target"] == "mixed":
@@ -1435,8 +929,10 @@ class ExpressionBC(BCBase):
             return f"{field} = {value_expr}   @ {axis_name}={self.axis_coord}"
         if target == "derivative":
             sign = " " if self.upper else "-"
-            position = f"{axis_name}={self.axis_coord}"
-            return f"{sign}∂{field}/∂{axis_name} = {value_expr}   @ {position}"
+            return (
+                f"{sign}∂{field}/∂{axis_name} = {value_expr}"
+                f"   @ {axis_name}={self.axis_coord}"
+            )
         if target == "mixed":
             sign = " " if self.upper else "-"
             return (
@@ -1569,55 +1065,7 @@ class ExpressionBC(BCBase):
             t = float(args["t"])
 
         # calculate the virtual points
-        data_full[tuple(idx_write)] = self._func(do_jit=False)(values, dx, *coords, t)
-
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        dx = self.grid.discretization[self.axis]
-        num_axes = self.grid.num_axes
-        get_arr_1d = _make_get_arr_1d(num_axes, self.axis)
-        bc_coords = self.grid._boundary_coordinates(axis=self.axis, upper=self.upper)
-        bc_coords = np.moveaxis(bc_coords, -1, 0)  # point coordinates to first axis
-        assert num_axes <= 3
-
-        if self._is_func:
-            warn_if_time_not_set = False
-        else:
-            warn_if_time_not_set = self._func_expression.depends_on("t")
-        func = self._func(do_jit=True)
-
-        @jit
-        def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None) -> float:
-            """Evaluate the virtual point at `idx`"""
-            _, _, bc_idx = get_arr_1d(arr, idx)
-            grid_value = arr[idx]
-            coords = bc_coords[bc_idx]
-
-            # extract time for handling time-dependent BCs
-            if args is None or "t" not in args:
-                if warn_if_time_not_set:
-                    msg = (
-                        "Require value for `t` for time-dependent BC. The value must "
-                        "be passed explicitly via `args` when calling a differential "
-                        "operator."
-                    )
-                    raise RuntimeError(msg)
-                t = 0.0
-            else:
-                t = float(args["t"])
-
-            if num_axes == 1:
-                return func(grid_value, dx, coords[0], t)  # type: ignore
-            if num_axes == 2:
-                return func(grid_value, dx, coords[0], coords[1], t)  # type: ignore
-            if num_axes == 3:
-                return func(grid_value, dx, coords[0], coords[1], coords[2], t)  # type: ignore
-            # cheap way to signal a problem
-            return math.nan
-
-        # evaluate the function to force compilation and catch errors early
-        virtual_point(np.zeros([3] * num_axes), (0,) * num_axes, numba_dict(t=0.0))
-
-        return virtual_point  # type: ignore
+        data_full[tuple(idx_write)] = self._make_function()(values, dx, *coords, t)
 
 
 class ExpressionValueBC(ExpressionBC):
@@ -1994,52 +1442,13 @@ class ConstBCBase(BCBase):
             value=self.value,
         )
 
-    def _make_value_getter(self) -> Callable[[], NumericArray]:
-        """Return a (compiled) function for obtaining the value.
-
-        Note:
-            This should only be used in numba compiled functions that need to
-            support boundary values that can be changed after the function has
-            been compiled. In essence, the helper function created here serves
-            to get around the compile-time constants that are otherwise created.
-
-        Warning:
-            The returned function has a hard-coded reference to the memory
-            address of the value error, which must thus be maintained in memory.
-            If the address of self.value changes, a new function needs to be
-            created by calling this factory function again.
-        """
-        # obtain details about the array
-        mem_addr = self.value.ctypes.data
-        shape = self.value.shape
-        dtype = self.value.dtype
-
-        # Note that we tried using register_jitable here, but this lead to
-        # problems with address_as_void_pointer
-
-        @nb.njit(nb.typeof(self._value)(), inline="always")
-        def get_value() -> NumericArray:
-            """Helper function returning the linked array."""
-            return nb.carray(address_as_void_pointer(mem_addr), shape, dtype)  # type: ignore
-
-        # keep a reference to the array to prevent garbage collection
-        get_value._value_ref = self._value
-
-        return get_value  # type: ignore
-
 
 class ConstBC1stOrderBase(ConstBCBase):
     """Represents a single boundary in an BoundaryPair instance."""
 
     @abstractmethod
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         """Return data suitable for calculating virtual points.
-
-        Args:
-            compiled (bool):
-                Flag indicating whether a compiled version is required, which
-                automatically takes updated values into account when it is used
-                in numba-compiled code.
 
         Returns:
             tuple: the data structure associated with this virtual point
@@ -2103,44 +1512,6 @@ class ConstBC1stOrderBase(ConstBCBase):
         if self.homogeneous:
             return const + factor * arr_1d[..., index]  # type: ignore
         return const[bc_idx] + factor[bc_idx] * arr_1d[..., index]  # type: ignore
-
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        normal = self.normal
-        axis = self.axis
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-
-        # calculate necessary constants
-        const, factor, index = self.get_virtual_point_data(compiled=True)
-
-        if self.homogeneous:
-
-            @jit
-            def virtual_point(
-                arr: NumericArray, idx: tuple[int, ...], args=None
-            ) -> float:
-                """Evaluate the virtual point at `idx`"""
-                arr_1d, _, _ = get_arr_1d(arr, idx)
-                if normal:
-                    val_field = arr_1d[..., axis, index]
-                else:
-                    val_field = arr_1d[..., index]
-                return const() + factor() * val_field  # type: ignore
-
-        else:
-
-            @jit
-            def virtual_point(
-                arr: NumericArray, idx: tuple[int, ...], args=None
-            ) -> float:
-                """Evaluate the virtual point at `idx`"""
-                arr_1d, _, bc_idx = get_arr_1d(arr, idx)
-                if normal:
-                    val_field = arr_1d[..., axis, index]
-                else:
-                    val_field = arr_1d[..., index]
-                return const()[bc_idx] + factor()[bc_idx] * val_field  # type: ignore
-
-        return virtual_point  # type: ignore
 
     def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         # calculate necessary constants
@@ -2245,27 +1616,13 @@ class _PeriodicBC(ConstBC1stOrderBase):
             )
         return (
             f"{field_name}({axis_name}={self.axis_coord})"
-            f"= {field_name}({axis_name}={other_coord})"
+            f" = {field_name}({axis_name}={other_coord})"
         )
 
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         index = 0 if self.upper else self.grid.shape[self.axis] - 1
         value = -1 if self.flip_sign else 1
-
-        if not compiled:
-            return (0.0, value, index)
-        const = np.array(0)
-        factor = np.array(value)
-
-        @register_jitable(inline="always")
-        def const_func():
-            return const
-
-        @register_jitable(inline="always")
-        def factor_func():
-            return factor
-
-        return (const_func, factor_func, index)
+        return (0.0, value, index)
 
 
 class DirichletBC(ConstBC1stOrderBase):
@@ -2279,39 +1636,11 @@ class DirichletBC(ConstBC1stOrderBase):
         field = self._field_repr(field_name)
         return f"{field} = {self.value}   @ {axis_name}={self.axis_coord}"
 
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         const: NumberOrArray = 2 * self.value
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
-
-        if not compiled:
-            factor = -np.ones_like(const)
-            return (const, factor, index)
-        # return boundary data such that dynamically calculated values can
-        # be used in numba compiled code. This is a work-around since numpy
-        # arrays are copied into closures, making them compile-time
-        # constants
-
-        const = np.array(const)
-        factor = np.full_like(const, -1)
-
-        if self.value_is_linked:
-            value = self._make_value_getter()
-
-            @register_jitable(inline="always")
-            def const_func():
-                return 2 * value()
-
-        else:
-
-            @register_jitable(inline="always")
-            def const_func():
-                return const
-
-        @register_jitable(inline="always")
-        def factor_func():
-            return factor
-
-        return (const_func, factor_func, index)
+        factor = -np.ones_like(const)
+        return (const, factor, index)
 
 
 class NeumannBC(ConstBC1stOrderBase):
@@ -2327,41 +1656,12 @@ class NeumannBC(ConstBC1stOrderBase):
         deriv = f"∂{self._field_repr(field_name)}/∂{axis_name}"
         return f"{sign}{deriv} = {self.value}   @ {axis_name}={self.axis_coord}"
 
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         dx = self.grid.discretization[self.axis]
-
         const = dx * self.value
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
-
-        if not compiled:
-            factor = np.ones_like(const)
-            return (const, factor, index)
-        # return boundary data such that dynamically calculated values can
-        # be used in numba compiled code. This is a work-around since numpy
-        # arrays are copied into closures, making them compile-time
-        # constants
-
-        const = np.array(const)
         factor = np.ones_like(const)
-
-        if self.value_is_linked:
-            value = self._make_value_getter()
-
-            @register_jitable(inline="always")
-            def const_func():
-                return dx * value()
-
-        else:
-
-            @register_jitable(inline="always")
-            def const_func():
-                return const
-
-        @register_jitable(inline="always")
-        def factor_func():
-            return factor
-
-        return (const_func, factor_func, index)
+        return (const, factor, index)
 
 
 class MixedBC(ConstBC1stOrderBase):
@@ -2487,11 +1787,11 @@ class MixedBC(ConstBC1stOrderBase):
         field_repr = self._field_repr(field_name)
         deriv = f"∂{field_repr}/∂{axis_name}"
         return (
-            f"{sign}{deriv} + {self.value} * {field_repr}"
-            f"= {self.const}   @ {axis_name}={self.axis_coord}"
+            f"{sign}{deriv} + {self.value} * {field_repr} = {self.const}"
+            f"  @ {axis_name}={self.axis_coord}"
         )
 
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         # calculate values assuming finite factor
         dx = self.grid.discretization[self.axis]
         with np.errstate(invalid="ignore"):
@@ -2501,57 +1801,8 @@ class MixedBC(ConstBC1stOrderBase):
         # correct at places of infinite values
         const[~np.isfinite(factor)] = 0
         factor[~np.isfinite(factor)] = -1
-
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
-
-        if not compiled:
-            return (const, factor, index)
-
-        # return boundary data such that dynamically calculated values can
-        # be used in numba compiled code. This is a work-around since numpy
-        # arrays are copied into closures, making them compile-time
-        # constants
-        if self.value_is_linked:
-            const_val = np.array(self.const)
-            value_func = self._make_value_getter()
-
-            @register_jitable(inline="always")
-            def const_func():
-                value = value_func()
-                const = np.empty_like(value)
-                for i in range(value.size):
-                    val = value.flat[i]
-                    if np.isinf(val):
-                        const.flat[i] = 0
-                    else:
-                        const.flat[i] = 2 * dx * const_val / (2 + dx * val)
-                return const
-
-            @register_jitable(inline="always")
-            def factor_func():
-                value = value_func()
-                factor = np.empty_like(value)
-                for i in range(value.size):
-                    val = value.flat[i]
-                    if np.isinf(val):
-                        factor.flat[i] = -1
-                    else:
-                        factor.flat[i] = (2 - dx * val) / (2 + dx * val)
-                return factor
-
-        else:
-            const = np.array(const)
-            factor = np.array(factor)
-
-            @register_jitable(inline="always")
-            def const_func():
-                return const
-
-            @register_jitable(inline="always")
-            def factor_func():
-                return factor
-
-        return (const_func, factor_func, index)
+        return (const, factor, index)
 
 
 class ConstBC2ndOrderBase(ConstBCBase):
@@ -2634,49 +1885,6 @@ class ConstBC2ndOrderBase(ConstBCBase):
             + data[1][bc_idx] * arr_1d[..., data[2]]
             + data[3][bc_idx] * arr_1d[..., data[4]]
         )
-
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        normal = self.normal
-        axis = self.axis
-        size = self.grid.shape[self.axis]
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-
-        if size < 2:
-            msg = f"Need two support points along axis {self.axis} to apply conditions"
-            raise ValueError(msg)
-
-        # calculate necessary constants
-        data = self.get_virtual_point_data()
-
-        if self.homogeneous:
-
-            @register_jitable
-            def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None):
-                """Evaluate the virtual point at `idx`"""
-                arr_1d, _, _ = get_arr_1d(arr, idx)
-                if normal:
-                    val1 = arr_1d[..., axis, data[2]]
-                    val2 = arr_1d[..., axis, data[4]]
-                else:
-                    val1 = arr_1d[..., data[2]]
-                    val2 = arr_1d[..., data[4]]
-                return data[0] + data[1] * val1 + data[3] * val2
-
-        else:
-
-            @register_jitable
-            def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None):
-                """Evaluate the virtual point at `idx`"""
-                arr_1d, _, bc_idx = get_arr_1d(arr, idx)
-                if normal:
-                    val1 = arr_1d[..., axis, data[2]]
-                    val2 = arr_1d[..., axis, data[4]]
-                else:
-                    val1 = arr_1d[..., data[2]]
-                    val2 = arr_1d[..., data[4]]
-                return data[0][bc_idx] + data[1][bc_idx] * val1 + data[3][bc_idx] * val2
-
-        return virtual_point  # type: ignore
 
     def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         # calculate necessary constants

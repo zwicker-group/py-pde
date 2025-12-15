@@ -7,13 +7,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable
 
-import numba as nb
 import numpy as np
 
 from ..fields import FieldCollection, ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
 from .base import PDEBase, expr_prod
 
 if TYPE_CHECKING:
@@ -31,7 +29,7 @@ class WavePDE(PDEBase):
         \partial_t u &= v \\
         \partial_t v &= c^2 \nabla^2 u
 
-    where :math:`c` sets the wave speed and :math:`v` is an axillary field. Note that
+    where :math:`c` sets the wave speed and :math:`v` is an auxiallary field. Note that
     the class expects an initial condition specifying both fields, which can be created
     using the :meth:`WavePDE.get_initial_condition` method. The result will also return
     two fields.
@@ -107,7 +105,7 @@ class WavePDE(PDEBase):
         v_t = self.speed**2 * u.laplace(self.bc, args={"t": t})  # type: ignore
         return FieldCollection([u_t, v_t])
 
-    def _make_pde_rhs_numba(  # type: ignore
+    def make_pde_rhs_numba(  # type: ignore
         self, state: FieldCollection
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
@@ -121,13 +119,15 @@ class WavePDE(PDEBase):
             instance of :class:`~numpy.ndarray` of the state data and the time to
             obtained an instance of :class:`~numpy.ndarray` giving the evolution rate.
         """
+        import numba as nb
+
         arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)
 
         speed2 = self.speed**2
         laplace = state.grid.make_operator("laplace", bc=self.bc)
 
-        @jit(signature)
+        @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float):
             """Compiled helper function evaluating right hand side."""
             rate = np.empty_like(state_data)

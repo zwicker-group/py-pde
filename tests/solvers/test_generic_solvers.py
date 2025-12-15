@@ -10,15 +10,16 @@ from pde.solvers import (
     AdamsBashforthSolver,
     Controller,
     CrankNicolsonSolver,
-    ExplicitSolver,
+    EulerSolver,
     ImplicitSolver,
+    RungeKuttaSolver,
     ScipySolver,
     registered_solvers,
 )
-from pde.solvers.base import AdaptiveSolverBase
 
 SOLVER_CLASSES = [
-    ExplicitSolver,
+    EulerSolver,
+    RungeKuttaSolver,
     ImplicitSolver,
     CrankNicolsonSolver,
     AdamsBashforthSolver,
@@ -49,7 +50,7 @@ def test_compare_solvers(solver_class, rng):
     eq = DiffusionPDE()
 
     # ground truth
-    c1 = Controller(ExplicitSolver(eq, scheme="runge-kutta"), t_range=0.1, tracker=None)
+    c1 = Controller(RungeKuttaSolver(eq), t_range=0.1, tracker=None)
     s1 = c1.run(field, dt=5e-3)
 
     c2 = Controller(solver_class(eq), t_range=0.1, tracker=None)
@@ -79,7 +80,8 @@ def test_solvers_complex(solver_class, backend):
     np.testing.assert_allclose(res_c.data, exp_c, rtol=1e-3, atol=1e-3)
 
 
-def test_basic_adaptive_solver():
+@pytest.mark.parametrize("solver_class", [EulerSolver, RungeKuttaSolver])
+def test_basic_adaptive_solver(solver_class):
     """Test basic adaptive solvers."""
     grid = UnitGrid([4])
     y0 = np.array([1e-3, 1e-3, 1e3, 1e3])
@@ -88,7 +90,7 @@ def test_basic_adaptive_solver():
 
     dt = 0.1
 
-    solver = AdaptiveSolverBase(eq, tolerance=1e-1)
+    solver = solver_class(eq, adaptive=True, tolerance=1e-1)
     storage = MemoryStorage()
     controller = Controller(solver, t_range=10.1, tracker=storage.tracker(1.0))
     res = controller.run(field, dt=dt)
@@ -96,5 +98,8 @@ def test_basic_adaptive_solver():
     np.testing.assert_allclose(res.data, y0 * np.exp(10.1), rtol=0.02)
     assert solver.info["steps"] != pytest.approx(10.1 / dt, abs=1)
     assert solver.info["dt_adaptive"]
-    assert solver.info["dt_statistics"]["min"] < 0.0005
+    if solver_class is EulerSolver:
+        assert solver.info["dt_statistics"]["min"] < 0.0005
+    elif solver_class is RungeKuttaSolver:
+        assert solver.info["dt_statistics"]["min"] < 0.05
     assert np.allclose(storage.times, np.arange(11))

@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Protocol, Union
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar, Union
 
 import numpy as np
 from numpy.typing import ArrayLike  # noqa: F401
 
 if TYPE_CHECKING:
+    from ..fields import DataFieldBase, FieldCollection
     from ..grids.base import GridBase
 
 # types for single numbers:
@@ -25,7 +26,17 @@ FloatingArray = np.ndarray[Any, np.dtype[np.floating]]
 FloatOrArray = Union[float, np.ndarray[Any, np.dtype[np.floating]]]
 
 # miscellaneous types:
-BackendType = Literal["auto", "numpy", "numba"]
+BackendType = Literal["scipy", "numpy", "numba", "numba_mpi"]
+TField = TypeVar("TField", "FieldCollection", "DataFieldBase", covariant=True)
+
+
+class OperatorInfo(NamedTuple):
+    """Stores information about an operator."""
+
+    factory: OperatorFactory
+    rank_in: int
+    rank_out: int
+    name: str = ""  # attach a unique name to help caching
 
 
 class OperatorType(Protocol):
@@ -55,6 +66,11 @@ class VirtualPointEvaluator(Protocol):
 class GhostCellSetter(Protocol):
     def __call__(self, data_full: NumericArray, args=None) -> None:
         """Set the ghost cells."""
+
+
+class DataSetter(Protocol):
+    def __call__(self, data_full: NumericArray, args=None) -> None:
+        """Set the valid data cells (and potentially BCs)."""
 
 
 class StepperHook(Protocol):

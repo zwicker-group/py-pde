@@ -7,24 +7,21 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Callable
 
-import numba as nb
 import numpy as np
 
-from ..tools.numba import jit
 from .base import SolverBase
 
 if TYPE_CHECKING:
-    from ..fields.base import FieldBase
-    from ..tools.typing import NumericArray
+    from ..tools.typing import NumericArray, TField
 
 
 class AdamsBashforthSolver(SolverBase):
     """Explicit Adams-Bashforth multi-step solver."""
 
-    name = "adams-bashforth"
+    name = "adams–bashforth"
 
     def _make_fixed_stepper(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float, int, Any], float]:
         """Return a stepper function using an explicit scheme with fixed time steps.
 
@@ -36,9 +33,10 @@ class AdamsBashforthSolver(SolverBase):
                 Time step of the explicit stepping
         """
         if self.pde.is_sde:
-            raise NotImplementedError
+            msg = "Deterministic Adams-Bashforth does not support stochastic equations"
+            raise RuntimeError(msg)
 
-        rhs_pde = self._make_pde_rhs(state, backend=self.backend)
+        rhs_pde = self._make_pde_rhs(state)
         post_step_hook = self._make_post_step_hook(state)
 
         def single_step(
@@ -53,10 +51,6 @@ class AdamsBashforthSolver(SolverBase):
         # allocate memory to store the state of the previous time step
         state_prev = np.empty_like(state.data)
         init_state_prev = True
-
-        if self._compiled:
-            sig_single_step = (nb.typeof(state.data), nb.double, nb.typeof(state_prev))
-            single_step = jit(sig_single_step)(single_step)
 
         def fixed_stepper(
             state_data: NumericArray, t_start: float, steps: int, post_step_data

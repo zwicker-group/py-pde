@@ -76,7 +76,7 @@ class TrackerBase(metaclass=ABCMeta):
                 raise ValueError(msg) from err
             return tracker_cls(**kwargs)
         msg = f"Unsupported tracker format: `{data}`."
-        raise TypeError(msg)
+        raise ValueError(msg)
 
     def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """Initialize the tracker with information about the simulation.

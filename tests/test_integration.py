@@ -44,7 +44,7 @@ def test_inhomogeneous_bcs_2():
     grid = CartesianGrid([[0, 1], [0, 1]], [8, 8], periodic=False)
     state = ScalarField(grid)
     eq = DiffusionPDE(bc={"value": "x + y"})
-    sol = eq.solve(state, t_range=1e1, dt=1e-3, tracker=None)
+    sol = eq.solve(state, t_range=1e1, dt=1e-3, backend="numba", tracker=None)
     expect = ScalarField.from_expression(grid, "x + y")
     np.testing.assert_almost_equal(sol.data, expect.data)
 
@@ -70,7 +70,7 @@ def test_custom_pde_mpi(rng):
     """Test a custom PDE using the parallelized solver."""
 
     class TestPDE(PDEBase):
-        def make_post_step_hook(self, state):
+        def make_post_step_hook(self, state, backend):
             def post_step_hook(state_data, t, post_step_data):
                 for i in range(state_data.size):
                     if state_data.flat[i] > 1:
@@ -82,7 +82,7 @@ def test_custom_pde_mpi(rng):
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
 
-        def _make_pde_rhs_numba(self, state):
+        def make_pde_rhs_numba(self, state):
             @numba.jit
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
@@ -128,7 +128,7 @@ def test_stop_iteration_hook(backend):
     """Test a custom PDE raising StopIteration in a hook."""
 
     class TestPDE(PDEBase):
-        def make_post_step_hook(self, state):
+        def make_post_step_hook(self, state, backend):
             def post_step_hook(state_data, t, post_step_data):
                 if state_data.sum() > 1:
                     raise StopIteration
@@ -139,7 +139,7 @@ def test_stop_iteration_hook(backend):
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
 
-        def _make_pde_rhs_numba(self, state):
+        def make_pde_rhs_numba(self, state):
             @numba.jit
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
@@ -162,7 +162,7 @@ def test_custom_data_hook(backend):
     """Test a custom PDE keeping track of data."""
 
     class TestPDE(PDEBase):
-        def make_post_step_hook(self, state):
+        def make_post_step_hook(self, state, backend):
             def post_step_hook(state_data, t, post_step_data):
                 post_step_data += state_data.mean()
 
@@ -171,7 +171,7 @@ def test_custom_data_hook(backend):
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
 
-        def _make_pde_rhs_numba(self, state):
+        def make_pde_rhs_numba(self, state):
             @numba.jit
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
@@ -195,7 +195,7 @@ def test_array_data_hook(backend):
     """Test a custom PDE keeping track of array data."""
 
     class TestPDE(PDEBase):
-        def make_post_step_hook(self, state):
+        def make_post_step_hook(self, state, backend):
             def post_step_hook(state_data, t, post_step_data):
                 post_step_data += state_data
 
@@ -204,7 +204,7 @@ def test_array_data_hook(backend):
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
 
-        def _make_pde_rhs_numba(self, state):
+        def make_pde_rhs_numba(self, state):
             @numba.jit
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)

@@ -9,10 +9,7 @@ import numbers
 import re
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
-import numba as nb
 import numpy as np
-from numba.extending import register_jitable
-from numba.typed import Dict as NumbaDict
 from sympy import Symbol
 from sympy.core.function import UndefinedFunction
 
@@ -20,9 +17,8 @@ from ..fields import FieldCollection, VectorField
 from ..fields.datafield_base import DataFieldBase
 from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.local import BCDataError
-from ..pdes.base import PDEBase, TState
+from ..pdes.base import SDEBase
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -31,8 +27,14 @@ if TYPE_CHECKING:
 
     from ..fields.base import FieldBase
     from ..grids.boundaries.axes import BoundariesData
-    from ..tools.typing import ArrayLike, NumberOrArray, NumericArray, StepperHook
-
+    from ..tools.typing import (
+        ArrayLike,
+        BackendType,
+        NumberOrArray,
+        NumericArray,
+        StepperHook,
+        TField,
+    )
 
 # Define short notations that can appear in mathematical equations and need to be
 # expanded. Since these replacements are replaced in order, it's advisable to start with
@@ -54,7 +56,7 @@ _OPERATOR_FOURIER_MAPPING = {
 }
 
 
-class PDE(PDEBase):
+class PDE(SDEBase):
     """PDE defined by mathematical expressions.
 
     Attributes:
@@ -285,6 +287,8 @@ class PDE(PDEBase):
         Returns:
             callable: The function calculating the RHS
         """
+        from numba.typed import Dict as NumbaDict
+
         # modify a copy of the expression and the general operator array
         expr = self._rhs_expr[var].copy()
 
@@ -369,16 +373,9 @@ class PDE(PDEBase):
         self._logger.info("RHS for `%s` has signature %s", var, signature)
 
         # prepare the actual function being called in the end
-        if backend == "numpy":
-            func_inner = expr._get_function(single_arg=False, user_funcs=ops)
-        elif backend == "numba":
-            func_pure = expr._get_function(
-                single_arg=False, user_funcs=ops, prepare_compilation=True
-            )
-            func_inner = jit(func_pure)
-        else:
-            msg = f"Unsupported backend {backend}"
-            raise ValueError(msg)
+        func_inner = expr.get_function(
+            backend=backend, single_arg=False, user_funcs=ops
+        )
 
         def rhs_func(*args) -> NumericArray:
             """Wrapper that inserts the extra arguments and initialized bc_args."""
@@ -386,10 +383,13 @@ class PDE(PDEBase):
             bc_args["t"] = args[-1]  # pass time to differential operators
             return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
 
-        return rhs_func
+        # compile the function if necessary
+        from ..backends import backends
+
+        return backends[backend].compile_function(rhs_func)
 
     def _prepare_cache(
-        self, state: TState, backend: Literal["numpy", "numba"] = "numpy"
+        self, state: TField, backend: Literal["numpy", "numba"] = "numpy"
     ) -> dict[str, Any]:
         """Prepare the expression by setting internal variables in the cache.
 
@@ -475,7 +475,7 @@ class PDE(PDEBase):
 
         if "integral" in operators:
             # add an operator that integrates a field
-            ops_general["integral"] = state.grid.make_integrator()
+            ops_general["integral"] = state.grid.make_integrator(backend)
 
         # Create the right hand sides for all variables. It is important to do this in a
         # separate function, so the closures work reliably
@@ -517,7 +517,7 @@ class PDE(PDEBase):
         cache["state_attributes"] = state.attributes
         return cache
 
-    def evolution_rate(self, state: TState, t: float = 0.0) -> TState:
+    def evolution_rate(self, state: TField, t: float = 0.0) -> TField:
         """Evaluate the right hand side of the PDE.
 
         Args:
@@ -552,13 +552,17 @@ class PDE(PDEBase):
 
         return result
 
-    def make_post_step_hook(self, state: FieldBase) -> tuple[StepperHook, Any]:
+    def make_post_step_hook(
+        self, state: FieldBase, backend: BackendType = "numpy"
+    ) -> tuple[StepperHook, Any]:
         """Returns a function that is called after each step.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
+            backend (str):
+                Determines how the function is created (like 'numpy' and 'numba')
 
         Returns:
             tuple: The first entry is the function that implements the hook. The second
@@ -571,16 +575,17 @@ class PDE(PDEBase):
         if self.post_step_hook is None:
             msg = "`post_step_hook` not set"
             raise NotImplementedError(msg)
-        post_step_hook = register_jitable(self.post_step_hook)
 
-        @register_jitable
+        from ..backends import backends
+
+        post_step_hook = backends[backend].compile_function(self.post_step_hook)
+
         def post_step_hook_impl(state_data, t, post_step_data):
             post_step_hook(state_data, t)
 
         return post_step_hook_impl, 0  # hook function and initial value
 
-    # time will not be updated
-    def _make_pde_rhs_numba_coll(
+    def make_pde_rhs_numba_collection(
         self, state: FieldCollection, cache: dict[str, Any]
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create the compiled rhs if `state` is a field collection.
@@ -598,9 +603,11 @@ class PDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
+        import numba as nb
+
         num_fields = len(state)
         data_shape = state.data.shape
-        rhs_list = tuple(jit(cache["rhs_funcs"][i]) for i in range(num_fields))
+        rhs_list = tuple(cache["rhs_funcs"][i] for i in range(num_fields))
 
         starts = tuple(slc.start for slc in state._slices)
         stops = tuple(slc.stop for slc in state._slices)
@@ -616,13 +623,13 @@ class PDE(PDEBase):
 
             if inner is None:
                 # the innermost function does not need to call a child
-                @jit
+                @nb.jit
                 def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
             else:
                 # all other functions need to call one deeper in the chain
-                @jit
+                @nb.jit
                 def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
                     inner(data_tpl, t, out)
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
@@ -632,7 +639,7 @@ class PDE(PDEBase):
                 return chain(i + 1, inner=wrap)
 
             # this is the outermost function
-            @jit
+            @nb.jit
             def evolution_rate(state_data: NumericArray, t: float = 0) -> NumericArray:
                 out = np.empty(data_shape)
                 with nb.objmode():
@@ -645,8 +652,8 @@ class PDE(PDEBase):
         # compile the recursive chain
         return chain()
 
-    def _make_pde_rhs_numba(  # type: ignore
-        self, state: TState, **kwargs
+    def make_pde_rhs_numba(  # type: ignore
+        self, state: TField, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
@@ -663,11 +670,11 @@ class PDE(PDEBase):
 
         if isinstance(state, DataFieldBase):
             # state is a single field
-            return jit(cache["rhs_funcs"][0])  # type: ignore
+            return cache["rhs_funcs"][0]  # type: ignore
 
         if isinstance(state, FieldCollection):
             # state is a collection of fields
-            return self._make_pde_rhs_numba_coll(state, cache)
+            return self.make_pde_rhs_numba_collection(state, cache)
 
         msg = f"Unsupported field {state.__class__.__name__}"
         raise TypeError(msg)

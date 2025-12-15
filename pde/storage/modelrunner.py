@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import modelrunner as mr
+from typing_extensions import Self
 
 from .base import InfoDict, StorageBase, WriteModeType
 
@@ -70,7 +71,7 @@ class ModelrunnerStorage(StorageBase):
             self._writer.close()
             self._writer = None
 
-    def __enter__(self) -> ModelrunnerStorage:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):

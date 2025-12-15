@@ -44,16 +44,26 @@ one of the following classes:
 In particular, interrupts can be specified conveniently using
 :func:`~interrupts.parse_interrupt`.
 
+Inheritance structure of the tracker classes:
+
+.. inheritance-diagram::
+      trackers.CallbackTracker
+      trackers.ProgressTracker
+      trackers.PrintTracker
+      trackers.PlotTracker
+      trackers.LivePlotTracker
+      trackers.DataTracker
+      trackers.SteadyStateTracker
+      trackers.RuntimeTracker
+      trackers.ConsistencyTracker
+      interactive.InteractivePlotTracker
+      pde.storage.base.StorageTracker
+   :parts: 1
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from .base import get_named_trackers  # noqa: F401
 from .interactive import InteractivePlotTracker  # noqa: F401
-from .interrupts import (  # noqa: F401
-    ConstantInterrupts,
-    FixedInterrupts,
-    LogarithmicInterrupts,
-    RealtimeInterrupts,
-    parse_interrupt,
-)
+from .interrupts import *  # noqa: F403
 from .trackers import *  # noqa: F403

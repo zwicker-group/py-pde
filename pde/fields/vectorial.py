@@ -7,15 +7,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
-import numba as nb
 import numpy as np
-from numba.extending import overload, register_jitable
 
 from ..grids.base import DimensionError, GridBase
 from ..grids.cartesian import CartesianGrid
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
-from ..tools.numba import get_common_numba_dtype, jit
 from .datafield_base import DataFieldBase
 from .scalar import ScalarField
 
@@ -284,106 +281,16 @@ class VectorField(DataFieldBase):
 
         Args:
             backend (str):
-                The backend (e.g., 'numba' or 'scipy') used for this operator.
+                The backend (e.g., 'numba' or 'numba') used for this operator.
 
         Returns:
             function that takes two instance of :class:`~numpy.ndarray`, which contain
             the discretized data of the two operands. An optional third argument can
-            specify the output array to which the result is written. Note that the
-            returned function is jitted with numba for speed.
+            specify the output array to which the result is written.
         """
+        from ..backends import backends
 
-        def outer(
-            a: NumericArray, b: NumericArray, out: NumericArray | None = None
-        ) -> NumericArray:
-            """Calculate the outer product using numpy."""
-            return np.einsum("i...,j...->ij...", a, b, out=out)
-
-        if backend == "numpy":
-            # return the bare dot operator without the numba-overloaded version
-            return outer
-
-        if backend == "numba":
-            # overload `outer` with a numba-compiled version
-
-            dim = self.grid.dim
-            num_axes = self.grid.num_axes
-
-            def check_rank(arr: nb.types.Type | nb.types.Optional) -> None:
-                """Determine rank of field with type `arr`"""
-                arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
-                if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
-                    msg = f"Arguments must be array, not  {arr_typ.__class__}"
-                    raise nb.errors.TypingError(msg)
-                assert arr_typ.ndim == 1 + num_axes
-
-            # create the inner function calculating the outer product
-            @register_jitable
-            def calc(
-                a: NumericArray, b: NumericArray, out: NumericArray
-            ) -> NumericArray:
-                """Calculate outer product between fields `a` and `b`"""
-                for i in range(dim):
-                    for j in range(dim):
-                        out[i, j, :] = a[i] * b[j]
-                return out
-
-            @overload(outer, inline="always")
-            def outer_ol(
-                a: NumericArray, b: NumericArray, out: NumericArray | None = None
-            ) -> NumericArray:
-                """Numba implementation to calculate outer product between two
-                fields."""
-                # get (and check) rank of the input arrays
-                check_rank(a)
-                check_rank(b)
-                in_shape = (dim, *self.grid.shape)
-                out_shape = (dim, dim, *self.grid.shape)
-
-                if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                    # function is called without `out` -> allocate memory
-                    dtype = get_common_numba_dtype(a, b)
-
-                    def outer_impl(
-                        a: NumericArray,
-                        b: NumericArray,
-                        out: NumericArray | None = None,
-                    ) -> NumericArray:
-                        """Helper function allocating output array."""
-                        assert a.shape == b.shape == in_shape
-                        out = np.empty(out_shape, dtype=dtype)
-                        calc(a, b, out)
-                        return out
-
-                else:
-                    # function is called with `out` argument -> reuse `out` array
-
-                    def outer_impl(
-                        a: NumericArray,
-                        b: NumericArray,
-                        out: NumericArray | None = None,
-                    ) -> NumericArray:
-                        """Helper function without allocating output array."""
-                        # check input
-                        assert a.shape == b.shape == in_shape
-                        assert out.shape == out_shape  # type: ignore
-                        calc(a, b, out)
-                        return out  # type: ignore
-
-                return outer_impl  # type: ignore
-
-            @jit
-            def outer_compiled(
-                a: NumericArray, b: NumericArray, out: NumericArray | None = None
-            ) -> NumericArray:
-                """Numba implementation to calculate outer product between two
-                fields."""
-                return outer(a, b, out)
-
-            return outer_compiled  # type: ignore
-
-        msg = f"Unsupported backend `{backend}"
-        raise ValueError(msg)
+        return backends[backend].make_outer_prod_operator(self)
 
     @fill_in_docstring
     def divergence(

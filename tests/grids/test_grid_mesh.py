@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from pde import DiffusionPDE, FieldCollection, ScalarField, Tensor2Field, VectorField
+from pde.backends import backends
 from pde.grids import CylindricalSymGrid, PolarSymGrid, SphericalSymGrid, UnitGrid
 from pde.grids._mesh import GridMesh, _get_optimal_decomposition
 from pde.tools import mpi
@@ -186,11 +187,11 @@ def test_boundary_conditions_numba(bc, rng):
     # split without ghost cells
     f1 = mesh.split_field_mpi(field)
     bc1 = f1.grid.get_boundary_conditions(bc)
-    bc1.make_ghost_cell_setter()(f1._data_full)
+    backends["numba_mpi"].make_ghost_cell_setter(bc1)(f1._data_full)
 
     # split after setting ghost cells
     bc2 = field.grid.get_boundary_conditions(bc)
-    bc2.make_ghost_cell_setter()(field._data_full)
+    backends["numba_mpi"].make_ghost_cell_setter(bc2)(field._data_full)
     f2 = mesh.split_field_mpi(field)
 
     np.testing.assert_equal(f1._data_full[1:-1, :], f2._data_full[1:-1, :])
@@ -258,7 +259,7 @@ def test_integration_parallel(grid, decomposition, rank):
     np.testing.assert_allclose(subfield.integral, expected)
 
     # numba version
-    res = subfield.grid.make_integrator()(subfield.data)
+    res = subfield.grid.make_integrator(backend="numba_mpi")(subfield.data)
     assert rank > 0 or np.isscalar(res)
     np.testing.assert_allclose(res, expected)
 

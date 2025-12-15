@@ -5,16 +5,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 
 from .base import SolverBase
 
 if TYPE_CHECKING:
-    from ..fields.base import FieldBase
     from ..pdes.base import PDEBase
-    from ..tools.typing import BackendType, NumericArray
+    from ..tools.typing import BackendType, NumericArray, TField
 
 
 class ScipySolverError(RuntimeError): ...
@@ -30,7 +29,9 @@ class ScipySolver(SolverBase):
 
     name = "scipy"
 
-    def __init__(self, pde: PDEBase, *, backend: BackendType = "auto", **kwargs):
+    def __init__(
+        self, pde: PDEBase, *, backend: BackendType | Literal["auto"] = "auto", **kwargs
+    ):
         r"""
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
@@ -46,8 +47,8 @@ class ScipySolver(SolverBase):
         self.solver_params = kwargs
 
     def make_stepper(
-        self, state: FieldBase, dt: float | None = None
-    ) -> Callable[[FieldBase, float, float], float]:
+        self, state: TField, dt: float | None = None
+    ) -> Callable[[TField, float, float], float]:
         """Return a stepper function.
 
         Args:
@@ -62,11 +63,11 @@ class ScipySolver(SolverBase):
             Function that can be called to advance the `state` from time
             `t_start` to time `t_end`.
         """
-        if self.pde.is_sde:
-            msg = "Cannot use scipy stepper for a stochastic equation"
-            raise RuntimeError(msg)
-
         from scipy import integrate
+
+        if self.pde.is_sde:
+            msg = "Deterministic scipy stepper does not support stochastic equations"
+            raise RuntimeError(msg)
 
         shape = state.data.shape
         self.info["dt"] = dt
@@ -74,7 +75,7 @@ class ScipySolver(SolverBase):
         self.info["stochastic"] = False
 
         # obtain function for evaluating the right hand side
-        rhs = self._make_pde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state)
 
         def rhs_helper(t: float, state_flat: NumericArray) -> NumericArray:
             """Helper function to provide the correct call convention."""
@@ -88,7 +89,7 @@ class ScipySolver(SolverBase):
                 raise RuntimeError(msg)
             return y  # type: ignore
 
-        def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
+        def stepper(state: TField, t_start: float, t_end: float) -> float:
             """Use scipy.integrate.odeint to advance `state` from `t_start` to
             `t_end`"""
             if dt is not None:

@@ -14,7 +14,6 @@ def test_polar_grid(rng):
     grid = PolarSymGrid(4, 8)
     assert grid.dim == 2
     assert grid.num_cells == 8
-    assert grid.numba_type == "f8[:]"
     assert grid.shape == (8,)
     assert not grid.has_hole
     assert grid.discretization[0] == pytest.approx(0.5)
@@ -40,7 +39,6 @@ def test_polar_annulus(rng):
     grid = PolarSymGrid((2, 4), 8)
     assert grid.dim == 2
     assert grid.num_cells == 8
-    assert grid.numba_type == "f8[:]"
     assert grid.shape == (8,)
     assert grid.has_hole
     assert grid.discretization[0] == pytest.approx(0.25)
@@ -84,7 +82,6 @@ def test_spherical_grid(rng):
     grid = SphericalSymGrid(4, 8)
     assert grid.dim == 3
     assert grid.num_cells == 8
-    assert grid.numba_type == "f8[:]"
     assert grid.shape == (8,)
     assert not grid.has_hole
     assert grid.discretization[0] == pytest.approx(0.5)
@@ -110,7 +107,6 @@ def test_spherical_annulus(rng):
     grid = SphericalSymGrid((2, 4), 8)
     assert grid.dim == 3
     assert grid.num_cells == 8
-    assert grid.numba_type == "f8[:]"
     assert grid.shape == (8,)
     assert grid.has_hole
     assert grid.discretization[0] == pytest.approx(0.25)

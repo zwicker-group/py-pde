@@ -14,9 +14,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Any
 
-import numba as nb
 import numpy as np
-from numba.experimental import jitclass
 
 if TYPE_CHECKING:
     from .typing import ArrayLike, NumericArray
@@ -124,15 +122,6 @@ class SmoothData1D:
         return result.reshape(shape)  # type: ignore
 
 
-@jitclass(
-    [
-        ("min", nb.double),
-        ("max", nb.double),
-        ("mean", nb.double),
-        ("_mean2", nb.double),
-        ("count", nb.uint),
-    ]
-)
 class OnlineStatistics:
     """Class for using an online algorithm for calculating statistics."""
 

@@ -11,7 +11,6 @@ import pytest
 from pde import grids
 from pde.grids.base import (
     GridBase,
-    OperatorInfo,
     discretize_interval,
     registered_operators,
 )
@@ -128,25 +127,6 @@ def test_grid_plotting():
 
     grids.PolarSymGrid(4, 8).plot()
     grids.PolarSymGrid((2, 4), 8).plot()
-
-
-@pytest.mark.parametrize("grid", iter_grids())
-def test_operators(grid):
-    """Test operator mechanism."""
-
-    def make_op(state):
-        return lambda state: state
-
-    assert "laplace" in grid.operators
-    with pytest.raises(ValueError):
-        grid.make_operator("not_existent", "auto_periodic_neumann")
-    grid.register_operator("noop", make_op)
-    assert "noop" in grid.operators
-    del grid._operators["noop"]  # reset original state
-
-    # test all instance operators
-    for op in grid.operators:
-        assert isinstance(grid._get_operator_info(op), OperatorInfo)
 
 
 def test_cartesian_operator_infos():

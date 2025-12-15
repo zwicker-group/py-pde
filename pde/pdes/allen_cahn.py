@@ -7,13 +7,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable
 
-import numba as nb
 import numpy as np
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
 from .base import PDEBase, expr_prod
 
 if TYPE_CHECKING:
@@ -95,7 +93,7 @@ class AllenCahnPDE(PDEBase):
         rhs = self.interface_width * laplace - state**3 + state
         return self.mobility * rhs  # type: ignore
 
-    def _make_pde_rhs_numba(  # type: ignore
+    def make_pde_rhs_numba(  # type: ignore
         self, state: ScalarField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
@@ -110,6 +108,8 @@ class AllenCahnPDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
+        import numba as nb
+
         arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)
 
@@ -117,7 +117,7 @@ class AllenCahnPDE(PDEBase):
         mobility = self.mobility
         laplace = state.grid.make_operator("laplace", bc=self.bc)
 
-        @jit(signature)
+        @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float) -> NumericArray:
             """Compiled helper function evaluating right hand side."""
             return mobility * (  # type: ignore

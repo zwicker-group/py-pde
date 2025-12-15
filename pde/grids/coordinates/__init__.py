@@ -12,9 +12,18 @@
 """
 
 from .base import CoordinatesBase, DimensionError  # noqa: F401
-from .bipolar import BipolarCoordinates  # noqa: F401
-from .bispherical import BisphericalCoordinates  # noqa: F401
-from .cartesian import CartesianCoordinates  # noqa: F401
-from .cylindrical import CylindricalCoordinates  # noqa: F401
-from .polar import PolarCoordinates  # noqa: F401
-from .spherical import SphericalCoordinates  # noqa: F401
+from .bipolar import BipolarCoordinates
+from .bispherical import BisphericalCoordinates
+from .cartesian import CartesianCoordinates
+from .cylindrical import CylindricalCoordinates
+from .polar import PolarCoordinates
+from .spherical import SphericalCoordinates
+
+__all__ = [
+    "BipolarCoordinates",
+    "BisphericalCoordinates",
+    "CartesianCoordinates",
+    "CylindricalCoordinates",
+    "PolarCoordinates",
+    "SphericalCoordinates",
+]

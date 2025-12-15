@@ -31,7 +31,7 @@ class CylindricalSymGrid(GridBase):
     r"""3-dimensional cylindrical grid assuming polar symmetry.
 
     The polar symmetry implies that states only depend on the radial and axial
-    coordinates :math:`r` and :math:`z`, respectively. These are discretized uniformly:
+    coordinates :math:`r` and :math:`z`, respectively. These are discretized uniformly,
 
     .. math::
         :nowrap:

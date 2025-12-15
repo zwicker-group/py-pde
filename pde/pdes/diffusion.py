@@ -7,13 +7,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable
 
-import numba as nb
-
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
-from .base import PDEBase, expr_prod
+from .base import SDEBase, expr_prod
 
 if TYPE_CHECKING:
     import numpy as np
@@ -22,7 +19,7 @@ if TYPE_CHECKING:
     from ..tools.typing import NumericArray
 
 
-class DiffusionPDE(PDEBase):
+class DiffusionPDE(SDEBase):
     r"""A simple diffusion equation.
 
     The mathematical definition is
@@ -96,7 +93,7 @@ class DiffusionPDE(PDEBase):
         laplace = state.laplace(bc=self.bc, label="evolution rate", args={"t": t})
         return self.diffusivity * laplace  # type: ignore
 
-    def _make_pde_rhs_numba(  # type: ignore
+    def make_pde_rhs_numba(  # type: ignore
         self, state: ScalarField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
@@ -111,13 +108,15 @@ class DiffusionPDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
+        import numba as nb
+
         arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)
 
         diffusivity_value = self.diffusivity
         laplace = state.grid.make_operator("laplace", bc=self.bc)
 
-        @jit(signature)
+        @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float):
             """Compiled helper function evaluating right hand side."""
             return diffusivity_value * laplace(state_data, args={"t": t})

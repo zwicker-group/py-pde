@@ -11,7 +11,7 @@ from pde import PDEBase, ScalarField, UnitGrid
 
 
 class CustomPDE(PDEBase):
-    def make_post_step_hook(self, state):
+    def make_post_step_hook(self, state, backend):
         """Create a hook function that is called after every time step."""
 
         def post_step_hook(state_data, t, post_step_data):

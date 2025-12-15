@@ -5,17 +5,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Literal
 
-import numba as nb
 import numpy as np
 
 from .base import ConvergenceError, SolverBase
 
 if TYPE_CHECKING:
-    from ..fields.base import FieldBase
     from ..pdes.base import PDEBase
-    from ..tools.typing import BackendType, NumericArray
+    from ..tools.typing import BackendType, NumericArray, TField
 
 
 class CrankNicolsonSolver(SolverBase):
@@ -30,7 +28,7 @@ class CrankNicolsonSolver(SolverBase):
         maxiter: int = 100,
         maxerror: float = 1e-4,
         explicit_fraction: float = 0,
-        backend: BackendType = "auto",
+        backend: BackendType | Literal["auto"] = "auto",
     ):
         """
         Args:
@@ -56,7 +54,7 @@ class CrankNicolsonSolver(SolverBase):
         self.explicit_fraction = explicit_fraction
 
     def _make_single_step_fixed_dt(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], None]:
         """Return a function doing a single step with an implicit Euler scheme.
 
@@ -68,14 +66,13 @@ class CrankNicolsonSolver(SolverBase):
                 Time step of the implicit step
         """
         if self.pde.is_sde:
-            msg = "Cannot use implicit stepper with stochastic equation"
+            msg = "Deterministic Crank-Nicolson does not support stochastic equations"
             raise RuntimeError(msg)
 
         self.info["function_evaluations"] = 0
-        self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
 
-        rhs = self._make_pde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
         α = self.explicit_fraction
@@ -112,14 +109,13 @@ class CrankNicolsonSolver(SolverBase):
                     # fix point iteration converged
                     break
             else:
-                with nb.objmode:
-                    self._logger.warning(
-                        "Crank-Nicolson step did not converge after %d iterations "
-                        "at t=%g (error=%g)",
-                        maxiter,
-                        t,
-                        err,
-                    )
+                # self._logger.warning(
+                #     "Crank-Nicolson step did not converge after %d iterations "
+                #     "at t=%g (error=%g)",
+                #     maxiter,
+                #     t,
+                #     err,
+                # )
                 msg = "Crank-Nicolson step did not converge."
                 raise ConvergenceError(msg)
             nfev += n + 2

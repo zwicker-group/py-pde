@@ -16,6 +16,8 @@ from __future__ import annotations
 import pathlib
 from typing import TYPE_CHECKING, Any
 
+from typing_extensions import Self
+
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress
 from .plotting import ScalarFieldPlot, ScaleData
@@ -99,7 +101,7 @@ class Movie:
 
         return FFMpegWriter.isAvailable()
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_value, exc_tb):

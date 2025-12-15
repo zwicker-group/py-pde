@@ -16,7 +16,7 @@ file_write = FileStorage("allen_cahn.hdf")
 movie_write = MovieStorage("allen_cahn.avi", vmin=-1, vmax=1)
 
 # store trajectory in storage
-eq.solve(
+final_state = eq.solve(
     state,
     t_range=100,
     adaptive=True,

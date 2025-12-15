@@ -14,14 +14,13 @@
 
 from __future__ import annotations
 
-import importlib
 import sys
 from abc import ABCMeta, abstractmethod
 
 import tqdm
 
 
-def get_progress_bar_class(fancy: bool = True) -> type[tqdm.tqdm]:
+def get_progress_bar_class(fancy: bool = True):
     """Returns a class that behaves as progress bar.
 
     This either uses classes from the optional `tqdm` package or a simple version that
@@ -32,11 +31,17 @@ def get_progress_bar_class(fancy: bool = True) -> type[tqdm.tqdm]:
             Flag determining whether a fancy progress bar should be used in jupyter
             notebooks (if :mod:`ipywidgets` is installed)
     """
-    progress_bar_class: type[tqdm.tqdm]
-
-    if fancy and importlib.util.find_spec("ipywidgets"):
-        # use the fancier version of the progress bar in jupyter
-        from tqdm.auto import tqdm as progress_bar_class
+    if fancy:
+        # try using notebook progress bar
+        try:
+            # check whether progress bar can use a widget
+            import ipywidgets  # noqa: F401
+        except ImportError:
+            # widgets are not available => use standard tqdm
+            progress_bar_class = tqdm.tqdm
+        else:
+            # use the fancier version of the progress bar in jupyter
+            from tqdm.auto import tqdm as progress_bar_class
     else:
         # only import text progress bar
         progress_bar_class = tqdm.tqdm

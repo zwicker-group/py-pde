@@ -12,16 +12,13 @@ from abc import ABCMeta, abstractmethod
 from inspect import isabstract
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
-import numba as nb
 import numpy as np
-from numba.extending import overload, register_jitable
 from typing_extensions import Self
 
 from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import number_array
-from ..tools.numba import get_common_numba_dtype, jit, make_array_constructor
 from ..tools.plotting import PlotReference, plot_on_axes
 from ..tools.spectral import CorrelationType, make_correlated_noise
 from .base import FieldBase, RankError
@@ -269,7 +266,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ================= ==========================================================
             :code:`none`      No correlation, :math:`C(k) = \delta(k)`
 
-            :code:`gaussian`  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with length
+            :code:`gaussian`  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length
                               scale :math:`\lambda` set by argument :code:`length_scale`
 
             :code:`power law` :math:`C(k) = k^{\nu/2}` with exponent :math:`\nu` set by
@@ -494,7 +491,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def from_state(
         cls,
         attributes: dict[str, Any],
-        data: NumericArray | None = None,
+        data: NumericArray | Literal["empty", "zeros", "ones"] | None = None,
     ) -> Self:
         """Create a field from given state.
 
@@ -606,6 +603,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         *,
         fill: Number | None = None,
         with_ghost_cells: bool = False,
+        backend: Literal["numba"] = "numba",
     ) -> Callable[[FloatingArray, NumericArray], NumberOrArray]:
         r"""Returns a function that can be used to interpolate values.
 
@@ -618,77 +616,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Flag indicating that the interpolator should work on the full data array
                 that includes values for the ghost points. If this is the case, the
                 boundaries are not checked and the coordinates are used as is.
+            backend (str):
+                The name of the backend to use to implement this operator.
 
         Returns:
             A function which returns interpolated values when called with arbitrary
             positions within the space of the grid.
         """
-        grid = self.grid
-        num_axes = self.grid.num_axes
-        data_shape = self.data_shape
+        from ..backends import backends
 
-        # convert `fill` to dtype of data
-        if fill is not None:
-            if self.rank == 0:
-                fill = self.data.dtype.type(fill)  # type: ignore
-            else:
-                fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)
-
-        # create the method to interpolate data at a single point
-        interpolate_single = grid._make_interpolator_compiled(
-            fill=fill, with_ghost_cells=with_ghost_cells
+        return backends[backend].make_interpolator(
+            self, fill=fill, with_ghost_cells=with_ghost_cells
         )
-
-        # provide a method to access the current data of the field
-        if with_ghost_cells:
-            get_data_array = make_array_constructor(self._data_full)
-        else:
-            get_data_array = make_array_constructor(self.data)
-
-        dim_error_msg = f"Dimension of point does not match axes count {num_axes}"
-
-        @jit
-        def interpolator(
-            point: FloatingArray, data: NumericArray | None = None
-        ) -> NumericArray:
-            """Return the interpolated value at the position `point`
-
-            Args:
-                point (:class:`~numpy.ndarray`):
-                    The list of points. This point coordinates should be given along the
-                    last axis, i.e., the shape should be `(..., num_axes)`.
-                data (:class:`~numpy.ndarray`, optional):
-                    The discretized field values. If omitted, the data of the current
-                    field is used, which should be the default. However, this option can
-                    be useful to interpolate other fields defined on the same grid
-                    without recreating the interpolator. If a data array is supplied, it
-                    needs to be the full data if `with_ghost_cells == True`, and
-                    otherwise only the valid data.
-
-            Returns:
-                :class:`~numpy.ndarray`: The interpolated values at the points
-            """
-            # check input
-            point = np.atleast_1d(point)
-            if point.shape[-1] != num_axes:
-                raise DimensionError(dim_error_msg)
-            point_shape = point.shape[:-1]
-
-            if data is None:
-                # reconstruct data field from memory address
-                data = get_data_array()
-
-            # interpolate at every valid point
-            out = np.empty(data_shape + point_shape, dtype=data.dtype)
-            for idx in np.ndindex(*point_shape):
-                out[(..., *idx)] = interpolate_single(data, point[idx])
-
-            return out  # type: ignore
-
-        # store a reference to the data so it is not garbage collected too early
-        interpolator._data = self.data
-
-        return interpolator  # type: ignore
 
     @fill_in_docstring
     def interpolate(
@@ -932,6 +871,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         out: DataFieldBase | None = None,
         *,
         label: str | None = None,
+        backend: str = "config",
         args: dict[str, Any] | None = None,
         **kwargs,
     ) -> DataFieldBase:
@@ -948,6 +888,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Optional field to which the  result is written.
             label (str, optional):
                 Name of the returned field
+            backend (str):
+                Backend (e.g., `numba` or `numpy`) for constructing the operator
             args (dict):
                 Additional arguments for the boundary conditions
             **kwargs:
@@ -957,8 +899,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             :class:`DataFieldBase`: Field data after applying the operator. This field
             is identical to `out` if this argument was specified.
         """
+        from ..backends import backends
+
         # get information about the operator
-        operator_info = self.grid._get_operator_info(operator)
+        backend_impl = backends[backend]
+        operator_info = backend_impl.get_operator_info(self.grid, operator)
         out_cls = self.get_class_by_rank(operator_info.rank_out)
 
         # prepare the output field
@@ -972,7 +917,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             if label is not None:
                 out.label = label
 
-        op_raw = self.grid.make_operator_no_bc(operator_info, **kwargs)
+        op_raw = self.grid.make_operator_no_bc(
+            operator_info, backend=backend_impl, **kwargs
+        )
         if bc is not None:
             self.set_ghost_cells(bc, args=args)  # impose boundary conditions
         # apply the operator without imposing boundary conditions
@@ -990,7 +937,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         Args:
             backend (str):
-                Can be `numba` or `numpy`, deciding how the function is constructed
+                Backend (e.g., `numba` or `numpy`) for constructing the operator
             conjugate (bool):
                 Whether to use the complex conjugate for the second operand
 
@@ -999,169 +946,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written.
         """
-        dim = self.grid.dim
-        num_axes = self.grid.num_axes
+        from ..backends import backends
 
-        @register_jitable
-        def maybe_conj(arr: NumericArray) -> NumericArray:
-            """Helper function implementing optional conjugation."""
-            return arr.conjugate() if conjugate else arr
-
-        def dot(
-            a: NumericArray, b: NumericArray, out: NumericArray | None = None
-        ) -> NumericArray:
-            """Numpy implementation to calculate dot product between two fields."""
-            rank_a = a.ndim - num_axes
-            rank_b = b.ndim - num_axes
-            if rank_a < 1 or rank_b < 1:
-                msg = "Fields in dot product must have rank >= 1"
-                raise TypeError(msg)
-            if a.shape[rank_a:] != b.shape[rank_b:]:
-                msg = "Shapes of fields are not compatible for dot product"
-                raise ValueError(msg)
-
-            if rank_a == 1 and rank_b == 1:  # result is scalar field
-                return np.einsum("i...,i...->...", a, maybe_conj(b), out=out)
-
-            if rank_a == 2 and rank_b == 1:  # result is vector field
-                return np.einsum("ij...,j...->i...", a, maybe_conj(b), out=out)
-
-            if rank_a == 1 and rank_b == 2:  # result is vector field
-                return np.einsum("i...,ij...->j...", a, maybe_conj(b), out=out)
-
-            if rank_a == 2 and rank_b == 2:  # result is tensor-2 field
-                return np.einsum("ij...,jk...->ik...", a, maybe_conj(b), out=out)
-
-            msg = f"Unsupported shapes ({a.shape}, {b.shape})"
-            raise TypeError(msg)
-
-        if backend == "numpy":
-            # return the bare dot operator without the numba-overloaded version
-            return dot
-
-        if backend == "numba":
-            # overload `dot` and return a compiled version
-
-            def get_rank(arr: nb.types.Type | nb.types.Optional) -> int:
-                """Determine rank of field with type `arr`"""
-                arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
-                if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
-                    msg = f"Dot argument must be array, not  {arr_typ.__class__}"
-                    raise nb.errors.TypingError(msg)
-                rank = arr_typ.ndim - num_axes
-                if rank < 1:
-                    msg = (
-                        f"Rank={rank} too small for dot product. Use a normal product "
-                        "instead."
-                    )
-                    raise nb.NumbaTypeError(msg)
-                return rank
-
-            @overload(dot, inline="always")
-            def dot_ol(
-                a: NumericArray, b: NumericArray, out: NumericArray | None = None
-            ) -> NumericArray:
-                """Numba implementation to calculate dot product between two fields."""
-                # get (and check) rank of the input arrays
-                rank_a = get_rank(a)
-                rank_b = get_rank(b)
-
-                if rank_a == 1 and rank_b == 1:  # result is scalar field
-
-                    @register_jitable
-                    def calc(
-                        a: NumericArray, b: NumericArray, out: NumericArray
-                    ) -> None:
-                        out[:] = a[0] * maybe_conj(b[0])
-                        for j in range(1, dim):
-                            out[:] += a[j] * maybe_conj(b[j])
-
-                elif rank_a == 2 and rank_b == 1:  # result is vector field
-
-                    @register_jitable
-                    def calc(
-                        a: NumericArray, b: NumericArray, out: NumericArray
-                    ) -> None:
-                        for i in range(dim):
-                            out[i] = a[i, 0] * maybe_conj(b[0])
-                            for j in range(1, dim):
-                                out[i] += a[i, j] * maybe_conj(b[j])
-
-                elif rank_a == 1 and rank_b == 2:  # result is vector field
-
-                    @register_jitable
-                    def calc(
-                        a: NumericArray, b: NumericArray, out: NumericArray
-                    ) -> None:
-                        for i in range(dim):
-                            out[i] = a[0] * maybe_conj(b[0, i])
-                            for j in range(1, dim):
-                                out[i] += a[j] * maybe_conj(b[j, i])
-
-                elif rank_a == 2 and rank_b == 2:  # result is tensor-2 field
-
-                    @register_jitable
-                    def calc(
-                        a: NumericArray, b: NumericArray, out: NumericArray
-                    ) -> None:
-                        for i in range(dim):
-                            for j in range(dim):
-                                out[i, j] = a[i, 0] * maybe_conj(b[0, j])
-                                for k in range(1, dim):
-                                    out[i, j] += a[i, k] * maybe_conj(b[k, j])
-
-                else:
-                    msg = "Inner product for these ranks"
-                    raise NotImplementedError(msg)
-
-                if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                    # function is called without `out` -> allocate memory
-                    rank_out = rank_a + rank_b - 2
-                    a_shape = (dim,) * rank_a + self.grid.shape
-                    b_shape = (dim,) * rank_b + self.grid.shape
-                    out_shape = (dim,) * rank_out + self.grid.shape
-                    dtype = get_common_numba_dtype(a, b)
-
-                    def dot_impl(
-                        a: NumericArray,
-                        b: NumericArray,
-                        out: NumericArray | None = None,
-                    ) -> NumericArray:
-                        """Helper function allocating output array."""
-                        assert a.shape == a_shape
-                        assert b.shape == b_shape
-                        out = np.empty(out_shape, dtype=dtype)
-                        calc(a, b, out)
-                        return out
-
-                else:
-                    # function is called with `out` argument -> reuse `out` array
-
-                    def dot_impl(
-                        a: NumericArray,
-                        b: NumericArray,
-                        out: NumericArray | None = None,
-                    ) -> NumericArray:
-                        """Helper function without allocating output array."""
-                        assert a.shape == a_shape
-                        assert b.shape == b_shape
-                        assert out.shape == out_shape  # type: ignore
-                        calc(a, b, out)
-                        return out  # type: ignore
-
-                return dot_impl  # type: ignore
-
-            @jit
-            def dot_compiled(
-                a: NumericArray, b: NumericArray, out: NumericArray | None = None
-            ) -> NumericArray:
-                """Numba implementation to calculate dot product between two fields."""
-                return dot(a, b, out)
-
-            return dot_compiled  # type: ignore
-
-        msg = f"Unsupported backend `{backend}"
-        raise ValueError(msg)
+        return backends[backend].make_inner_prod_operator(self, conjugate=conjugate)
 
     def smooth(
         self,

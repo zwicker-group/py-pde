@@ -233,7 +233,7 @@ class StorageBase(metaclass=ABCMeta):
                     "`field` attribute was not stored in file and the data shape "
                     f"{local_shape} could not be interpreted automatically. To be able "
                     "to read the data automatically, please set the `storage._field` "
-                    "attribute to a field that defines how the data is interpreted."
+                    "attribute to a field that then will define how data is interpreted"
                 )
                 raise RuntimeError(msg)
             self._logger.warning(

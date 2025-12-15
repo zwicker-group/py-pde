@@ -5,17 +5,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Literal
 
-import numba as nb
 import numpy as np
 
 from .base import ConvergenceError, SolverBase
 
 if TYPE_CHECKING:
-    from ..fields.base import FieldBase
     from ..pdes.base import PDEBase
-    from ..tools.typing import BackendType, NumericArray
+    from ..tools.typing import BackendType, NumericArray, TField
 
 
 class ImplicitSolver(SolverBase):
@@ -29,7 +27,7 @@ class ImplicitSolver(SolverBase):
         *,
         maxiter: int = 100,
         maxerror: float = 1e-4,
-        backend: BackendType = "auto",
+        backend: BackendType | Literal["auto"] = "auto",
     ):
         """
         Args:
@@ -49,7 +47,7 @@ class ImplicitSolver(SolverBase):
         self.maxerror = maxerror
 
     def _make_single_step_fixed_dt_deterministic(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], None]:
         """Return a function doing a deterministic step with an implicit Euler scheme.
 
@@ -61,14 +59,14 @@ class ImplicitSolver(SolverBase):
                 Time step of the implicit step
         """
         if self.pde.is_sde:
-            msg = "Cannot use implicit stepper with stochastic equation"
+            msg = "Deterministic implicit Euler does not support stochastic equations"
             raise RuntimeError(msg)
 
         self.info["function_evaluations"] = 0
         self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
 
-        rhs = self._make_pde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
 
@@ -101,14 +99,6 @@ class ImplicitSolver(SolverBase):
                     # fix point iteration converged
                     break
             else:
-                with nb.objmode:
-                    self._logger.warning(
-                        "Implicit Euler step did not converge after %d iterations "
-                        "at t=%g (error=%g)",
-                        maxiter,
-                        t,
-                        err,
-                    )
                 msg = "Implicit Euler step did not converge."
                 raise ConvergenceError(msg)
             nfev += n + 1
@@ -117,7 +107,7 @@ class ImplicitSolver(SolverBase):
         return implicit_step
 
     def _make_single_step_fixed_dt_stochastic(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], None]:
         """Return a function doing a step for a SDE with an implicit Euler scheme.
 
@@ -132,8 +122,8 @@ class ImplicitSolver(SolverBase):
         self.info["scheme"] = "implicit-euler-maruyama"
         self.info["stochastic"] = True
 
-        rhs = self.pde.make_pde_rhs(state, backend=self.backend)  # type: ignore
-        rhs_sde = self._make_sde_rhs(state, backend=self.backend)
+        rhs = self._make_pde_rhs(state)
+        rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
 
@@ -147,7 +137,8 @@ class ImplicitSolver(SolverBase):
             state_prev = np.empty_like(state_data)
 
             # estimate state at next time point
-            evolution_rate, noise_realization = rhs_sde(state_data, t)
+            evolution_rate = rhs(state_data, t)
+            noise_realization = rhs_noise(state_data, t)
             if noise_realization is not None:
                 # add the noise to the reference state at the current time point and
                 # adept the state at the next time point iteratively below
@@ -171,14 +162,6 @@ class ImplicitSolver(SolverBase):
                     # fix point iteration converged
                     break
             else:
-                with nb.objmode:
-                    self._logger.warning(
-                        "Semi-implicit Euler-Maruyama step did not converge after %d "
-                        "iterations at t=%g (error=%g)",
-                        maxiter,
-                        t,
-                        err,
-                    )
                 msg = "Semi-implicit Euler-Maruyama step did not converge."
                 raise ConvergenceError(msg)
             nfev += n + 1
@@ -187,7 +170,7 @@ class ImplicitSolver(SolverBase):
         return implicit_step
 
     def _make_single_step_fixed_dt(
-        self, state: FieldBase, dt: float
+        self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], None]:
         """Return a function doing a single step with an implicit Euler scheme.
 

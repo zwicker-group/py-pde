@@ -18,18 +18,19 @@ using the method :meth:`transform`.
 
 Inheritance structure of the classes:
 
-.. inheritance-diagram:: cartesian.UnitGrid cartesian.CartesianGrid
-        spherical.PolarSymGrid spherical.SphericalSymGrid cylindrical.CylindricalSymGrid
+.. inheritance-diagram::
+      cartesian.UnitGrid
+      cartesian.CartesianGrid
+      spherical.PolarSymGrid
+      spherical.SphericalSymGrid
+      cylindrical.CylindricalSymGrid
    :parts: 1
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from . import operators  # import all operator modules to register them
-from .base import registered_operators  # noqa: F401
+from .base import DimensionError, GridBase  # noqa: F401
 from .boundaries import *  # noqa: F403
 from .cartesian import CartesianGrid, UnitGrid  # noqa: F401
 from .cylindrical import CylindricalSymGrid  # noqa: F401
 from .spherical import PolarSymGrid, SphericalSymGrid  # noqa: F401
-
-del operators  # remove the name from the namespace

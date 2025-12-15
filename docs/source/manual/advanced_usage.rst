@@ -263,7 +263,7 @@ raising :class:`StopIteration`.
 
     class AbortEarlyPDE(PDEBase):
 
-        def make_post_step_hook(self, state):
+        def make_post_step_hook(self, state, backend):
             """Create a hook function that is called after every time step."""
 
             def post_step_hook(state_data, t, post_step_data):
@@ -419,7 +419,7 @@ introduced above:
 
 .. code-block:: python
 
-    from pde.tools.numba import jit
+    from numba import jit
 
 
     class KuramotoSivashinskyPDE(PDEBase):
@@ -441,7 +441,7 @@ introduced above:
                     - 0.5 * self.diffusivity * (state_gradient @ state_gradient))
 
 
-        def _make_pde_rhs_numba(self, state):
+        def make_pde_rhs_numba(self, state):
             """ the numba-accelerated evolution equation """
             # make attributes locally available             
             diffusivity = self.diffusivity
@@ -465,7 +465,7 @@ introduced above:
 
 
 To activate the compiled implementation of the evolution rate, we simply have
-to overwrite the :meth:`~pde.pdes.base.PDEBase._make_pde_rhs_numba` method.
+to overwrite the :meth:`~pde.pdes.base.PDEBase.make_pde_rhs_numba` method.
 This method expects an example of the state class (e.g., an instance of
 :class:`~pde.fields.scalar.ScalarField`) and returns a function that calculates
 the evolution rate.
@@ -498,7 +498,7 @@ explicit loop:
 
     [...]
 
-        def _make_pde_rhs_numba(self, state):
+        def make_pde_rhs_numba(self, state):
             """ the numba-accelerated evolution equation """
             # make attributes locally available             
             diffusivity = self.diffusivity

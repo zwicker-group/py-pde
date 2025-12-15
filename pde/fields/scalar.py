@@ -171,8 +171,8 @@ class ScalarField(DataFieldBase):
                 elif isinstance(arg, np.ndarray):
                     if arg.shape != self.data.shape:
                         msg = (
-                            "Data shapes incompatible: "
-                            f"{arg.shape} != {self.data.shape}"
+                            "Data shapes incompatible"
+                            f" ({arg.shape} != {self.data.shape}"
                         )
                         raise RuntimeError(msg)
                     arrs.append(arg)
@@ -211,8 +211,6 @@ class ScalarField(DataFieldBase):
                 Optional scalar field to which the  result is written.
             label (str, optional):
                 Name of the returned field
-            backend (str):
-                The backend (e.g., 'numba' or 'scipy') used for this operator.
 
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the Laplacian of the field
@@ -239,7 +237,7 @@ class ScalarField(DataFieldBase):
             label (str, optional):
                 Name of the returned field
             \**kwargs:
-                Additional arguments are forward to
+                Extra arguments are forwarded to
                 :meth:`~pde.fields.datafield_base.DataFieldBase.apply_operator`
 
         Returns:

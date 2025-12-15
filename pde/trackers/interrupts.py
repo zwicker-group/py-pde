@@ -103,13 +103,13 @@ class FixedInterrupts(InterruptsBase):
                 self._index += 1
                 t_next = self.interrupts[self._index]
 
-            self.dt = t_next - t_last
-
         except IndexError:
             # iterator has been exhausted -> never break again
             return math.inf
 
-        return t_next
+        else:
+            self.dt = t_next - t_last
+            return t_next
 
 
 class ConstantInterrupts(InterruptsBase):
@@ -387,3 +387,13 @@ def parse_interrupt(data: InterruptData) -> InterruptsBase:
     # anything else we cannot handle
     msg = f"Cannot parse interrupt data `{data}`"
     raise TypeError(msg)
+
+
+__all__ = [
+    "ConstantInterrupts",
+    "FixedInterrupts",
+    "GeometricInterrupts",
+    "LogarithmicInterrupts",
+    "RealtimeInterrupts",
+    "parse_interrupt",
+]

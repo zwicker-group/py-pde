@@ -12,6 +12,7 @@ import sympy
 from scipy import stats
 
 from pde import PDE, MemoryStorage, SwiftHohenbergPDE, grids
+from pde.backends import backends
 from pde.fields import FieldCollection, ScalarField, VectorField
 from pde.grids.boundaries.local import BCDataError
 
@@ -71,6 +72,7 @@ def test_pde_scalar(rng):
     np.testing.assert_allclose(res_a.data, res_b.data)
 
 
+@pytest.mark.slow
 def test_pde_vector(rng):
     """Test PDE with a single vector field."""
     eq = PDE({"u": "vector_laplace(u) + exp(-t)"})
@@ -150,7 +152,7 @@ def test_custom_operators(rng):
     field = ScalarField.random_normal(grid, rng=rng)
     eq = PDE({"u": "undefined(u)"})
 
-    with pytest.raises(ValueError):
+    with pytest.raises(NotImplementedError):
         eq.evolution_rate(field)
 
     def make_op(state):
@@ -159,13 +161,15 @@ def test_custom_operators(rng):
 
         return op
 
-    grids.UnitGrid.register_operator("undefined", make_op)
+    # register the function with the numba backend
+    backends["numba"].register_operator(grids.UnitGrid, "undefined", make_op)
 
-    eq._cache = {}  # reset cache
+    eq._cache = {}  # reset cache to force recompilation
     res = eq.evolution_rate(field)
     np.testing.assert_allclose(field.data, res.data)
 
-    del grids.UnitGrid._operators["undefined"]  # reset original state
+    # reset original state
+    del backends["numba"]._operators[grids.UnitGrid]["undefined"]
 
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
@@ -225,7 +229,7 @@ def test_pde_user_funcs(rng):
     np.testing.assert_allclose(
         rhs.data, field.gradient("auto_periodic_neumann").data[0]
     )
-    f = eq._make_pde_rhs_numba(field)
+    f = eq.make_pde_rhs_numba(field)
     np.testing.assert_allclose(
         f(field.data, 0), field.gradient("auto_periodic_neumann").data[0]
     )
@@ -368,7 +372,9 @@ def test_pde_integral(backend, rng):
 
     # test evolution
     for method in ["scipy", "explicit"]:
-        res = eq.solve(field, t_range=1000, solver=method, tracker=None)
+        res = eq.solve(
+            field, t_range=1000, solver=method, backend=backend, tracker=None
+        )
         assert res.integral == pytest.approx(0, abs=1e-2)
         np.testing.assert_allclose(res.data, field.data - field.magnitude, atol=1e-3)
 
