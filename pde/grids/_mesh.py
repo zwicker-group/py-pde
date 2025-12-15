@@ -103,7 +103,7 @@ def _subdivide(num: int, chunks: int) -> NumericArray:
     if chunks > num:
         msg = "Cannot divide in more chunks than support points"
         raise RuntimeError(msg)
-    return np.diff(np.linspace(0, num, chunks + 1).astype(int))  # type: ignore
+    return np.diff(np.linspace(0, num, chunks + 1).astype(int))
 
 
 def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> list[GridBase]:
@@ -247,7 +247,7 @@ class GridMesh:
             raise RuntimeError(msg)
 
         # subdivide the base grid according to the decomposition
-        subgrids: NumericArray = np.empty(decomposition, dtype=object)
+        subgrids = np.empty(decomposition, dtype=object)
         subgrids.flat[0] = grid.copy()  # seed the initial grid at the top-left
         idx_set: list[Any] = [0] * subgrids.ndim  # indices to extract all grids
         for axis, chunks in enumerate(decomposition):
@@ -265,16 +265,16 @@ class GridMesh:
     @property
     def num_axes(self) -> int:
         """int: the number of axes that the grids possess"""
-        return self.subgrids.ndim  # type: ignore
+        return self.subgrids.ndim
 
     @property
     def shape(self) -> tuple[int, ...]:
         """tuple: the number of subgrids along each axis"""
-        return self.subgrids.shape  # type: ignore
+        return self.subgrids.shape
 
     def __len__(self) -> int:
         """Total number of subgrids."""
-        return self.subgrids.size  # type: ignore
+        return self.subgrids.size
 
     @property
     def current_node(self) -> int:
@@ -465,7 +465,7 @@ class GridMesh:
         node_idx = self._id2idx(node_id)
         idx = self._get_data_indices_1d(with_ghost_cells)
         i = (..., *tuple(idx[n][j] for n, j in enumerate(node_idx)))
-        return field_data[i]
+        return field_data[i]  # type: ignore
 
     def extract_subfield(
         self,
@@ -601,7 +601,7 @@ class GridMesh:
 
         subfield_data = np.empty(shape, dtype=field_data.dtype)
         mpi_recv(subfield_data, 0, MPIFlags.field_split)
-        return subfield_data  # type: ignore
+        return subfield_data
 
     def split_field_mpi(self: GridMesh, field: TField) -> TField:
         """Split a field onto the subgrids by communicating data via MPI.

@@ -152,7 +152,7 @@ class Cuboid:
 
     @property
     def bounds(self) -> tuple[tuple[float, float], ...]:
-        return tuple((p, p + s) for p, s in zip(self.pos, self.size))
+        return tuple((p, p + s) for p, s in zip(self.pos, self.size, strict=False))
 
     @property
     def vertices(self) -> list[list[float]]:

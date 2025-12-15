@@ -27,7 +27,7 @@ import sys
 import time
 from datetime import timedelta
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any, Callable
+from typing import IO, TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -46,6 +46,8 @@ from .base import (
 from .interrupts import InterruptData, RealtimeInterrupts
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import pandas  # noqa: ICN001
 
     from ..fields.base import FieldBase
@@ -837,7 +839,7 @@ class SteadyStateTracker(TrackerBase):
         # calculate the maximal deviation of the evolution rate from zero, subtracting
         # the relative tolerance with respect to the field values
         rate_abs = np.abs(evolution_rate) - self.rtol * np.abs(field.data[finite])
-        rate_abs_max: NumericArray = np.max(rate_abs)
+        rate_abs_max: float = np.max(rate_abs)
 
         # check wether the simulation has converged
         if rate_abs_max <= self.atol:

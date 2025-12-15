@@ -13,7 +13,7 @@ import logging
 import math
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
 
@@ -23,7 +23,7 @@ from ..tools.misc import hybridmethod
 from .coordinates import CoordinatesBase, DimensionError
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Sequence
+    from collections.abc import Callable, Iterator, Sequence
 
     from numpy.typing import ArrayLike, NDArray
 
@@ -35,6 +35,7 @@ if TYPE_CHECKING:
         Number,
         NumberOrArray,
         NumericArray,
+        OperatorImplType,
         OperatorType,
     )
     from ._mesh import GridMesh
@@ -1124,7 +1125,7 @@ class GridBase(metaclass=ABCMeta):
         *,
         backend: str | BackendBase = "config",
         **kwargs,
-    ) -> OperatorType:
+    ) -> OperatorImplType:
         """Return a compiled function applying an operator without boundary conditions.
 
         A function that takes the discretized full data as an input and an array of
@@ -1167,7 +1168,7 @@ class GridBase(metaclass=ABCMeta):
         *,
         backend: str | BackendBase = "config",
         **kwargs,
-    ) -> Callable[..., NumericArray]:
+    ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
 
         Args:

@@ -6,13 +6,15 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 from .base import AdaptiveSolverBase, AdaptiveStepperType, _make_dt_adjuster
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..pdes.base import PDEBase
     from ..tools.math import OnlineStatistics
     from ..tools.typing import NumericArray, StepperHook, TField

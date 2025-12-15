@@ -17,7 +17,6 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -106,7 +105,6 @@ ignore = [
     "B027",  # allow empty methods
     "E402",  # allow Module level import not at top of file
     "PT011",  # allow broad exceptions
-    "PYI034",  # until python 3.11 is minimal version
     "RET504",  # cannot use this because of numba
     "RUF001",  # allow single greek letters
     "RUF002",  # allow using prime in docstrings

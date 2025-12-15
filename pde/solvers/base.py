@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import logging
 import warnings
+from collections.abc import Callable
 from inspect import isabstract
-from typing import TYPE_CHECKING, Any, Callable, Literal, Union
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -34,7 +35,7 @@ class ConvergenceError(RuntimeError):
 
 FixedStepperType = Callable[[NumericArray, float, int, Any], float]
 AdaptiveStepperType = Callable[
-    [NumericArray, float, float, float, Union[OnlineStatistics, None], Any],
+    [NumericArray, float, float, float, OnlineStatistics | None, Any],
     tuple[float, float, int],
 ]
 

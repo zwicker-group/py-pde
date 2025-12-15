@@ -13,7 +13,7 @@ import shlex
 import warnings
 from fractions import Fraction
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 from matplotlib.colors import Normalize
@@ -31,7 +31,7 @@ from .base import InfoDict, StorageBase, StorageTracker, WriteModeType
 if TYPE_CHECKING:
     import io
     import types
-    from collections.abc import Iterator, Sequence
+    from collections.abc import Callable, Iterator, Sequence
 
     from numpy.typing import ArrayLike
 
@@ -43,15 +43,15 @@ if TYPE_CHECKING:
 def _get_limits(value: float | ArrayLike, dim: int) -> NumericArray:
     """Helper function creating sequence of length `dim` from input."""
     if np.isscalar(value):
-        return np.full(dim, value, dtype=float)  # type: ignore
-    return np.asarray(value)[:dim].astype(float)  # type: ignore
+        return np.full(dim, value, dtype=float)
+    return np.asarray(value)[:dim].astype(float)
 
 
 def _import_ffmpeg() -> types.ModuleType:
     """Import `ffmpeg` package, warning when incorrect package is installed."""
     # try to figure out which `ffmpeg` package is installed
     try:
-        from importlib.metadata import packages_distributions  # type: ignore
+        from importlib.metadata import packages_distributions
 
     except ImportError:
         pass  # the packages_distributions function was only added in python 3.10
@@ -306,7 +306,7 @@ class MovieStorage(StorageBase):
         vmin = _get_limits(self.vmin, len(fields))
         vmax = _get_limits(self.vmax, len(fields))
         for f_id, f in enumerate(fields):
-            norm = Normalize(vmin[f_id], vmax[f_id], clip=True)  # type: ignore
+            norm = Normalize(vmin[f_id], vmax[f_id], clip=True)
             num = f.grid.dim**f.rank  # independent components in the field
             self._norms.extend([norm] * num)
 
@@ -471,7 +471,7 @@ class MovieStorage(StorageBase):
         frame_data = np.zeros(self._frame_shape, dtype=self._format.dtype)
         for i, norm in enumerate(self._norms):
             if not self._warned_normalization:
-                if np.any(data[i, ...] < norm.vmin) or np.any(data[i, ...] > norm.vmax):
+                if np.any(data[i, ...] < norm.vmin) or np.any(data[i, ...] > norm.vmax):  # type: ignore
                     self._logger.warning(
                         "Data outside range specified by `vmin=%g` and `vmax=%g`",
                         norm.vmin,
@@ -639,7 +639,7 @@ class MovieStorage(StorageBase):
 
     def items(self) -> Iterator[tuple[float, FieldBase]]:
         """Iterate over all times and stored fields, returning pairs."""
-        yield from zip(self.times, self)
+        yield from zip(self.times, self, strict=False)
 
     @fill_in_docstring
     def tracker(

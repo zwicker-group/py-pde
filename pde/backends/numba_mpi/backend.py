@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numba.extending import register_jitable
@@ -15,6 +15,8 @@ from ..numba.backend import NumbaBackend
 from ..numba.utils import jit
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...grids.base import GridBase
     from ...grids.boundaries.axis import BoundaryAxisBase
     from ...tools.typing import GhostCellSetter, NumberOrArray, NumericArray

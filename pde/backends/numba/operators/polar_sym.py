@@ -23,12 +23,12 @@ from .. import numba_backend
 from ..utils import jit
 
 if TYPE_CHECKING:
-    from ....tools.typing import NumericArray, OperatorType
+    from ....tools.typing import NumericArray, OperatorImplType
 
 
 @numba_backend.register_operator(PolarSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_laplace(grid: PolarSymGrid) -> OperatorType:
+def make_laplace(grid: PolarSymGrid) -> OperatorImplType:
     """Make a discretized laplace operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -62,7 +62,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorType:
 @fill_in_docstring
 def make_gradient(
     grid: PolarSymGrid, *, method: Literal["central", "forward", "backward"] = "central"
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a discretized gradient operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -108,7 +108,9 @@ def make_gradient(
     PolarSymGrid, "gradient_squared", rank_in=0, rank_out=0
 )
 @fill_in_docstring
-def make_gradient_squared(grid: PolarSymGrid, *, central: bool = True) -> OperatorType:
+def make_gradient_squared(
+    grid: PolarSymGrid, *, central: bool = True
+) -> OperatorImplType:
     """Make a discretized gradient squared operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -157,7 +159,7 @@ def make_gradient_squared(grid: PolarSymGrid, *, central: bool = True) -> Operat
 
 @numba_backend.register_operator(PolarSymGrid, "divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
-def make_divergence(grid: PolarSymGrid) -> OperatorType:
+def make_divergence(grid: PolarSymGrid) -> OperatorImplType:
     """Make a discretized divergence operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -190,7 +192,7 @@ def make_divergence(grid: PolarSymGrid) -> OperatorType:
 
 @numba_backend.register_operator(PolarSymGrid, "vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
-def make_vector_gradient(grid: PolarSymGrid) -> OperatorType:
+def make_vector_gradient(grid: PolarSymGrid) -> OperatorImplType:
     """Make a discretized vector gradient operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -231,7 +233,7 @@ def make_vector_gradient(grid: PolarSymGrid) -> OperatorType:
     PolarSymGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
 @fill_in_docstring
-def make_tensor_divergence(grid: PolarSymGrid) -> OperatorType:
+def make_tensor_divergence(grid: PolarSymGrid) -> OperatorImplType:
     """Make a discretized tensor divergence operator for a polar grid.
 
     {DESCR_POLAR_GRID}

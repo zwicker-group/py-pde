@@ -27,14 +27,14 @@ from .. import numba_backend
 from ..utils import jit
 
 if TYPE_CHECKING:
-    from ....tools.typing import NumericArray, OperatorType
+    from ....tools.typing import NumericArray, OperatorImplType
 
 
 @numba_backend.register_operator(SphericalSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(
     grid: SphericalSymGrid, *, conservative: bool | None = None
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a discretized laplace operator for a spherical grid.
 
     {DESCR_SPHERICAL_GRID}
@@ -99,7 +99,7 @@ def make_gradient(
     grid: SphericalSymGrid,
     *,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a discretized gradient operator for a spherical grid.
 
     {DESCR_SPHERICAL_GRID}
@@ -147,7 +147,7 @@ def make_gradient(
 @fill_in_docstring
 def make_gradient_squared(
     grid: SphericalSymGrid, *, central: bool = True
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a discretized gradient squared operator for a spherical grid.
 
     {DESCR_SPHERICAL_GRID}
@@ -202,7 +202,7 @@ def make_divergence(
     safe: bool | None = None,
     conservative: bool | None = None,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a discretized divergence operator for a spherical grid.
 
     {DESCR_SPHERICAL_GRID}
@@ -308,7 +308,7 @@ def make_vector_gradient(
     *,
     method: Literal["central", "forward", "backward"] = "central",
     safe: bool | None = None,
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a discretized vector gradient operator for a spherical grid.
 
     Warning:
@@ -392,7 +392,7 @@ def make_tensor_divergence(
     *,
     safe: bool | None = None,
     conservative: bool | None = False,
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a discretized tensor divergence operator for a spherical grid.
 
     {DESCR_SPHERICAL_GRID}
@@ -506,7 +506,7 @@ def make_tensor_double_divergence(
     *,
     safe: bool | None = None,
     conservative: bool | None = None,
-) -> OperatorType:
+) -> OperatorImplType:
     """Make a discretized tensor double divergence operator for a spherical grid.
 
     {DESCR_SPHERICAL_GRID}

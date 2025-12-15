@@ -23,7 +23,7 @@ import numbers
 import re
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import sympy
@@ -39,7 +39,7 @@ from .misc import number, number_array
 from .typing import Number, NumberOrArray, NumericArray
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Callable, Mapping, Sequence
 
     from ..grids.base import GridBase
     from ..grids.boundaries.axes import BoundariesData
@@ -497,7 +497,7 @@ class ScalarExpression(ExpressionBase):
 
         elif isinstance(expression, numbers.Number):
             # expression is a simple number
-            if np.iscomplex(expression):
+            if np.iscomplex(expression):  # type: ignore
                 sympy_expr = sympy.sympify(expression)
             else:
                 sympy_expr = sympy.Float(expression)

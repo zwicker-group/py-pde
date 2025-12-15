@@ -7,13 +7,15 @@ TODO: Implement this not as a separate solver but as a separate numba-mpi backen
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 from .explicit import EulerSolver
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..pdes.base import PDEBase
     from ..tools.typing import BackendType, TField
     from .base import AdaptiveStepperType, FixedStepperType

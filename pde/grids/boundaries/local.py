@@ -61,7 +61,7 @@ from __future__ import annotations
 import logging
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, Union
 
 import numpy as np
 from typing_extensions import Self
@@ -72,6 +72,8 @@ from ...tools.misc import number
 from ..base import GridBase, PeriodicityError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...tools.typing import (
         NumberOrArray,
         NumericArray,

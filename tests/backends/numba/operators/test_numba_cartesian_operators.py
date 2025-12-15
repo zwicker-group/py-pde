@@ -30,7 +30,7 @@ def _get_random_grid_bcs(ndim: int, dx="random", periodic="random", rank=0):
     if periodic == "random":
         periodic = random.choice([True, False])
 
-    sizes = [(0, float(s * d)) for s, d in zip(shape, dx)]
+    sizes = [(0, float(s * d)) for s, d in zip(shape, dx, strict=False)]
     grid = CartesianGrid(sizes, shape, periodic=periodic)
     return grid.get_boundary_conditions("auto_periodic_neumann", rank=rank)
 

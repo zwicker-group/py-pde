@@ -9,7 +9,7 @@ import logging
 import math
 import os
 from numbers import Number
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import numba as nb
 import numpy as np
@@ -31,6 +31,8 @@ from ...tools.misc import number
 from .utils import address_as_void_pointer, jit, make_get_arr_1d, numba_dict
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...tools.typing import (
         NumberOrArray,
         NumericArray,

@@ -10,7 +10,7 @@ import logging
 import warnings
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import numpy as np
 from typing_extensions import Self
@@ -18,6 +18,8 @@ from typing_extensions import Self
 from ..tools.plotting import napari_add_layers, napari_viewer
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from numpy.typing import DTypeLike
 
     from ..grids.base import GridBase

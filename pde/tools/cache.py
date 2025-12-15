@@ -22,14 +22,14 @@ import functools
 import logging
 import numbers
 from hashlib import sha1
-from typing import TYPE_CHECKING, Callable, Literal, TypeVar
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 import numpy as np
 from scipy import sparse
 from typing_extensions import Self
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
 TFunc = TypeVar("TFunc", bound="Callable")
 
@@ -61,7 +61,7 @@ def objects_equal(a, b) -> bool:
     if isinstance(a, (tuple, list)):
         if a.__class__ != b.__class__ or len(a) != len(b):
             return False
-        return all(objects_equal(x, y) for x, y in zip(a, b))
+        return all(objects_equal(x, y) for x, y in zip(a, b, strict=False))
 
     if isinstance(a, sparse.csr_matrix) and isinstance(b, sparse.csr_matrix):
         return a.shape == b.shape and (a != b).nnz == 0  # type: ignore

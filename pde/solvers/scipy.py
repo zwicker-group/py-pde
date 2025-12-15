@@ -5,13 +5,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 from .base import SolverBase
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..pdes.base import PDEBase
     from ..tools.typing import BackendType, NumericArray, TField
 

@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 import os
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import numba as nb
 import numpy as np
@@ -34,6 +34,8 @@ from ...tools.misc import decorator_arguments
 from ...tools.typing import NumericArray
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...tools.typing import Number
 
 
@@ -264,7 +266,7 @@ def flat_idx(arr: NumericArray, i: int) -> Number:
     """
     if np.isscalar(arr):
         return arr  # type: ignore
-    return arr.flat[i]
+    return arr.flat[i]  # type: ignore
 
 
 @overload(flat_idx)

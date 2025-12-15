@@ -10,7 +10,7 @@ import json
 import warnings
 from abc import ABCMeta, abstractmethod
 from inspect import isabstract
-from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import numpy as np
 from typing_extensions import Self
@@ -24,6 +24,8 @@ from ..tools.spectral import CorrelationType, make_correlated_noise
 from .base import FieldBase, RankError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from numpy.typing import DTypeLike
 
     from ..grids.boundaries.axes import BoundariesData
@@ -306,7 +308,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 print(out.shape, tensor_shape, grid)
                 for idx in np.ndindex(tensor_shape):
                     out[idx] = make_scalar_field()
-                return out  # type: ignore
+                return out
 
         # create random fields with correct mean and standard deviation
         if scaling == "none":

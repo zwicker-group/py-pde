@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import numbers
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -16,7 +16,7 @@ from ..tools.docstrings import fill_in_docstring
 from .datafield_base import DataFieldBase
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
     from pathlib import Path
 
     from numpy.typing import DTypeLike

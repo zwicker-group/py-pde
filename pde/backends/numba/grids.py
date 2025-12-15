@@ -13,7 +13,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numba.extending import register_jitable
@@ -22,6 +22,8 @@ from ...grids import DomainError, GridBase
 from .utils import jit
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...tools.typing import (
         CellVolume,
         FloatingArray,
@@ -64,7 +66,7 @@ def make_cell_volume_getter(grid: GridBase, *, flat_index: bool = False) -> Cell
         np.isscalar(d) for d in grid.cell_volume_data
     ):
         # all cells have the same volume
-        cell_volume = np.prod(grid.cell_volume_data)
+        cell_volume = np.prod(grid.cell_volume_data)  # type: ignore
 
         @jit
         def get_cell_volume(*args) -> float:
@@ -241,7 +243,7 @@ def make_single_interpolator(
                 return fill
 
             # do the linear interpolation
-            return w_l * data[..., c_li] + w_h * data[..., c_hi]  # type: ignore
+            return w_l * data[..., c_li] + w_h * data[..., c_hi]
 
     elif grid.num_axes == 2:
         # specialize for 2-dimensional interpolation
@@ -275,7 +277,7 @@ def make_single_interpolator(
                 return fill
 
             # do the linear interpolation
-            return (  # type: ignore
+            return (
                 w_xl * w_yl * data[..., c_xli, c_yli]
                 + w_xl * w_yh * data[..., c_xli, c_yhi]
                 + w_xh * w_yl * data[..., c_xhi, c_yli]
@@ -316,7 +318,7 @@ def make_single_interpolator(
                 return fill
 
             # do the linear interpolation
-            return (  # type: ignore
+            return (
                 w_xl * w_yl * w_zl * data[..., c_xli, c_yli, c_zli]
                 + w_xl * w_yl * w_zh * data[..., c_xli, c_yli, c_zhi]
                 + w_xl * w_yh * w_zl * data[..., c_xli, c_yhi, c_zli]

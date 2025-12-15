@@ -14,8 +14,9 @@ from __future__ import annotations
 
 import re
 import textwrap
+from collections.abc import Callable
 from functools import partial
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 DOCSTRING_REPLACEMENTS = {
     # description of function arguments

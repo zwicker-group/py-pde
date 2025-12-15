@@ -39,9 +39,9 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
     if dim == 1:
         return 2 * radius
     if dim == 2:
-        return np.pi * radius**2  # type: ignore
+        return np.pi * radius**2
     if dim == 3:
-        return 4 / 3 * np.pi * radius**3  # type: ignore
+        return 4 / 3 * np.pi * radius**3
     msg = f"Cannot calculate the volume in {dim} dimensions"
     raise NotImplementedError(msg)
 
@@ -236,7 +236,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             return self.transform(r, "grid", "cell")
 
         if coords == "grid":
-            return r  # type: ignore
+            return r
 
         msg = f"Unknown coordinate system `{coords}`"
         raise ValueError(msg)
