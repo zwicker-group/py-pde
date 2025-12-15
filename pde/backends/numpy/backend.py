@@ -473,8 +473,6 @@ class NumpyBackend(BackendBase):
         if constants:
             const_values = tuple(expression.consts[c] for c in constants)
 
-            # TODO: support keyword arguments
-
             def result(*args):
                 return func(*args, *const_values)
 

@@ -210,7 +210,6 @@ def make_single_interpolator(
         function is (data, point), where `data` is the numpy array containing the
         field data and position denotes the position in grid coordinates.
     """
-    # TODO: add caching?
     args = {"with_ghost_cells": with_ghost_cells, "cell_coords": cell_coords}
 
     if grid.num_axes == 1:

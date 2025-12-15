@@ -1290,8 +1290,6 @@ class NumbaBackend(NumpyBackend):
 
             func = register_jitable(func)
 
-            # TODO: support keyword arguments
-
             def result(*args):
                 return func(*args, *const_values)
 
@@ -1323,8 +1321,8 @@ class NumbaBackend(NumpyBackend):
         shape = expression._sympy_expr.shape
 
         lines = [
-            f"    out[{str((*idx, ...))[1:-1]}] = {expression._sympy_expr[idx]}"
-            for idx in np.ndindex(*expression._sympy_expr.shape)
+            f"    out[{str((*idx, ...))[1:-1]}] = {expr}"
+            for idx, expr in np.ndenumerate(expression._sympy_expr)
         ]
         # TODO: replace the np.ndindex with np.ndenumerate eventually. This does not
         # work with numpy 1.18, so we have the work around using np.ndindex
