@@ -157,7 +157,7 @@ class PDE(SDEBase):
             noise_arr: ArrayLike = [noise.get(var, 0) for var in rhs]
         else:
             noise_arr = noise
-        if hasattr(noise, "__iter__") and len(noise) != len(rhs):  # type: ignore
+        if hasattr(noise_arr, "__iter__") and len(noise_arr) != len(rhs):  # type: ignore
             msg = "Number of noise strengths does not match field count"
             raise ValueError(msg)
 
