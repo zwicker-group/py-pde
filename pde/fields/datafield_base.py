@@ -760,7 +760,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @fill_in_docstring
     def get_boundary_values(
-        self, axis: int, upper: bool, bc: BoundariesData | None = None
+        self, axis: int, upper: bool, bc: BoundariesData | None
     ) -> NumberOrArray:
         """Get the field values directly on the specified boundary.
 
@@ -770,7 +770,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             upper (bool):
                 Whether the boundary is at the upper side of the axis
             bc:
-                The boundary conditions applied to the field.
+                The boundary conditions applied to the field. If this is `None`, it is
+                assumed that boundary conditions have been set beforehand, e.g., using
+                :meth:`set_ghost_cells`.
                 {ARG_BOUNDARIES_OPTIONAL}
 
         Returns:
