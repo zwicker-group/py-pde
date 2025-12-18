@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import inspect
 import logging
-from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Literal, TypeVar
@@ -174,7 +173,6 @@ class BackendBase:
         )
         raise NotImplementedError(msg)
 
-    @abstractmethod
     def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
 
@@ -243,6 +241,8 @@ class BackendBase:
         """Return a compiled function applying an operator with boundary conditions.
 
         Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the operator is needed
             operator (str):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained

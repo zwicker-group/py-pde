@@ -47,12 +47,7 @@ def module_available(module_name: str) -> bool:
     Returns:
         `True` if the module can be imported and `False` otherwise
     """
-    try:
-        importlib.import_module(module_name)
-    except ImportError:
-        return False
-    else:
-        return True
+    return importlib.util.find_spec(module_name) is not None
 
 
 def ensure_directory_exists(folder: str | Path):

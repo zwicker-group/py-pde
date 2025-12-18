@@ -55,10 +55,10 @@ class NumbaBackend(NumpyBackend):
         return jit(func)  # type: ignore
 
     def get_registered_operators(self, grid_id: GridBase | type[GridBase]) -> set[str]:
-        """Returns all operators defined for a grid.
+        """Returns all operators defined for a backend.
 
         Args:
-            grid (:class:`~pde.grid.base.GridBase` or its type):
+            grid_id (:class:`~pde.grid.base.GridBase` or its type):
                 Grid for which the operator need to be returned
         """
         operators = super().get_registered_operators(grid_id)
@@ -77,7 +77,7 @@ class NumbaBackend(NumpyBackend):
     def get_operator_info(
         self, grid: GridBase, operator: str | OperatorInfo
     ) -> OperatorInfo:
-        """Return the operator defined on this grid.
+        """Return the operator defined for this backend.
 
         Args:
             grid (:class:`~pde.grid.base.GridBase`):
@@ -286,17 +286,12 @@ class NumbaBackend(NumpyBackend):
             information in `args` (e.g., the time `t` during solving a PDE)
         """
         # get the functions that handle the data
-        # ghost_cell_sender_low = make_local_ghost_cell_sender(bc_axis.low)
-        # ghost_cell_sender_high = make_local_ghost_cell_sender(bc_axis.high)
         ghost_cell_setter_low = self._make_local_ghost_cell_setter(bc_axis.low)
         ghost_cell_setter_high = self._make_local_ghost_cell_setter(bc_axis.high)
 
         @register_jitable
         def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
             """Helper function setting the conditions on all axes."""
-            # send boundary information to other nodes if using MPI
-            # ghost_cell_sender_low(data_full, args=args)
-            # ghost_cell_sender_high(data_full, args=args)
             # set the actual ghost cells
             ghost_cell_setter_high(data_full, args=args)
             ghost_cell_setter_low(data_full, args=args)
@@ -360,7 +355,7 @@ class NumbaBackend(NumpyBackend):
             return chain(ghost_cell_setters)
 
         if isinstance(boundaries, BoundariesSetter):
-            return jit(boundaries._setter)  # type: ignore
+            return self.compile_function(boundaries._setter)
 
         msg = "Cannot handle boundaries {boundaries.__class__}"
         raise NotImplementedError(msg)
@@ -442,6 +437,8 @@ class NumbaBackend(NumpyBackend):
         """Return a compiled function applying an operator with boundary conditions.
 
         Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the operator is needed
             operator (str):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained
