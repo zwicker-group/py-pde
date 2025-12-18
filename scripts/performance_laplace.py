@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""This script tests the performance of the implementation of the laplace operator as a
+"""This script tests the performance of the implementation of the Laplace operator as a
 primary example for the differential operators supplied by `py-pde`."""
 
 import sys
@@ -17,9 +17,55 @@ from pde.tools.misc import estimate_computation_speed
 
 config["numba.multithreading"] = "never"  # disable multithreading for better comparison
 
+import torch
 
-def custom_laplace_2d_periodic(shape, dx=1):
-    """Make laplace operator with periodic boundary conditions."""
+
+class CartesianLaplacian(torch.nn.Module):
+    def __init__(self, shape, dx, periodic=True):
+        super().__init__()
+        self.scale = dx**-2
+        self.periodic = periodic
+
+    def forward(self, arr: torch.Tensor) -> torch.Tensor:
+        if self.periodic:
+            arr_x = torch.cat([arr[-1:, :], arr, arr[:1, :]], dim=0)
+        else:
+            arr_x = torch.cat([arr[:1, :], arr, arr[-1:, :]], dim=0)
+        lap_x = (arr_x[:-2, :] - 2 * arr_x[1:-1, :] + arr_x[2:, :]) * self.scale
+
+        if self.periodic:
+            arr_y = torch.cat([arr[:, -1:], arr, arr[:, :1]], dim=1)
+        else:
+            arr_y = torch.cat([arr[:, :1], arr, arr[:, -1:]], dim=1)
+        lap_y = (arr_y[:, :-2] - 2 * arr_y[:, 1:-1] + arr_y[:, 2:]) * self.scale
+        return lap_x + lap_y  # type: ignore
+
+
+def pytorch_2d_periodic(field, periodic, dx=1):
+    """Make pytorch-compiled Laplace operator."""
+
+    compile_options = {
+        "fullgraph": True,
+        "dynamic": False,
+        "options": {"epilogue_fusion": True, "max_autotune": True},
+    }
+
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+
+    torch_field = torch.from_numpy(field)
+    torch_field.to(device)
+
+    laplace = CartesianLaplacian(field.shape, dx, periodic=periodic)
+    laplace = torch.compile(laplace, **compile_options)
+    laplace.to(device)
+    return laplace, torch_field
+
+
+def _numba_laplace_2d_periodic(shape, dx=1):
+    """Make numba-compiled Laplace operator with periodic boundary conditions."""
     dx_2 = 1 / dx**2
     dim_x, dim_y = shape
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
@@ -56,15 +102,15 @@ def custom_laplace_2d_periodic(shape, dx=1):
     return laplace
 
 
-def custom_laplace_2d_neumann(shape, dx=1):
-    """Make laplace operator with Neumann boundary conditions."""
+def _numba_laplace_2d_neumann(shape, dx=1):
+    """Make numba-compiled Laplace operator with Neumann boundary conditions."""
     dx_2 = 1 / dx**2
     dim_x, dim_y = shape
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     @nb.jit(parallel=parallel)
     def laplace(arr, out=None):
-        """Apply laplace operator to array `arr`"""
+        """Apply Laplace operator to array `arr`"""
         if out is None:
             out = np.empty((dim_x, dim_y))
 
@@ -83,15 +129,16 @@ def custom_laplace_2d_neumann(shape, dx=1):
     return laplace
 
 
-def custom_laplace_2d(shape, periodic, dx=1):
-    """Make laplace operator with Neumann or periodic boundary conditions."""
+def numba_laplace_2d(shape, periodic, dx=1):
+    """Make numba-compiled Laplace operator with Neumann or periodic boundary
+    conditions."""
     if periodic:
-        return custom_laplace_2d_periodic(shape, dx=dx)
-    return custom_laplace_2d_neumann(shape, dx=dx)
+        return _numba_laplace_2d_periodic(shape, dx=dx)
+    return _numba_laplace_2d_neumann(shape, dx=dx)
 
 
 def optimized_laplace_2d(bcs):
-    """Make an optimized laplace operator.
+    """Make an optimized Laplace operator.
 
     The main optimization is that we expect the input to be a full array containing
     virtual boundary points. This avoids memory allocation and a copy of the data.
@@ -104,7 +151,7 @@ def optimized_laplace_2d(bcs):
 
     @nb.jit
     def laplace(arr):
-        """Apply laplace operator to array `arr`"""
+        """Apply Laplace operator to array `arr`"""
         set_ghost_cells(arr)
         out = np.empty(shape)
         apply_laplace(arr, out)
@@ -113,15 +160,15 @@ def optimized_laplace_2d(bcs):
     return laplace
 
 
-def custom_laplace_cyl_neumann(shape, dr=1, dz=1):
-    """Make laplace operator with Neumann boundary conditions."""
+def numba_laplace_cyl_neumann(shape, dr=1, dz=1):
+    """Make Laplace operator with Neumann boundary conditions."""
     dim_r, dim_z = shape
     dr_2 = 1 / dr**2
     dz_2 = 1 / dz**2
 
     @nb.jit
     def laplace(arr, out=None):
-        """Apply laplace operator to array `arr`"""
+        """Apply Laplace operator to array `arr`"""
         if out is None:
             out = np.empty((dim_r, dim_z))
 
@@ -170,21 +217,27 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
     bcs = grid.get_boundary_conditions("auto_periodic_neumann", rank=0)
     expected = field.laplace("auto_periodic_neumann")
 
-    for method in ["CUSTOM", "OPTIMIZED", "9POINT", "numba", "scipy"]:
+    for method in ["torch", "CUSTOM", "OPTIMIZED", "9POINT", "numba", "scipy"]:
         if method == "CUSTOM":
-            laplace = custom_laplace_2d(shape, periodic=periodic)
+            laplace = numba_laplace_2d(shape, periodic=periodic)
         elif method == "OPTIMIZED":
             laplace = optimized_laplace_2d(bcs)
         elif method == "9POINT":
             laplace = grid.make_operator("laplace", bc=bcs, corner_weight=1 / 3)
         elif method in {"numba", "scipy"}:
             laplace = grid.make_operator("laplace", bc=bcs, backend=method)
+        elif method == "torch":
+            laplace, field_data = pytorch_2d_periodic(field.data, periodic=periodic)
         else:
             msg = f"Unknown method `{method}`"
             raise ValueError(msg)
 
         # call once to pre-compile and test result
-        if method == "OPTIMIZED":
+        if method.startswith("torch"):
+            result = laplace(field_data)
+            np.testing.assert_allclose(result, expected.data, rtol=1e-5, atol=1e-6)
+            speed = estimate_computation_speed(laplace, field_data)
+        elif method == "OPTIMIZED":
             result = laplace(field._data_full)
             np.testing.assert_allclose(result, expected.data)
             speed = estimate_computation_speed(laplace, field._data_full)
@@ -211,7 +264,7 @@ def test_cylindrical(shape: tuple[int, int]) -> None:
 
     for method in ["CUSTOM", "numba"]:
         if method == "CUSTOM":
-            laplace = custom_laplace_cyl_neumann(shape)
+            laplace = numba_laplace_cyl_neumann(shape)
         elif method == "numba":
             laplace = grid.make_operator("laplace", bc=bcs)
         else:
@@ -251,7 +304,7 @@ def main():
     print("  The `OPTIMIZED` uses some infrastructure form the py-pde package.")
     print("  The other methods use the functions supplied by the package.\n")
 
-    for shape in [(32, 32), (512, 512)]:
+    for shape in [(64, 64), (1024, 1024)]:
         for periodic in [True, False]:
             test_cartesian(shape, periodic)
 
