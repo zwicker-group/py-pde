@@ -18,7 +18,8 @@ from ...grids import DimensionError, DomainError, GridBase
 from ...grids.boundaries.axes import BoundariesBase, BoundariesList, BoundariesSetter
 from ...grids.boundaries.local import BCBase, UserBC
 from ...solvers import AdaptiveSolverBase, SolverBase
-from ..numpy.backend import NumpyBackend, OperatorInfo
+from ...tools.typing import OperatorInfo
+from ..numpy.backend import NumpyBackend
 from . import grids
 from .overloads import OnlineStatistics
 from .utils import get_common_numba_dtype, jit, make_array_constructor

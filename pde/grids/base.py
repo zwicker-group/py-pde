@@ -1156,8 +1156,7 @@ class GridBase(metaclass=ABCMeta):
         from ..backends import backends
 
         # determine the operator for the chosen backend
-        operator_info = backends[backend].get_operator_info(self, operator)
-        return operator_info.factory(self, **kwargs)
+        return backends[backend].make_operator_no_bc(self, operator, **kwargs)
 
     @cached_method()
     @fill_in_docstring

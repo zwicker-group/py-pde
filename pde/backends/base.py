@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from ..pdes.base import PDEBase
     from ..solvers.base import SolverBase
     from ..tools.expressions import ExpressionBase
+    from ..tools.typing import OperatorImplType
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
@@ -230,6 +231,43 @@ class BackendBase:
         """
         msg = f"Integrator not defined for backend {self.name}"
         raise NotImplementedError(msg)
+
+    def make_operator_no_bc(
+        self,
+        grid: GridBase,
+        operator: str | OperatorInfo,
+        **kwargs,
+    ) -> OperatorImplType:
+        """Return a compiled function applying an operator without boundary conditions.
+
+        A function that takes the discretized full data as an input and an array of
+        valid data points to which the result of applying the operator is written.
+
+        Note:
+            The resulting function does not check whether the ghost cells of the input
+            array have been supplied with sensible values. It is the responsibility of
+            the user to set the values of the ghost cells beforehand. Use this function
+            only if you absolutely know what you're doing. In all other cases,
+            :meth:`make_operator` is probably the better choice.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the operator is needed
+            operator (str):
+                Identifier for the operator. Some examples are 'laplace', 'gradient', or
+                'divergence'. The registered operators for this grid can be obtained
+                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            **kwargs:
+                Specifies extra arguments influencing how the operator is created.
+
+        Returns:
+            callable: the function that applies the operator. This function has the
+            signature (arr: NumericArray, out: NumericArray), so they `out` array need
+            to be supplied explicitly.
+        """
+        # determine the operator for the chosen backend
+        operator_info = self.get_operator_info(grid, operator)
+        return operator_info.factory(grid, **kwargs)
 
     def make_operator(
         self,

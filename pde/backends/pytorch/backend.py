@@ -13,14 +13,11 @@ import torch
 from ...grids import GridBase
 from ...grids.boundaries.axes import BoundariesBase
 from ..base import BackendBase, OperatorInfo, TFunc
-from .utils import NUMPY_TO_TORCH_DTYPE
+from .utils import AnyDType, get_torch_dtype
 
 if TYPE_CHECKING:
     from ...grids import BoundariesBase, GridBase
-    from ...tools.typing import (
-        NumericArray,
-        OperatorType,
-    )
+    from ...tools.typing import NumericArray, OperatorImplType, OperatorType
     from ..base import TFunc
     from ..numpy.backend import OperatorInfo
     from .utils import TorchOperatorType
@@ -55,8 +52,8 @@ class PytorchBackend(BackendBase):
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
-        bcs: BoundariesBase,
-        dtype=np.double,
+        bcs: BoundariesBase | None,
+        dtype: AnyDType = np.double,
         **kwargs,
     ) -> TorchOperatorType:
         """Return a torch function applying an operator with boundary conditions.
@@ -93,8 +90,51 @@ class PytorchBackend(BackendBase):
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
-        bcs = grid.get_boundary_conditions(bcs, rank=operator_info.rank_in)
-        return operator_info.factory(bcs, dtype=NUMPY_TO_TORCH_DTYPE[dtype], **kwargs)  # type: ignore
+        if bcs is not None:
+            bcs = grid.get_boundary_conditions(bcs, rank=operator_info.rank_in)
+        return operator_info.factory(grid, bcs, dtype=get_torch_dtype(dtype), **kwargs)  # type: ignore
+
+    def make_operator_no_bc(
+        self,
+        grid: GridBase,
+        operator: str | OperatorInfo,
+        **kwargs,
+    ) -> OperatorImplType:
+        """Return a compiled function applying an operator without boundary conditions.
+
+        A function that takes the discretized full data as an input and an array of
+        valid data points to which the result of applying the operator is written.
+
+        Note:
+            The resulting function does not check whether the ghost cells of the input
+            array have been supplied with sensible values. It is the responsibility of
+            the user to set the values of the ghost cells beforehand. Use this function
+            only if you absolutely know what you're doing. In all other cases,
+            :meth:`make_operator` is probably the better choice.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the operator is needed
+            operator (str):
+                Identifier for the operator. Some examples are 'laplace', 'gradient', or
+                'divergence'. The registered operators for this grid can be obtained
+                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            **kwargs:
+                Specifies extra arguments influencing how the operator is created.
+
+        Returns:
+            callable: the function that applies the operator. This function has the
+            signature (arr: NumericArray, out: NumericArray), so they `out` array need
+            to be supplied explicitly.
+        """
+        # determine the operator for the chosen backend
+        torch_operator = self.make_torch_operator(grid, operator, bcs=None)
+
+        def operator_no_bc(data_full: np.ndarray, out: np.ndarray) -> None:
+            data_full_torch = torch.from_numpy(data_full)
+            out[...] = torch_operator(data_full_torch)
+
+        return operator_no_bc
 
     def make_operator(
         self,

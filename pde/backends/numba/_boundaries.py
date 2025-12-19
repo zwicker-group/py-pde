@@ -44,7 +44,7 @@ _logger = logging.getLogger(__name__)
 
 
 def make_virtual_point_evaluator(bc: BCBase) -> VirtualPointEvaluator:
-    """Return function that sets evaluates the value of a virtual point.
+    """Return function that evaluates the value of a virtual point.
 
     Args:
         bc (:class:`~pde.grids.boundaries.local.BCBase`):
@@ -71,7 +71,7 @@ def make_virtual_point_evaluator(bc: BCBase) -> VirtualPointEvaluator:
 
 
 def _make_user_virtual_point_evaluator(bc: UserBC) -> VirtualPointEvaluator:
-    """Return function that sets evaluates the value of a virtual point.
+    """Return function that evaluates the value of a virtual point.
 
     Args:
         bc (:class:`~pde.grids.boundaries.local.UserBC`):
@@ -295,7 +295,7 @@ def _make_expression_function_from_expression(bc: ExpressionBC) -> Callable:
 
 
 def _make_expression_virtual_point_evaluator(bc: ExpressionBC) -> VirtualPointEvaluator:
-    """Return function that sets evaluates the value of a virtual point.
+    """Return function that evaluates the value of a virtual point.
 
     Args:
         bc (:class:`~pde.grids.boundaries.local.ExpressionBC`):
@@ -548,7 +548,7 @@ def _get_virtual_point_data_1storder(bc: ConstBC1stOrderBase):
 def _make_const1storder_virtual_point_evaluator(
     bc: ConstBC1stOrderBase,
 ) -> VirtualPointEvaluator:
-    """Return function that sets evaluates the value of a virtual point.
+    """Return function that evaluates the value of a virtual point.
 
     Args:
         bc (:class:`~pde.grids.boundaries.local.ConstBC1stOrderBase`):
@@ -629,7 +629,7 @@ def _get_virtual_point_data_2ndorder(bc: ConstBC2ndOrderBase):
 def _make_const2ndorder_virtual_point_evaluator(
     bc: ConstBC2ndOrderBase,
 ) -> VirtualPointEvaluator:
-    """Return function that sets evaluates the value of a virtual point.
+    """Return function that evaluates the value of a virtual point.
 
     Args:
         bc (:class:`~pde.grids.boundaries.local.ConstBC2ndOrderBase`):

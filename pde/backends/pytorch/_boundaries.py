@@ -6,9 +6,9 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 import numpy as np
+import torch
 from torch import Tensor
 
 from ...grids.boundaries.local import (
@@ -20,17 +20,105 @@ from ...grids.boundaries.local import (
     _PeriodicBC,
 )
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from ...tools.typing import NumberOrArray
-
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger instance."""
 
 
-def make_virtual_point_evaluator(bc: BCBase):
-    """Return function that sets evaluates the value of a virtual point.
+class TorchConstBC1stOrderBoundary(torch.nn.Module):
+    """Base class for local boundaries implemented in pytorch."""
+
+    const: Tensor
+    factor: Tensor
+
+    def __init__(self, bc: ConstBC1stOrderBase):
+        super().__init__()
+        self.bc = bc
+        if bc.value_is_linked:
+            raise NotImplementedError
+
+        self.i_write = -1 if self.bc.upper else 0
+        self.get_virtual_point_data_1storder()
+
+    def get_virtual_point_data_1storder(self):
+        """Get the values relevant to calculate the boundary condition."""
+        # determine indices into full data array for the data cell near the boundary
+        i_lower = 1  # data near lower boundary
+        i_upper = self.bc.grid.shape[self.bc.axis]  # data near upper boundary
+
+        if isinstance(self.bc, _PeriodicBC):
+            self.i_read = i_lower if self.bc.upper else i_upper
+            const = 0
+            factor = -1 if self.bc.flip_sign else 1
+
+        elif isinstance(self.bc, DirichletBC):
+            self.i_read = i_upper if self.bc.upper else i_lower
+            const = 2 * self.bc.value
+            factor = np.full_like(const, -1)
+
+        elif isinstance(self.bc, NeumannBC):
+            dx = self.bc.grid.discretization[self.bc.axis]
+            self.i_read = i_upper if self.bc.upper else i_lower
+            const = dx * self.bc.value
+            factor = np.ones_like(const)
+
+        elif isinstance(self.bc, MixedBC):
+            dx = self.bc.grid.discretization[self.bc.axis]
+            with np.errstate(invalid="ignore"):
+                const = np.asarray(2 * dx * self.bc.const / (2 + dx * self.bc.value))
+                factor = np.asarray((2 - dx * self.bc.value) / (2 + dx * self.bc.value))
+
+            # correct at places of infinite values
+            const[~np.isfinite(factor)] = 0
+            factor[~np.isfinite(factor)] = -1
+
+            self.i_read = i_upper if self.bc.upper else i_lower
+            const = np.array(const)
+            factor = np.array(factor)
+
+        else:
+            msg = f"Unsupported BC {self.bc}"
+            raise TypeError(msg)
+
+        # make the data available in the kernel
+        self.register_buffer("const", torch.from_numpy(np.asarray(const)))
+        self.register_buffer("factor", torch.from_numpy(np.asarray(factor)))
+
+    def forward(self, data_full: Tensor) -> Tensor:
+        """Set the virtual points at the boundary."""
+        num_axes = self.bc.grid.num_axes
+        normal = self.bc.normal
+        axis = self.bc.axis
+
+        # set local boundary conditions at the right place
+        if num_axes == 1:
+            if normal:
+                val_field = data_full[..., axis, self.i_read]
+            else:
+                val_field = data_full[..., self.i_read]
+            data_full[..., self.i_write] = self.const + self.factor * val_field
+
+        elif num_axes == 2:
+            if axis == 0:
+                if normal:
+                    val_field = data_full[..., axis, self.i_read, :]
+                else:
+                    val_field = data_full[..., self.i_read, :]
+                data_full[..., self.i_write, :] = self.const + self.factor * val_field
+
+            elif axis == 1:
+                if normal:
+                    val_field = data_full[..., axis, :, self.i_read]
+                else:
+                    val_field = data_full[..., :, self.i_read]
+                data_full[..., :, self.i_write] = self.const + self.factor * val_field
+
+        else:
+            raise NotImplementedError
+        return data_full
+
+
+def make_local_ghost_cell_setter(bc: BCBase):
+    """Return function that sets virtual points for a local BC.
 
     Args:
         bc (:class:`~pde.grids.boundaries.local.BCBase`):
@@ -38,247 +126,13 @@ def make_virtual_point_evaluator(bc: BCBase):
             should be defined.
 
     Returns:
-        function: A function that takes the data array and an index marking the current
-        point, which is assumed to be a virtual point. The result is the data value at
-        this point, which is calculated using the boundary condition.
+        function: A function that takes the full data array
     """
     # if isinstance(bc, UserBC):
     #     return _make_user_virtual_point_evaluator(bc)
     # if isinstance(bc, ConstBC2ndOrderBase):
     #     return _make_const2ndorder_virtual_point_evaluator(bc)
     if isinstance(bc, ConstBC1stOrderBase):
-        return _make_const1storder_virtual_point_evaluator(bc)
+        return TorchConstBC1stOrderBoundary(bc)
     msg = f"Cannot handle local boundary {bc.__class__}"
     raise NotImplementedError(msg)
-
-
-def make_get_arr_1d(
-    dim: int, axis: int
-) -> Callable[[Tensor, tuple[int, ...]], tuple[Tensor, int, tuple]]:
-    """Create function that extracts a 1d array at a given position.
-
-    Args:
-        dim (int):
-            The dimension of the space, i.e., the number of axes in the supplied array
-        axis (int):
-            The axis that is returned as the 1d array
-
-    Returns:
-        function: A numba compiled function that takes the full array `arr` and
-        an index `idx` (a tuple of `dim` integers) specifying the point where
-        the 1d array is extract. The function returns a tuple (arr_1d, i, bc_i),
-        where `arr_1d` is the 1d array, `i` is the index `i` into this array
-        marking the current point and `bc_i` are the remaining components of
-        `idx`, which locate the point in the orthogonal directions.
-        Consequently, `i = idx[axis]` and `arr[..., idx] == arr_1d[..., i]`.
-    """
-    assert 0 <= axis < dim
-    ResultType = tuple[Tensor, int, tuple]
-
-    # extract the correct indices
-    if dim == 1:
-
-        def get_arr_1d(arr: Tensor, idx: tuple[int, ...]) -> ResultType:
-            """Extract the 1d array along axis at point idx."""
-            i = idx[0]
-            bc_idx: tuple = (...,)
-            arr_1d = arr
-            return arr_1d, i, bc_idx
-
-    elif dim == 2:
-        if axis == 0:
-
-            def get_arr_1d(arr: Tensor, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                i, y = idx
-                bc_idx = (..., y)
-                arr_1d = arr[..., :, y]
-                return arr_1d, i, bc_idx
-
-        elif axis == 1:
-
-            def get_arr_1d(arr: Tensor, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                x, i = idx
-                bc_idx = (..., x)
-                arr_1d = arr[..., x, :]
-                return arr_1d, i, bc_idx
-
-    elif dim == 3:
-        if axis == 0:
-
-            def get_arr_1d(arr: Tensor, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                i, y, z = idx
-                bc_idx = (..., y, z)
-                arr_1d = arr[..., :, y, z]
-                return arr_1d, i, bc_idx
-
-        elif axis == 1:
-
-            def get_arr_1d(arr: Tensor, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                x, i, z = idx
-                bc_idx = (..., x, z)
-                arr_1d = arr[..., x, :, z]
-                return arr_1d, i, bc_idx
-
-        elif axis == 2:
-
-            def get_arr_1d(arr: Tensor, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                x, y, i = idx
-                bc_idx = (..., x, y)
-                arr_1d = arr[..., x, y, :]
-                return arr_1d, i, bc_idx
-
-    else:
-        raise NotImplementedError
-
-    return get_arr_1d
-
-
-def _get_virtual_point_data_1storder(bc: ConstBC1stOrderBase):
-    """Return data suitable for calculating virtual points.
-
-    Args:
-        bc (:class:`~pde.grids.boundaries.local.ConstBC1stOrderBase`):
-            Defines the boundary conditions for a particular side, for which the virtual
-            point data getter should be defined.
-
-    Returns:
-        tuple: the data structure associated with this virtual point
-    """
-    if isinstance(bc, _PeriodicBC):
-        index = 0 if bc.upper else bc.grid.shape[bc.axis] - 1
-        value: NumberOrArray = -1 if bc.flip_sign else 1
-        const = np.array(0)
-        factor = np.array(value)
-
-        def const_func():
-            return const
-
-        def factor_func():
-            return factor
-
-    elif isinstance(bc, DirichletBC):
-        const = 2 * bc.value
-        index = bc.grid.shape[bc.axis] - 1 if bc.upper else 0
-
-        # return boundary data such that dynamically calculated values can
-        # be used in numba compiled code. This is a work-around since numpy
-        # arrays are copied into closures, making them compile-time
-        # constants
-
-        const = np.array(const)
-        factor = np.full_like(const, -1)
-
-        if bc.value_is_linked:
-            raise NotImplementedError
-
-        def const_func():
-            return const
-
-        def factor_func():
-            return factor
-
-    elif isinstance(bc, NeumannBC):
-        dx = bc.grid.discretization[bc.axis]
-
-        const = dx * bc.value
-        index = bc.grid.shape[bc.axis] - 1 if bc.upper else 0
-
-        # return boundary data such that dynamically calculated values can
-        # be used in numba compiled code. This is a work-around since numpy
-        # arrays are copied into closures, making them compile-time
-        # constants
-
-        const = np.array(const)
-        factor = np.ones_like(const)
-
-        if bc.value_is_linked:
-            raise NotImplementedError
-
-        def const_func():
-            return const
-
-        def factor_func():
-            return factor
-
-    elif isinstance(bc, MixedBC):
-        dx = bc.grid.discretization[bc.axis]
-        with np.errstate(invalid="ignore"):
-            const = np.asarray(2 * dx * bc.const / (2 + dx * bc.value))
-            factor = np.asarray((2 - dx * bc.value) / (2 + dx * bc.value))
-
-        # correct at places of infinite values
-        const[~np.isfinite(factor)] = 0
-        factor[~np.isfinite(factor)] = -1
-
-        index = bc.grid.shape[bc.axis] - 1 if bc.upper else 0
-
-        # return boundary data such that dynamically calculated values can
-        # be used in numba compiled code. This is a work-around since numpy
-        # arrays are copied into closures, making them compile-time
-        # constants
-        if bc.value_is_linked:
-            raise NotImplementedError
-
-        const = np.array(const)
-        factor = np.array(factor)
-
-        def const_func():
-            return const
-
-        def factor_func():
-            return factor
-    else:
-        msg = f"Unsupported BC {bc}"
-        raise TypeError(msg)
-
-    return (const_func, factor_func, index)
-
-
-def _make_const1storder_virtual_point_evaluator(bc: ConstBC1stOrderBase):
-    """Return function that sets evaluates the value of a virtual point.
-
-    Args:
-        bc (:class:`~pde.grids.boundaries.local.ConstBC1stOrderBase`):
-            Defines the boundary conditions for a particular side, for which the setter
-            should be defined.
-
-    Returns:
-        function: A function that takes the data array and an index marking the current
-        point, which is assumed to be a virtual point. The result is the data value at
-        this point, which is calculated using the boundary condition.
-    """
-    normal = bc.normal
-    axis = bc.axis
-    get_arr_1d = make_get_arr_1d(bc.grid.num_axes, bc.axis)
-
-    # calculate necessary constants
-    const, factor, index = _get_virtual_point_data_1storder(bc)
-
-    if bc.homogeneous:
-
-        def virtual_point(arr: Tensor, idx: tuple[int, ...], args=None) -> float:
-            """Evaluate the virtual point at `idx`"""
-            arr_1d, _, _ = get_arr_1d(arr, idx)
-            if normal:
-                val_field = arr_1d[..., axis, index]
-            else:
-                val_field = arr_1d[..., index]
-            return const() + factor() * val_field  # type: ignore
-
-    else:
-
-        def virtual_point(arr: Tensor, idx: tuple[int, ...], args=None) -> float:
-            """Evaluate the virtual point at `idx`"""
-            arr_1d, _, bc_idx = get_arr_1d(arr, idx)
-            if normal:
-                val_field = arr_1d[..., axis, index]
-            else:
-                val_field = arr_1d[..., index]
-            return const()[bc_idx] + factor()[bc_idx] * val_field  # type: ignore
-
-    return virtual_point
