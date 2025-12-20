@@ -95,7 +95,7 @@ class AllenCahnPDE(PDEBase):
         rhs = self.interface_width * laplace - state**3 + state
         return self.mobility * rhs  # type: ignore
 
-    def make_pde_rhs_numba(  # type: ignore
+    def make_pde_rhs_numba(
         self, state: ScalarField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
@@ -110,16 +110,10 @@ class AllenCahnPDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
-        import numba as nb
-
-        arr_type = nb.typeof(state.data)
-        signature = arr_type(arr_type, nb.double)
-
         interface_width = self.interface_width
         mobility = self.mobility
         laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
 
-        @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float) -> NumericArray:
             """Compiled helper function evaluating right hand side."""
             return mobility * (
@@ -128,4 +122,4 @@ class AllenCahnPDE(PDEBase):
                 + state_data
             )
 
-        return pde_rhs  # type: ignore
+        return pde_rhs

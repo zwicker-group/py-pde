@@ -77,7 +77,7 @@ class ScipySolver(SolverBase):
         self.info["stochastic"] = False
 
         # obtain function for evaluating the right hand side
-        rhs = self._make_pde_rhs(state)
+        rhs = self._backend_obj.make_pde_rhs(self.pde, state)
 
         def rhs_helper(t: float, state_flat: NumericArray) -> NumericArray:
             """Helper function to provide the correct call convention."""

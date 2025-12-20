@@ -46,6 +46,8 @@ class BackendBase:
     """dict: all operators registered for all backends"""
 
     def __init__(self, name: str = ""):
+        if name in {"auto", "config"}:
+            self._logger.warning("Backend uses reserved name.")
         self.name = name
         self._operators = defaultdict(dict)
 

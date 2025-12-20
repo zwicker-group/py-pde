@@ -654,7 +654,7 @@ class PDE(SDEBase):
         # compile the recursive chain
         return chain()
 
-    def make_pde_rhs_numba(  # type: ignore
+    def make_pde_rhs_numba(
         self, state: TField, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.

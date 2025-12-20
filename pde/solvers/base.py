@@ -58,7 +58,7 @@ class SolverBase:
     """dict: dictionary of all inheriting classes"""
 
     _logger: logging.Logger
-    _backend_name: BackendType | Literal["auto"]
+    _backend_name: BackendType
     __backend_obj: BackendBase | None
 
     def __init__(
@@ -73,20 +73,14 @@ class SolverBase:
                 The partial differential equation that should be solved
             backend (str or :class:`~pde.backends.base.BackendBase`):
                 Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
+                'numba'. Alternatively, 'auto' lets the PDE decide for the most optimal
                 backend.
         """
         self.pde = pde
         self.info: dict[str, Any] = {"class": self.__class__.__name__}
         if self.pde:
             self.info["pde_class"] = self.pde.__class__.__name__
-        if isinstance(backend, str):
-            self._backend_name = backend
-            self.__backend_obj = None
-        else:
-            # assume that `backend` is of type BackendBase
-            self._backend_name = backend.name  # type: ignore
-            self.__backend_obj = backend
+        self.backend = backend
 
     def __init_subclass__(cls, **kwargs):
         """Initialize class-level attributes of subclasses."""
@@ -147,12 +141,12 @@ class SolverBase:
         return sorted(cls._subclasses)
 
     @property
-    def backend(self) -> BackendType | Literal["auto"]:
+    def backend(self) -> BackendType:
         """str: The name of the backend used for this solver."""
         return self._backend_name
 
     @backend.setter
-    def backend(self, value: BackendBase | BackendType) -> None:
+    def backend(self, value: BackendBase | BackendType | Literal["auto"]) -> None:
         """Sets a new backend for the solver.
 
         This setter tries to ensure consistency and make sure that backends are not
@@ -172,10 +166,11 @@ class SolverBase:
             # assume value is of type BackendBase
             new_backend = value.name  # type: ignore
 
+        if new_backend == "auto":
+            new_backend = self.pde.determine_auto_backend()
+
         # check whether the new name contradicts the old backend name
-        if self._backend_name in {"auto", new_backend}:
-            pass  # nothing to do
-        else:
+        if getattr(self, "_backend_name", new_backend) != new_backend:
             self._logger.warning(
                 "Changing the backend of the solver from `%s` to `%s`",
                 self._backend_name,
@@ -183,18 +178,19 @@ class SolverBase:
             )
 
         # check whether the new backend contradicts the old backend object
-        if self.__backend_obj is not None and self.__backend_obj.name != new_backend:
+        if (
+            getattr(self, "__backend_obj", None) is not None
+            and self.__backend_obj.name != new_backend  # type: ignore
+        ):
             msg = "Tried changing the loaded backend of the solver from `%s` to `%s`"
-            raise TypeError(
-                msg,
-                self.__backend_obj.name,
-                new_backend,
-            )
+            raise TypeError(msg, self.__backend_obj.name, new_backend)  # type: ignore
 
         # set the new backend
         self._backend_name = new_backend
         if not isinstance(value, str):
             self.__backend_obj = value
+        else:
+            self.__backend_obj = None
 
     @property
     def _backend_obj(self) -> BackendBase:
@@ -212,40 +208,6 @@ class SolverBase:
             self.__backend_obj = backends[self._backend_name]
 
         return self.__backend_obj
-
-    def _make_pde_rhs(
-        self, state: TField
-    ) -> Callable[[NumericArray, float], NumericArray]:
-        """Return a function for evaluating the right hand side of the PDE.
-
-        This function also decides which backend will be used.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted.
-            backend (str):
-                Determines how the function is created. Accepted values are 'numpy' and
-                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
-
-        Returns:
-            callable: Function determining the right hand side of the PDE
-        """
-        from ..backends import backends
-
-        if self.backend == "auto":
-            # try using the numba backend, if it implemented
-            try:
-                rhs = backends["numba"].make_pde_rhs(self.pde, state)
-            except NotImplementedError:
-                rhs = backends["numpy"].make_pde_rhs(self.pde, state)
-                self.backend = "numpy"
-            else:
-                self.backend = "numba"
-            return rhs
-
-        # get a function evaluating the rhs of the PDE
-        return self._backend_obj.make_pde_rhs(self.pde, state)
 
     def _make_error_synchronizer(
         self, backend: str = "numpy", *, operator: int | str = "MAX"
@@ -479,7 +441,7 @@ class AdaptiveSolverBase(SolverBase):
             msg = "Deterministic stepper does not support stochastic equations"
             raise RuntimeError(msg)
 
-        rhs_pde = self._make_pde_rhs(state)
+        rhs_pde = self._backend_obj.make_pde_rhs(self.pde, state)
 
         def single_step(state_data: NumericArray, t: float, dt: float) -> NumericArray:
             """Basic implementation of Euler scheme."""

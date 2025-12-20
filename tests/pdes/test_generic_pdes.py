@@ -2,6 +2,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import numba as nb
 import numpy as np
 import pytest
 
@@ -32,7 +33,7 @@ def test_pde_consistency(pde_class, dim, rng):
     state = ScalarField.random_uniform(grid, rng=rng)
     field = eq.evolution_rate(state)
     assert field.grid == grid
-    rhs = eq.make_pde_rhs_numba(state)
+    rhs = nb.njit(eq.make_pde_rhs_numba(state))
     res = rhs(state.data, 0)
     np.testing.assert_allclose(field.data, res)
 

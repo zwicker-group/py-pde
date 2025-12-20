@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 
 
 class NumbaBackend(NumpyBackend):
-    """Defines numba backend."""
+    """Defines :mod:`numba` backend."""
 
     def compile_function(self, func: TFunc) -> TFunc:
         """General method that compiles a user function.
@@ -1182,7 +1182,17 @@ class NumbaBackend(NumpyBackend):
         Returns:
             Function returning deterministic part of the right hand side of the PDE
         """
-        return eq.make_pde_rhs_numba(state)
+        try:
+            make_rhs = eq.make_pde_rhs_numba  # type: ignore
+        except AttributeError as err:
+            msg = (
+                "The right-hand side of the PDE is not implemented using the `numba` "
+                "backend. To add the implementation, provide the method "
+                "`make_pde_rhs_numba`, which should return a compilable function "
+                "calculating the evolution rate using a numpy array as input."
+            )
+            raise AttributeError(msg) from err
+        return self.compile_function(make_rhs(state))  # type: ignore
 
     def make_noise_realization(
         self, eq: PDEBase, state: TField
@@ -1294,7 +1304,7 @@ class NumbaBackend(NumpyBackend):
 
         else:
             result = func
-        return jit(result)  # type: ignore
+        return self.compile_function(result)
 
     def _make_expression_array(
         self, expression: ExpressionBase, *, single_arg: bool = True

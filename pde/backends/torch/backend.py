@@ -12,19 +12,23 @@ import torch
 
 from ...grids import GridBase
 from ...grids.boundaries.axes import BoundariesBase
-from ..base import BackendBase, OperatorInfo, TFunc
+from ..base import OperatorInfo, TFunc
+from ..numpy import NumpyBackend
 from .utils import AnyDType, get_torch_dtype
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...grids import BoundariesBase, GridBase
-    from ...tools.typing import NumericArray, OperatorImplType, OperatorType
+    from ...pdes import PDEBase
+    from ...tools.typing import NumericArray, OperatorImplType, OperatorType, TField
     from ..base import TFunc
     from ..numpy.backend import OperatorInfo
     from .utils import TorchOperatorType
 
 
-class TorchBackend(BackendBase):
-    """Backend based on torch."""
+class TorchBackend(NumpyBackend):
+    """Defines :mod:`torch` backend."""
 
     compile_options = {
         "fullgraph": True,
@@ -46,7 +50,7 @@ class TorchBackend(BackendBase):
             func (callable):
                 The function that needs to be compiled for this backend
         """
-        return torch.compile(func)  # type: ignore
+        return torch.compile(func, **self.compile_options)  # type: ignore
 
     def make_torch_operator(
         self,
@@ -130,9 +134,9 @@ class TorchBackend(BackendBase):
         # determine the operator for the chosen backend
         torch_operator = self.make_torch_operator(grid, operator, bcs=None)
 
-        def operator_no_bc(data_full: np.ndarray, out: np.ndarray) -> None:
-            data_full_torch = torch.from_numpy(data_full)
-            out[...] = torch_operator(data_full_torch)
+        def operator_no_bc(arr: NumericArray, out: NumericArray) -> None:
+            arr_torch = torch.from_numpy(arr)
+            out[...] = torch_operator(arr_torch)
 
         return operator_no_bc
 
@@ -202,21 +206,31 @@ class TorchBackend(BackendBase):
         # return the compiled versions of the operator
         return apply_op
 
-    # def make_pde_rhs(
-    #     self, eq: PDEBase, state: TField
-    # ) -> Callable[[NumericArray, float], NumericArray]:
-    #     """Return a function for evaluating the right hand side of the PDE.
+    def make_pde_rhs(
+        self, eq: PDEBase, state: TField
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Return a function for evaluating the right hand side of the PDE.
 
-    #     Args:
-    #         eq (:class:`~pde.pdes.base.PDEBase`):
-    #             The object describing the differential equation
-    #         state (:class:`~pde.fields.FieldBase`):
-    #             An example for the state from which information can be extracted
+        Args:
+            eq (:class:`~pde.pdes.base.PDEBase`):
+                The object describing the differential equation
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which information can be extracted
 
-    #     Returns:
-    #         Function returning deterministic part of the right hand side of the PDE
-    #     """
-    #     return eq.make_pde_rhs_numba(state)
+        Returns:
+            Function returning deterministic part of the right hand side of the PDE
+        """
+        try:
+            make_rhs = eq.make_pde_rhs_torch  # type: ignore
+        except AttributeError as err:
+            msg = (
+                "The right-hand side of the PDE is not implemented using the `torch` "
+                "backend. To add the implementation, provide the method "
+                "`make_pde_rhs_torch`, which should return a compilable function "
+                "calculating the evolution rate using a torch array as input."
+            )
+            raise AttributeError(msg) from err
+        return self.compile_function(make_rhs(state))  # type: ignore
 
     # def make_inner_stepper(
     #     self,

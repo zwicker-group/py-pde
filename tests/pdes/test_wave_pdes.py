@@ -2,6 +2,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import numba as nb
 import numpy as np
 import pytest
 
@@ -20,7 +21,7 @@ def test_wave_consistency(dim, rng):
     state = eq.get_initial_condition(ScalarField.random_uniform(grid, rng=rng))
     field = eq.evolution_rate(state)
     assert field.grid == grid
-    rhs = eq.make_pde_rhs_numba(state)
+    rhs = nb.njit(eq.make_pde_rhs_numba(state))
     np.testing.assert_allclose(field.data, rhs(state.data, 0))
 
     # compare to generic implementation

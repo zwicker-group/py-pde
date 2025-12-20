@@ -15,6 +15,7 @@ import numpy as np
 
 from ..fields import FieldCollection
 from ..fields.datafield_base import DataFieldBase
+from ..tools.misc import module_available
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -177,28 +178,6 @@ class PDEBase(metaclass=ABCMeta):
                 Field describing the evolution rate of the PDE
         """
 
-    def make_pde_rhs_numba(
-        self, state: FieldBase
-    ) -> Callable[[NumericArray, float], NumericArray]:
-        """Create a compiled function for evaluating the right hand side.
-
-        Args:
-            state (:class:`~pde.fields.base.FieldBase`):
-                The field at the current time point
-
-        Returns:
-            A function that takes two arguments (the current state as a numpy array and
-            the current time) and returns the associated evolution rate as a numpy array
-            of the same shape and dtype.
-        """
-        msg = (
-            "The right-hand side of the PDE is not implemented using the `numba` "
-            "backend. To add the implementation, provide the method "
-            "`make_pde_rhs_numba`, which should return a numba-compiled function "
-            "calculating the right-hand side using numpy arrays as input and output."
-        )
-        raise NotImplementedError(msg)
-
     def _make_pde_rhs_numba(
         self, state: FieldBase
     ) -> Callable[[NumericArray, float], NumericArray]:
@@ -209,7 +188,7 @@ class PDEBase(metaclass=ABCMeta):
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.make_pde_rhs_numba(state)
+        return self.make_pde_rhs_numba(state)  # type: ignore
 
     def check_rhs_consistency(
         self,
@@ -312,12 +291,12 @@ class PDEBase(metaclass=ABCMeta):
                 # cache was not hit
                 self._logger.info("Write compiled rhs to cache")
                 self._cache["pde_rhs_numba_state"] = grid_state
-                self._cache["pde_rhs_numba"] = self.make_pde_rhs_numba(state)
+                self._cache["pde_rhs_numba"] = self.make_pde_rhs_numba(state)  # type: ignore
             rhs = self._cache["pde_rhs_numba"]
 
         else:
             # caching was skipped
-            rhs = self.make_pde_rhs_numba(state)
+            rhs = self.make_pde_rhs_numba(state)  # type: ignore
 
         if rhs is None:
             msg = "`make_pde_rhs_numba` returned None"
@@ -327,6 +306,18 @@ class PDEBase(metaclass=ABCMeta):
             self.check_rhs_consistency(rhs_implementation=rhs, state=state)
 
         return rhs  # type: ignore
+
+    def determine_auto_backend(self) -> BackendType:
+        """Returns backend that will be chosen automatically for this PDE.
+
+        Returns:
+            str: The backend used automatically
+        """
+        if hasattr(self, "make_pde_rhs_numba") and module_available("numba"):
+            return "numba"
+        if hasattr(self, "make_pde_rhs_torch") and module_available("torch"):
+            return "torch"
+        return "numpy"
 
     def make_pde_rhs(
         self, state: TField, backend: BackendType | Literal["auto"] = "auto"
@@ -348,10 +339,7 @@ class PDEBase(metaclass=ABCMeta):
 
         if backend == "auto":
             # try using the numba backend, if it implemented
-            try:
-                return backends["numba"].make_pde_rhs(self, state)
-            except NotImplementedError:
-                backend = "numpy"
+            backend = self.determine_auto_backend()
 
         # get a function evaluating the rhs of the PDE
         return backends[backend].make_pde_rhs(self, state)

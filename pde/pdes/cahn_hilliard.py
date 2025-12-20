@@ -91,7 +91,7 @@ class CahnHilliardPDE(PDEBase):
         result = state**3 - state - self.interface_width * c_laplace
         return result.laplace(bc=self.bc_mu, args={"t": t})  # type: ignore
 
-    def make_pde_rhs_numba(  # type: ignore
+    def make_pde_rhs_numba(
         self, state: ScalarField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
@@ -105,16 +105,10 @@ class CahnHilliardPDE(PDEBase):
             instance of :class:`~numpy.ndarray` of the state data and the time to
             obtained an instance of :class:`~numpy.ndarray` giving the evolution rate.
         """
-        import numba as nb
-
-        arr_type = nb.typeof(state.data)
-        signature = arr_type(arr_type, nb.double)
-
         interface_width = self.interface_width
         laplace_c = state.grid.make_operator("laplace", bc=self.bc_c, backend="numba")
         laplace_mu = state.grid.make_operator("laplace", bc=self.bc_mu, backend="numba")
 
-        @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float):
             """Compiled helper function evaluating right hand side."""
             mu = (
@@ -124,4 +118,4 @@ class CahnHilliardPDE(PDEBase):
             )
             return laplace_mu(mu, args={"t": t})
 
-        return pde_rhs  # type: ignore
+        return pde_rhs

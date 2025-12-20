@@ -7,11 +7,12 @@ from typing import Any, Protocol
 
 import numpy as np
 import torch
+from numpy.typing import DTypeLike
 from torch import Tensor
 
-AnyDType = str | np.dtype[np.generic] | torch.dtype
+AnyDType = DTypeLike | torch.dtype
 
-NUMPY_TO_TORCH_DTYPE: dict[np.dtype[np.generic], torch.dtype] = {
+NUMPY_TO_TORCH_DTYPE: dict[DTypeLike, torch.dtype] = {
     np.bool: torch.bool,
     np.uint8: torch.uint8,
     np.int8: torch.int8,
