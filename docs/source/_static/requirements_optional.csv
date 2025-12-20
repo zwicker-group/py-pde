@@ -9,3 +9,4 @@ pandas,2,Handling tabular data
 py-modelrunner,0.19,Running simulations and handling I/O
 pyfftw,0.12,Faster Fourier transforms
 rocket-fft,0.2.4,Numba-compiled fast Fourier transforms
+torch,2.9,Using `torch` as a backend

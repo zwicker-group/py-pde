@@ -10,4 +10,5 @@ py-modelrunner>=0.19
 rocket-fft>=0.2.4
 scipy>=1.10
 sympy>=1.9
+torch>=2.9
 tqdm>=4.66

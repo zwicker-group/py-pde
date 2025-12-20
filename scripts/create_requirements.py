@@ -132,6 +132,12 @@ REQUIREMENTS = [
         collections={"full"},
     ),
     Requirement(
+        name="torch",
+        version_min="2.9",
+        usage="Using `torch` as a backend",
+        collections={"full", "docs"},
+    ),
+    Requirement(
         name="ipywidgets",
         version_min="8",
         usage="Jupyter notebook support",
