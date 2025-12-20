@@ -126,7 +126,7 @@ class KPZInterfacePDE(SDEBase):
             "gradient_squared", bc=self.bc, backend="numba"
         )
 
-        def pde_rhs(state_data: NumericArray, t: float):
+        def pde_rhs(state_data: NumericArray, t: float = 0) -> NumericArray:
             """Compiled helper function evaluating right hand side."""
             result = nu_value * laplace(state_data, args={"t": t})
             result += lambda_value * gradient_squared(state_data, args={"t": t})  # type: ignore

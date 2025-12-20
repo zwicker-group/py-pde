@@ -114,7 +114,7 @@ class AllenCahnPDE(PDEBase):
         mobility = self.mobility
         laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
 
-        def pde_rhs(state_data: NumericArray, t: float) -> NumericArray:
+        def pde_rhs(state_data: NumericArray, t: float = 0) -> NumericArray:
             """Compiled helper function evaluating right hand side."""
             return mobility * (
                 interface_width * laplace(state_data, args={"t": t})

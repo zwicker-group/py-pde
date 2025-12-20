@@ -15,6 +15,8 @@ from .base import PDEBase, expr_prod
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    import torch
+
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import NumericArray
 
@@ -61,8 +63,8 @@ class CahnHilliardPDE(PDEBase):
         super().__init__()
 
         self.interface_width = interface_width
-        self.bc_c = set_default_bc(bc_c, self.default_bc_c)
-        self.bc_mu = set_default_bc(bc_mu, self.default_bc_mu)
+        self.bc_c: BoundariesData = set_default_bc(bc_c, self.default_bc_c)
+        self.bc_mu: BoundariesData = set_default_bc(bc_mu, self.default_bc_mu)
 
     @property
     def expression(self) -> str:
@@ -109,7 +111,7 @@ class CahnHilliardPDE(PDEBase):
         laplace_c = state.grid.make_operator("laplace", bc=self.bc_c, backend="numba")
         laplace_mu = state.grid.make_operator("laplace", bc=self.bc_mu, backend="numba")
 
-        def pde_rhs(state_data: NumericArray, t: float):
+        def pde_rhs(state_data: NumericArray, t: float = 0) -> NumericArray:
             """Compiled helper function evaluating right hand side."""
             mu = (
                 state_data**3
@@ -117,5 +119,37 @@ class CahnHilliardPDE(PDEBase):
                 - interface_width * laplace_c(state_data, args={"t": t})
             )
             return laplace_mu(mu, args={"t": t})
+
+        return pde_rhs
+
+    def make_pde_rhs_torch(
+        self, state: ScalarField
+    ) -> Callable[[torch.Tensor, float], torch.Tensor]:
+        """Create a compiled function evaluating the right hand side of the PDE.
+
+        Args:
+            state (:class:`~pde.fields.ScalarField`):
+                An example for the state defining the grid and data types
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called
+            with an instance of :class:`~numpy.ndarray` of the state data and
+            the time to obtained an instance of :class:`~numpy.ndarray` giving
+            the evolution rate.
+        """
+        from ..backends.torch import torch_backend
+
+        interface_width = self.interface_width
+        laplace_c = torch_backend.make_torch_operator(
+            grid=state.grid, operator="laplace", bcs=self.bc_c, dtype=state.dtype
+        )
+        laplace_mu = torch_backend.make_torch_operator(
+            grid=state.grid, operator="laplace", bcs=self.bc_mu, dtype=state.dtype
+        )
+
+        def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
+            """Compiled helper function evaluating right hand side."""
+            mu = state_data**3 - state_data - interface_width * laplace_c(state_data)
+            return laplace_mu(mu)
 
         return pde_rhs

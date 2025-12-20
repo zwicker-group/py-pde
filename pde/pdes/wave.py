@@ -124,7 +124,7 @@ class WavePDE(PDEBase):
         speed2 = self.speed**2
         laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
 
-        def pde_rhs(state_data: NumericArray, t: float):
+        def pde_rhs(state_data: NumericArray, t: float = 0) -> NumericArray:
             """Compiled helper function evaluating right hand side."""
             rate = np.empty_like(state_data)
             rate[0] = state_data[1]

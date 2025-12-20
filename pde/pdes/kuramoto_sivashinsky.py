@@ -133,7 +133,7 @@ class KuramotoSivashinskyPDE(SDEBase):
             "gradient_squared", bc=self.bc, backend="numba"
         )
 
-        def pde_rhs(state_data: NumericArray, t: float):
+        def pde_rhs(state_data: NumericArray, t: float = 0) -> NumericArray:
             """Compiled helper function evaluating right hand side."""
             result = -laplace(state_data, args={"t": t})
             result += nu_value * laplace2(result, args={"t": t})  # type: ignore

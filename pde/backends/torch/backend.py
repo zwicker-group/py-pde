@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from ...grids import BoundariesBase, GridBase
+    from ...grids.boundaries.axes import BoundariesData
     from ...pdes import PDEBase
     from ...tools.typing import NumericArray, OperatorImplType, OperatorType, TField
     from ..base import TFunc
@@ -39,9 +40,19 @@ class TorchBackend(NumpyBackend):
     def __init__(self, name: str = "", device: str = "auto"):
         super().__init__(name=name)
 
+        self.device = device
+
+    @property
+    def device(self) -> torch.device:
+        """The currently assigned torch device."""
+        return self._device
+
+    @device.setter
+    def device(self, device: str) -> None:
+        """Set a new torch device."""
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.device = torch.device(device)
+        self._device = torch.device(device)
 
     def compile_function(self, func: TFunc) -> TFunc:
         """General method that compiles a user function.
@@ -56,7 +67,7 @@ class TorchBackend(NumpyBackend):
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
-        bcs: BoundariesBase | None,
+        bcs: BoundariesData | None,
         dtype: AnyDType = np.double,
         **kwargs,
     ) -> TorchOperatorType:
@@ -182,8 +193,8 @@ class TorchBackend(NumpyBackend):
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
         torch_operator = self.make_torch_operator(grid, operator, bcs)
-        torch_operator_jitted = torch.compile(torch_operator, **self.compile_options)  # type: ignore
-        torch_operator_jitted.to(self.device)
+        torch_operator_jitted = self.compile_function(torch_operator)
+        torch_operator_jitted.to(self.device)  # type: ignore
 
         shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
 
@@ -192,15 +203,15 @@ class TorchBackend(NumpyBackend):
             arr: NumericArray, out: NumericArray | None = None, args=None
         ) -> NumericArray:
             """Set boundary conditions and apply operator."""
-            torch_arr = torch.from_numpy(arr)
-            torch_arr.to(self.device)
+            arr_torch = torch.from_numpy(arr)
+            arr_torch.to(self.device)
 
             if out is None:
                 out = np.empty(shape_out, dtype=arr.dtype)
             elif out.shape != shape_out:
                 msg = f"Incompatible shapes {out.shape} != {shape_out}"
                 raise ValueError(msg)
-            out[:] = torch_operator_jitted(torch_arr)
+            out[:] = torch_operator_jitted(arr_torch)
             return out
 
         # return the compiled versions of the operator
@@ -230,40 +241,14 @@ class TorchBackend(NumpyBackend):
                 "calculating the evolution rate using a torch array as input."
             )
             raise NotImplementedError(msg) from err
-        return self.compile_function(make_rhs(state))  # type: ignore
 
-    # def make_inner_stepper(
-    #     self,
-    #     solver: SolverBase,
-    #     stepper_style: Literal["fixed", "adaptive"],
-    #     state: TField,
-    #     dt: float,
-    # ) -> Callable:
-    #     """Return a stepper function using an explicit scheme.
+        # get the compiled right hand side
+        rhs_torch = self.compile_function(make_rhs(state))
 
-    #     Args:
-    #         solver (:class:`~pde.solvers.base.SolverBase`):
-    #             The solver instance, which determines how the stepper is constructed
-    #         state (:class:`~pde.fields.base.FieldBase`):
-    #             An example for the state from which the grid and other information can
-    #             be extracted
-    #         dt (float):
-    #             Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+        def rhs(arr: NumericArray, t: float = 0) -> NumericArray:
+            arr_torch = torch.from_numpy(arr)
+            arr_torch.to(self.device)
 
-    #     Returns:
-    #         Function that can be called to advance the `state` from time `t_start` to
-    #         time `t_end`. The function call signature is `(state: numpy.ndarray,
-    #         t_start: float, t_end: float)`
-    #     """
-    #     assert solver.backend == self.name
+            return rhs_torch(arr_torch).numpy()  # type: ignore
 
-    #     from ._solvers import make_adaptive_stepper, make_fixed_stepper
-
-    #     solver.info["dt_statistics"] = OnlineStatistics()
-
-    #     if stepper_style == "fixed":
-    #         return make_fixed_stepper(solver, state, dt=dt)
-    #     if stepper_style == "adaptive":
-    #         assert isinstance(solver, AdaptiveSolverBase)
-    #         return make_adaptive_stepper(solver, state)
-    #     raise NotImplementedError
+        return rhs

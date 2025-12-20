@@ -135,7 +135,7 @@ class SwiftHohenbergPDE(PDEBase):
         laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
         laplace2 = state.grid.make_operator("laplace", bc=self.bc_lap, backend="numba")
 
-        def pde_rhs(state_data: NumericArray, t: float):
+        def pde_rhs(state_data: NumericArray, t: float = 0) -> NumericArray:
             """Compiled helper function evaluating right hand side."""
             state_laplace = laplace(state_data, args={"t": t})
             state_laplace2 = laplace2(state_laplace, args={"t": t})

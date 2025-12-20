@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     import numpy as np
+    import torch
 
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import NumericArray
@@ -113,7 +114,7 @@ class DiffusionPDE(SDEBase):
         diffusivity_value = self.diffusivity
         laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
 
-        def pde_rhs(state_data: NumericArray, t: float):
+        def pde_rhs(state_data: NumericArray, t: float = 0) -> NumericArray:
             """Compiled helper function evaluating right hand side."""
             return diffusivity_value * laplace(state_data, args={"t": t})
 
@@ -121,7 +122,7 @@ class DiffusionPDE(SDEBase):
 
     def make_pde_rhs_torch(
         self, state: ScalarField
-    ) -> Callable[[NumericArray, float], NumericArray]:
+    ) -> Callable[[torch.Tensor, float], torch.Tensor]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
@@ -134,10 +135,14 @@ class DiffusionPDE(SDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
-        diffusivity_value = self.diffusivity
-        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="torch")
+        from ..backends.torch import torch_backend
 
-        def pde_rhs(state_data: NumericArray, t: float):
+        diffusivity_value = self.diffusivity
+        laplace = torch_backend.make_torch_operator(
+            grid=state.grid, operator="laplace", bcs=self.bc, dtype=state.dtype
+        )
+
+        def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
             """Compiled helper function evaluating right hand side."""
             return diffusivity_value * laplace(state_data)
 

@@ -60,10 +60,6 @@ class EulerSolver(AdaptiveSolverBase):
 
         else:
             # handle deterministic version of the pde
-            if self.pde.is_sde:
-                msg = "Deterministic Euler stepper doesn't support stochastic equations"
-                raise RuntimeError(msg)
-
             self.info["scheme"] = "euler"
             rhs_pde = self._backend_obj.make_pde_rhs(self.pde, state)
 
