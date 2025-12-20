@@ -578,18 +578,16 @@ class SDEBase(PDEBase):
             callable: Function calculating the noise realization
         """
         from ..backends.numba.grids import make_cell_volume_getter
-        from ..backends.numba.utils import jit
 
         if getattr(self, "noise", None) is None or not self.is_sde:
 
-            @jit
             def noise_realization(
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
                 """Helper function returning a noise realization."""
                 return None
 
-            return noise_realization  # type: ignore
+            return noise_realization
 
         data_shape: tuple[int, ...] = state.data.shape
         noise_var: float
@@ -605,7 +603,6 @@ class SDEBase(PDEBase):
             for n, noise_var in enumerate(np.broadcast_to(self.noise, len(state))):
                 noises_var[state._slices[n]] = noise_var
 
-            @jit
             def noise_realization(
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
@@ -624,7 +621,6 @@ class SDEBase(PDEBase):
             # a single noise value is given for all fields
             noise_var = float(self.noise)
 
-            @jit
             def noise_realization(
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
@@ -635,7 +631,7 @@ class SDEBase(PDEBase):
                     out.flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
                 return out
 
-        return noise_realization  # type: ignore
+        return noise_realization
 
     def make_noise_realization(
         self, state: TField, backend: BackendType | Literal["auto"] = "auto"

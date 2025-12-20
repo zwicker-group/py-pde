@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from pde import CartesianGrid, DiffusionPDE, FileStorage, PDEBase, ScalarField, UnitGrid
-from pde.tools import misc, mpi, numba
+from pde.tools import misc, mpi
 from pde.tools.misc import module_available
 
 
@@ -83,7 +83,6 @@ def test_custom_pde_mpi(rng):
             return ScalarField(state.grid, 1)
 
         def make_pde_rhs_numba(self, state):
-            @numba.jit
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
 
@@ -140,7 +139,6 @@ def test_stop_iteration_hook(backend):
             return ScalarField(state.grid, 1)
 
         def make_pde_rhs_numba(self, state):
-            @numba.jit
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
 
@@ -172,7 +170,6 @@ def test_custom_data_hook(backend):
             return ScalarField(state.grid, 1)
 
         def make_pde_rhs_numba(self, state):
-            @numba.jit
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
 
@@ -205,7 +202,6 @@ def test_array_data_hook(backend):
             return ScalarField(state.grid, 1)
 
         def make_pde_rhs_numba(self, state):
-            @numba.jit
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
 

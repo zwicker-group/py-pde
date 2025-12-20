@@ -229,7 +229,7 @@ class TorchBackend(NumpyBackend):
                 "`make_pde_rhs_torch`, which should return a compilable function "
                 "calculating the evolution rate using a torch array as input."
             )
-            raise AttributeError(msg) from err
+            raise NotImplementedError(msg) from err
         return self.compile_function(make_rhs(state))  # type: ignore
 
     # def make_inner_stepper(

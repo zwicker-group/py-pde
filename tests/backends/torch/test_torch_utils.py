@@ -3,9 +3,13 @@
 """
 
 import numpy as np
-import torch
+import pytest
 
 from pde.backends.torch.utils import get_torch_dtype
+
+pytest.importorskip("torch")
+
+import torch
 
 
 def test_torch_dtype():

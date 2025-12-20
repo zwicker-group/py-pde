@@ -1191,7 +1191,7 @@ class NumbaBackend(NumpyBackend):
                 "`make_pde_rhs_numba`, which should return a compilable function "
                 "calculating the evolution rate using a numpy array as input."
             )
-            raise AttributeError(msg) from err
+            raise NotImplementedError(msg) from err
         return self.compile_function(make_rhs(state))  # type: ignore
 
     def make_noise_realization(
@@ -1210,7 +1210,8 @@ class NumbaBackend(NumpyBackend):
             Function calculating noise
         """
         if hasattr(eq, "make_noise_realization_numba"):
-            return eq.make_noise_realization_numba(state)  # type: ignore
+            noise_realization = eq.make_noise_realization_numba(state)
+            return self.compile_function(noise_realization)  # type: ignore
 
         msg = (
             "Noise needs to be implemented by defining the "
