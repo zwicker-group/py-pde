@@ -69,7 +69,7 @@ def test_singular_dimensions_3d(periodic, rng):
 
 @pytest.mark.parametrize("periodic", [True, False])
 def test_laplace_1d(periodic, rng):
-    """Test the implementatio,rngn of the laplace operator."""
+    """Test the implementation of the laplace operator."""
     bcs = _get_random_grid_bcs(1, periodic=periodic)
     field = ScalarField.random_colored(bcs.grid, -6, rng=rng)
     l1 = field.laplace(bcs, backend="scipy")
