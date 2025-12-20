@@ -25,7 +25,7 @@ _logger = logging.getLogger(__name__)
 
 
 class TorchConstBC1stOrderBoundary(torch.nn.Module):
-    """Base class for local boundaries implemented in pytorch."""
+    """Base class for local boundaries implemented in torch."""
 
     const: Tensor
     factor: Tensor

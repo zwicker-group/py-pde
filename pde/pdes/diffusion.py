@@ -116,11 +116,35 @@ class DiffusionPDE(SDEBase):
         signature = arr_type(arr_type, nb.double)
 
         diffusivity_value = self.diffusivity
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
+        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
 
         @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float):
             """Compiled helper function evaluating right hand side."""
             return diffusivity_value * laplace(state_data, args={"t": t})
+
+        return pde_rhs  # type: ignore
+
+    def make_pde_rhs_torch(  # type: ignore
+        self, state: ScalarField
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Create a compiled function evaluating the right hand side of the PDE.
+
+        Args:
+            state (:class:`~pde.fields.ScalarField`):
+                An example for the state defining the grid and data types
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called
+            with an instance of :class:`~numpy.ndarray` of the state data and
+            the time to obtained an instance of :class:`~numpy.ndarray` giving
+            the evolution rate.
+        """
+        diffusivity_value = self.diffusivity
+        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="torch")
+
+        def pde_rhs(state_data: NumericArray, t: float):
+            """Compiled helper function evaluating right hand side."""
+            return diffusivity_value * laplace(state_data)
 
         return pde_rhs  # type: ignore

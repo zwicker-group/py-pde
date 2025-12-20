@@ -24,7 +24,8 @@ def test_polar_grid(rng):
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(0.25, 3.75, 8))
 
-    a = grid.make_operator("laplace", "auto_periodic_neumann")(rng.random(8))
+    op = grid.make_operator("laplace", "auto_periodic_neumann", backend="numba")
+    a = op(rng.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
@@ -50,7 +51,8 @@ def test_polar_annulus(rng):
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(2.125, 3.875, 8))
 
-    a = grid.make_operator("laplace", "auto_periodic_neumann")(rng.random(8))
+    op = grid.make_operator("laplace", "auto_periodic_neumann", backend="numba")
+    a = op(rng.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
@@ -92,7 +94,8 @@ def test_spherical_grid(rng):
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(0.25, 3.75, 8))
 
-    a = grid.make_operator("laplace", "auto_periodic_neumann")(rng.random(8))
+    op = grid.make_operator("laplace", "auto_periodic_neumann", backend="numba")
+    a = op(rng.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
@@ -118,7 +121,8 @@ def test_spherical_annulus(rng):
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(2.125, 3.875, 8))
 
-    a = grid.make_operator("laplace", "auto_periodic_neumann")(rng.random(8))
+    op = grid.make_operator("laplace", "auto_periodic_neumann", backend="numba")
+    a = op(rng.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 

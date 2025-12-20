@@ -5,7 +5,7 @@
 import numpy as np
 import torch
 
-from pde.backends.pytorch.utils import get_torch_dtype
+from pde.backends.torch.utils import get_torch_dtype
 
 
 def test_torch_dtype():

@@ -32,8 +32,10 @@ class KuramotoSivashinskyPDE(PDEBase):
 
     def make_pde_rhs_numba(self, state):
         """Nunmba-compiled implementation of the PDE."""
-        gradient_squared = state.grid.make_operator("gradient_squared", bc=self.bc)
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
+        gradient_squared = state.grid.make_operator(
+            "gradient_squared", bc=self.bc, backend="numba"
+        )
+        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
 
         @nb.njit
         def pde_rhs(data, t):

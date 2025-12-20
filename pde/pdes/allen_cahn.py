@@ -117,7 +117,7 @@ class AllenCahnPDE(PDEBase):
 
         interface_width = self.interface_width
         mobility = self.mobility
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
+        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
 
         @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float) -> NumericArray:

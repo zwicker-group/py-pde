@@ -111,8 +111,8 @@ class CahnHilliardPDE(PDEBase):
         signature = arr_type(arr_type, nb.double)
 
         interface_width = self.interface_width
-        laplace_c = state.grid.make_operator("laplace", bc=self.bc_c)
-        laplace_mu = state.grid.make_operator("laplace", bc=self.bc_mu)
+        laplace_c = state.grid.make_operator("laplace", bc=self.bc_c, backend="numba")
+        laplace_mu = state.grid.make_operator("laplace", bc=self.bc_mu, backend="numba")
 
         @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float):

@@ -126,8 +126,10 @@ class KPZInterfacePDE(SDEBase):
         signature = arr_type(arr_type, nb.double)
 
         nu_value, lambda_value = self.nu, self.lmbda
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
-        gradient_squared = state.grid.make_operator("gradient_squared", bc=self.bc)
+        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
+        gradient_squared = state.grid.make_operator(
+            "gradient_squared", bc=self.bc, backend="numba"
+        )
 
         @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float):

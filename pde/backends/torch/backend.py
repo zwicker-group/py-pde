@@ -23,8 +23,8 @@ if TYPE_CHECKING:
     from .utils import TorchOperatorType
 
 
-class PytorchBackend(BackendBase):
-    """Backend based on pytorch."""
+class TorchBackend(BackendBase):
+    """Backend based on torch."""
 
     compile_options = {
         "fullgraph": True,

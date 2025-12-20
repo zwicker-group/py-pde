@@ -17,7 +17,7 @@ import torch
 
 from ....grids import CartesianGrid, GridBase
 from ....grids.boundaries import BoundariesList
-from .. import pytorch_backend
+from .. import torch_backend
 from .._boundaries import make_local_ghost_cell_setter
 
 if TYPE_CHECKING:
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 
 class TorchOperator(torch.nn.Module):
-    """Base class for operators implemented in pytorch."""
+    """Base class for operators implemented in torch."""
 
     data_full: Tensor
 
@@ -90,7 +90,7 @@ class TorchOperator(torch.nn.Module):
         self.set_ghost_cells()
 
 
-@pytorch_backend.register_operator(CartesianGrid, "laplace", rank_in=0, rank_out=0)
+@torch_backend.register_operator(CartesianGrid, "laplace", rank_in=0, rank_out=0)
 class CartesianLaplacian(TorchOperator):
     def __init__(
         self,

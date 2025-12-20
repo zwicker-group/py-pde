@@ -1,19 +1,19 @@
-"""Defines the :mod:`pytorch` backend.
+"""Defines the :mod:`torch` backend.
 
 .. autosummary::
    :nosignatures:
 
-   ~backend.PytorchBackend
+   ~backend.TorchBackend
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from .. import backends
-from .backend import PytorchBackend
+from .backend import TorchBackend
 
 # add the loaded numba backend to the registry
-pytorch_backend = PytorchBackend("pytorch")
-backends.add(pytorch_backend)
+torch_backend = TorchBackend("torch")
+backends.add(torch_backend)
 
 # register all the standard operators
 from . import operators

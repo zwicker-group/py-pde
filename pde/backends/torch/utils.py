@@ -1,4 +1,4 @@
-"""Defines utilities for the pytorch backend.
+"""Defines utilities for the torch backend.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """

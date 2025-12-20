@@ -1201,7 +1201,9 @@ class GridBase(metaclass=ABCMeta):
 
             from pde.backends.numba.utils import numba_dict
 
-            operator = grid.make_operator("laplace", bc={"value_expression": "t"})
+            operator = grid.make_operator(
+                "laplace", bc={"value_expression": "t"}, backend="numba"
+            )
             operator(field.data, args=numba_dict(t=t))
 
         Returns:

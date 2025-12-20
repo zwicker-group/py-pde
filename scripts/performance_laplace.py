@@ -41,8 +41,8 @@ class CartesianLaplacian(torch.nn.Module):
         return lap_x + lap_y  # type: ignore
 
 
-def pytorch_2d_periodic(field, periodic, dx=1):
-    """Make pytorch-compiled Laplace operator."""
+def torch_2d_periodic(field, periodic, dx=1):
+    """Make torch-compiled Laplace operator."""
 
     compile_options = {
         "fullgraph": True,
@@ -223,11 +223,13 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
         elif method == "OPTIMIZED":
             laplace = optimized_laplace_2d(bcs)
         elif method == "9POINT":
-            laplace = grid.make_operator("laplace", bc=bcs, corner_weight=1 / 3)
+            laplace = grid.make_operator(
+                "laplace", bc=bcs, corner_weight=1 / 3, backend="numba"
+            )
         elif method in {"numba", "scipy"}:
             laplace = grid.make_operator("laplace", bc=bcs, backend=method)
         elif method == "torch":
-            laplace, field_data = pytorch_2d_periodic(field.data, periodic=periodic)
+            laplace, field_data = torch_2d_periodic(field.data, periodic=periodic)
         else:
             msg = f"Unknown method `{method}`"
             raise ValueError(msg)
@@ -266,7 +268,7 @@ def test_cylindrical(shape: tuple[int, int]) -> None:
         if method == "CUSTOM":
             laplace = numba_laplace_cyl_neumann(shape)
         elif method == "numba":
-            laplace = grid.make_operator("laplace", bc=bcs)
+            laplace = grid.make_operator("laplace", bc=bcs, backend="numba")
         else:
             msg = f"Unknown method `{method}`"
             raise ValueError(msg)
@@ -290,7 +292,9 @@ def test_spherical(shape: int) -> None:
     bcs = BoundariesList.from_data("derivative", grid=grid)
 
     for conservative in [True, False]:
-        laplace = grid.make_operator("laplace", bcs, conservative=conservative)
+        laplace = grid.make_operator(
+            "laplace", bcs, conservative=conservative, backend="numba"
+        )
         laplace(field.data)  # call once to pre-compile
         speed = estimate_computation_speed(laplace, field.data)
         print(f" numba (conservative={conservative!s:<5}): {int(speed):>9d}")

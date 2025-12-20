@@ -320,7 +320,7 @@ class PDE(SDEBase):
 
             # create the function evaluating the operator
             try:
-                ops[func] = state.grid.make_operator(func, bc=bc)
+                ops[func] = state.grid.make_operator(func, bc=bc, backend="numba")
             except BCDataError:
                 # wrong data was supplied for the boundary condition
                 raise

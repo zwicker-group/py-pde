@@ -127,7 +127,7 @@ class WavePDE(PDEBase):
         signature = arr_type(arr_type, nb.double)
 
         speed2 = self.speed**2
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
+        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
 
         @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float):

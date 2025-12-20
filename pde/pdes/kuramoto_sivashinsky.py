@@ -132,9 +132,11 @@ class KuramotoSivashinskyPDE(SDEBase):
         signature = arr_type(arr_type, nb.double)
 
         nu_value = self.nu
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
-        laplace2 = state.grid.make_operator("laplace", bc=self.bc_lap)
-        gradient_sq = state.grid.make_operator("gradient_squared", bc=self.bc)
+        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
+        laplace2 = state.grid.make_operator("laplace", bc=self.bc_lap, backend="numba")
+        gradient_sq = state.grid.make_operator(
+            "gradient_squared", bc=self.bc, backend="numba"
+        )
 
         @nb.jit(signature)
         def pde_rhs(state_data: NumericArray, t: float):

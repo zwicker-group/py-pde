@@ -56,7 +56,7 @@ def test_colored_noise(rng):
 
     assert stats.ks_2samp(n1.flat, n2.flat).pvalue > 0.05
     # compare Laplacian of field, which should be uncorrelated
-    laplace = grid.make_operator("laplace", bc="periodic")
+    laplace = grid.make_operator("laplace", bc="periodic", backend="numba")
     assert stats.ks_2samp(laplace(n1).flat, laplace(n2).flat).pvalue > 0.05
 
 
@@ -82,7 +82,8 @@ def test_gaussian_correlation(rng):
 
     assert stats.ks_2samp(n1.flat, n2.flat).pvalue > 0.05
     # compare Laplacian of field, which should be uncorrelated
-    laplace = UnitGrid([32, 32], periodic=True).make_operator("laplace", bc="periodic")
+    grid = UnitGrid([32, 32], periodic=True)
+    laplace = grid.make_operator("laplace", bc="periodic", backend="numba")
     assert stats.ks_2samp(laplace(n1).flat, laplace(n2).flat).pvalue > 0.05
 
     # create a grid
@@ -134,7 +135,7 @@ def test_colored_noise_scaling(rng):
 
     # divergence of white noise
     shape = (grid.dim, *grid.shape)
-    div = grid.make_operator("divergence", bc="auto_periodic_neumann")
+    div = grid.make_operator("divergence", bc="auto_periodic_neumann", backend="numba")
 
     def noise_div():
         return div(rng.normal(size=shape)) / (2 * np.pi)

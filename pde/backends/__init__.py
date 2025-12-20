@@ -8,6 +8,7 @@
    ~numba_mpi.backend.NumbaMPIBackend
    ~numpy.backend.NumpyBackend
    ~scipy.backend.ScipyBackend
+   ~torch.backend.TorchBackend
 
 Inheritance structure of the classes:
 
@@ -16,6 +17,7 @@ Inheritance structure of the classes:
          numba_mpi.backend.NumbaMPIBackend
          numpy.backend.NumpyBackend
          scipy.backend.ScipyBackend
+         torch.backend.TorchBackend
    :parts: 1
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
@@ -33,4 +35,4 @@ backends.add(numpy_backend)
 backends.register_package("pde.backends.numba", "numba")
 backends.register_package("pde.backends.numba_mpi", "numba_mpi")
 backends.register_package("pde.backends.scipy", "scipy")
-backends.register_package("pde.backends.pytorch", "pytorch")
+backends.register_package("pde.backends.torch", "torch")

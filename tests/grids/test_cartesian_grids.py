@@ -286,11 +286,11 @@ def test_generic_operators(method, rng):
     op1 = make_derivative(grid, axis=0, method=method)
     expect = np.empty(5)
     op1(data_full, expect)
-    op2 = grid.make_operator(f"d_dx_{method}", bc=bcs)
+    op2 = grid.make_operator(f"d_dx_{method}", bc=bcs, backend="numba")
     np.testing.assert_allclose(expect, op2(data))
 
     if method == "central":
-        op3 = grid.make_operator("gradient", bc="periodic")
+        op3 = grid.make_operator("gradient", bc="periodic", backend="numba")
         np.testing.assert_allclose(expect, op3(data)[0])
 
 

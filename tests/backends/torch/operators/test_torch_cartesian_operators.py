@@ -9,6 +9,8 @@ import pytest
 
 from pde import CartesianGrid, ScalarField, UnitGrid
 
+pytest.importorskip("torch")
+
 π = np.pi
 
 
@@ -41,12 +43,10 @@ def test_singular_dimensions_2d(periodic, rng):
     g2b = UnitGrid([1, dim], periodic=periodic)
 
     field = ScalarField.random_uniform(g1, rng=rng)
-    expected = field.laplace("auto_periodic_neumann", backend="pytorch").data
+    expected = field.laplace("auto_periodic_neumann", backend="torch").data
     for g in [g2a, g2b]:
         f = ScalarField(g, data=field.data.reshape(g.shape))
-        res = f.laplace("auto_periodic_neumann", backend="pytorch").data.reshape(
-            g1.shape
-        )
+        res = f.laplace("auto_periodic_neumann", backend="torch").data.reshape(g1.shape)
         np.testing.assert_allclose(expected, res)
 
 
