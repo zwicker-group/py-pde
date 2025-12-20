@@ -5,11 +5,11 @@
 import numpy as np
 import pytest
 
-from pde.backends.torch.utils import get_torch_dtype
-
 pytest.importorskip("torch")
 
 import torch
+
+from pde.backends.torch.utils import get_torch_dtype
 
 
 def test_torch_dtype():
