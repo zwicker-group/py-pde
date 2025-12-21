@@ -152,7 +152,9 @@ class AllenCahnPDE(PDEBase):
         def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
             """Compiled helper function evaluating right hand side."""
             return mobility * (
-                interface_width * laplace(state_data) - state_data**3 + state_data
+                interface_width * laplace(state_data, args={"t": t})
+                - state_data**3
+                + state_data
             )
 
         return pde_rhs

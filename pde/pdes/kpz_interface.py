@@ -162,8 +162,8 @@ class KPZInterfacePDE(SDEBase):
 
         def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
             """Compiled helper function evaluating right hand side."""
-            result = nu_value * laplace(state_data)
-            result += lambda_value * gradient_squared(state_data)
+            result = nu_value * laplace(state_data, args={"t": t})
+            result += lambda_value * gradient_squared(state_data, args={"t": t})
             return result
 
         return pde_rhs

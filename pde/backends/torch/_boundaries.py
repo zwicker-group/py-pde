@@ -83,7 +83,7 @@ class TorchConstBC1stOrderBoundary(torch.nn.Module):
         self.register_buffer("const", torch.from_numpy(np.asarray(const)))
         self.register_buffer("factor", torch.from_numpy(np.asarray(factor)))
 
-    def forward(self, data_full: Tensor) -> Tensor:
+    def forward(self, data_full: Tensor, args=None) -> Tensor:
         """Set the virtual points at the boundary."""
         num_axes = self.bc.grid.num_axes
         normal = self.bc.normal

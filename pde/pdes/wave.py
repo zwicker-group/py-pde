@@ -162,6 +162,8 @@ class WavePDE(PDEBase):
 
         def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
             """Compiled helper function evaluating right hand side."""
-            return torch.stack((state_data[1], speed2 * laplace(state_data[0])))
+            return torch.stack(
+                (state_data[1], speed2 * laplace(state_data[0], args={"t": t}))
+            )
 
         return pde_rhs

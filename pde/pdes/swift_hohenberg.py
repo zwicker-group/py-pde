@@ -182,8 +182,8 @@ class SwiftHohenbergPDE(PDEBase):
 
         def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
             """Compiled helper function evaluating right hand side."""
-            state_laplace = laplace(state_data)
-            state_laplace2 = laplace2(state_laplace)
+            state_laplace = laplace(state_data, args={"t": t})
+            state_laplace2 = laplace2(state_laplace, args={"t": t})
 
             return (
                 (rate - kc2**2) * state_data

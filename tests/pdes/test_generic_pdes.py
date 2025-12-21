@@ -8,6 +8,7 @@ import pytest
 
 from pde import ScalarField, UnitGrid, pdes
 from pde.solvers import ExplicitSolver
+from pde.tools.misc import module_available
 
 
 @pytest.mark.parametrize("dim", [1, 2])
@@ -38,9 +39,10 @@ def test_pde_consistency(pde_class, dim, rng):
     np.testing.assert_allclose(field.data, res)
 
     # compare torch to numpy implementation
-    rhs = eq.make_pde_rhs(state, backend="torch")
-    res = rhs(state.data, 0)
-    np.testing.assert_allclose(field.data, res)
+    if module_available("torch"):
+        rhs = eq.make_pde_rhs(state, backend="torch")
+        res = rhs(state.data, 0)
+        np.testing.assert_allclose(field.data, res)
 
     # compare to generic implementation
     assert isinstance(eq.expression, str)

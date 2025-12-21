@@ -149,7 +149,11 @@ class CahnHilliardPDE(PDEBase):
 
         def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
             """Compiled helper function evaluating right hand side."""
-            mu = state_data**3 - state_data - interface_width * laplace_c(state_data)
-            return laplace_mu(mu)
+            mu = (
+                state_data**3
+                - state_data
+                - interface_width * laplace_c(state_data, args={"t": t})
+            )
+            return laplace_mu(mu, args={"t": t})
 
         return pde_rhs

@@ -90,7 +90,7 @@ class TorchOperator(torch.nn.Module):
         else:
             raise NotImplementedError
 
-    def set_ghost_cells(self):
+    def set_ghost_cells(self, args=None):
         """Return function that sets the ghost cells on a full array.
 
         Args:
@@ -104,9 +104,9 @@ class TorchOperator(torch.nn.Module):
             information in `args` (e.g., the time `t` during solving a PDE)
         """
         for set_ghost_cells in self.ghost_cell_setters:
-            set_ghost_cells(self.data_full)
+            set_ghost_cells(self.data_full, args=args)
 
-    def get_full_data(self, arr: Tensor) -> Tensor:
+    def get_full_data(self, arr: Tensor, args=None) -> Tensor:
         """Get full data array including ghost cells.
 
         Args:
@@ -124,7 +124,7 @@ class TorchOperator(torch.nn.Module):
             # `arr` only contains the valid data and we need to apply boundary
             # conditions. We thus use the internal data `self.data_full`
             self.set_valid(arr)
-            self.set_ghost_cells()
+            self.set_ghost_cells(args=args)
             return self.data_full
 
         # Assume `arr` already contains the full data

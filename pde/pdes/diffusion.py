@@ -144,6 +144,6 @@ class DiffusionPDE(SDEBase):
 
         def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
             """Compiled helper function evaluating right hand side."""
-            return diffusivity_value * laplace(state_data)
+            return diffusivity_value * laplace(state_data, args={"t": t})
 
         return pde_rhs

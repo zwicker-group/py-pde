@@ -173,9 +173,9 @@ class KuramotoSivashinskyPDE(SDEBase):
 
         def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
             """Compiled helper function evaluating right hand side."""
-            result = -laplace(state_data)
-            result += nu_value * laplace2(result)
-            result -= 0.5 * gradient_sq(state_data)
+            result = -laplace(state_data, args={"t": t})
+            result += nu_value * laplace2(result, args={"t": t})
+            result -= 0.5 * gradient_sq(state_data, args={"t": t})
             return result
 
         return pde_rhs
