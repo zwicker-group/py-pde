@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     import numpy as np
+    import torch
 
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import NumericArray
@@ -130,6 +131,39 @@ class KPZInterfacePDE(SDEBase):
             """Compiled helper function evaluating right hand side."""
             result = nu_value * laplace(state_data, args={"t": t})
             result += lambda_value * gradient_squared(state_data, args={"t": t})  # type: ignore
+            return result
+
+        return pde_rhs
+
+    def make_pde_rhs_torch(
+        self, state: ScalarField
+    ) -> Callable[[torch.Tensor, float], torch.Tensor]:
+        """Create a compiled function evaluating the right hand side of the PDE.
+
+        Args:
+            state (:class:`~pde.fields.ScalarField`):
+                An example for the state defining the grid and data types
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called
+            with an instance of :class:`torch.Tensor` of the state data and
+            the time to obtained an instance of :class:`torch.Tensor` giving
+            the evolution rate.
+        """
+        from ..backends.torch import torch_backend
+
+        nu_value, lambda_value = self.nu, self.lmbda
+        laplace = torch_backend.make_torch_operator(
+            grid=state.grid, operator="laplace", bcs=self.bc, dtype=state.dtype
+        )
+        gradient_squared = torch_backend.make_torch_operator(
+            grid=state.grid, operator="gradient_squared", bcs=self.bc, dtype=state.dtype
+        )
+
+        def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
+            """Compiled helper function evaluating right hand side."""
+            result = nu_value * laplace(state_data)
+            result += lambda_value * gradient_squared(state_data)
             return result
 
         return pde_rhs

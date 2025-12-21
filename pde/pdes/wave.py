@@ -17,6 +17,8 @@ from .base import PDEBase, expr_prod
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    import torch
+
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import NumericArray
 
@@ -131,5 +133,35 @@ class WavePDE(PDEBase):
             rate[1][:] = laplace(state_data[0], args={"t": t})
             rate[1] *= speed2
             return rate
+
+        return pde_rhs
+
+    def make_pde_rhs_torch(
+        self, state: ScalarField
+    ) -> Callable[[torch.Tensor, float], torch.Tensor]:
+        """Create a compiled function evaluating the right hand side of the PDE.
+
+        Args:
+            state (:class:`~pde.fields.ScalarField`):
+                An example for the state defining the grid and data types
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called
+            with an instance of :class:`torch.Tensor` of the state data and
+            the time to obtained an instance of :class:`torch.Tensor` giving
+            the evolution rate.
+        """
+        import torch
+
+        from ..backends.torch import torch_backend
+
+        speed2 = self.speed**2
+        laplace = torch_backend.make_torch_operator(
+            grid=state.grid, operator="laplace", bcs=self.bc, dtype=state.dtype
+        )
+
+        def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
+            """Compiled helper function evaluating right hand side."""
+            return torch.stack((state_data[1], speed2 * laplace(state_data[0])))
 
         return pde_rhs

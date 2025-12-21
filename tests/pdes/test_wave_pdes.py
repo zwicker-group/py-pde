@@ -24,6 +24,14 @@ def test_wave_consistency(dim, rng):
     rhs = nb.njit(eq.make_pde_rhs_numba(state))
     np.testing.assert_allclose(field.data, rhs(state.data, 0))
 
+    # compare torch to numpy implementation
+    grid = UnitGrid([4] * dim)
+    state = eq.get_initial_condition(ScalarField.random_uniform(grid, rng=rng))
+    field = eq.evolution_rate(state)
+    assert field.grid == grid
+    rhs = eq.make_pde_rhs(state, backend="torch")
+    np.testing.assert_allclose(field.data, rhs(state.data, 0))
+
     # compare to generic implementation
     assert isinstance(eq.expressions, dict)
     eq2 = PDE(eq.expressions)

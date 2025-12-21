@@ -37,6 +37,11 @@ def test_pde_consistency(pde_class, dim, rng):
     res = rhs(state.data, 0)
     np.testing.assert_allclose(field.data, res)
 
+    # compare torch to numpy implementation
+    rhs = eq.make_pde_rhs(state, backend="torch")
+    res = rhs(state.data, 0)
+    np.testing.assert_allclose(field.data, res)
+
     # compare to generic implementation
     assert isinstance(eq.expression, str)
     eq2 = pdes.PDE({"c": eq.expression})
