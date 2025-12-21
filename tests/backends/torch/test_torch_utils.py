@@ -2,10 +2,14 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import sys
+
 import numpy as np
 import pytest
 
 pytest.importorskip("torch")
+if sys.platform == "win32":
+    pytest.skip("Skip torch tests on Windows")
 
 import torch
 

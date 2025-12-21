@@ -3,6 +3,7 @@
 """
 
 import random
+import sys
 
 import numpy as np
 import pytest
@@ -11,6 +12,8 @@ from scipy import ndimage
 from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid, VectorField
 
 pytest.importorskip("torch")
+if sys.platform == "win32":
+    pytest.skip("Skip torch tests on Windows")
 
 π = np.pi
 
