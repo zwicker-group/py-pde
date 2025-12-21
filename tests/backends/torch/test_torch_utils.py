@@ -9,7 +9,7 @@ import pytest
 
 pytest.importorskip("torch")
 if sys.platform == "win32":
-    pytest.skip("Skip torch tests on Windows")
+    pytest.skip("Skip torch tests on Windows", allow_module_level=True)
 
 import torch
 

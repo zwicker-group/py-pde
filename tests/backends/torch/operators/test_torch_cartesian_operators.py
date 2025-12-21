@@ -13,7 +13,7 @@ from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid, VectorField
 
 pytest.importorskip("torch")
 if sys.platform == "win32":
-    pytest.skip("Skip torch tests on Windows")
+    pytest.skip("Skip torch tests on Windows", allow_module_level=True)
 
 π = np.pi
 
@@ -58,7 +58,9 @@ def test_singular_dimensions_2d(periodic, rng):
 def test_laplace_1d(periodic, rng):
     """Test the implementation of the laplace operator."""
     bcs = _get_random_grid_bcs(1, periodic=periodic)
-    field = ScalarField.random_colored(bcs.grid, -6, rng=rng)
+    field = ScalarField.random_normal(
+        bcs.grid, correlation="power law", exponent=-6, rng=rng
+    )
     l1 = field.laplace(bcs, backend="scipy")
     l2 = field.laplace(bcs, backend="torch")
     np.testing.assert_allclose(l1.data, l2.data)

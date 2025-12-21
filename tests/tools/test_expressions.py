@@ -150,7 +150,7 @@ def test_two_args(rng):
         np.testing.assert_allclose(e(*x), res)
         np.testing.assert_allclose(e.get_compiled()(*x), res)
         if x.ndim == 1:
-            func = e._get_function(single_arg=True)
+            func = e.get_function(single_arg=True)
             np.testing.assert_allclose(func(x), res)
             func = e.get_compiled(single_arg=True)
             np.testing.assert_allclose(func(x), res)

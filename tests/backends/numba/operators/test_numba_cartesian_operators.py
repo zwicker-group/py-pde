@@ -71,7 +71,9 @@ def test_singular_dimensions_3d(periodic, rng):
 def test_laplace_1d(periodic, rng):
     """Test the implementation of the laplace operator."""
     bcs = _get_random_grid_bcs(1, periodic=periodic)
-    field = ScalarField.random_colored(bcs.grid, -6, rng=rng)
+    field = ScalarField.random_normal(
+        bcs.grid, correlation="power law", exponent=-6, rng=rng
+    )
     l1 = field.laplace(bcs, backend="scipy")
     l2 = field.laplace(bcs, backend="numba")
     np.testing.assert_allclose(l1.data, l2.data)
@@ -84,9 +86,13 @@ def test_laplace_spectral(ndim, dtype, rng):
     """Test the implementation of the spectral laplace operator."""
     shape = np.c_[rng.uniform(-20, -10, ndim), rng.uniform(10, 20, ndim)]
     grid = CartesianGrid(shape, 30, periodic=True)
-    field = ScalarField.random_colored(grid, -8, dtype=dtype, rng=rng)
+    field = ScalarField.random_normal(
+        grid, correlation="power law", exponent=-8, dtype=dtype, rng=rng
+    )
     if dtype is complex:
-        field += 1j * ScalarField.random_colored(grid, -8, rng=rng)
+        field += 1j * ScalarField.random_normal(
+            grid, correlation="power law", exponent=-8, rng=rng
+        )
     field /= np.real(field).fluctuations
     l1 = field.laplace("periodic", backend="numba", spectral=False)
     l2 = field.laplace("periodic", backend="numba", spectral=True)
