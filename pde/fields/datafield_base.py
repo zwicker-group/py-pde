@@ -321,6 +321,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         if np.iscomplexobj(mean) or np.iscomplexobj(std):
             # create complex random numbers for the field
+            # TODO: We could probably improve this by using the imaginary field that we
+            # generate for correlated numbers
             real_part = np.real(mean) + np.real(std) * scale * make_random_field()
             imag_part = np.imag(mean) + np.imag(std) * scale * make_random_field()
             data: NumericArray = real_part + 1j * imag_part

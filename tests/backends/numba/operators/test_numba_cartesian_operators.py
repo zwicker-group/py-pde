@@ -86,17 +86,14 @@ def test_laplace_spectral(ndim, dtype, rng):
     """Test the implementation of the spectral laplace operator."""
     shape = np.c_[rng.uniform(-20, -10, ndim), rng.uniform(10, 20, ndim)]
     grid = CartesianGrid(shape, 30, periodic=True)
+    std = 1 if dtype is float else 1 + 1j
     field = ScalarField.random_normal(
-        grid, correlation="power law", exponent=-8, dtype=dtype, rng=rng
+        grid, std=std, correlation="gaussian", length_scale=20, dtype=dtype, rng=rng
     )
-    if dtype is complex:
-        field += 1j * ScalarField.random_normal(
-            grid, correlation="power law", exponent=-8, rng=rng
-        )
     field /= np.real(field).fluctuations
     l1 = field.laplace("periodic", backend="numba", spectral=False)
     l2 = field.laplace("periodic", backend="numba", spectral=True)
-    np.testing.assert_allclose(l1.data, l2.data, atol=1e-1, rtol=1e-2)
+    np.testing.assert_allclose(l1.data, l2.data, atol=0.1, rtol=0.01)
 
 
 @pytest.mark.parametrize("periodic", [True, False])
