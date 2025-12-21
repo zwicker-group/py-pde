@@ -143,7 +143,7 @@ class TorchBackend(NumpyBackend):
             to be supplied explicitly.
         """
         # determine the operator for the chosen backend
-        torch_operator = self.make_torch_operator(grid, operator, bcs=None)
+        torch_operator = self.make_torch_operator(grid, operator, bcs=None, **kwargs)
 
         def operator_no_bc(arr: NumericArray, out: NumericArray) -> None:
             arr_torch = torch.from_numpy(arr)
@@ -192,7 +192,7 @@ class TorchBackend(NumpyBackend):
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
-        torch_operator = self.make_torch_operator(grid, operator, bcs)
+        torch_operator = self.make_torch_operator(grid, operator, bcs, **kwargs)
         torch_operator_jitted = self.compile_function(torch_operator)
         torch_operator_jitted.to(self.device)  # type: ignore
 

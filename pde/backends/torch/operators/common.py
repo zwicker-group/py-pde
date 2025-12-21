@@ -28,9 +28,15 @@ class TorchOperator(torch.nn.Module):
     """Base class for operators implemented in torch."""
 
     data_full: Tensor
+    rank_in: int = 0
+    """int: The rank of the input tensor"""
 
     def __init__(
-        self, grid: GridBase, boundaries: BoundariesList | None, dtype=np.double
+        self,
+        grid: GridBase,
+        boundaries: BoundariesList | None,
+        *,
+        dtype=np.double,
     ):
         """Initialize the torch operator.
 
@@ -48,7 +54,7 @@ class TorchOperator(torch.nn.Module):
 
         # initialize buffer for full data (including ghost cells)
         self.grid = grid
-        full_shape = tuple(n + 2 for n in self.grid.shape)
+        full_shape = (grid.dim,) * self.rank_in + tuple(n + 2 for n in self.grid.shape)
         data_full = torch.empty(full_shape, dtype=dtype)
         self.register_buffer("data_full", data_full)
 
@@ -100,7 +106,26 @@ class TorchOperator(torch.nn.Module):
         for set_ghost_cells in self.ghost_cell_setters:
             set_ghost_cells(self.data_full)
 
-    def set_data_with_bcs(self, arr: Tensor) -> None:
-        """Fill internal data array with valid data and set ghost cells."""
-        self.set_valid(arr)
-        self.set_ghost_cells()
+    def get_full_data(self, arr: Tensor) -> Tensor:
+        """Get full data array including ghost cells.
+
+        Args:
+            arr (:class:`torch.Tensor`):
+                The input data. If boundary conditions are applied, this should contain
+                only the valid grid points. Otherwise, it should already include ghost
+                cells.
+
+        Returns:
+            :class:`torch.Tensor`:
+                The full data array including ghost cells with boundary conditions
+                applied if necessary.
+        """
+        if self.apply_bcs:
+            # `arr` only contains the valid data and we need to apply boundary
+            # conditions. We thus use the internal data `self.data_full`
+            self.set_valid(arr)
+            self.set_ghost_cells()
+            return self.data_full
+
+        # Assume `arr` already contains the full data
+        return arr
