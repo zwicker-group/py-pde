@@ -11,18 +11,17 @@ class PackageConfigDirective(SphinxDirective):
     final_argument_whitespace = False
 
     def run(self):
-        from pde.tools.config import Config
+        from pde import config
 
-        c = Config()
         items = []
 
-        for p in c.data.values():
+        for name, p in config.to_dict().items():
             description = nodes.paragraph(text=p.description + " ")
-            description += nodes.strong(text=f"(Default value: {c[p.name]!r})")
+            description += nodes.strong(text=f"(Default value: {config[name]!r})")
 
             items += nodes.definition_list_item(
                 "",
-                nodes.term(text=p.name),
+                nodes.term(text=name),
                 nodes.definition("", description),
             )
 

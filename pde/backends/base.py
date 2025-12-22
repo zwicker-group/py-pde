@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from ..grids import BoundariesBase, GridBase
     from ..pdes.base import PDEBase
     from ..solvers.base import SolverBase
+    from ..tools.config import Config
     from ..tools.expressions import ExpressionBase
     from ..tools.typing import OperatorImplType
 
@@ -40,6 +41,14 @@ TFunc = TypeVar("TFunc", bound=Callable)
 
 class BackendBase:
     """Basic backend from which all other backends inherit."""
+
+    config: Config
+    """dict: configuration options of this backend.
+
+    Warning:
+        The configuration will only be set once the backend is added to the registry,
+        which allows the registry to read configuration options, e.g., from a file.
+    """
 
     _logger: logging.Logger  # logger instance to output information
     _operators: dict[type[GridBase], dict[str, OperatorInfo]]
