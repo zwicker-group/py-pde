@@ -347,7 +347,7 @@ class GridBase(metaclass=ABCMeta):
         self,
         bcs: BoundariesBase | None = None,
         *,
-        backend: str | BackendBase = "config",
+        backend: str | BackendBase = "default",
     ) -> Callable:
         """Create a function to set the valid part of a full data array.
 
@@ -1123,7 +1123,7 @@ class GridBase(metaclass=ABCMeta):
         self,
         operator: str | OperatorInfo,
         *,
-        backend: str | BackendBase = "config",
+        backend: str | BackendBase = "default",
         **kwargs,
     ) -> OperatorImplType:
         """Return a compiled function applying an operator without boundary conditions.
@@ -1165,7 +1165,7 @@ class GridBase(metaclass=ABCMeta):
         operator: str | OperatorInfo,
         bc: BoundariesData,
         *,
-        backend: str | BackendBase = "config",
+        backend: str | BackendBase = "default",
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.

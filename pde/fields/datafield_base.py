@@ -607,7 +607,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         *,
         fill: Number | None = None,
         with_ghost_cells: bool = False,
-        backend: Literal["numba"] = "numba",
+        backend: str = "default",
     ) -> Callable[[FloatingArray, NumericArray], NumberOrArray]:
         r"""Returns a function that can be used to interpolate values.
 
@@ -875,7 +875,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         out: DataFieldBase | None = None,
         *,
         label: str | None = None,
-        backend: str = "config",
+        backend: str = "default",
         args: dict[str, Any] | None = None,
         **kwargs,
     ) -> DataFieldBase:
@@ -934,7 +934,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return out
 
     def make_dot_operator(
-        self, backend: Literal["numpy", "numba"] = "numba", *, conjugate: bool = True
+        self, backend: str = "default", *, conjugate: bool = True
     ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
         """Return operator calculating the dot product between two fields.
 

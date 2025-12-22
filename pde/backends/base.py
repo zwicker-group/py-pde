@@ -36,6 +36,15 @@ if TYPE_CHECKING:
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
 
+_RESERVED_BACKEND_NAMES: set[str] = {
+    "auto",
+    "best",
+    "config",
+    "default",
+    "none",
+    "undetermined",
+    "unknown",
+}
 TFunc = TypeVar("TFunc", bound=Callable)
 
 
@@ -55,7 +64,7 @@ class BackendBase:
     """dict: all operators registered for all backends"""
 
     def __init__(self, name: str = ""):
-        if name in {"auto", "config"}:
+        if name in _RESERVED_BACKEND_NAMES:
             self._logger.warning("Backend uses reserved name.")
         self.name = name
         self._operators = defaultdict(dict)

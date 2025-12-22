@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from .. import config
 from ..tools.config import Config
-from .base import BackendBase
+from .base import _RESERVED_BACKEND_NAMES, BackendBase
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -20,15 +20,6 @@ if TYPE_CHECKING:
     from ..tools.config import Parameter
 
 
-_RESERVED_NAMES = {
-    "auto",
-    "best",
-    "config",
-    "default",
-    "none",
-    "undetermined",
-    "unknown",
-}
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger instance."""
 
@@ -62,7 +53,7 @@ class BackendRegistry:
             config (list):
                 Configuration options for the package
         """
-        if name in _RESERVED_NAMES:
+        if name in _RESERVED_BACKEND_NAMES:
             _logger.warning("Reserved backend name `%s` should not be used.", name)
         if name in self._backends:
             if isinstance(self._backends[name], str):
@@ -83,7 +74,7 @@ class BackendRegistry:
             backend (:class:`~pde.backends.base.BackendBase`):
                 Implementation of the backend
         """
-        if backend.name in _RESERVED_NAMES:
+        if backend.name in _RESERVED_BACKEND_NAMES:
             _logger.warning(
                 "Reserved backend name `%s` should not be used.", backend.name
             )
@@ -106,7 +97,7 @@ class BackendRegistry:
         name = str(backend)  # if it's not a class, it needs to be a backend name
 
         # handle special names
-        if name == "config":
+        if name == "default":
             name = config["default_backend"]
 
         # get the backend from the registry
@@ -125,7 +116,7 @@ class BackendRegistry:
         return backend_obj
 
     def __contains__(self, name: str) -> bool:
-        return name == "config" or name in self._backends
+        return name == "default" or name in self._backends
 
     def __iter__(self) -> Iterator[str]:
         """Iterate over the defined backends."""

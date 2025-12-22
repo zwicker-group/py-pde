@@ -846,7 +846,6 @@ def _make_divergence_numba_3d(
 def make_divergence(
     grid: CartesianGrid,
     *,
-    backend: Literal["auto", "config", "numba", "scipy"] = "config",
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorImplType:
     """Make a divergence operator on a Cartesian grid.
