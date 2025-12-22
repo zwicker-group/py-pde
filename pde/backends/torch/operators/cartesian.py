@@ -4,6 +4,12 @@
    :nosignatures:
 
    CartesianLaplacian
+   CartesianGradient
+   CartesianGradientSquared
+   CartesianDivergence
+   CartesianVectorGradient
+   CartesianVectorLaplacian
+   CartesianTensorDivergence
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -35,7 +41,7 @@ class CartesianLaplacian(TorchOperator):
     def __init__(
         self,
         grid: GridBase,
-        boundaries: BoundariesList | None,
+        bcs: BoundariesList | None,
         *,
         dtype: AnyDType = np.double,
     ):
@@ -44,13 +50,13 @@ class CartesianLaplacian(TorchOperator):
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid on which the operator acts
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
                 The boundary conditions applied to the field. If `None`, no boundary
                 conditions are enforced.
             dtype:
                 The data type of the field
         """
-        super().__init__(grid, boundaries, dtype=dtype)
+        super().__init__(grid, bcs, dtype=dtype)
         self.scale = self.grid.discretization**-2
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
@@ -94,7 +100,7 @@ class CartesianGradient(TorchOperator):
     def __init__(
         self,
         grid: GridBase,
-        boundaries: BoundariesList | None,
+        bcs: BoundariesList | None,
         *,
         dtype: AnyDType = np.double,
     ):
@@ -103,13 +109,13 @@ class CartesianGradient(TorchOperator):
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid on which the operator acts
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
                 The boundary conditions applied to the field. If `None`, no boundary
                 conditions are enforced.
             dtype:
                 The data type of the field
         """
-        super().__init__(grid, boundaries, dtype=dtype)
+        super().__init__(grid, bcs, dtype=dtype)
         self.scale = 0.5 / self.grid.discretization
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
@@ -148,7 +154,7 @@ class CartesianGradientSquared(TorchOperator):
     def __init__(
         self,
         grid: GridBase,
-        boundaries: BoundariesList | None,
+        bcs: BoundariesList | None,
         *,
         central: bool = True,
         dtype: AnyDType = np.double,
@@ -158,7 +164,7 @@ class CartesianGradientSquared(TorchOperator):
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid on which the operator acts
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
                 The boundary conditions applied to the field. If `None`, no boundary
                 conditions are enforced.
             central (bool):
@@ -167,10 +173,10 @@ class CartesianGradientSquared(TorchOperator):
             dtype:
                 The data type of the field
         """
-        super().__init__(grid, boundaries, dtype=dtype)
+        super().__init__(grid, bcs, dtype=dtype)
         self.central = central
         if self.central:
-            self.grad_central = CartesianGradient(grid, boundaries, dtype=dtype)
+            self.grad_central = CartesianGradient(grid, bcs, dtype=dtype)
         else:
             self.scale = 0.5 / self.grid.discretization**2
 
@@ -228,7 +234,7 @@ class CartesianDivergence(TorchOperator):
     def __init__(
         self,
         grid: GridBase,
-        boundaries: BoundariesList | None,
+        bcs: BoundariesList | None,
         *,
         dtype: AnyDType = np.double,
     ):
@@ -237,13 +243,13 @@ class CartesianDivergence(TorchOperator):
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid on which the operator acts
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
                 The boundary conditions applied to the field. If `None`, no boundary
                 conditions are enforced.
             dtype:
                 The data type of the field
         """
-        super().__init__(grid, boundaries, dtype=dtype)
+        super().__init__(grid, bcs, dtype=dtype)
         self.scale = 0.5 / self.grid.discretization
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
@@ -280,7 +286,7 @@ class CartesianVectorGradient(TorchOperator):
     def __init__(
         self,
         grid: GridBase,
-        boundaries: BoundariesList | None,
+        bcs: BoundariesList | None,
         *,
         dtype: AnyDType = np.double,
     ):
@@ -289,14 +295,14 @@ class CartesianVectorGradient(TorchOperator):
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid on which the operator acts
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
                 The boundary conditions applied to the field. If `None`, no boundary
                 conditions are enforced.
             dtype:
                 The data type of the field
         """
-        super().__init__(grid, boundaries, dtype=dtype)
-        self.grad = CartesianGradient(grid, boundaries, dtype=dtype)
+        super().__init__(grid, bcs, dtype=dtype)
+        self.grad = CartesianGradient(grid, bcs, dtype=dtype)
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
@@ -314,7 +320,7 @@ class CartesianVectorLaplacian(TorchOperator):
     def __init__(
         self,
         grid: GridBase,
-        boundaries: BoundariesList | None,
+        bcs: BoundariesList | None,
         *,
         dtype: AnyDType = np.double,
     ):
@@ -323,14 +329,14 @@ class CartesianVectorLaplacian(TorchOperator):
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid on which the operator acts
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
                 The boundary conditions applied to the field. If `None`, no boundary
                 conditions are enforced.
             dtype:
                 The data type of the field
         """
-        super().__init__(grid, boundaries, dtype=dtype)
-        self.lap = CartesianLaplacian(grid, boundaries, dtype=dtype)
+        super().__init__(grid, bcs, dtype=dtype)
+        self.lap = CartesianLaplacian(grid, bcs, dtype=dtype)
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
@@ -350,7 +356,7 @@ class CartesianTensorDivergence(TorchOperator):
     def __init__(
         self,
         grid: GridBase,
-        boundaries: BoundariesList | None,
+        bcs: BoundariesList | None,
         *,
         dtype: AnyDType = np.double,
     ):
@@ -359,14 +365,14 @@ class CartesianTensorDivergence(TorchOperator):
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid on which the operator acts
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
                 The boundary conditions applied to the field. If `None`, no boundary
                 conditions are enforced.
             dtype:
                 The data type of the field
         """
-        super().__init__(grid, boundaries, dtype=dtype)
-        self.div = CartesianDivergence(grid, boundaries, dtype=dtype)
+        super().__init__(grid, bcs, dtype=dtype)
+        self.div = CartesianDivergence(grid, bcs, dtype=dtype)
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""

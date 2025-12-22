@@ -34,7 +34,7 @@ class TorchOperator(torch.nn.Module):
     def __init__(
         self,
         grid: GridBase,
-        boundaries: BoundariesList | None,
+        bcs: BoundariesList | None,
         *,
         dtype=np.double,
     ):
@@ -43,7 +43,7 @@ class TorchOperator(torch.nn.Module):
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid on which the operator acts
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
                 The boundary conditions applied to the field. If `None`, no boundary
                 conditions are enforced and it is assumed that the operator is applied
                 to the full field.
@@ -58,15 +58,15 @@ class TorchOperator(torch.nn.Module):
         data_full = torch.empty(full_shape, dtype=dtype)
         self.register_buffer("data_full", data_full)
 
-        if boundaries is None:
+        if bcs is None:
             self.apply_bcs = False
 
-        elif isinstance(boundaries, BoundariesList):
+        elif isinstance(bcs, BoundariesList):
             # get the ghost cell setters for all boundaries
-            assert grid == boundaries.grid
+            assert grid == bcs.grid
             self.apply_bcs = True
             self.ghost_cell_setters = []
-            for bc_axis in boundaries:
+            for bc_axis in bcs:
                 for bc_local in bc_axis:
                     ghost_cell_setter = make_local_ghost_cell_setter(bc_local)
                     self.ghost_cell_setters.append(ghost_cell_setter)
