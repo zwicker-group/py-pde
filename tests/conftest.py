@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from pde import config
 from pde.backends.numba.utils import random_seed
 from pde.tools.misc import module_available
 
@@ -22,8 +21,7 @@ def _setup_and_teardown():
     np.seterr(all="raise", under="ignore")
 
     # run the actual test
-    with config({"boundaries.accept_lists": False}):
-        yield
+    yield
 
     # clean up open matplotlib figures after the test
     plt.close("all")

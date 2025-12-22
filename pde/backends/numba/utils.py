@@ -29,7 +29,6 @@ from numba.extending import is_jitted, overload, register_jitable
 from numba.typed import Dict as NumbaDict
 from typing_extensions import Self
 
-from ... import config
 from ...tools.misc import decorator_arguments
 from ...tools.typing import NumericArray
 
@@ -205,6 +204,8 @@ def numba_environment() -> dict[str, Any]:
     Returns:
         (dict) information about the numba setup
     """
+    from . import numba_backend
+
     # determine whether Nvidia Cuda is available
     try:
         from numba import cuda
@@ -243,10 +244,10 @@ def numba_environment() -> dict[str, Any]:
 
     return {
         "version": nb.__version__,
-        "multithreading": config["numba.multithreading"],
-        "multithreading_threshold": config["numba.multithreading_threshold"],
-        "fastmath": config["numba.fastmath"],
-        "debug": config["numba.debug"],
+        "multithreading": numba_backend.config["multithreading"],
+        "multithreading_threshold": numba_backend.config["multithreading_threshold"],
+        "fastmath": numba_backend.config["fastmath"],
+        "debug": numba_backend.config["debug"],
         "using_svml": nb.config.USING_SVML,
         "threading_layer": threading_layer,
         "omp_num_threads": os.environ.get("OMP_NUM_THREADS"),
@@ -290,20 +291,22 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
     Returns:
         Function that will be compiled using numba
     """
+    from . import numba_backend
+
     if is_jitted(function):
         return function
 
     # prepare the compilation arguments
-    if config["numba.fastmath"] is True:
+    if numba_backend.config["fastmath"] is True:
         # enable some (but not all) fastmath flags. We skip the flags that affect
         # handling of infinities and NaN for safety by default. Use "fast" to enable all
         # fastmath flags; see https://llvm.org/docs/LangRef.html#fast-math-flags
         kwargs.setdefault("fastmath", {"nsz", "arcp", "contract", "afn", "reassoc"})
     else:
-        kwargs.setdefault("fastmath", config["numba.fastmath"])
-    kwargs.setdefault("debug", config["numba.debug"])
+        kwargs.setdefault("fastmath", numba_backend.config["fastmath"])
+    kwargs.setdefault("debug", numba_backend.config["debug"])
     # make sure parallel numba is only enabled in restricted cases
-    kwargs["parallel"] = parallel and config.use_multithreading()
+    kwargs["parallel"] = parallel and numba_backend.use_multithreading()
 
     # log some details
     logger = logging.getLogger(__name__)

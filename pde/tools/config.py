@@ -28,11 +28,14 @@ import subprocess as sp
 import sys
 import warnings
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from .misc import module_available
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class Parameter:
@@ -186,45 +189,17 @@ DEFAULT_CONFIG: list[Parameter] = [
         str,
         "Indicate which backend is selected by default.",
     ),
-    Parameter(
-        "numba.debug",
-        False,
-        bool,
-        "Determines whether numba uses the debug mode for compilation. If enabled, "
-        "this emits extra information that might be useful for debugging.",
-    ),
-    Parameter(
-        "numba.fastmath",
-        True,
-        bool,
-        "Determines whether the fastmath flag is set during compilation. If enabled, "
-        "some mathematical operations might be faster, but less precise. This flag "
-        "does not affect infinity detection and NaN handling.",
-    ),
-    Parameter(
-        "numba.multithreading",
-        "only_local",
-        str,
-        "Determines whether multiple threads are used in numba-compiled code. Enabling "
-        "this option accelerates a small subset of operators applied to fields defined "
-        "on large grids. Possible options are 'never' (disable multithreading), "
-        "'only_local' (disable on HPC hardware), and 'always' (enable if number of "
-        "grid points exceeds `numba.multithreading_threshold`)",
-    ),
-    Parameter(
-        "numba.multithreading_threshold",
-        256**2,
-        int,
-        "Minimal number of support points of grids before multithreading is enabled in "
-        "numba compilations. Has no effect when `numba.multithreading` is `False`.",
-    ),
 ]
 
 
 class Config(collections.UserDict):
-    """Class handling the package configuration."""
+    """Class handling general configurations."""
 
-    def __init__(self, items: dict[str, Any] | None = None, mode: str = "update"):
+    def __init__(
+        self,
+        items: Sequence[Parameter] | dict[str, Any] | None = None,
+        mode: str = "update",
+    ):
         """
         Args:
             items (dict, optional):
@@ -240,36 +215,27 @@ class Config(collections.UserDict):
                 Note that the items specified by `items` will always be inserted,
                 independent of the `mode`.
         """
+        super().__init__()
         self.mode = "insert"  # temporarily allow inserting items
-        super().__init__({p.name: p for p in DEFAULT_CONFIG})
-        if items:
+        if isinstance(items, dict):
             self.update(items)
+        elif items:
+            self.update({p.name: p for p in items})
         self.mode = mode
 
     def __getitem__(self, key: str):
         """Retrieve item `key`"""
         parameter = self.data[key]
+
         if isinstance(parameter, Parameter):
             return parameter.convert()
         return parameter
 
-    def _convert_value(self, key: str, value):
-        """Helper function converting certain values."""
-        if key == "numba.multithreading" and isinstance(value, bool):
-            value = "always" if value else "never"
-            # Deprecated on 2025-02-12
-            warnings.warn(
-                "Boolean options are deprecated for `numba.multithreading`. Use "
-                f"config['numba.multithreading'] = '{value}' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        return value
-
     def __setitem__(self, key: str, value):
         """Update item `key` with `value`"""
+        # determine how to set the item
         if self.mode == "insert":
-            self.data[key] = self._convert_value(key, value)
+            self.data[key] = value
 
         elif self.mode == "update":
             try:
@@ -277,7 +243,7 @@ class Config(collections.UserDict):
             except KeyError as err:
                 msg = f"{key} is not present and config is not in `insert` mode"
                 raise KeyError(msg) from err
-            self.data[key] = self._convert_value(key, value)
+            self.data[key] = value
 
         elif self.mode == "locked":
             msg = "Configuration is locked"
@@ -298,10 +264,14 @@ class Config(collections.UserDict):
     def to_dict(self) -> dict[str, Any]:
         """Convert the configuration to a simple dictionary.
 
+        Args:
+            incl_backends (bool):
+                Whether to include items from the backends
+
         Returns:
             dict: A representation of the configuration in a normal :class:`dict`.
         """
-        return dict(self.items())
+        return self.data.copy()
 
     def __repr__(self) -> str:
         """Represent the configuration as a string."""
@@ -324,36 +294,195 @@ class Config(collections.UserDict):
         # restore old configuration
         self.data = data_initial
 
-    def use_multithreading(self) -> bool:
-        """Determine whether multithreading should be used in numba-compiled code.
 
-        This method checks the configuration setting for `numba.multithreading` and
-        determines whether multithreading should be enabled based on the value of this
-        setting. The possible values for `numba.multithreading` are:
-        - 'always': Multithreading is always enabled.
-        - 'never': Multithreading is never enabled.
-        - 'only_local': Multithreading is enabled only if the code is not running in a
-        high-performance computing (HPC) environment.
+class GlobalConfig:
+    """Class handling the global package configuration.
+
+    This class contains additional logic that allows managing multiple configurations,
+    e.g., including the ones defined in :mod:`pde.backends`. The class also contains
+    logic to deal with deprecated configuration options.
+    """
+
+    def __init__(
+        self,
+        items: Sequence[Parameter] | dict[str, Any] | None = None,
+        mode: str = "update",
+    ):
+        """
+        Args:
+            items (dict, optional):
+                Configuration values that should be added or overwritten to initialize
+                the configuration.
+            mode (str):
+                Defines the mode in which the configuration is used. Possible values are
+
+                * `insert`: any new configuration key can be inserted
+                * `update`: only the values of pre-existing items can be updated
+                * `locked`: no values can be changed
+
+                Note that the items specified by `items` will always be inserted,
+                independent of the `mode`.
+        """
+        self._config = Config(items, mode=mode)
+
+    def _get_sub_config(self, key: str) -> tuple[Config, str]:
+        """Determine the actual configuration where the data is stored.
+
+        Some configuration items are stored in sub-configurations, e.g., those for the
+        backends.
+
+        Args:
+            key (str):
+                Global key to the configuration option
 
         Returns:
-            bool: True if multithreading should be enabled, False otherwise.
-
-        Raises:
-            ValueError: If the `numba.multithreading` setting is not one of the expected
-            values ('always', 'never', 'only_local').
+            tuple of :class:`Config` and str:
+                The actual configuration where the configuration is stored and the key
+                into this configuration.
         """
-        setting = self["numba.multithreading"]
-        if setting == "always":
-            return True
-        if setting == "never":
-            return False
-        if setting == "only_local":
-            return not is_hpc_environment()
-        msg = (
-            "Parameter `numba.multithreading` must be in {'always', 'never', "
-            f"'only_local'}}, not `{setting}`"
-        )
-        raise ValueError(msg)
+        if key.startswith("backend."):
+            # use configurations of backend
+            from ..backends import backends
+
+            _, backend, config_key = key.split(".", 2)
+            return backends[backend].config, config_key
+
+        if key.startswith("numba."):
+            # legacy location for numba related configurations; deprecated on 2025-12-22
+            warnings.warn(
+                f"Configuration `{key}` is deprecated. Use `backend.{key}` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            from ..backends import backends
+
+            backend, config_key = key.split(".", 1)
+            return backends[backend].config, config_key
+
+        # use global configuration
+        return self._config, key
+
+    def _convert_value(self, key: str, value):
+        """Helper function converting certain values."""
+        if key.endswith("numba.multithreading") and isinstance(value, bool):
+            value = "always" if value else "never"
+            # Deprecated on 2025-02-12
+            warnings.warn(
+                "Boolean options are deprecated for `numba.multithreading`. Use "
+                f"config['numba.multithreading'] = '{value}' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        return value
+
+    def __contains__(self, key: str) -> bool:
+        config, data_key = self._get_sub_config(key)
+        return data_key in config
+
+    def __getitem__(self, key: str):
+        """Retrieve item `key`"""
+        config, data_key = self._get_sub_config(key)
+        return config[data_key]
+
+    def __iter__(self):
+        from ..backends import backends
+
+        yield from self._config
+
+        for backend, config in backends._configs.items():
+            for subkey in config:
+                yield f"backend.{backend}.{subkey}"
+
+    def items(self, just_values: bool = True):
+        """Iterate over configuration items.
+
+        Args:
+            just_values (bool):
+                Whether to yield converted parameter values (`True`) or raw
+                :class:`Parameter` objects (`False`).
+
+        Yields:
+            tuple: Key-value pairs of configuration items, including items from all
+                backend configurations with keys prefixed by `backend.<name>.`.
+        """
+        from ..backends import backends
+
+        if just_values:
+            yield from self._config.items()
+
+            for backend, config in backends._configs.items():
+                for subkey, value in config.items():
+                    yield f"backend.{backend}.{subkey}", value
+
+        else:
+            for key in self._config:
+                yield key, self._config.data[key]
+
+            for backend, config in backends._configs.items():
+                for subkey in config:
+                    yield f"backend.{backend}.{subkey}", config.data[subkey]
+
+    def update(self, items: dict[str, Any]) -> None:
+        for k, v in items.items():
+            self[k] = v
+
+    def __setitem__(self, key: str, value):
+        """Update item `key` with `value`"""
+        config, data_key = self._get_sub_config(key)
+        config[data_key] = self._convert_value(key, value)
+
+    def __delitem__(self, key: str):
+        """Removes item `key`"""
+        config, data_key = self._get_sub_config(key)
+        del config[data_key]
+
+    def to_dict(self, incl_backends: bool = True) -> dict[str, Any]:
+        """Convert the configuration to a simple dictionary.
+
+        Args:
+            incl_backends (bool):
+                Whether to include items from the backends
+
+        Returns:
+            dict: A representation of the configuration in a normal :class:`dict`.
+        """
+        res = self._config.to_dict()
+        if incl_backends:
+            from ..backends import backends
+
+            for backend, config in backends._configs.items():
+                for name, p in config.data.items():
+                    res[f"backend.{backend}.{name}"] = p
+        return res
+
+    def __repr__(self) -> str:
+        """Represent the configuration as a string."""
+        return f"{self.__class__.__name__}({self.to_dict(incl_backends=False)!r})"
+
+    @contextlib.contextmanager
+    def __call__(self, values: dict[str, Any] | None = None, **kwargs):
+        """Context manager temporarily changing the configuration.
+
+        Args:
+            values (dict): New configuration parameters
+            **kwargs: New configuration parameters
+        """
+        if values is None:
+            values = kwargs
+        else:
+            values.update(kwargs)
+
+        if not values:
+            # nothing to do
+            yield
+            return
+
+        data_initial = {key: self[key] for key in values}  # save old configuration
+        # set new configuration
+        self.update(values)
+        yield  # return to caller
+        # restore old configuration
+        self.update(data_initial)
 
 
 def get_package_versions(

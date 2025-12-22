@@ -554,7 +554,7 @@ Here is a list of all configuration options that can be adjusted in the package:
     .. code-block:: python
 
         from pde import config
-        config["numba.multithreading"] = "never"
+        config["backend.numba.multithreading"] = "never"
 
         # actual code using py-pde
 
