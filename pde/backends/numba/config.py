@@ -43,4 +43,11 @@ DEFAULT_CONFIG: list[Parameter] = [
         "Minimal number of support points of grids before multithreading is enabled in "
         "numba compilations. Has no effect when `numba.multithreading` is `False`.",
     ),
+    Parameter(
+        "use_spectral",
+        False,
+        bool,
+        "Indicates whether a spectral implementation should be used where possible. "
+        "Note that this option is only implemented for few operators.",
+    ),
 ]

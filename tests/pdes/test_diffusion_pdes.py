@@ -101,12 +101,12 @@ def test_diffusion_spectral(ndim, rng):
     """Test spectral operators for simple diffusion model."""
     eq = DiffusionPDE()
 
-    with config({"operators.cartesian.default_backend": "numba"}):
+    with config({"backend.numba.use_spectral": False}):
         grid1 = CartesianGrid([[0, 1]] * ndim, 128, periodic=True)
         state1 = ScalarField.random_normal(grid1, correlation="gaussian", rng=rng)
         field1 = eq.evolution_rate(state1)
 
-    with config({"operators.cartesian.default_backend": "numba-spectral"}):
+    with config({"backend.numba.use_spectral": True}):
         grid2 = CartesianGrid([[0, 1]] * ndim, 128, periodic=True)
         state2 = ScalarField(grid2, state1.data)
         field2 = eq.evolution_rate(state2)

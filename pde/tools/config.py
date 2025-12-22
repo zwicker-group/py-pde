@@ -147,7 +147,8 @@ DEFAULT_CONFIG: list[Parameter] = [
         bool,
         "Indicates whether conservative stencils should be used for differential "
         "operators on curvilinear grids. Conservative operators ensure mass "
-        "conservation at slightly slower computation speed.",
+        "conservation at slightly slower computation speed. "
+        "Note that some backends might ignore this option.",
     ),
     Parameter(
         "operators.tensor_symmetry_check",
@@ -156,15 +157,8 @@ DEFAULT_CONFIG: list[Parameter] = [
         "Indicates whether tensor fields are checked for having a suitable form for "
         "evaluating differential operators in curvilinear coordinates where some axes "
         "are assumed to be symmetric. In such cases, some tensor components might need "
-        "to vanish, so the result of the operator can be expressed.",
-    ),
-    Parameter(
-        "operators.cartesian.default_backend",
-        "auto",
-        str,
-        "Sets default backend with which Cartesian operators are created. Typical "
-        "options include `scipy` and `numba`. The default option `auto` typically "
-        "provides the most flexible result and should rarely be changed.",
+        "to vanish, so the result of the operator can be expressed. "
+        "Note that some backends might ignore this option.",
     ),
     Parameter(
         "operators.cartesian.laplacian_2d_corner_weight",
@@ -173,7 +167,8 @@ DEFAULT_CONFIG: list[Parameter] = [
         "Weighting factor for the corner points of the 2d cartesian Laplacian stencil. "
         "The standard value is zero, corresponding to the traditional 5-point stencil. "
         "Alternative choices are 1/2 (Oono-Puri stencil) and 1/3 (Patra-Karttunen or "
-        "Mehrstellen stencil); see https://en.wikipedia.org/wiki/Nine-point_stencil.",
+        "Mehrstellen stencil); see https://en.wikipedia.org/wiki/Nine-point_stencil. "
+        "Note that some backends might ignore this option.",
     ),
     Parameter(
         "boundaries.accept_lists",

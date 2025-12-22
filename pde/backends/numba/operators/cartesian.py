@@ -314,7 +314,7 @@ def make_laplace(
     """
     dim = grid.dim
     if spectral is None:
-        spectral = config["operators.cartesian.default_backend"] == "numba-spectral"
+        spectral = numba_backend.config["use_spectral"]
 
     if spectral:
         # use spectral versions of the operators
