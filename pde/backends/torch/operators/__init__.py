@@ -10,4 +10,4 @@ methods defined on fields and grids.
    polar_sym
 """
 
-from . import cartesian, polar_sym  # noqa: F401
+from . import cartesian, polar_sym, spherical_sym  # noqa: F401

@@ -217,7 +217,7 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
     bcs = grid.get_boundary_conditions("auto_periodic_neumann", rank=0)
     expected = field.laplace("auto_periodic_neumann")
 
-    for method in ["torch", "CUSTOM", "OPTIMIZED", "9POINT", "numba", "scipy"]:
+    for method in ["TORCH", "CUSTOM", "OPTIMIZED", "9POINT", "numba", "scipy"]:
         if method == "CUSTOM":
             laplace = numba_laplace_2d(shape, periodic=periodic)
         elif method == "OPTIMIZED":
@@ -226,16 +226,16 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
             laplace = grid.make_operator(
                 "laplace", bc=bcs, corner_weight=1 / 3, backend="numba"
             )
-        elif method in {"numba", "scipy"}:
-            laplace = grid.make_operator("laplace", bc=bcs, backend=method)
-        elif method == "torch":
+        elif method == "TORCH":
             laplace, field_data = torch_2d_periodic(field.data, periodic=periodic)
+        elif method in {"numba", "torch", "scipy"}:
+            laplace = grid.make_operator("laplace", bc=bcs, backend=method)
         else:
             msg = f"Unknown method `{method}`"
             raise ValueError(msg)
 
         # call once to pre-compile and test result
-        if method.startswith("torch"):
+        if method == "TORCH":
             result = laplace(field_data)
             np.testing.assert_allclose(result, expected.data, rtol=1e-5, atol=1e-6)
             speed = estimate_computation_speed(laplace, field_data)

@@ -10,7 +10,7 @@ import pytest
 
 from pde import (
     Controller,
-    ExplicitSolver,
+    EulerSolver,
     FieldCollection,
     MemoryStorage,
     ScalarField,
@@ -203,7 +203,7 @@ def test_runtime_tracker(rng):
     """Test the RuntimeTracker."""
     s = ScalarField.random_uniform(UnitGrid([128]), rng=rng)
     tracker = trackers.RuntimeTracker("0:01")
-    sol = ExplicitSolver(DiffusionPDE())
+    sol = EulerSolver(DiffusionPDE())
     con = Controller(sol, t_range=1e4, tracker=["progress", tracker])
     con.run(s, dt=1e-3)
 
@@ -211,7 +211,7 @@ def test_runtime_tracker(rng):
 def test_consistency_tracker(rng):
     """Test the ConsistencyTracker."""
     s = ScalarField.random_uniform(UnitGrid([128]), rng=rng)
-    sol = ExplicitSolver(DiffusionPDE(1e3))
+    sol = EulerSolver(DiffusionPDE(1e3))
     con = Controller(sol, t_range=1e5, tracker=["consistency"])
     with np.errstate(all="ignore"):
         con.run(s, dt=1)
@@ -222,12 +222,12 @@ def test_material_conservation_tracker(rng):
     """Test the MaterialConservationTracker."""
     state = ScalarField.random_uniform(UnitGrid([8, 8]), 0, 1, rng=rng)
 
-    solver = ExplicitSolver(CahnHilliardPDE())
+    solver = EulerSolver(CahnHilliardPDE())
     controller = Controller(solver, t_range=1, tracker=["material_conservation"])
     controller.run(state, dt=1e-3)
     assert controller.info["t_final"] >= 1
 
-    solver = ExplicitSolver(AllenCahnPDE())
+    solver = EulerSolver(AllenCahnPDE())
     controller = Controller(solver, t_range=1, tracker=["material_conservation"])
     controller.run(state, dt=1e-3)
     assert controller.info["t_final"] <= 1

@@ -375,8 +375,8 @@ class PDEBase(metaclass=ABCMeta):
             dt (float):
                 Time step of the chosen stepping scheme. If `None`, a default value
                 based on the stepper will be chosen. If an adaptive stepper is used
-                (supported by :class:`~pde.solvers.ScipySolver` and
-                :class:`~pde.solvers.ExplicitSolver`), `dt` sets the initial time step.
+                (e.g., supported by :class:`~pde.solvers.EulerSolver`), `dt` sets the
+                initial time step.
             tracker:
                 Defines trackers that process the state of the simulation at specified
                 times. A tracker is either an instance of

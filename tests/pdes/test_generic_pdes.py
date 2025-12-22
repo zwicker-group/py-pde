@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from pde import ScalarField, UnitGrid, pdes
-from pde.solvers import ExplicitSolver
+from pde.solvers import EulerSolver
 from pde.tools.misc import module_available
 
 
@@ -64,7 +64,7 @@ def test_pde_automatic_adaptive_solver():
     eq.solve(dt=0.01, **args)
     assert not eq.diagnostics["solver"]["dt_adaptive"]
 
-    eq.solve(solver=ExplicitSolver, **args)
+    eq.solve(solver=EulerSolver, **args)
     assert not eq.diagnostics["solver"]["dt_adaptive"]
 
     eq.solve(solver="implicit", **args)
