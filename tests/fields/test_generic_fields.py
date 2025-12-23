@@ -627,3 +627,23 @@ def test_symmetrize_vmin_vmax():
 
     with pytest.raises(TypeError):
         _symmetrize_vmin_vmax("symmetric", "symmetric")
+
+
+@pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
+@pytest.mark.parametrize("correlation", ["none", "gaussian"])
+@pytest.mark.parametrize("dtype", [None, complex])
+def test_complex_random_fields(field_class, correlation, dtype, rng):
+    """Test generating complex random fields."""
+    grid = UnitGrid([30, 50])
+    field = field_class.random_normal(
+        grid, mean=1 + 2j, std=3 + 4j, correlation=correlation, dtype=dtype, rng=rng
+    )
+
+    # rough checks
+    assert 0.5 < field.data.real.mean() < 1.5
+    assert 1.5 < field.data.imag.mean() < 2.5
+    assert 2.5 < field.data.real.std() < 3.5
+    assert 3.5 < field.data.imag.std() < 4.5
+
+    with pytest.raises(TypeError):
+        field_class.random_normal(mean=1 + 1j, dtype=float)

@@ -41,6 +41,7 @@ def _make_isotropic_correlated_noise(
     corr_spectrum: Callable[[NumericArray], NumericArray],
     *,
     discretization: NumberOrArray = 1.0,
+    dtype: np.typing.DTypeLike = float,
     rng: np.random.Generator | None = None,
 ) -> Callable[[], NumericArray]:
     r"""Return a function creating an array of random values with spatial correlations.
@@ -60,6 +61,10 @@ def _make_isotropic_correlated_noise(
         discretization (float or list of floats):
             Discretization along each dimension. A uniform discretization in each
             direction can be indicated by a single number.
+        dtype (:class:`numpy.dtype`):
+            Data type of the returned noise array. If a complex dtype is
+            provided, the function returns complex-valued arrays; otherwise the
+            real part is taken and returned as the specified real dtype.
         rng (:class:`~numpy.random.Generator`):
             Random number generator (default: :func:`~numpy.random.default_rng()`)
 
@@ -67,6 +72,8 @@ def _make_isotropic_correlated_noise(
         callable: a function returning a random realization
     """
     rng = np.random.default_rng(rng)
+    dtype = np.dtype(dtype)
+    ret_complex = issubclass(dtype.type, np.complexfloating)
 
     # extract some information about the grid
     dim = len(shape)
@@ -94,7 +101,11 @@ def _make_isotropic_correlated_noise(
         # scale frequency according to transformed correlation function
         arr *= scaling
         # backward transform to return to real space
-        return np_ifftn(arr, s=shape, axes=range(dim)).real  # type: ignore
+        res = np_ifftn(arr, s=shape, axes=range(dim))
+        # return data of the correct type
+        if ret_complex:
+            return res.astype(dtype)  # type: ignore
+        return res.real.astype(dtype)  # type: ignore
 
     return noise_corr
 
@@ -107,6 +118,7 @@ def make_correlated_noise(
     correlation: CorrelationType,
     *,
     discretization: NumberOrArray = 1.0,
+    dtype: np.typing.DTypeLike = float,
     rng: np.random.Generator | None = None,
     **kwargs,
 ) -> Callable[[], NumericArray]:
@@ -132,6 +144,10 @@ def make_correlated_noise(
         discretization (float or list of floats):
             Discretization along each dimension. A uniform discretization in each
             direction can be indicated by a single number.
+        dtype (:class:`numpy.dtype`):
+            Data type of the returned noise array. If a complex dtype is
+            provided, the function returns complex-valued arrays; otherwise the
+            real part is taken and returned as the specified real dtype.
         rng (:class:`~numpy.random.Generator`):
             Random number generator (default: :func:`~numpy.random.default_rng()`)
         **kwargs:
@@ -166,6 +182,7 @@ def make_correlated_noise(
         callable: a function returning a random realization
     """
     rng = np.random.default_rng(rng)
+    dtype = np.dtype(dtype)
 
     if correlation == "none" or correlation == "delta":
         # no correlation
@@ -212,14 +229,29 @@ def make_correlated_noise(
 
     if corr_spectrum is None:
         # fast case of uncorrelated white noise
-        def noise_normal():
-            """Return array of colored noise."""
-            return rng.normal(size=shape)
+        if issubclass(dtype.type, np.complexfloating):
+
+            def noise_normal():
+                """Return complex array of uncorrelated noise."""
+                real_part = rng.normal(size=shape)
+                imag_part = rng.normal(size=shape)
+                return (real_part + 1j * imag_part).astype(dtype)
+
+        else:
+
+            def noise_normal():
+                """Return real array of uncorrelated noise."""
+                return rng.normal(size=shape).astype(dtype)
 
         return noise_normal
 
+    # standard case of correlated noise
     return _make_isotropic_correlated_noise(
-        shape, corr_spectrum=corr_spectrum, discretization=discretization, rng=rng
+        shape,
+        corr_spectrum=corr_spectrum,
+        discretization=discretization,
+        dtype=dtype,
+        rng=rng,
     )
 
 

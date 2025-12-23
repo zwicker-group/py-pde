@@ -204,3 +204,17 @@ def test_local_variance(corr_args, rng):
     samples_var = np.var(samples, axis=0)
     mean, std = np.mean(samples_var), np.std(samples_var)
     assert mean - std < 1 < mean + std
+
+
+def test_complex_correlated_noise(rng):
+    """Test whether each points in the noise field overall have Gaussian statistics."""
+    grid = CartesianGrid([[0, 20], [0, 20]], [32, 32], periodic=True)
+
+    noise = make_correlated_noise(
+        grid.shape, correlation="gaussian", dtype=complex, rng=rng
+    )
+    samples = np.ravel([noise() for _ in range(1000)])
+    for s in [samples.real, samples.imag]:
+        pvalue = stats.kstest(s, "norm").pvalue
+        assert pvalue > 0.05, f"DISTRIBUTION: {s.mean():.5g} ± {s.std():.5g}"
+    assert stats.ks_2samp(samples.real.flat, samples.imag.flat).pvalue > 0.05
