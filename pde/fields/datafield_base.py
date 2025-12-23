@@ -253,8 +253,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             label (str, optional):
                 Name of the returned field
             dtype (numpy dtype):
-                The data type of the field. If omitted, it defaults to `double` if both
-                `mean` and `std` are real, otherwise it is `complex`.
+                The data type of the field. If omitted, it defaults to `float` if both
+                `mean` and `std` are real, otherwise it is `complex`. Note that if a
+                complex dtype is supplied, the mean and std are also assumed to be
+                complex, so that specifying them as real will lead to a vanishing
+                imaginary part of the returned field.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
             **kwargs:
@@ -288,11 +291,33 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         rng = np.random.default_rng(rng)
 
+        # check whether we need to create a complex field
+        ret_complex = np.iscomplexobj(mean) or np.iscomplexobj(std)
+        if ret_complex:
+            # distribution parameters are complex
+            if dtype is None:
+                dtype = complex
+            dtype = np.dtype(dtype)
+            if not issubclass(dtype.type, np.complexfloating):
+                msg = "Complex mean or std, but `dtype` is not complex"
+                raise TypeError(msg)
+
+        else:
+            # distribution parameters are both real
+            if dtype is None:
+                dtype = float
+            dtype = np.dtype(dtype)
+            if issubclass(dtype.type, np.complexfloating):
+                cls._logger.warning(
+                    "Requested complex dtype but both mean and std are real."
+                )
+
         # create a function for creating a single noise field
         make_scalar_field = make_correlated_noise(
             grid.shape,
             correlation=correlation,
             discretization=grid.discretization,
+            dtype=dtype,
             rng=rng,
             **kwargs,
         )
@@ -304,8 +329,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             def make_random_field() -> NumericArray:
                 """Helper function that creates a single tensor field."""
-                out = np.empty(tensor_shape + grid.shape)
-                print(out.shape, tensor_shape, grid)
+                out = np.empty(tensor_shape + grid.shape, dtype=dtype)
                 for idx in np.ndindex(tensor_shape):
                     out[idx] = make_scalar_field()
                 return out
@@ -319,13 +343,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             msg = f"Unknown noise scaling {scaling}"
             raise ValueError(msg)
 
-        if np.iscomplexobj(mean) or np.iscomplexobj(std):
+        if ret_complex:
             # create complex random numbers for the field
-            # TODO: We could probably improve this by using the imaginary field that we
-            # generate for correlated numbers
-            real_part = np.real(mean) + np.real(std) * scale * make_random_field()
-            imag_part = np.imag(mean) + np.imag(std) * scale * make_random_field()
-            data: NumericArray = real_part + 1j * imag_part
+            data: NumericArray = scale * make_random_field()
+            # scale the result according to the mean and standard deviation
+            real_part = np.real(mean) + np.real(std) * data.real
+            imag_part = np.imag(mean) + np.imag(std) * data.imag
+            data = real_part + 1j * imag_part
         else:
             # create real random numbers for the field
             data = mean + std * scale * make_random_field()
