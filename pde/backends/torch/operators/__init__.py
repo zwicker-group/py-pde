@@ -7,7 +7,9 @@ methods defined on fields and grids.
    :nosignatures:
 
    cartesian
+   cylindrical_sym
    polar_sym
+   spherical_sym
 """
 
-from . import cartesian, polar_sym, spherical_sym  # noqa: F401
+from . import cartesian, cylindrical_sym, polar_sym, spherical_sym  # noqa: F401
