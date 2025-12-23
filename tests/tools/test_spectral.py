@@ -7,7 +7,7 @@ import pytest
 from scipy import fftpack, stats
 
 from pde import CartesianGrid, UnitGrid
-from pde.tools.spectral import make_colored_noise, make_correlated_noise
+from pde.tools.spectral import make_correlated_noise
 
 
 def spectral_density(data, dx=1.0):
@@ -42,8 +42,12 @@ def test_colored_noise(rng):
     grid = CartesianGrid([[0, 32], [0, 32]], [16, 64], periodic=True)
     for exponent in [0, -1, 2]:
         scale = rng.uniform(1, 10)
-        noise = make_colored_noise(
-            grid.shape, dx=grid.discretization[0], exponent=exponent, rng=rng
+        noise = make_correlated_noise(
+            grid.shape,
+            dx=grid.discretization[0],
+            correlation="power law",
+            exponent=exponent,
+            rng=rng,
         )
         x = scale * noise()
         msg = f"Colored noise with exp={exponent} is not normal distributed"
@@ -51,12 +55,15 @@ def test_colored_noise(rng):
 
     # check scaling of almost uncorrelated case
     s = 5
-    n1 = s * make_colored_noise(grid.shape, dx=grid.discretization, exponent=1e-10)()
+    noise = make_correlated_noise(
+        grid.shape, dx=grid.discretization, correlation="power law", exponent=1e-10
+    )
+    n1 = s * noise()
     n2 = s * rng.normal(size=grid.shape)
 
     assert stats.ks_2samp(n1.flat, n2.flat).pvalue > 0.05
     # compare Laplacian of field, which should be uncorrelated
-    laplace = grid.make_operator("laplace", bc="periodic")
+    laplace = grid.make_operator("laplace", bc="periodic", backend="numba")
     assert stats.ks_2samp(laplace(n1).flat, laplace(n2).flat).pvalue > 0.05
 
 
@@ -82,7 +89,8 @@ def test_gaussian_correlation(rng):
 
     assert stats.ks_2samp(n1.flat, n2.flat).pvalue > 0.05
     # compare Laplacian of field, which should be uncorrelated
-    laplace = UnitGrid([32, 32], periodic=True).make_operator("laplace", bc="periodic")
+    grid = UnitGrid([32, 32], periodic=True)
+    laplace = grid.make_operator("laplace", bc="periodic", backend="numba")
     assert stats.ks_2samp(laplace(n1).flat, laplace(n2).flat).pvalue > 0.05
 
     # create a grid
@@ -128,13 +136,13 @@ def test_colored_noise_scaling(rng):
     grid = CartesianGrid([[x, x + w]], size, periodic=True)
 
     # colored noise
-    noise_colored = make_colored_noise(
-        grid.shape, dx=grid.discretization[0], exponent=2
+    noise_colored = make_correlated_noise(
+        grid.shape, dx=grid.discretization[0], correlation="power law", exponent=2
     )
 
     # divergence of white noise
     shape = (grid.dim, *grid.shape)
-    div = grid.make_operator("divergence", bc="auto_periodic_neumann")
+    div = grid.make_operator("divergence", bc="auto_periodic_neumann", backend="numba")
 
     def noise_div():
         return div(rng.normal(size=shape)) / (2 * np.pi)

@@ -321,6 +321,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         if np.iscomplexobj(mean) or np.iscomplexobj(std):
             # create complex random numbers for the field
+            # TODO: We could probably improve this by using the imaginary field that we
+            # generate for correlated numbers
             real_part = np.real(mean) + np.real(std) * scale * make_random_field()
             imag_part = np.imag(mean) + np.imag(std) * scale * make_random_field()
             data: NumericArray = real_part + 1j * imag_part
@@ -605,7 +607,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         *,
         fill: Number | None = None,
         with_ghost_cells: bool = False,
-        backend: Literal["numba"] = "numba",
+        backend: str = "default",
     ) -> Callable[[FloatingArray, NumericArray], NumberOrArray]:
         r"""Returns a function that can be used to interpolate values.
 
@@ -875,7 +877,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         out: DataFieldBase | None = None,
         *,
         label: str | None = None,
-        backend: str = "config",
+        backend: str = "default",
         args: dict[str, Any] | None = None,
         **kwargs,
     ) -> DataFieldBase:
@@ -910,6 +912,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         operator_info = backend_impl.get_operator_info(self.grid, operator)
         out_cls = self.get_class_by_rank(operator_info.rank_out)
 
+        # impose boundary conditions on the input
+        if bc is not None:
+            self.set_ghost_cells(bc, args=args)
+
         # prepare the output field
         if out is None:
             out = out_cls(self.grid, data="empty", label=label, dtype=self.dtype)
@@ -921,18 +927,16 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             if label is not None:
                 out.label = label
 
+        # apply the operator, assuming that boundary conditions were set
         op_raw = self.grid.make_operator_no_bc(
             operator_info, backend=backend_impl, **kwargs
         )
-        if bc is not None:
-            self.set_ghost_cells(bc, args=args)  # impose boundary conditions
-        # apply the operator without imposing boundary conditions
         op_raw(self._data_full, out.data)
 
         return out
 
     def make_dot_operator(
-        self, backend: Literal["numpy", "numba"] = "numba", *, conjugate: bool = True
+        self, backend: str = "default", *, conjugate: bool = True
     ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
         """Return operator calculating the dot product between two fields.
 

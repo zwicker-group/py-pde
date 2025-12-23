@@ -38,7 +38,7 @@ class AdamsBashforthSolver(SolverBase):
             msg = "Deterministic Adams-Bashforth does not support stochastic equations"
             raise RuntimeError(msg)
 
-        rhs_pde = self._make_pde_rhs(state)
+        rhs_pde = self._backend_obj.make_pde_rhs(self.pde, state)
         post_step_hook = self._make_post_step_hook(state)
 
         def single_step(

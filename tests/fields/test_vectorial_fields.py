@@ -291,7 +291,7 @@ def test_vector_bcs():
 
     bcs = {"x": {"value": [0, 1]}, "y": {"value": [2, 3]}}
     s1 = v.divergence(bcs, backend="scipy").data
-    div = grid.make_operator("divergence", bcs)
+    div = grid.make_operator("divergence", bcs, backend="numba")
     s2 = div(v.data)
 
     np.testing.assert_allclose(s1, s2)

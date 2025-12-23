@@ -1011,7 +1011,7 @@ def evaluate(
     field_data = [field.data for field in fields_values]
 
     # calculate the result of the expression
-    func = expr._get_function(single_arg=False, user_funcs=ops)
+    func = expr.get_function(single_arg=False, user_funcs=ops)
     result_data = func(*field_data, None, {}, *extra_args)
 
     # turn result into a proper field

@@ -18,7 +18,6 @@ class; see :doc:`the example <../simple_pdes/pde_brusselator_expression>`. Howev
 implementation is less flexible and might be more difficult to extend later.
 """
 
-import numba as nb
 import numpy as np
 
 from pde import FieldCollection, PDEBase, PlotTracker, ScalarField, UnitGrid
@@ -50,12 +49,11 @@ class BrusselatorPDE(PDEBase):
         return rhs
 
     def make_pde_rhs_numba(self, state):
-        """Nunmba-compiled implementation of the PDE."""
+        """Numba-compiled implementation of the PDE."""
         d0, d1 = self.diffusivity
         a, b = self.a, self.b
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
+        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
 
-        @nb.njit
         def pde_rhs(state_data, t):
             u = state_data[0]
             v = state_data[1]

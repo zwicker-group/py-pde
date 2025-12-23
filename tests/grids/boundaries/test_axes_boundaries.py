@@ -93,8 +93,12 @@ def test_mixed_boundary_condition(rng):
     """Test limiting cases of the mixed boundary condition."""
     g = UnitGrid([2])
     d = rng.random(2)
-    g1 = g.make_operator("gradient", bc={"x-": {"mixed": 0}, "x+": {"mixed": np.inf}})
-    g2 = g.make_operator("gradient", bc={"x-": "derivative", "x+": "value"})
+    g1 = g.make_operator(
+        "gradient", bc={"x-": {"mixed": 0}, "x+": {"mixed": np.inf}}, backend="numba"
+    )
+    g2 = g.make_operator(
+        "gradient", bc={"x-": "derivative", "x+": "value"}, backend="numba"
+    )
     np.testing.assert_allclose(g1(d), g2(d))
 
 

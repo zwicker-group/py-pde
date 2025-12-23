@@ -141,6 +141,8 @@ class NumpyBackend(BackendBase):
         """Return a compiled function applying an operator with boundary conditions.
 
         Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the operator is needed
             operator (str):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained

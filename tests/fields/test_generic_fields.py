@@ -449,22 +449,10 @@ def test_random_normal_types(rng):
     assert np.std(field.data.imag) == pytest.approx(s.imag, rel=0.1, abs=0.1)
 
 
-@pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
-def test_random_colored(field_cls, rng):
-    """Test whether random colored fields behave correctly."""
-    grid = UnitGrid([128, 128])
-    exponent = rng.uniform(-4, 4)
-    scale = 1 + rng.random()
-    f = field_cls.random_colored(grid, exponent=exponent, scale=scale, rng=rng)
-
-    assert np.allclose(f.average, 0)
-
-
 def test_random_rng():
     """Test whether the random number generator arguments are accepted."""
     grid = UnitGrid([2, 2])
     for create_random_field in [
-        ScalarField.random_colored,
         ScalarField.random_harmonic,
         ScalarField.random_normal,
         ScalarField.random_uniform,

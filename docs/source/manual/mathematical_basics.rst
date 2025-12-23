@@ -152,9 +152,10 @@ Temporal evolution
 Once the fields have been discretized, the PDE reduces to a set of coupled ordinary
 differential equations (ODEs), which can be solved using standard methods.
 This reduction is also known as the method of lines.
-The `py-pde` package implements the simple Euler scheme and a more advanced
-`Runge-Kutta scheme <https://en.wikipedia.org/wiki/Runge–Kutta_methods>`_ in 
-the :class:`~pde.solvers.explicit.ExplicitSolver` class.
+The `py-pde` package implements the simple Euler scheme in the
+:class:`~pde.solvers.explicit.EulerSolver` class, and a more advanced
+`Runge-Kutta scheme <https://en.wikipedia.org/wiki/Runge–Kutta_methods>`_ scheme in 
+the :class:`~pde.solvers.explicit.RungeKuttaSolver` class.
 For the simple implementations of these explicit methods, the user typically specifies
 a fixed time step, although adaptive methods, which adjust the time step automatically,
 are also often used and available in the package.

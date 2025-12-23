@@ -236,7 +236,7 @@ def test_noncartesian_grids(grid, decomposition, rng):
 
     if mpi.is_main:
         # check results in the main process
-        expect = eq.solve(solver="explicit", **args)
+        expect = eq.solve(solver="euler", **args)
         np.testing.assert_allclose(res.data, expect.data)
 
 

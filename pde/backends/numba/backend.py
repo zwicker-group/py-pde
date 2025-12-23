@@ -18,10 +18,10 @@ from ...grids import DimensionError, DomainError, GridBase
 from ...grids.boundaries.axes import BoundariesBase, BoundariesList, BoundariesSetter
 from ...grids.boundaries.local import BCBase, UserBC
 from ...solvers import AdaptiveSolverBase, SolverBase
-from ..numpy.backend import NumpyBackend, OperatorInfo
-from . import grids
+from ...tools.config import is_hpc_environment
+from ...tools.typing import OperatorInfo
+from ..numpy.backend import NumpyBackend
 from .overloads import OnlineStatistics
-from .utils import get_common_numba_dtype, jit, make_array_constructor
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 
 
 class NumbaBackend(NumpyBackend):
-    """Defines numba backend."""
+    """Defines :mod:`numba` backend."""
 
     def compile_function(self, func: TFunc) -> TFunc:
         """General method that compiles a user function.
@@ -52,13 +52,46 @@ class NumbaBackend(NumpyBackend):
             func (callable):
                 The function that needs to be compiled for this backend
         """
+        from .utils import jit
+
         return jit(func)  # type: ignore
 
+    def use_multithreading(self) -> bool:
+        """Determine whether multithreading should be used in numba-compiled code.
+
+        This method checks the configuration setting for `numba.multithreading` and
+        determines whether multithreading should be enabled based on the value of this
+        setting. The possible values for `numba.multithreading` are:
+        - 'always': Multithreading is always enabled.
+        - 'never': Multithreading is never enabled.
+        - 'only_local': Multithreading is enabled only if the code is not running in a
+        high-performance computing (HPC) environment.
+
+        Returns:
+            bool: True if multithreading should be enabled, False otherwise.
+
+        Raises:
+            ValueError: If the `numba.multithreading` setting is not one of the expected
+            values ('always', 'never', 'only_local').
+        """
+        setting = self.config["multithreading"]
+        if setting == "always":
+            return True
+        if setting == "never":
+            return False
+        if setting == "only_local":
+            return not is_hpc_environment()
+        msg = (
+            "Parameter `backend.numba.multithreading` must be in {'always', 'never', "
+            f"'only_local'}}, not `{setting}`"
+        )
+        raise ValueError(msg)
+
     def get_registered_operators(self, grid_id: GridBase | type[GridBase]) -> set[str]:
-        """Returns all operators defined for a grid.
+        """Returns all operators defined for a backend.
 
         Args:
-            grid (:class:`~pde.grid.base.GridBase` or its type):
+            grid_id (:class:`~pde.grid.base.GridBase` or its type):
                 Grid for which the operator need to be returned
         """
         operators = super().get_registered_operators(grid_id)
@@ -77,7 +110,7 @@ class NumbaBackend(NumpyBackend):
     def get_operator_info(
         self, grid: GridBase, operator: str | OperatorInfo
     ) -> OperatorInfo:
-        """Return the operator defined on this grid.
+        """Return the operator defined for this backend.
 
         Args:
             grid (:class:`~pde.grid.base.GridBase`):
@@ -286,17 +319,12 @@ class NumbaBackend(NumpyBackend):
             information in `args` (e.g., the time `t` during solving a PDE)
         """
         # get the functions that handle the data
-        # ghost_cell_sender_low = make_local_ghost_cell_sender(bc_axis.low)
-        # ghost_cell_sender_high = make_local_ghost_cell_sender(bc_axis.high)
         ghost_cell_setter_low = self._make_local_ghost_cell_setter(bc_axis.low)
         ghost_cell_setter_high = self._make_local_ghost_cell_setter(bc_axis.high)
 
         @register_jitable
         def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
             """Helper function setting the conditions on all axes."""
-            # send boundary information to other nodes if using MPI
-            # ghost_cell_sender_low(data_full, args=args)
-            # ghost_cell_sender_high(data_full, args=args)
             # set the actual ghost cells
             ghost_cell_setter_high(data_full, args=args)
             ghost_cell_setter_low(data_full, args=args)
@@ -326,7 +354,7 @@ class NumbaBackend(NumpyBackend):
             #
             # from numba import jit
             #
-            # @jit
+            # @self.compile_function
             # def set_ghost_cells(data_full: NumericArray, args=None) -> None:
             #     for f in nb.literal_unroll(ghost_cell_setters):
             #         f(data_full, args=args)
@@ -360,7 +388,7 @@ class NumbaBackend(NumpyBackend):
             return chain(ghost_cell_setters)
 
         if isinstance(boundaries, BoundariesSetter):
-            return jit(boundaries._setter)  # type: ignore
+            return self.compile_function(boundaries._setter)
 
         msg = "Cannot handle boundaries {boundaries.__class__}"
         raise NotImplementedError(msg)
@@ -385,7 +413,7 @@ class NumbaBackend(NumpyBackend):
         """
         num_axes = grid.num_axes
 
-        @jit
+        @self.compile_function
         def set_valid(
             data_full: NumericArray, data_valid: NumericArray, args=None
         ) -> None:
@@ -413,7 +441,7 @@ class NumbaBackend(NumpyBackend):
         # set the valid elements and the ghost cells according to boundary condition
         set_bcs = self.make_ghost_cell_setter(bcs)
 
-        @jit
+        @self.compile_function
         def set_valid_bcs(
             data_full: NumericArray, data_valid: NumericArray, args=None
         ) -> None:
@@ -442,6 +470,8 @@ class NumbaBackend(NumpyBackend):
         """Return a compiled function applying an operator with boundary conditions.
 
         Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the operator is needed
             operator (str):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained
@@ -510,7 +540,7 @@ class NumbaBackend(NumpyBackend):
         set_valid_w_bc = grid._make_set_valid(bcs=bcs)
 
         if not is_jitted(operator_raw):
-            operator_raw = jit(operator_raw)
+            operator_raw = self.compile_function(operator_raw)
 
         @nb_overload(apply_op, inline="always")
         def apply_op_ol(
@@ -564,7 +594,7 @@ class NumbaBackend(NumpyBackend):
 
             return apply_op_impl  # type: ignore
 
-        @jit
+        @self.compile_function
         def apply_op_compiled(
             arr: NumericArray, out: NumericArray | None = None, args=None
         ) -> NumericArray:
@@ -572,7 +602,7 @@ class NumbaBackend(NumpyBackend):
             return apply_op(arr, out, args)
 
         # return the compiled versions of the operator
-        return apply_op_compiled  # type: ignore
+        return apply_op_compiled
 
     def _make_local_integrator(
         self, grid: GridBase
@@ -591,6 +621,8 @@ class NumbaBackend(NumpyBackend):
             A function that takes a numpy array and returns the integral with the
             correct weights given by the cell volumes.
         """
+        from . import grids
+
         num_axes = grid.num_axes
         # cell volume varies with position
         get_cell_volume = grids.make_cell_volume_getter(grid=grid, flat_index=True)
@@ -660,7 +692,7 @@ class NumbaBackend(NumpyBackend):
         """
         integrate_local = self._make_local_integrator(grid)
 
-        @jit
+        @self.compile_function
         def integrate_global(arr: NumericArray) -> NumberOrArray:
             """Integrate data.
 
@@ -669,7 +701,7 @@ class NumbaBackend(NumpyBackend):
             """
             return integrate_local(arr)
 
-        return integrate_global  # type: ignore
+        return integrate_global
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
@@ -690,6 +722,8 @@ class NumbaBackend(NumpyBackend):
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written.
         """
+        from .utils import get_common_numba_dtype
+
         dot = super().make_inner_prod_operator(field, conjugate=conjugate)
 
         dim = field.grid.dim
@@ -801,14 +835,14 @@ class NumbaBackend(NumpyBackend):
 
             return dot_impl  # type: ignore
 
-        @jit
+        @self.compile_function
         def dot_compiled(
             a: NumericArray, b: NumericArray, out: NumericArray | None = None
         ) -> NumericArray:
             """Numba implementation to calculate dot product between two fields."""
             return dot(a, b, out)
 
-        return dot_compiled  # type: ignore
+        return dot_compiled
 
     def make_outer_prod_operator(
         self, field: DataFieldBase
@@ -828,6 +862,8 @@ class NumbaBackend(NumpyBackend):
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written.
         """
+        from .utils import get_common_numba_dtype
+
         if not isinstance(field, VectorField):
             msg = "Can only define outer product between vector fields"
             raise TypeError(msg)
@@ -903,14 +939,14 @@ class NumbaBackend(NumpyBackend):
 
             return outer_impl  # type: ignore
 
-        @jit
+        @self.compile_function
         def outer_compiled(
             a: NumericArray, b: NumericArray, out: NumericArray | None = None
         ) -> NumericArray:
             """Numba implementation to calculate outer product between two fields."""
             return outer(a, b, out)
 
-        return outer_compiled  # type: ignore
+        return outer_compiled
 
     def make_interpolator(
         self,
@@ -937,6 +973,9 @@ class NumbaBackend(NumpyBackend):
             A function which returns interpolated values when called with arbitrary
             positions within the space of the grid.
         """
+        from . import grids
+        from .utils import make_array_constructor
+
         grid = field.grid
         num_axes = field.grid.num_axes
         data_shape = field.data_shape
@@ -961,7 +1000,7 @@ class NumbaBackend(NumpyBackend):
 
         dim_error_msg = f"Dimension of point does not match axes count {num_axes}"
 
-        @jit
+        @self.compile_function
         def interpolator(
             point: FloatingArray, data: NumericArray | None = None
         ) -> NumericArray:
@@ -1000,9 +1039,9 @@ class NumbaBackend(NumpyBackend):
             return out
 
         # store a reference to the data so it is not garbage collected too early
-        interpolator._data = field.data
+        interpolator._data = field.data  # type: ignore
 
-        return interpolator  # type: ignore
+        return interpolator
 
     def make_inserter(
         self, grid: GridBase, *, with_ghost_cells: bool = False
@@ -1023,6 +1062,8 @@ class NumbaBackend(NumpyBackend):
             position in grid coordinates, and `amount` is the  that is to be added to
             the field.
         """
+        from . import grids
+
         cell_volume = grids.make_cell_volume_getter(grid=grid, flat_index=False)
 
         if grid.num_axes == 1:
@@ -1031,7 +1072,7 @@ class NumbaBackend(NumpyBackend):
                 grid=grid, axis=0, with_ghost_cells=with_ghost_cells
             )
 
-            @jit
+            @self.compile_function
             def insert(
                 data: NumericArray, point: FloatingArray, amount: NumberOrArray
             ) -> None:
@@ -1067,7 +1108,7 @@ class NumbaBackend(NumpyBackend):
                 grid=grid, axis=1, with_ghost_cells=with_ghost_cells
             )
 
-            @jit
+            @self.compile_function
             def insert(
                 data: NumericArray, point: FloatingArray, amount: NumberOrArray
             ) -> None:
@@ -1115,7 +1156,7 @@ class NumbaBackend(NumpyBackend):
                 grid=grid, axis=2, with_ghost_cells=with_ghost_cells
             )
 
-            @jit
+            @self.compile_function
             def insert(
                 data: NumericArray, point: FloatingArray, amount: NumberOrArray
             ) -> None:
@@ -1168,7 +1209,7 @@ class NumbaBackend(NumpyBackend):
             )
             raise NotImplementedError(msg)
 
-        return insert  # type: ignore
+        return insert
 
     def make_pde_rhs(
         self, eq: PDEBase, state: TField
@@ -1184,7 +1225,17 @@ class NumbaBackend(NumpyBackend):
         Returns:
             Function returning deterministic part of the right hand side of the PDE
         """
-        return eq.make_pde_rhs_numba(state)
+        try:
+            make_rhs = eq.make_pde_rhs_numba  # type: ignore
+        except AttributeError as err:
+            msg = (
+                "The right-hand side of the PDE is not implemented using the `numba` "
+                "backend. To add the implementation, provide the method "
+                "`make_pde_rhs_numba`, which should return a compilable function "
+                "calculating the evolution rate using a numpy array as input."
+            )
+            raise NotImplementedError(msg) from err
+        return self.compile_function(make_rhs(state))  # type: ignore
 
     def make_noise_realization(
         self, eq: PDEBase, state: TField
@@ -1202,7 +1253,8 @@ class NumbaBackend(NumpyBackend):
             Function calculating noise
         """
         if hasattr(eq, "make_noise_realization_numba"):
-            return eq.make_noise_realization_numba(state)  # type: ignore
+            noise_realization = eq.make_noise_realization_numba(state)
+            return self.compile_function(noise_realization)  # type: ignore
 
         msg = (
             "Noise needs to be implemented by defining the "
@@ -1247,8 +1299,8 @@ class NumbaBackend(NumpyBackend):
         def compile_func(func):
             if isinstance(func, np.ufunc):
                 # this is a work-around that allows to compile numpy ufuncs
-                return jit(lambda *args: func(*args))
-            return jit(func)
+                return self.compile_function(lambda *args: func(*args))
+            return self.compile_function(func)
 
         user_functions = {k: compile_func(v) for k, v in user_functions.items()}
 
@@ -1296,7 +1348,7 @@ class NumbaBackend(NumpyBackend):
 
         else:
             result = func
-        return jit(result)  # type: ignore
+        return self.compile_function(result)
 
     def _make_expression_array(
         self, expression: ExpressionBase, *, single_arg: bool = True
@@ -1362,7 +1414,7 @@ class NumbaBackend(NumpyBackend):
         code += "\n".join(lines) + "\n"
         code += "    return out"
 
-        self._logger.debug("Code for `get_compiled_array`: %s", code)
+        self._logger.debug("Code for `make_expression_array`: %s", code)
 
         namespace = _get_namespace("numpy")
         namespace["builtins"] = builtins
@@ -1371,7 +1423,7 @@ class NumbaBackend(NumpyBackend):
         exec(code, namespace, local_vars)
         function = local_vars["_generated_function"]
 
-        return jit(function)  # type: ignore
+        return self.compile_function(function)  # type: ignore
 
     def make_inner_stepper(
         self,

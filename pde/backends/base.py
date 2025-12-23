@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import inspect
 import logging
-from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Literal, TypeVar
@@ -30,24 +29,56 @@ if TYPE_CHECKING:
     from ..grids import BoundariesBase, GridBase
     from ..pdes.base import PDEBase
     from ..solvers.base import SolverBase
+    from ..tools.config import Config
     from ..tools.expressions import ExpressionBase
+    from ..tools.typing import OperatorImplType
+    from .registry import BackendRegistry
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
 
+_RESERVED_BACKEND_NAMES: set[str] = {
+    "auto",
+    "best",
+    "config",
+    "default",
+    "none",
+    "undetermined",
+    "unknown",
+}
 TFunc = TypeVar("TFunc", bound=Callable)
 
 
 class BackendBase:
     """Basic backend from which all other backends inherit."""
 
+    config: Config
+    """dict: configuration options of this backend.
+
+    Warning:
+        The configuration will only be set once the backend is added to the registry,
+        which allows the registry to read configuration options, e.g., from a file.
+    """
+
     _logger: logging.Logger  # logger instance to output information
     _operators: dict[type[GridBase], dict[str, OperatorInfo]]
     """dict: all operators registered for all backends"""
 
-    def __init__(self, name: str = ""):
+    def __init__(self, name: str, registry: BackendRegistry | None):
+        """Initialize the backend.
+
+        Args:
+            name (str):
+                The name of the backend
+            registry (:class:`~pde.backends.registry.BackendRegistry`):
+                The registry to which this backend is added.
+        """
+        if name in _RESERVED_BACKEND_NAMES:
+            self._logger.warning("Backend uses reserved name.")
         self.name = name
         self._operators = defaultdict(dict)
+        if registry:
+            registry.add(self)
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Initialize class-level attributes of subclasses."""
@@ -174,7 +205,6 @@ class BackendBase:
         )
         raise NotImplementedError(msg)
 
-    @abstractmethod
     def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
 
@@ -233,6 +263,43 @@ class BackendBase:
         msg = f"Integrator not defined for backend {self.name}"
         raise NotImplementedError(msg)
 
+    def make_operator_no_bc(
+        self,
+        grid: GridBase,
+        operator: str | OperatorInfo,
+        **kwargs,
+    ) -> OperatorImplType:
+        """Return a compiled function applying an operator without boundary conditions.
+
+        A function that takes the discretized full data as an input and an array of
+        valid data points to which the result of applying the operator is written.
+
+        Note:
+            The resulting function does not check whether the ghost cells of the input
+            array have been supplied with sensible values. It is the responsibility of
+            the user to set the values of the ghost cells beforehand. Use this function
+            only if you absolutely know what you're doing. In all other cases,
+            :meth:`make_operator` is probably the better choice.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the operator is needed
+            operator (str):
+                Identifier for the operator. Some examples are 'laplace', 'gradient', or
+                'divergence'. The registered operators for this grid can be obtained
+                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            **kwargs:
+                Specifies extra arguments influencing how the operator is created.
+
+        Returns:
+            callable: the function that applies the operator. This function has the
+            signature (arr: NumericArray, out: NumericArray), so they `out` array need
+            to be supplied explicitly.
+        """
+        # determine the operator for the chosen backend
+        operator_info = self.get_operator_info(grid, operator)
+        return operator_info.factory(grid, **kwargs)
+
     def make_operator(
         self,
         grid: GridBase,
@@ -243,6 +310,8 @@ class BackendBase:
         """Return a compiled function applying an operator with boundary conditions.
 
         Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the operator is needed
             operator (str):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained

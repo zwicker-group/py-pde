@@ -2,11 +2,15 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import sys
+
+import numba as nb
 import numpy as np
 import pytest
 
 from pde import ScalarField, UnitGrid, pdes
-from pde.solvers import ExplicitSolver
+from pde.solvers import EulerSolver
+from pde.tools.misc import module_available
 
 
 @pytest.mark.parametrize("dim", [1, 2])
@@ -32,9 +36,15 @@ def test_pde_consistency(pde_class, dim, rng):
     state = ScalarField.random_uniform(grid, rng=rng)
     field = eq.evolution_rate(state)
     assert field.grid == grid
-    rhs = eq.make_pde_rhs_numba(state)
+    rhs = nb.njit(eq.make_pde_rhs_numba(state))
     res = rhs(state.data, 0)
     np.testing.assert_allclose(field.data, res)
+
+    # compare torch to numpy implementation
+    if module_available("torch") and sys.platform != "win32":
+        rhs = eq.make_pde_rhs(state, backend="torch")
+        res = rhs(state.data, 0)
+        np.testing.assert_allclose(field.data, res)
 
     # compare to generic implementation
     assert isinstance(eq.expression, str)
@@ -54,7 +64,7 @@ def test_pde_automatic_adaptive_solver():
     eq.solve(dt=0.01, **args)
     assert not eq.diagnostics["solver"]["dt_adaptive"]
 
-    eq.solve(solver=ExplicitSolver, **args)
+    eq.solve(solver=EulerSolver, **args)
     assert not eq.diagnostics["solver"]["dt_adaptive"]
 
     eq.solve(solver="implicit", **args)

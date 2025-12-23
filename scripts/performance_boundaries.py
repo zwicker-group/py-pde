@@ -45,7 +45,7 @@ def main():
                 raise RuntimeError
 
             # create the operator with these conditions
-            laplace = grid.make_operator("laplace", bc=bcs)
+            laplace = grid.make_operator("laplace", bc=bcs, backend="numba")
             if bc == "time-dependent":
                 args = numba_dict(t=1)
                 # call once to pre-compile and test result

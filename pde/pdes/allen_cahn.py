@@ -17,6 +17,8 @@ from .base import PDEBase, expr_prod
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    import torch
+
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import NumericArray
 
@@ -95,7 +97,7 @@ class AllenCahnPDE(PDEBase):
         rhs = self.interface_width * laplace - state**3 + state
         return self.mobility * rhs  # type: ignore
 
-    def make_pde_rhs_numba(  # type: ignore
+    def make_pde_rhs_numba(
         self, state: ScalarField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
@@ -110,17 +112,11 @@ class AllenCahnPDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
-        import numba as nb
-
-        arr_type = nb.typeof(state.data)
-        signature = arr_type(arr_type, nb.double)
-
         interface_width = self.interface_width
         mobility = self.mobility
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
+        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
 
-        @nb.jit(signature)
-        def pde_rhs(state_data: NumericArray, t: float) -> NumericArray:
+        def pde_rhs(state_data: NumericArray, t: float = 0) -> NumericArray:
             """Compiled helper function evaluating right hand side."""
             return mobility * (
                 interface_width * laplace(state_data, args={"t": t})
@@ -128,4 +124,37 @@ class AllenCahnPDE(PDEBase):
                 + state_data
             )
 
-        return pde_rhs  # type: ignore
+        return pde_rhs
+
+    def make_pde_rhs_torch(
+        self, state: ScalarField
+    ) -> Callable[[torch.Tensor, float], torch.Tensor]:
+        """Create a compiled function evaluating the right hand side of the PDE.
+
+        Args:
+            state (:class:`~pde.fields.ScalarField`):
+                An example for the state defining the grid and data types
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called
+            with an instance of :class:`torch.Tensor` of the state data and
+            the time to obtained an instance of :class:`torch.Tensor` giving
+            the evolution rate.
+        """
+        from ..backends.torch import torch_backend
+
+        interface_width = self.interface_width
+        mobility = self.mobility
+        laplace = torch_backend.make_torch_operator(
+            grid=state.grid, operator="laplace", bcs=self.bc, dtype=state.dtype
+        )
+
+        def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
+            """Compiled helper function evaluating right hand side."""
+            return mobility * (
+                interface_width * laplace(state_data, args={"t": t})
+                - state_data**3
+                + state_data
+            )
+
+        return pde_rhs

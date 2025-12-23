@@ -26,7 +26,7 @@ FloatingArray = np.ndarray[Any, np.dtype[np.floating]]
 FloatOrArray = float | np.ndarray[Any, np.dtype[np.floating]]
 
 # miscellaneous types:
-BackendType = Literal["scipy", "numpy", "numba", "numba_mpi"]
+BackendType = Literal["scipy", "numpy", "numba", "numba_mpi", "torch"]
 TField = TypeVar("TField", "FieldCollection", "DataFieldBase", covariant=True)
 
 

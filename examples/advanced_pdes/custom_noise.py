@@ -6,7 +6,6 @@ This example solves a diffusion equation with a custom noise.
 """
 
 import numpy as np
-from numba import jit
 
 from pde import DiffusionPDE, ScalarField, UnitGrid
 
@@ -24,7 +23,6 @@ class DiffusionCustomNoisePDE(DiffusionPDE):
         noise = float(self.noise)
         x_values = state.grid.cell_coords[..., 0]
 
-        @jit
         def noise_realization(state_data, t):
             return x_values * np.random.uniform(-noise, noise, size=state_data.shape)  # noqa: NPY002
 

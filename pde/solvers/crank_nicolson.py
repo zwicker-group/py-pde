@@ -74,7 +74,7 @@ class CrankNicolsonSolver(SolverBase):
         self.info["function_evaluations"] = 0
         self.info["stochastic"] = False
 
-        rhs = self._make_pde_rhs(state)
+        rhs = self._backend_obj.make_pde_rhs(self.pde, state)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
         α = self.explicit_fraction

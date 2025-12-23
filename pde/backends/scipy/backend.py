@@ -9,4 +9,4 @@ from ..numpy.backend import NumpyBackend
 
 
 class ScipyBackend(NumpyBackend):
-    """Defines scipy backend."""
+    """Defines :mod:`scipy` backend."""

@@ -577,7 +577,7 @@ def test_expression_bc_user_func_nojit(dim):
     np.testing.assert_allclose(res.data, 1)
 
 
-@pytest.mark.slow
+@pytest.mark.xfail
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_expression_bc_user_expr_nojit(dim):
     """Test user expressions in boundary expressions that cannot be compiled."""

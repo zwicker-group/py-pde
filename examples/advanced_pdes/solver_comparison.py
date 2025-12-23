@@ -27,10 +27,9 @@ def run_solver(solver, label):
 
 # try different solvers
 solutions = [
-    run_solver(pde.ExplicitSolver(eq), "explicit Euler"),
+    run_solver(pde.EulerSolver(eq), "explicit Euler"),
     run_solver(
-        pde.ExplicitSolver(eq, scheme="runge-kutta", adaptive=True),
-        "explicit, adaptive Runge-Kutta",
+        pde.RungeKuttaSolver(eq, adaptive=True), "explicit, adaptive Runge-Kutta"
     ),
     run_solver(pde.ImplicitSolver(eq), "implicit"),
     run_solver(pde.CrankNicolsonSolver(eq), "Crank-Nicolson"),

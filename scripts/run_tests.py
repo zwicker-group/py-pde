@@ -161,6 +161,7 @@ def run_unit_tests(
     env["MPLBACKEND"] = "agg"
     if nojit:
         env["NUMBA_DISABLE_JIT"] = "1"
+        env["TORCH_COMPILE_DISABLE"] = "1"
     else:
         env["NUMBA_WARNINGS"] = "1"
         env["NUMBA_BOUNDSCHECK"] = "1"

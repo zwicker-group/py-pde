@@ -171,7 +171,7 @@ Most notably, PDEs can be specified by their expression using the convenient
 :class:`~pde.pdes.pde.PDE` class.
 
 The PDEs are solved using solver classes, where a simple explicit solver is
-implemented by :class:`~pde.solvers.explicit.ExplicitSolver`, but more advanced
+implemented by :class:`~pde.solvers.explicit.EulerSolver`, but more advanced
 implementations can be done. 
 To obtain more details during the simulation, trackers can be attached to the
 solver instance, which analyze intermediate states periodically. Typical

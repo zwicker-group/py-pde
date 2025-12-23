@@ -7,49 +7,53 @@ from __future__ import annotations
 
 import importlib
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from .. import config
-from .base import BackendBase
+from ..tools.config import Config
+from .base import _RESERVED_BACKEND_NAMES, BackendBase
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from pathlib import Path
+
+    from ..tools.config import Parameter
 
 
-_RESERVED_NAMES = {
-    "auto",
-    "best",
-    "config",
-    "default",
-    "none",
-    "undetermined",
-    "unknown",
-}
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger instance."""
 
 
 class BackendRegistry:
-    """Class handling all backends."""
+    """Class handling all backends and their configurations."""
 
     _backends: dict[str, str | BackendBase]
     """dict: all backends, either as a reference to a package or as an object"""
-    _hooks: dict[str, dict[str, dict[str, Any]]]
-    """dict: all hooks registered for all backends"""
+    _configs: dict[str, Config]
+    """dict: configurations of all backends"""
 
     def __init__(self):
         self._backends = {}
+        self._configs = {}
 
-    def register_package(self, package_path: str, name: str) -> None:
+    def register_package(
+        self,
+        name: str,
+        package_path: str,
+        *,
+        config: list[Parameter] | None = None,
+    ) -> None:
         """Register a backend python package (without loading it yet)
 
         Args:
-            package_path (str):
-                Import path for the package
             name (str):
                 Name of the backend
+            package_path (str):
+                Import path for the package
+            config (list):
+                Configuration options for the package
         """
-        if name in _RESERVED_NAMES:
+        if name in _RESERVED_BACKEND_NAMES:
             _logger.warning("Reserved backend name `%s` should not be used.", name)
         if name in self._backends:
             if isinstance(self._backends[name], str):
@@ -57,7 +61,9 @@ class BackendRegistry:
             else:
                 msg = "Cannot register package for loaded backend"
                 raise RuntimeError(msg)
+
         self._backends[name] = package_path
+        self._configs[name] = Config(config)
 
     def add(self, backend: BackendBase) -> None:
         """Add a loaded backend object.
@@ -68,13 +74,16 @@ class BackendRegistry:
             backend (:class:`~pde.backends.base.BackendBase`):
                 Implementation of the backend
         """
-        if backend.name in _RESERVED_NAMES:
+        if backend.name in _RESERVED_BACKEND_NAMES:
             _logger.warning(
                 "Reserved backend name `%s` should not be used.", backend.name
             )
         if backend.name in self._backends:
             _logger.info("Reloading backend `%s`", backend.name)
         self._backends[backend.name] = backend
+        if backend.name not in self._configs:
+            self._configs[backend.name] = Config()
+        backend.config = self._configs[backend.name]
 
     def __getitem__(self, backend: str | BackendBase) -> BackendBase:
         """Return backend object, potentially loading the respective package.
@@ -88,7 +97,7 @@ class BackendRegistry:
         name = str(backend)  # if it's not a class, it needs to be a backend name
 
         # handle special names
-        if name == "config":
+        if name == "default":
             name = config["default_backend"]
 
         # get the backend from the registry
@@ -107,7 +116,7 @@ class BackendRegistry:
         return backend_obj
 
     def __contains__(self, name: str) -> bool:
-        return name == "config" or name in self._backends
+        return name == "default" or name in self._backends
 
     def __iter__(self) -> Iterator[str]:
         """Iterate over the defined backends."""
@@ -116,3 +125,29 @@ class BackendRegistry:
 
 # initiate the backend registry - there should only be one instance of this class
 backends = BackendRegistry()
+
+
+def load_default_config(module_path: str | Path) -> list[Parameter] | None:
+    """Load a default configuration from a module.
+
+    Args:
+        module_path (str):
+            String to the module to be loaded
+    """
+    module_name = (
+        str(module_path).replace(".", "_").replace("/", "_").replace("\\", "_")
+    )
+
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None:
+        _logger.warning("Could not load module `%s`", module_path)
+        return None
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore
+
+    try:
+        return module.DEFAULT_CONFIG  # type: ignore
+    except AttributeError:
+        _logger.warning("Configuration module had no variable `DEFAULT_CONFIG`")
+        return None

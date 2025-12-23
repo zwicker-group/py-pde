@@ -320,7 +320,7 @@ class PDE(SDEBase):
 
             # create the function evaluating the operator
             try:
-                ops[func] = state.grid.make_operator(func, bc=bc)
+                ops[func] = state.grid.make_operator(func, bc=bc, backend="numba")
             except BCDataError:
                 # wrong data was supplied for the boundary condition
                 raise
@@ -654,7 +654,7 @@ class PDE(SDEBase):
         # compile the recursive chain
         return chain()
 
-    def make_pde_rhs_numba(  # type: ignore
+    def make_pde_rhs_numba(
         self, state: TField, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.

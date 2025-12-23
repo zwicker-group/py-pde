@@ -14,6 +14,7 @@ from pde import (
     UnitGrid,
     VectorField,
 )
+from pde.backends import backends
 from pde.fields.base import FieldBase
 
 
@@ -132,7 +133,7 @@ def test_insert_tensor(grid, compiled, rng):
     c_data = (Ellipsis, *tuple(c))
     p = grid.transform(c + 0.5, "cell", "grid")  # point at cell center
     if compiled:
-        insert = grid.make_inserter_compiled()
+        insert = backends["numba"].make_inserter(grid)
         insert(f.data, p, a)  # add material to cell center
     else:
         f.insert(p, a)  # add material to cell center

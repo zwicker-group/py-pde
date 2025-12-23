@@ -15,6 +15,8 @@ from .base import PDEBase, expr_prod
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    import torch
+
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import NumericArray
 
@@ -113,7 +115,7 @@ class SwiftHohenbergPDE(PDEBase):
         result.label = "evolution rate"
         return result  # type: ignore
 
-    def make_pde_rhs_numba(  # type: ignore
+    def make_pde_rhs_numba(
         self, state: ScalarField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
@@ -128,20 +130,14 @@ class SwiftHohenbergPDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
-        import numba as nb
-
-        arr_type = nb.typeof(state.data)
-        signature = arr_type(arr_type, nb.double)
-
         rate = self.rate
         kc2 = self.kc2
         delta = self.delta
 
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
-        laplace2 = state.grid.make_operator("laplace", bc=self.bc_lap)
+        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
+        laplace2 = state.grid.make_operator("laplace", bc=self.bc_lap, backend="numba")
 
-        @nb.jit(signature)
-        def pde_rhs(state_data: NumericArray, t: float):
+        def pde_rhs(state_data: NumericArray, t: float = 0) -> NumericArray:
             """Compiled helper function evaluating right hand side."""
             state_laplace = laplace(state_data, args={"t": t})
             state_laplace2 = laplace2(state_laplace, args={"t": t})
@@ -154,4 +150,47 @@ class SwiftHohenbergPDE(PDEBase):
                 - state_data**3
             )
 
-        return pde_rhs  # type: ignore
+        return pde_rhs
+
+    def make_pde_rhs_torch(
+        self, state: ScalarField
+    ) -> Callable[[torch.Tensor, float], torch.Tensor]:
+        """Create a compiled function evaluating the right hand side of the PDE.
+
+        Args:
+            state (:class:`~pde.fields.ScalarField`):
+                An example for the state defining the grid and data types
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called
+            with an instance of :class:`torch.Tensor` of the state data and
+            the time to obtained an instance of :class:`torch.Tensor` giving
+            the evolution rate.
+        """
+        from ..backends.torch import torch_backend
+
+        rate = self.rate
+        kc2 = self.kc2
+        delta = self.delta
+
+        laplace = torch_backend.make_torch_operator(
+            grid=state.grid, operator="laplace", bcs=self.bc, dtype=state.dtype
+        )
+        laplace2 = torch_backend.make_torch_operator(
+            grid=state.grid, operator="laplace", bcs=self.bc_lap, dtype=state.dtype
+        )
+
+        def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
+            """Compiled helper function evaluating right hand side."""
+            state_laplace = laplace(state_data, args={"t": t})
+            state_laplace2 = laplace2(state_laplace, args={"t": t})
+
+            return (
+                (rate - kc2**2) * state_data
+                - 2 * kc2 * state_laplace
+                - state_laplace2
+                + delta * state_data**2
+                - state_data**3
+            )
+
+        return pde_rhs

@@ -10,4 +10,4 @@
 
 from .backend import NumpyBackend
 
-numpy_backend = NumpyBackend("numpy")
+numpy_backend = NumpyBackend("numpy", registry=None)
