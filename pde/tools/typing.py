@@ -81,7 +81,9 @@ class GhostCellSetter(Protocol):
 
 
 class DataSetter(Protocol):
-    def __call__(self, data_full: NumericArray, args=None) -> None:
+    def __call__(
+        self, data_full: NumericArray, data_valid: NumericArray, args=None
+    ) -> None:
         """Set the valid data cells (and potentially BCs)."""
 
 
