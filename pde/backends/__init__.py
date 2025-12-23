@@ -31,7 +31,6 @@ from .numpy import numpy_backend
 # load the registry, which manages all backends
 from .registry import backends, load_default_config
 
-# add the default backend, which will be loaded anytime
 backends.add(numpy_backend)
 
 # register additional backends without loading them

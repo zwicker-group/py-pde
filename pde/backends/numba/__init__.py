@@ -12,8 +12,7 @@ from .. import backends
 from .backend import NumbaBackend
 
 # add the loaded numba backend to the registry
-numba_backend = NumbaBackend("numba")
-backends.add(numba_backend)
+numba_backend = NumbaBackend("numba", backends)
 
 # register all the standard operators
 from . import operators, overloads

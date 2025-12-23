@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from ..tools.config import Config
     from ..tools.expressions import ExpressionBase
     from ..tools.typing import OperatorImplType
+    from .registry import BackendRegistry
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
@@ -63,11 +64,21 @@ class BackendBase:
     _operators: dict[type[GridBase], dict[str, OperatorInfo]]
     """dict: all operators registered for all backends"""
 
-    def __init__(self, name: str = ""):
+    def __init__(self, name: str, registry: BackendRegistry | None):
+        """Initialize the backend.
+
+        Args:
+            name (str):
+                The name of the backend
+            registry (:class:`~pde.backends.registry.BackendRegistry`):
+                The registry to which this backend is added.
+        """
         if name in _RESERVED_BACKEND_NAMES:
             self._logger.warning("Backend uses reserved name.")
         self.name = name
         self._operators = defaultdict(dict)
+        if registry:
+            registry.add(self)
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Initialize class-level attributes of subclasses."""

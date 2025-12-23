@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from ...tools.typing import NumericArray, OperatorImplType, OperatorType, TField
     from ..base import TFunc
     from ..numpy.backend import OperatorInfo
+    from ..registry import BackendRegistry
     from .utils import TorchOperatorType
 
 
@@ -37,8 +38,19 @@ class TorchBackend(NumpyBackend):
         "options": {"epilogue_fusion": True, "max_autotune": True},
     }
 
-    def __init__(self, name: str = "", device: str = "auto"):
-        super().__init__(name=name)
+    def __init__(self, name: str, registry: BackendRegistry, *, device: str = "config"):
+        """Initialize the torch backend.
+
+        Args:
+            registry (:class:`~pde.backends.registry.BackendRegistry`):
+                The registry to which this backend is added
+            name (str):
+                The name of the backend
+            device (str):
+                The torch device to use. Special values are "config" (read from
+                configuration) and "auto" (use CUDA if available, otherwise CPU)
+        """
+        super().__init__(name=name, registry=registry)
 
         self.device = device
 
@@ -50,6 +62,8 @@ class TorchBackend(NumpyBackend):
     @device.setter
     def device(self, device: str) -> None:
         """Set a new torch device."""
+        if device == "config":
+            device = self.config["device"]
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self._device = torch.device(device)

@@ -18,32 +18,30 @@ from pde.tools.misc import estimate_computation_speed
 # disable multithreading for better comparison
 config["backend.numba.multithreading"] = "never"
 
-import torch
-
-
-class CartesianLaplacian(torch.nn.Module):
-    def __init__(self, shape, dx, periodic=True):
-        super().__init__()
-        self.scale = dx**-2
-        self.periodic = periodic
-
-    def forward(self, arr: torch.Tensor) -> torch.Tensor:
-        if self.periodic:
-            arr_x = torch.cat([arr[-1:, :], arr, arr[:1, :]], dim=0)
-        else:
-            arr_x = torch.cat([arr[:1, :], arr, arr[-1:, :]], dim=0)
-        lap_x = (arr_x[:-2, :] - 2 * arr_x[1:-1, :] + arr_x[2:, :]) * self.scale
-
-        if self.periodic:
-            arr_y = torch.cat([arr[:, -1:], arr, arr[:, :1]], dim=1)
-        else:
-            arr_y = torch.cat([arr[:, :1], arr, arr[:, -1:]], dim=1)
-        lap_y = (arr_y[:, :-2] - 2 * arr_y[:, 1:-1] + arr_y[:, 2:]) * self.scale
-        return lap_x + lap_y  # type: ignore
-
 
 def torch_2d_periodic(field, periodic, dx=1):
     """Make torch-compiled Laplace operator."""
+    import torch
+
+    class CartesianLaplacian(torch.nn.Module):
+        def __init__(self, shape, dx, periodic=True):
+            super().__init__()
+            self.scale = dx**-2
+            self.periodic = periodic
+
+        def forward(self, arr: torch.Tensor) -> torch.Tensor:
+            if self.periodic:
+                arr_x = torch.cat([arr[-1:, :], arr, arr[:1, :]], dim=0)
+            else:
+                arr_x = torch.cat([arr[:1, :], arr, arr[-1:, :]], dim=0)
+            lap_x = (arr_x[:-2, :] - 2 * arr_x[1:-1, :] + arr_x[2:, :]) * self.scale
+
+            if self.periodic:
+                arr_y = torch.cat([arr[:, -1:], arr, arr[:, :1]], dim=1)
+            else:
+                arr_y = torch.cat([arr[:, :1], arr, arr[:, -1:]], dim=1)
+            lap_y = (arr_y[:, :-2] - 2 * arr_y[:, 1:-1] + arr_y[:, 2:]) * self.scale
+            return lap_x + lap_y  # type: ignore
 
     compile_options = {
         "fullgraph": True,
@@ -216,7 +214,7 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
     bcs = grid.get_boundary_conditions("auto_periodic_neumann", rank=0)
     expected = field.laplace("auto_periodic_neumann")
 
-    for method in ["TORCH", "CUSTOM", "OPTIMIZED", "9POINT", "numba", "scipy"]:
+    for method in ["TORCH", "CUSTOM", "OPTIMIZED", "9POINT", "torch", "numba", "scipy"]:
         if method == "CUSTOM":
             laplace = numba_laplace_2d(shape, periodic=periodic)
         elif method == "OPTIMIZED":

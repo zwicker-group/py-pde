@@ -10,4 +10,14 @@ references to other modules and not import anything from the backend.
 from pde.tools.config import Parameter
 
 # define default parameter values
-DEFAULT_CONFIG: list[Parameter] = []
+DEFAULT_CONFIG: list[Parameter] = [
+    Parameter(
+        "device",
+        "auto",
+        str,
+        "Determines the torch device that is used for the torch backend. Common "
+        "options include `cpu`, `cuda`, and more specific choices, like `cuda:0`. The "
+        "special value `auto` chooses `cuda` if it is available, and falls back to "
+        "`cpu` if not.",
+    ),
+]

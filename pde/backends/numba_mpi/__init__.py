@@ -23,7 +23,7 @@ from .. import backends
 from .backend import NumbaMPIBackend
 
 # add the loaded numba backend to the registry
-backends.add(NumbaMPIBackend("numba_mpi"))
+NumbaMPIBackend("numba_mpi", backends)
 
 # register some numba overloads
 from . import overloads
