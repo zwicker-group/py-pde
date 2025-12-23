@@ -217,4 +217,4 @@ def test_complex_correlated_noise(rng):
     for s in [samples.real, samples.imag]:
         pvalue = stats.kstest(s, "norm").pvalue
         assert pvalue > 0.05, f"DISTRIBUTION: {s.mean():.5g} ± {s.std():.5g}"
-    assert stats.ks_2samp(samples.real.flat, samples.imag.flat).pvalue > 0.05
+    assert stats.ks_2samp(samples.real, samples.imag).pvalue > 0.05

@@ -646,4 +646,4 @@ def test_complex_random_fields(field_class, correlation, dtype, rng):
     assert 3.5 < field.data.imag.std() < 4.5
 
     with pytest.raises(TypeError):
-        field_class.random_normal(mean=1 + 1j, dtype=float)
+        field_class.random_normal(grid, mean=1 + 1j, dtype=float)
