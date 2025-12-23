@@ -1456,16 +1456,35 @@ class GridBase(metaclass=ABCMeta):
         return backends[backend].make_integrator(self)
 
 
+def registered_grids() -> dict[str, type[GridBase]]:
+    """Returns all grids available in the package.
+
+    Returns:
+        dict: a dictionary with the names of the grids and the associated class
+    """
+    return {
+        name: cls
+        for name, cls in GridBase._subclasses.items()
+        if not (
+            name.endswith("Base") or (hasattr(cls, "deprecated") and cls.deprecated)
+        )
+    }
+
+
 def registered_operators() -> dict[str, list[str]]:
     """Returns all operators that are currently defined.
 
     Returns:
         dict: a dictionary with the names of the operators defined for each grid class
     """
-    return {
-        name: sorted(cls.operators)
-        for name, cls in GridBase._subclasses.items()
-        if not (
-            name.endswith("Base") or (hasattr(cls, "deprecated") and cls.deprecated)
-        )
-    }
+    return {name: sorted(cls.operators) for name, cls in registered_grids().items()}
+
+
+__all__ = [
+    "DimensionError",
+    "DomainError",
+    "GridBase",
+    "PeriodicityError",
+    "registered_grids",
+    "registered_operators",
+]

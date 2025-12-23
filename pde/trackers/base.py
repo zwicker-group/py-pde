@@ -337,4 +337,32 @@ def get_named_trackers() -> dict[str, type[TrackerBase]]:
     Returns:
         dict: a mapping of names to the actual tracker classes.
     """
+    # Deprecated on 2025-12-23
+    warnings.warn(
+        "`get_named_trackers` is deprecated. Use `registered_trackers` instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return TrackerBase._subclasses.copy()
+
+
+def registered_trackers() -> dict[str, type[TrackerBase]]:
+    """Returns all trackers that are currently registered.
+
+    Returns:
+        dict: a dictionary with the names of the trackers and the associated class
+    """
+    return {
+        name: cls
+        for name, cls in TrackerBase._subclasses.items()
+        if not (name.endswith("Base"))
+    }
+
+
+__all__ = [
+    "FinishedSimulation",
+    "TrackerBase",
+    "TrackerCollection",
+    "TransformedTrackerBase",
+    "registered_trackers",
+]

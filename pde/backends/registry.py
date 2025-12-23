@@ -151,3 +151,8 @@ def load_default_config(module_path: str | Path) -> list[Parameter] | None:
     except AttributeError:
         _logger.warning("Configuration module had no variable `DEFAULT_CONFIG`")
         return None
+
+
+def registered_backends() -> list[str]:
+    """Returns all registered backends."""
+    return sorted(backends._backends)

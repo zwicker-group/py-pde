@@ -30,7 +30,7 @@ def test_pde_complex_bcs_mpi(dim, backend, rng):
     res = eq.solve(backend=backend, solver="explicit_mpi", **args)
 
     if mpi.is_main:
-        res_exp = eq.solve(backend="numpy", solver="explicit", **args)
+        res_exp = eq.solve(backend="numpy", solver="euler", **args)
         res_exp.assert_field_compatible(res)
         np.testing.assert_allclose(res_exp.data, res.data)
     else:
@@ -83,7 +83,7 @@ def test_pde_complex_mpi(rng):
 
     if mpi.is_main:
         # check results in the main process
-        expect, _ = eq.solve(backend="numpy", solver="explicit", **args)
+        expect, _ = eq.solve(backend="numpy", solver="euler", **args)
 
         assert res1.is_complex
         np.testing.assert_allclose(res1.data, expect.data)
@@ -105,7 +105,7 @@ def test_pde_const_mpi(backend):
     eq = PDE({"u": "k"}, consts={"k": ScalarField.from_expression(grid, "x")})
 
     args = {"state": ScalarField(grid), "t_range": 1, "dt": 0.01, "tracker": None}
-    res_a = eq.solve(backend="numpy", solver="explicit", **args)
+    res_a = eq.solve(backend="numpy", solver="euler", **args)
     res_b = eq.solve(backend=backend, solver="explicit_mpi", **args)
 
     if mpi.is_main:
@@ -137,7 +137,7 @@ def test_pde_const_mpi_class(backend):
     eq = ExplicitFieldPDE()
 
     args = {"state": ScalarField(grid), "t_range": 1, "dt": 0.01, "tracker": None}
-    res_a = eq.solve(backend="numpy", solver="explicit", **args)
+    res_a = eq.solve(backend="numpy", solver="euler", **args)
     res_b = eq.solve(backend=backend, solver="explicit_mpi", **args)
 
     if mpi.is_main:

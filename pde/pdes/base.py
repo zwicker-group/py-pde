@@ -382,7 +382,7 @@ class PDEBase(metaclass=ABCMeta):
                 times. A tracker is either an instance of
                 :class:`~pde.trackers.base.TrackerBase` or a string identifying a
                 tracker (possible identifiers can be obtained by calling
-                :func:`~pde.trackers.base.get_named_trackers`). Multiple trackers can be
+                :func:`~pde.trackers.registered_trackers`). Multiple trackers can be
                 specified as a list. The default value `auto` checks the state for
                 consistency (tracker 'consistency') and displays a progress bar (tracker
                 'progress') when :mod:`tqdm` is installed. More general trackers are

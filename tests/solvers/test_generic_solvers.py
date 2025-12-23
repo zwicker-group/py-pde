@@ -30,7 +30,7 @@ SOLVER_CLASSES = [
 def test_solver_registration():
     """Test solver registration."""
     solvers = registered_solvers()
-    assert "explicit" in solvers
+    assert "euler" in solvers
     assert "implicit" in solvers
     assert "crank-nicolson" in solvers
     assert "scipy" in solvers

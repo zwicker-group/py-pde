@@ -18,8 +18,7 @@ store, or output it. The trackers defined in this module are:
    ~interactive.InteractivePlotTracker
 
 Some trackers can also be referenced by name for convenience when using them in
-simulations. The lit of supported names is returned by
-:func:`~pde.trackers.base.get_named_trackers`.
+simulations. The lit of supported names is returned by :func:`~pde.registered_trackers`.
 
 Multiple trackers can be collected in a :class:`~base.TrackerCollection`, which provides
 methods for handling them efficiently. Moreover, custom trackers can be implemented by
@@ -63,7 +62,7 @@ Inheritance structure of the tracker classes:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .base import get_named_trackers  # noqa: F401
+from .base import *  # noqa: F403
 from .interactive import InteractivePlotTracker  # noqa: F401
 from .interrupts import *  # noqa: F403
 from .trackers import *  # noqa: F403

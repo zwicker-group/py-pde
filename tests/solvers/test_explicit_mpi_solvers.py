@@ -40,7 +40,7 @@ def test_simple_pde_mpi(backend, adaptive, decomposition, rng):
 
     if mpi.is_main:
         # check results in the main process
-        expect, info2 = eq.solve(backend="numpy", solver="explicit", **args)
+        expect, info2 = eq.solve(backend="numpy", solver="euler", **args)
         np.testing.assert_allclose(res_mpi.data, expect.data)
 
         assert info_mpi["solver"]["steps"] == info2["solver"]["steps"]
@@ -100,7 +100,7 @@ def test_multiple_pdes_mpi(backend, rng):
 
     if mpi.is_main:
         # check results in the main process
-        expect, info2 = eq.solve(backend="numpy", solver="explicit", **args)
+        expect, info2 = eq.solve(backend="numpy", solver="euler", **args)
         np.testing.assert_allclose(res_mpi.data, expect.data)
 
         assert info_mpi["solver"]["steps"] == info2["solver"]["steps"]
