@@ -29,7 +29,7 @@ from pathlib import Path
 from .numpy import numpy_backend
 
 # load the registry, which manages all backends
-from .registry import backends, load_default_config
+from .registry import backends, load_default_config, registered_backends
 
 backends.add(numpy_backend)
 
@@ -48,5 +48,4 @@ backends.register_package(
     config=load_default_config(BACKENDS_FOLDER / "torch" / "config.py"),
 )
 
-# clean namespace
-del Path, load_default_config, BACKENDS_FOLDER
+__all__ = ["backends", "numpy_backend", "registered_backends"]

@@ -29,7 +29,7 @@ Inheritance structure of the classes:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .base import DimensionError, GridBase  # noqa: F401
+from .base import *  # noqa: F403
 from .boundaries import *  # noqa: F403
 from .cartesian import CartesianGrid, UnitGrid  # noqa: F401
 from .cylindrical import CylindricalSymGrid  # noqa: F401

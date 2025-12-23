@@ -18,7 +18,7 @@ from pde import (
 )
 from pde.pdes import AllenCahnPDE, CahnHilliardPDE, DiffusionPDE
 from pde.tools.misc import module_available
-from pde.trackers import get_named_trackers, trackers
+from pde.trackers import registered_trackers, trackers
 from pde.trackers.base import TrackerBase
 from pde.trackers.interrupts import ConstantInterrupts
 from pde.visualization.movies import Movie
@@ -194,7 +194,7 @@ def test_small_tracker_dt(rng):
     eq = DiffusionPDE()
     c0 = ScalarField.random_uniform(UnitGrid([4, 4]), 0.1, 0.2, rng=rng)
     eq.solve(
-        c0, 1e-2, dt=1e-3, solver="explicit", tracker=storage.tracker(interrupts=1e-4)
+        c0, 1e-2, dt=1e-3, solver="euler", tracker=storage.tracker(interrupts=1e-4)
     )
     assert len(storage) == 11
 
@@ -233,9 +233,9 @@ def test_material_conservation_tracker(rng):
     assert controller.info["t_final"] <= 1
 
 
-def test_get_named_trackers():
-    """Test the get_named_trackers function."""
-    for name, cls in get_named_trackers().items():
+def test_registered_trackers():
+    """Test the registered_trackers function."""
+    for name, cls in registered_trackers().items():
         assert isinstance(name, str)
         tracker = TrackerBase.from_data(name)
         assert isinstance(tracker, cls)

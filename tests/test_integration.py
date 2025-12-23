@@ -110,7 +110,7 @@ def test_custom_pde_mpi(rng):
 
     if mpi.is_main:
         # check results in the main process
-        expect, info3 = eq.solve(backend="numpy", solver="explicit", **args)
+        expect, info3 = eq.solve(backend="numpy", solver="euler", **args)
 
         np.testing.assert_allclose(res1.data, expect.data)
         np.testing.assert_allclose(res2.data, expect.data)
@@ -149,7 +149,7 @@ def test_stop_iteration_hook(backend):
     eq = TestPDE()
 
     args = {"state": field, "t_range": 1, "dt": 0.01, "tracker": None, "ret_info": True}
-    res, info = eq.solve(backend=backend, solver="explicit", **args)
+    res, info = eq.solve(backend=backend, solver="euler", **args)
 
     np.testing.assert_allclose(res.data, 0.07)
     assert info["controller"]["stop_reason"] == "Tracker raised StopIteration"
@@ -180,7 +180,7 @@ def test_custom_data_hook(backend):
     eq = TestPDE()
 
     args = {"state": field, "t_range": 1, "dt": 0.1, "tracker": None, "ret_info": True}
-    res, info = eq.solve(backend=backend, solver="explicit", **args)
+    res, info = eq.solve(backend=backend, solver="euler", **args)
 
     np.testing.assert_allclose(res.data, 1.0)
     value = np.linspace(0, 1, 11).sum()
@@ -212,7 +212,7 @@ def test_array_data_hook(backend):
     eq = TestPDE()
 
     args = {"state": field, "t_range": 1, "dt": 0.1, "tracker": None, "ret_info": True}
-    res, info = eq.solve(backend=backend, solver="explicit", **args)
+    res, info = eq.solve(backend=backend, solver="euler", **args)
 
     np.testing.assert_allclose(res.data, 1.0)
     value = np.linspace(0, 1, 11).sum()

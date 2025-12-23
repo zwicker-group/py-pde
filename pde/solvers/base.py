@@ -1,7 +1,7 @@
 """Package that contains base classes for solvers.
 
-Beside the abstract base class defining the interfaces, we also provide
-:class:`AdaptiveSolverBase`, which contains methods for implementing adaptive solvers.
+Beside the abstract base class :class:`SolverBase` defining the interfaces, we also
+provide :class:`AdaptiveSolverBase`, which contains methods for adaptive solvers.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 
 from ..tools.math import OnlineStatistics
-from ..tools.misc import classproperty
 from ..tools.typing import BackendType, NumericArray, StepperHook, TField
 
 if TYPE_CHECKING:
@@ -134,11 +133,6 @@ class SolverBase:
             ) from None
 
         return solver_class(pde, **kwargs)
-
-    @classproperty
-    def registered_solvers(cls) -> list[str]:
-        """list of str: the names of the registered solvers"""
-        return sorted(cls._subclasses)
 
     @property
     def backend(self) -> BackendType:
@@ -684,3 +678,19 @@ def _make_dt_adjuster(dt_min: float, dt_max: float) -> Callable[[float, float], 
         return dt
 
     return adjust_dt
+
+
+def registered_solvers() -> dict[str, type[SolverBase]]:
+    """Returns all solvers that are currently registered.
+
+    Returns:
+        dict: a dictionary with the names of the solvers and the associated class
+    """
+    return {
+        name: cls
+        for name, cls in SolverBase._subclasses.items()
+        if not (name.endswith("Base"))
+    }
+
+
+__all__ = ["AdaptiveSolverBase", "ConvergenceError", "SolverBase", "registered_solvers"]

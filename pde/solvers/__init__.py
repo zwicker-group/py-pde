@@ -30,39 +30,16 @@ Inheritance structure of the classes:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .adams_bashforth import AdamsBashforthSolver
-from .base import AdaptiveSolverBase, SolverBase  # noqa: F401
-from .controller import Controller
-from .crank_nicolson import CrankNicolsonSolver
-from .explicit import EulerSolver, ExplicitSolver, RungeKuttaSolver
-from .implicit import ImplicitSolver
-from .scipy import ScipySolver
+from .adams_bashforth import AdamsBashforthSolver  # noqa: F401
+from .base import *  # noqa: F403
+from .controller import Controller  # noqa: F401
+from .crank_nicolson import CrankNicolsonSolver  # noqa: F401
+from .explicit import EulerSolver, ExplicitSolver, RungeKuttaSolver  # noqa: F401
+from .implicit import ImplicitSolver  # noqa: F401
+from .scipy import ScipySolver  # noqa: F401
 
 try:
     from .explicit_mpi import ExplicitMPISolver
 except ImportError:
     # MPI modules do not seem to be properly available
     ExplicitMPISolver = None  # type: ignore
-
-
-def registered_solvers() -> list[str]:
-    """Returns all solvers that are currently registered.
-
-    Returns:
-        list of str: List with the names of the solvers
-    """
-
-    return SolverBase.registered_solvers  # type: ignore
-
-
-__all__ = [
-    "AdamsBashforthSolver",
-    "Controller",
-    "CrankNicolsonSolver",
-    "EulerSolver",
-    "ExplicitSolver",
-    "ImplicitSolver",
-    "RungeKuttaSolver",
-    "ScipySolver",
-    "registered_solvers",
-]
