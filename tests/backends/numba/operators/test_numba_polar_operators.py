@@ -17,19 +17,19 @@ def test_findiff_polar():
     v = VectorField(grid, [[1, 2, 4], [0] * 3])
 
     # test gradient
-    grad = s.gradient(bc={"r-": "derivative", "r+": "value"})
+    grad = s.gradient(bc={"r-": "derivative", "r+": "value"}, backend="numba")
     np.testing.assert_allclose(grad.data[0, :], [1, 3, -6])
-    grad = s.gradient(bc="derivative")
+    grad = s.gradient(bc="derivative", backend="numba")
     np.testing.assert_allclose(grad.data[0, :], [1, 3, 2])
-    grad = s.gradient(bc="derivative", method="forward")
+    grad = s.gradient(bc="derivative", method="forward", backend="numba")
     np.testing.assert_allclose(grad.data[0, :], [2, 4, 0])
-    grad = s.gradient(bc="derivative", method="backward")
+    grad = s.gradient(bc="derivative", method="backward", backend="numba")
     np.testing.assert_allclose(grad.data[0, :], [0, 2, 4])
 
     # test divergence
-    div = v.divergence(bc={"r-": "derivative", "r+": "value"})
+    div = v.divergence(bc={"r-": "derivative", "r+": "value"}, backend="numba")
     np.testing.assert_allclose(div.data, [5, 17 / 3, -6 + 4 / r2])
-    div = v.divergence(bc="derivative")
+    div = v.divergence(bc="derivative", backend="numba")
     np.testing.assert_allclose(div.data, [5, 17 / 3, 2 + 4 / r2])
 
 
@@ -38,7 +38,7 @@ def test_conservative_laplace_polar(rng):
     grid = PolarSymGrid(1.5, 8)
     f = ScalarField.random_uniform(grid, rng=rng)
 
-    res = f.laplace("auto_periodic_neumann")
+    res = f.laplace("auto_periodic_neumann", backend="numba")
     np.testing.assert_allclose(res.integral, 0, atol=1e-12)
 
 
@@ -62,7 +62,9 @@ def test_small_annulus_polar(op_name, field, rng):
     f = field.random_uniform(grids[0], rng=rng)
 
     res = [
-        field(g, data=f.data).apply_operator(op_name, "auto_periodic_neumann")
+        field(g, data=f.data).apply_operator(
+            op_name, "auto_periodic_neumann", backend="numba"
+        )
         for g in grids
     ]
 
@@ -78,8 +80,8 @@ def test_grid_laplace_polar():
     a_1d = ScalarField.from_expression(grid_sph, "cos(r)")
     a_2d = a_1d.interpolate_to_grid(grid_cart)
 
-    b_2d = a_2d.laplace("auto_periodic_neumann")
-    b_1d = a_1d.laplace("auto_periodic_neumann")
+    b_2d = a_2d.laplace("auto_periodic_neumann", backend="numba")
+    b_1d = a_1d.laplace("auto_periodic_neumann", backend="numba")
     b_1d_2 = b_1d.interpolate_to_grid(grid_cart)
 
     i = slice(1, -1)  # do not compare boundary points
@@ -91,10 +93,12 @@ def test_gradient_squared_polar(r_inner):
     """Compare gradient squared operator."""
     grid = PolarSymGrid((r_inner, 4 * np.pi), 32)
     field = ScalarField.from_expression(grid, "cos(r)")
-    s1 = field.gradient("auto_periodic_neumann").to_scalar("squared_sum")
-    s2 = field.gradient_squared("auto_periodic_neumann", central=True)
+    s1 = field.gradient("auto_periodic_neumann", backend="numba").to_scalar(
+        "squared_sum"
+    )
+    s2 = field.gradient_squared("auto_periodic_neumann", central=True, backend="numba")
     np.testing.assert_allclose(s1.data, s2.data, rtol=0.1, atol=0.1)
-    s3 = field.gradient_squared("auto_periodic_neumann", central=False)
+    s3 = field.gradient_squared("auto_periodic_neumann", central=False, backend="numba")
     np.testing.assert_allclose(s1.data, s3.data, rtol=0.1, atol=0.1)
     assert not np.array_equal(s2.data, s3.data)
 
@@ -104,8 +108,10 @@ def test_grid_div_grad_polar():
     grid = PolarSymGrid(2 * np.pi, 16)
     field = ScalarField.from_expression(grid, "cos(r)")
 
-    a = field.laplace("derivative")
-    b = field.gradient("derivative").divergence("value")
+    a = field.laplace("derivative", backend="numba")
+    b = field.gradient("derivative", backend="numba").divergence(
+        "value", backend="numba"
+    )
     res = ScalarField.from_expression(grid, "-sin(r) / r - cos(r)")
 
     # do not test the radial boundary points
@@ -119,7 +125,9 @@ def test_examples_scalar_polar():
     sf = ScalarField.from_expression(grid, "r**3")
 
     # gradient
-    res = sf.gradient({"r-": {"derivative": 0}, "r+": {"derivative": 3}})
+    res = sf.gradient(
+        {"r-": {"derivative": 0}, "r+": {"derivative": 3}}, backend="numba"
+    )
     expect = VectorField.from_expression(grid, ["3 * r**2", 0])
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
@@ -127,12 +135,16 @@ def test_examples_scalar_polar():
     expect = ScalarField.from_expression(grid, "9 * r**4")
     for c in [True, False]:
         res = sf.gradient_squared(
-            {"r-": {"derivative": 0}, "r+": {"derivative": 3}}, central=c
+            {"r-": {"derivative": 0}, "r+": {"derivative": 3}},
+            central=c,
+            backend="numba",
         )
         np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
     # laplace
-    res = sf.laplace({"r-": {"derivative": 0}, "r+": {"derivative": 3}})
+    res = sf.laplace(
+        {"r-": {"derivative": 0}, "r+": {"derivative": 3}}, backend="numba"
+    )
     expect = ScalarField.from_expression(grid, "9 * r")
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
@@ -143,7 +155,7 @@ def test_examples_vector_polar():
     vf = VectorField.from_expression(grid, ["r**3", "r**2"])
 
     # divergence
-    res = vf.divergence({"r-": {"derivative": 0}, "r+": {"value": 1}})
+    res = vf.divergence({"r-": {"derivative": 0}, "r+": {"value": 1}}, backend="numba")
     expect = ScalarField.from_expression(grid, "4 * r**2")
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
@@ -165,10 +177,14 @@ def test_examples_tensor_polar():
     tf = Tensor2Field.from_expression(grid, [["r**3"] * 2] * 2)
 
     # tensor divergence
-    res = tf.divergence({"r-": {"derivative": 0}, "r+": {"normal_value": [1, 1]}})
+    res = tf.divergence(
+        {"r-": {"derivative": 0}, "r+": {"normal_value": [1, 1]}}, backend="numba"
+    )
     expect = VectorField.from_expression(grid, ["3 * r**2", "5 * r**2"])
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
-    res = tf.divergence({"r-": {"derivative": 0}, "r+": {"value": np.ones((2, 2))}})
+    res = tf.divergence(
+        {"r-": {"derivative": 0}, "r+": {"value": np.ones((2, 2))}}, backend="numba"
+    )
     expect = VectorField.from_expression(grid, ["3 * r**2", "5 * r**2"])
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)

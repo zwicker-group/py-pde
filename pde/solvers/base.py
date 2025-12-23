@@ -504,7 +504,7 @@ class AdaptiveSolverBase(SolverBase):
         # obtain functions determining how the PDE is evolved
         single_step_error = self._make_single_step_error_estimate(state)
         post_step_hook = self._make_post_step_hook(state)
-        sync_errors = self._make_error_synchronizer()
+        sync_errors = self._backend_obj.make_mpi_synchronizer(operator="MAX")
 
         # obtain auxiliary functions
         if adjust_dt is None:

@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from fixtures.fields import get_cartesian_grid, iter_grids
+from pde.backends import backends
 from pde.fields.base import FieldBase
 from pde.fields.scalar import ScalarField
 from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
@@ -152,16 +153,16 @@ def test_interpolation_bcs():
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-@pytest.mark.parametrize("compiled", [True, False])
-def test_insert_scalar(grid, compiled, rng):
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_insert_scalar(grid, backend, rng):
     """Test the `insert` method."""
     f = ScalarField(grid)
     a = rng.random()
 
     c = grid.get_random_point(coords="cell", rng=rng).astype(int)  # pick a random cell
     p = grid.transform(c + 0.5, "cell", "grid")  # point at cell center
-    if compiled:
-        insert = grid.make_inserter_compiled()
+    if backend == "numba":
+        insert = backends["numba"].make_inserter(grid)
         insert(f.data, p, a)  # add material to cell center
     else:
         f.insert(p, a)  # add material to cell center
@@ -181,7 +182,7 @@ def test_insert_1d(rng):
         f.data = g.data = 0
         f.insert(r, a)
         assert f.integral == pytest.approx(a)
-        grid.make_inserter_compiled()(g.data, r, a)
+        backends["numba"].make_inserter(grid)(g.data, r, a)
         np.testing.assert_array_almost_equal(f.data, g.data)
 
 
@@ -195,7 +196,7 @@ def test_insert_polar(rng):
         f.data = g.data = 0
         f.insert(r, a)
         assert f.integral == pytest.approx(a)
-        grid.make_inserter_compiled()(g.data, r, a)
+        backends["numba"].make_inserter(grid)(g.data, r, a)
         np.testing.assert_array_almost_equal(f.data, g.data)
 
 

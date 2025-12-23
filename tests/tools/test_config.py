@@ -58,7 +58,7 @@ def test_config_modes():
     with pytest.raises(KeyError):
         c.update({"new_value": "value"})
     with pytest.raises(RuntimeError):
-        del c["numba.multithreading_threshold"]
+        del c["backend.numba.multithreading_threshold"]
     with pytest.raises(KeyError):
         c["undefined"]
 

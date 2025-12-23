@@ -44,10 +44,10 @@ def test_singular_dimensions_2d(periodic, rng):
     g2b = UnitGrid([1, dim], periodic=periodic)
 
     field = ScalarField.random_uniform(g1, rng=rng)
-    expected = field.laplace("auto_periodic_neumann").data
+    expected = field.laplace("auto_periodic_neumann", backend="numba").data
     for g in [g2a, g2b]:
         f = ScalarField(g, data=field.data.reshape(g.shape))
-        res = f.laplace("auto_periodic_neumann").data.reshape(g1.shape)
+        res = f.laplace("auto_periodic_neumann", backend="numba").data.reshape(g1.shape)
         np.testing.assert_allclose(expected, res)
 
 
@@ -60,10 +60,10 @@ def test_singular_dimensions_3d(periodic, rng):
     g3b = UnitGrid([1, 1, dim], periodic=periodic)
 
     field = ScalarField.random_uniform(g1, rng=rng)
-    expected = field.laplace("auto_periodic_neumann").data
+    expected = field.laplace("auto_periodic_neumann", backend="numba").data
     for g in [g3a, g3b]:
         f = ScalarField(g, data=field.data.reshape(g.shape))
-        res = f.laplace("auto_periodic_neumann").data.reshape(g1.shape)
+        res = f.laplace("auto_periodic_neumann", backend="numba").data.reshape(g1.shape)
         np.testing.assert_allclose(expected, res)
 
 
@@ -150,12 +150,12 @@ def test_gradient_1d():
     bc = {"x-": {"derivative": -1}, "x+": {"derivative": 1}}
     bcs = grid.get_boundary_conditions(bc)
     field = ScalarField(grid, np.arange(5))
-    res = field.gradient(bcs)
+    res = field.gradient(bcs, backend="numba")
     np.testing.assert_allclose(res.data, np.ones((1, 5)))
 
     bcs = grid.get_boundary_conditions({"x": {"value": 3}})
     field = ScalarField(grid, np.full(5, 3))
-    res = field.gradient(bcs)
+    res = field.gradient(bcs, backend="numba")
     np.testing.assert_allclose(res.data, np.zeros((1, 5)))
 
 
@@ -225,8 +225,10 @@ def test_div_grad_const():
     y = ScalarField(grid, 3)
     for bc in [{"type": "derivative", "value": 0}, {"type": "value", "value": 3}]:
         bcs = grid.get_boundary_conditions(bc)
-        lap = y.laplace(bcs)
-        divgrad = y.gradient(bcs).divergence("auto_periodic_curvature")
+        lap = y.laplace(bcs, backend="numba")
+        divgrad = y.gradient(bcs, backend="numba").divergence(
+            "auto_periodic_curvature", backend="numba"
+        )
         np.testing.assert_allclose(lap.data, np.zeros(32))
         np.testing.assert_allclose(divgrad.data, np.zeros(32))
 
@@ -244,8 +246,10 @@ def test_div_grad_linear(rng):
     b2 = {"x-": {"value": -f}, "x+": {"value": f}}
     for bs in [b1, b2]:
         bcs = y.grid.get_boundary_conditions(bs)
-        lap = y.laplace(bcs)
-        divgrad = y.gradient(bcs).divergence("auto_periodic_curvature")
+        lap = y.laplace(bcs, backend="numba")
+        divgrad = y.gradient(bcs, backend="numba").divergence(
+            "auto_periodic_curvature", backend="numba"
+        )
         np.testing.assert_allclose(lap.data, np.zeros(32), atol=1e-10)
         np.testing.assert_allclose(divgrad.data, np.zeros(32), atol=1e-10)
 
@@ -259,8 +263,10 @@ def test_div_grad_quadratic():
     y = ScalarField(grid, x**2)
 
     bcs = grid.get_boundary_conditions({"type": "derivative", "value": 2})
-    lap = y.laplace(bcs)
-    divgrad = y.gradient(bcs).divergence("auto_periodic_curvature")
+    lap = y.laplace(bcs, backend="numba")
+    divgrad = y.gradient(bcs, backend="numba").divergence(
+        "auto_periodic_curvature", backend="numba"
+    )
 
     np.testing.assert_allclose(lap.data, np.full(32, 2.0))
     np.testing.assert_allclose(divgrad.data, np.full(32, 2.0))
@@ -275,10 +281,12 @@ def test_gradient_squared_cart(dim, rng):
         periodic=rng.choice([False, True], dim),
     )
     field = ScalarField.random_harmonic(grid, modes=1, axis_combination=np.add, rng=rng)
-    s1 = field.gradient("auto_periodic_neumann").to_scalar("squared_sum")
-    s2 = field.gradient_squared("auto_periodic_neumann", central=True)
+    s1 = field.gradient("auto_periodic_neumann", backend="numba").to_scalar(
+        "squared_sum"
+    )
+    s2 = field.gradient_squared("auto_periodic_neumann", central=True, backend="numba")
     np.testing.assert_allclose(s1.data, s2.data, rtol=0.1, atol=0.1)
-    s3 = field.gradient_squared("auto_periodic_neumann", central=False)
+    s3 = field.gradient_squared("auto_periodic_neumann", central=False, backend="numba")
     np.testing.assert_allclose(s1.data, s3.data, rtol=0.2, atol=0.2)
     assert not np.array_equal(s2.data, s3.data)
 
@@ -291,8 +299,10 @@ def test_rect_div_grad():
 
     bcs = grid.get_boundary_conditions("auto_periodic_neumann")
 
-    a = field.laplace(bcs)
-    b = field.gradient(bcs).divergence("auto_periodic_curvature")
+    a = field.laplace(bcs, backend="numba")
+    b = field.gradient(bcs, backend="numba").divergence(
+        "auto_periodic_curvature", backend="numba"
+    )
     np.testing.assert_allclose(a.data, -field.data, rtol=0.05, atol=0.01)
     np.testing.assert_allclose(b.data, -field.data, rtol=0.05, atol=0.01)
 
@@ -304,8 +314,8 @@ def test_degenerated_grid(rng):
     f1 = ScalarField.random_uniform(g1, rng=rng)
     f2 = ScalarField(g2, f1.data.reshape(g2.shape))
 
-    res1 = f1.laplace("auto_periodic_neumann").data
-    res2 = f2.laplace("auto_periodic_neumann").data
+    res1 = f1.laplace("auto_periodic_neumann", backend="numba").data
+    res2 = f2.laplace("auto_periodic_neumann", backend="numba").data
     np.testing.assert_allclose(res1.flat, res2.flat)
 
 
@@ -313,7 +323,7 @@ def test_2nd_order_bc(rng):
     """Test whether 2nd order boundary conditions can be used."""
     grid = UnitGrid([8, 8])
     field = ScalarField.random_uniform(grid, rng=rng)
-    field.laplace({"x": {"value": "sin(y)"}, "y": {"value": "x"}})
+    field.laplace({"x": {"value": "sin(y)"}, "y": {"value": "x"}}, backend="numba")
 
 
 @pytest.mark.parametrize("periodic_x", [False, True])
@@ -347,10 +357,14 @@ def test_9point_stencil(periodic_x, periodic_y, rng):
     """Test the corner point setter."""
     grid = UnitGrid([16, 16], periodic=[periodic_x, periodic_y])
     field = ScalarField.random_uniform(grid, rng=rng).smooth(1)
-    lap1 = field.laplace(bc="auto_periodic_neumann")
+    lap1 = field.laplace(bc="auto_periodic_neumann", backend="numba")
 
-    lap2 = field.laplace(bc="auto_periodic_neumann", corner_weight=1e-10)
+    lap2 = field.laplace(
+        bc="auto_periodic_neumann", corner_weight=1e-10, backend="numba"
+    )
     np.testing.assert_allclose(lap1.data, lap2.data)
 
-    lap3 = field.laplace(bc="auto_periodic_neumann", corner_weight=1 / 3)
+    lap3 = field.laplace(
+        bc="auto_periodic_neumann", corner_weight=1 / 3, backend="numba"
+    )
     np.testing.assert_allclose(lap1.data, lap3.data, atol=0.05)

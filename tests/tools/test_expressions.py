@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
+from pde.backends.numba import numba_backend
 from pde.tools.expressions import (
     BCDataError,
     ScalarExpression,
@@ -63,7 +64,7 @@ def test_const(expr):
     assert e.constant
     assert e.value == val
     assert e() == val
-    assert e.get_compiled()() == val
+    assert e.get_function("numba")() == val
     assert not e.depends_on("a")
     assert e.differentiate("a").value == 0
     assert e.shape == ()
@@ -96,7 +97,7 @@ def test_wrong_const(caplog):
     assert "field" in caplog.text
     if not nb.config.DISABLE_JIT:
         with pytest.raises(nb.TypingError):
-            e.get_compiled()()
+            e.get_function("numba")()
 
 
 def test_single_arg(rng):
@@ -105,7 +106,7 @@ def test_single_arg(rng):
     assert not e.constant
     assert e.depends_on("a")
     assert e(4) == 8
-    assert e.get_compiled()(4) == 8
+    assert e.get_function("numba")(4) == 8
     assert e.differentiate("a").value == 2
     assert e.differentiate("b").value == 0
     assert e.shape == ()
@@ -119,13 +120,13 @@ def test_single_arg(rng):
 
     arr = rng.random(5)
     np.testing.assert_allclose(e(arr), 2 * arr)
-    np.testing.assert_allclose(e.get_compiled()(arr), 2 * arr)
+    np.testing.assert_allclose(e.get_function("numba")(arr), 2 * arr)
 
     g = e.derivatives
     assert g.shape == (1,)
     assert g.constant
     assert g(3) == [2]
-    assert g.get_compiled()(3) == [2]
+    assert g.get_function("numba")(3) == [2]
 
     with pytest.raises(TypeError):
         ScalarExpression(np.exp)
@@ -137,7 +138,7 @@ def test_two_args(rng):
     assert e.depends_on("b")
     assert not e.constant
     assert e(4, 2) == 32
-    assert e.get_compiled()(4, 2) == 32
+    assert e.get_function("numba")(4, 2) == 32
     assert e.differentiate("a")(4, 2) == 16
     assert e.differentiate("b")(4, 2) == pytest.approx(32 * np.log(4))
     assert e.differentiate("c").value == 0
@@ -148,11 +149,11 @@ def test_two_args(rng):
     for x in [rng.random(2), rng.random((2, 5))]:
         res = 2 * x[0] ** x[1]
         np.testing.assert_allclose(e(*x), res)
-        np.testing.assert_allclose(e.get_compiled()(*x), res)
+        np.testing.assert_allclose(e.get_function("numba")(*x), res)
         if x.ndim == 1:
             func = e.get_function(single_arg=True)
             np.testing.assert_allclose(func(x), res)
-            func = e.get_compiled(single_arg=True)
+            func = e.get_function(backend="numba", single_arg=True)
             np.testing.assert_allclose(func(x), res)
 
     g = e.derivatives
@@ -160,7 +161,7 @@ def test_two_args(rng):
     assert g.rank == 1
     assert not g.constant
     np.testing.assert_allclose(g(2, 3), [24, 16 * np.log(2)])
-    np.testing.assert_allclose(g.get_compiled()(2, 3), [24, 16 * np.log(2)])
+    np.testing.assert_allclose(g.get_function("numba")(2, 3), [24, 16 * np.log(2)])
 
 
 def test_derivatives():
@@ -174,12 +175,12 @@ def test_derivatives():
     d1 = e.derivatives
     assert d1.shape == (2,)
     np.testing.assert_allclose(d1(2, 3), [9, 12])
-    np.testing.assert_allclose(d1.get_compiled()(2, 3), [9, 12])
+    np.testing.assert_allclose(d1.get_function("numba")(2, 3), [9, 12])
 
     d2 = d1.derivatives
     assert d2.shape == (2, 2)
     np.testing.assert_allclose(d2(2, 3), [[0, 6], [6, 4]])
-    np.testing.assert_allclose(d2.get_compiled()(2, 3), [[0, 6], [6, 4]])
+    np.testing.assert_allclose(d2.get_function("numba")(2, 3), [[0, 6], [6, 4]])
 
     d3 = d2.derivatives
     assert d3.shape == (2, 2, 2)
@@ -187,7 +188,7 @@ def test_derivatives():
     d4 = d3.derivatives
     assert d4.shape == (2, 2, 2, 2)
     np.testing.assert_allclose(d4(2, 3), np.zeros((2, 2, 2, 2)))
-    np.testing.assert_allclose(d4.get_compiled()(2, 3), np.zeros((2, 2, 2, 2)))
+    np.testing.assert_allclose(d4.get_function("numba")(2, 3), np.zeros((2, 2, 2, 2)))
 
 
 def test_indexed():
@@ -198,7 +199,7 @@ def test_indexed():
 
     a = np.array([4, 2])
     assert e(a) == 32
-    assert e.get_compiled()(a) == 32
+    assert e.get_function("numba")(a) == 32
 
     assert e.differentiate("a[0]")(a) == 16
     assert e.differentiate("a[1]")(a) == pytest.approx(32 * np.log(4))
@@ -223,8 +224,9 @@ def test_tensor_expression():
     assert e.shape == (2, 2)
     assert e.rank == 2
     assert e.constant
-    np.testing.assert_allclose(e.get_compiled_array()(), [[0, 1], [2, 3]])
-    np.testing.assert_allclose(e.get_compiled_array()(()), [[0, 1], [2, 3]])
+    func = numba_backend._make_expression_array(e)
+    np.testing.assert_allclose(func(), [[0, 1], [2, 3]])
+    np.testing.assert_allclose(func(()), [[0, 1], [2, 3]])
     assert e.differentiate("a") == TensorExpression("[[0, 0], [0, 0]]")
     np.testing.assert_allclose(e.value, np.arange(4).reshape(2, 2))
 
@@ -240,8 +242,9 @@ def test_tensor_expression():
     assert e[0] == ScalarExpression("a")
     assert e[1] == ScalarExpression("2*a")
     assert e[0:1] == TensorExpression("[a]")
-    np.testing.assert_allclose(e.get_compiled_array()(1.0), [1.0, 2.0])
-    np.testing.assert_allclose(e.get_compiled_array()(2.0), [2.0, 4.0])
+    func = numba_backend._make_expression_array(e)
+    np.testing.assert_allclose(func(1.0), [1.0, 2.0])
+    np.testing.assert_allclose(func(2.0), [2.0, 4.0])
 
     e2 = TensorExpression(e)
     assert isinstance(str(e2), str)
@@ -268,19 +271,21 @@ def test_expression_user_funcs():
     """Test the usage of user_funcs."""
     expr = ScalarExpression("func()", user_funcs={"func": lambda: 1})
     assert expr() == 1
-    assert expr.get_compiled()() == 1
+    assert expr.get_function("numba")() == 1
     assert expr.value == 1
 
     expr = ScalarExpression("f(pi)", user_funcs={"f": np.sin})
     assert expr.constant
     assert expr() == pytest.approx(0)
-    assert expr.get_compiled()() == pytest.approx(0)
+    assert expr.get_function("numba")() == pytest.approx(0)
     assert expr.value == pytest.approx(0)
 
     expr = TensorExpression("[0, f(pi)]", user_funcs={"f": np.sin})
     assert expr.constant
     np.testing.assert_allclose(expr(), np.array([0, 0]), atol=1e-14)
-    np.testing.assert_allclose(expr.get_compiled()(), np.array([0, 0]), atol=1e-14)
+    np.testing.assert_allclose(
+        expr.get_function("numba")(), np.array([0, 0]), atol=1e-14
+    )
     np.testing.assert_allclose(expr.value, np.array([0, 0]), atol=1e-14)
 
 
@@ -320,7 +325,7 @@ def test_expression_heaviside(expression, value):
     assert expr(1) == 1
     np.testing.assert_allclose(expr(np.array([-1, 0, 1])), np.array([0, value, 1]))
 
-    f = expr.get_compiled()
+    f = expr.get_function("numba")
     assert f(-1) == 0
     assert f(0) == value
     assert f(1) == 1
@@ -333,7 +338,7 @@ def test_expression_consts():
     assert expr.constant
     assert not expr.depends_on("a")
     assert expr() == 1
-    assert expr.get_compiled()() == 1
+    assert expr.get_function("numba")() == 1
     assert expr.value == 1
 
     expr = ScalarExpression("a + b", consts={"a": 1})
@@ -341,12 +346,14 @@ def test_expression_consts():
     assert not expr.depends_on("a")
     assert expr.depends_on("b")
     assert expr(2) == 3
-    assert expr.get_compiled()(2) == 3
+    assert expr.get_function("numba")(2) == 3
 
     expr = ScalarExpression("a + b", consts={"a": np.array([1, 2])})
     assert not expr.constant
     np.testing.assert_allclose(expr(np.array([2, 3])), np.array([3, 5]))
-    np.testing.assert_allclose(expr.get_compiled()(np.array([2, 3])), np.array([3, 5]))
+    np.testing.assert_allclose(
+        expr.get_function("numba")(np.array([2, 3])), np.array([3, 5])
+    )
 
     expr = ScalarExpression("a * b", consts={"a": np.array([1, 2])})
     dexpr_da = expr.differentiate("b")

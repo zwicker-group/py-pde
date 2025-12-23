@@ -371,7 +371,7 @@ def test_pde_integral(backend, rng):
     np.testing.assert_allclose(rhs(field.data, 0), -field.integral)
 
     # test evolution
-    for method in ["scipy", "explicit"]:
+    for method in ["scipy", "euler"]:
         res = eq.solve(
             field, t_range=1000, solver=method, backend=backend, tracker=None
         )

@@ -64,7 +64,8 @@ class CartesianLaplacian(TorchOperator):
         data_full = self.get_full_data(arr, args=args)
 
         if self.grid.num_axes == 1:
-            return (data_full[:-2] - 2 * data_full[1:-1] + data_full[2:]) * self.scale  # type: ignore
+            scale = self.scale[0]
+            return (data_full[:-2] - 2 * data_full[1:-1] + data_full[2:]) * scale  # type: ignore
 
         if self.grid.num_axes == 2:
             lap_x = (

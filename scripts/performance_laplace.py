@@ -15,7 +15,8 @@ from pde import CylindricalSymGrid, ScalarField, SphericalSymGrid, UnitGrid, con
 from pde.grids.boundaries import BoundariesList
 from pde.tools.misc import estimate_computation_speed
 
-config["numba.multithreading"] = "never"  # disable multithreading for better comparison
+# disable multithreading for better comparison
+config["backend.numba.multithreading"] = "never"
 
 import torch
 
@@ -68,9 +69,8 @@ def _numba_laplace_2d_periodic(shape, dx=1):
     """Make numba-compiled Laplace operator with periodic boundary conditions."""
     dx_2 = 1 / dx**2
     dim_x, dim_y = shape
-    parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
-    @nb.jit(parallel=parallel)
+    @nb.jit
     def laplace(arr, out=None):
         """Apply laplace operator to array `arr`"""
         if out is None:
@@ -106,9 +106,8 @@ def _numba_laplace_2d_neumann(shape, dx=1):
     """Make numba-compiled Laplace operator with Neumann boundary conditions."""
     dx_2 = 1 / dx**2
     dim_x, dim_y = shape
-    parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
-    @nb.jit(parallel=parallel)
+    @nb.jit
     def laplace(arr, out=None):
         """Apply Laplace operator to array `arr`"""
         if out is None:

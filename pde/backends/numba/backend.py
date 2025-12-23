@@ -1414,7 +1414,7 @@ class NumbaBackend(NumpyBackend):
         code += "\n".join(lines) + "\n"
         code += "    return out"
 
-        self._logger.debug("Code for `get_compiled_array`: %s", code)
+        self._logger.debug("Code for `make_expression_array`: %s", code)
 
         namespace = _get_namespace("numpy")
         namespace["builtins"] = builtins

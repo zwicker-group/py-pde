@@ -18,7 +18,7 @@ def test_laplacian_field_cyl():
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [8, 16], periodic_z=True)
     r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     s = ScalarField(grid, data=np.cos(r) + np.sin(z))
-    s_lap = s.laplace(bc="auto_periodic_neumann")
+    s_lap = s.laplace(bc="auto_periodic_neumann", backend="numba")
     assert s_lap.data.shape == (8, 16)
     res = -np.cos(r) - np.sin(r) / r - np.sin(z)
     np.testing.assert_allclose(s_lap.data, res, rtol=0.1, atol=0.1)
@@ -29,7 +29,7 @@ def test_gradient_field_cyl():
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [8, 16], periodic_z=True)
     r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     s = ScalarField(grid, data=np.cos(r) + np.sin(z))
-    v = s.gradient(bc="auto_periodic_neumann")
+    v = s.gradient(bc="auto_periodic_neumann", backend="numba")
     assert v.data.shape == (3, 8, 16)
     np.testing.assert_allclose(v.data[0], -np.sin(r), rtol=0.1, atol=0.1)
     np.testing.assert_allclose(v.data[1], np.cos(z), rtol=0.1, atol=0.1)
@@ -40,7 +40,7 @@ def test_divergence_field_cyl():
     """Test the divergence operator."""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [16, 32], periodic_z=True)
     v = VectorField.from_expression(grid, ["cos(r) + sin(z)**2", "z * cos(r)**2", 0])
-    s = v.divergence(bc="auto_periodic_neumann")
+    s = v.divergence(bc="auto_periodic_neumann", backend="numba")
     assert s.data.shape == grid.shape
     res = ScalarField.from_expression(
         grid, "cos(r)**2 - sin(r) + (cos(r) + sin(z)**2) / r"
@@ -54,7 +54,7 @@ def test_divergence_field_cyl():
         (np.pi, 2 * np.pi), [0, 2 * np.pi], [8, 32], periodic_z=True
     )
     v2 = VectorField.from_expression(grid2, ["cos(r) + sin(z)**2", "z * cos(r)**2", 0])
-    s2 = v2.divergence(bc="auto_periodic_neumann")
+    s2 = v2.divergence(bc="auto_periodic_neumann", backend="numba")
     assert s2.data.shape == grid2.shape
     res2 = ScalarField.from_expression(
         grid2, "cos(r)**2 - sin(r) + (cos(r) + sin(z)**2) / r"
@@ -71,9 +71,9 @@ def test_vector_gradient_divergence_field_cyl():
     r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = [np.cos(r) + np.sin(z) ** 2, np.cos(r) ** 2 + np.sin(z), np.zeros_like(r)]
     v = VectorField(grid, data=data)
-    t = v.gradient(bc="auto_periodic_neumann")
+    t = v.gradient(bc="auto_periodic_neumann", backend="numba")
     assert t.data.shape == (3, 3, 8, 16)
-    v = t.divergence(bc="auto_periodic_neumann")
+    v = t.divergence(bc="auto_periodic_neumann", backend="numba")
     assert v.data.shape == (3, 8, 16)
 
 
@@ -88,11 +88,11 @@ def test_findiff_cyl():
     s = ScalarField(grid, [[1, 1], [2, 2], [4, 4]])
 
     # test laplace
-    lap = s.laplace(bc={"r": {"value": 3}, "z": "periodic"})
+    lap = s.laplace(bc={"r": {"value": 3}, "z": "periodic"}, backend="numba")
     y1 = 4 + 3 / r1
     y2 = -16
     np.testing.assert_allclose(lap.data, [[8, 8], [y1, y1], [y2, y2]])
-    lap = s.laplace(bc={"r": {"derivative": 3}, "z": "periodic"})
+    lap = s.laplace(bc={"r": {"derivative": 3}, "z": "periodic"}, backend="numba")
     y2 = -2 + 3.5 / r2
     np.testing.assert_allclose(lap.data, [[8, 8], [y1, y1], [y2, y2]])
 
@@ -105,8 +105,8 @@ def test_grid_laplace():
     a_2d = ScalarField.from_expression(grid_cyl, expression="exp(-5 * r) * cos(z / 3)")
     a_3d = a_2d.interpolate_to_grid(grid_cart)
 
-    b_2d = a_2d.laplace("auto_periodic_neumann")
-    b_3d = a_3d.laplace("auto_periodic_neumann")
+    b_2d = a_2d.laplace("auto_periodic_neumann", backend="numba")
+    b_3d = a_3d.laplace("auto_periodic_neumann", backend="numba")
     b_2d_3 = b_2d.interpolate_to_grid(grid_cart)
 
     np.testing.assert_allclose(b_2d_3.data, b_3d.data, rtol=0.2, atol=0.2)
@@ -116,10 +116,12 @@ def test_gradient_squared_cyl(rng):
     """Compare gradient squared operator."""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], 64)
     field = ScalarField.random_harmonic(grid, modes=1, rng=rng)
-    s1 = field.gradient("auto_periodic_neumann").to_scalar("squared_sum")
-    s2 = field.gradient_squared("auto_periodic_neumann", central=True)
+    s1 = field.gradient("auto_periodic_neumann", backend="numba").to_scalar(
+        "squared_sum"
+    )
+    s2 = field.gradient_squared("auto_periodic_neumann", central=True, backend="numba")
     np.testing.assert_allclose(s1.data, s2.data, rtol=0.2, atol=0.2)
-    s3 = field.gradient_squared("auto_periodic_neumann", central=False)
+    s3 = field.gradient_squared("auto_periodic_neumann", central=False, backend="numba")
     np.testing.assert_allclose(s1.data, s3.data, rtol=0.2, atol=0.2)
     assert not np.array_equal(s2.data, s3.data)
 
@@ -130,9 +132,9 @@ def test_grid_div_grad_cyl():
     field = ScalarField.from_expression(grid, "cos(r) + sin(z)")
 
     bcs = grid.get_boundary_conditions()
-    a = field.laplace(bcs)
-    c = field.gradient(bcs)
-    b = c.divergence("auto_periodic_curvature")
+    a = field.laplace(bcs, backend="numba")
+    c = field.gradient(bcs, backend="numba")
+    b = c.divergence("auto_periodic_curvature", backend="numba")
     res = ScalarField.from_expression(grid, "-sin(r)/r - cos(r) - sin(z)")
 
     # do not test the radial boundary points
@@ -153,7 +155,7 @@ def test_examples_scalar_cyl():
     }
 
     # gradient - The coordinates are ordered as (r, z, φ) in py-pde
-    res = sf.gradient(bcs)
+    res = sf.gradient(bcs, backend="numba")
     expect = VectorField.from_expression(
         grid, ["3 * r**2 * sin(z)", "r**3 * cos(z)", 0]
     )
@@ -163,12 +165,12 @@ def test_examples_scalar_cyl():
     expect = ScalarField.from_expression(
         grid, "r**6 * cos(z)**2 + 9 * r**4 * sin(z)**2"
     )
-    res = sf.gradient_squared(bcs, central=True)
+    res = sf.gradient_squared(bcs, central=True, backend="numba")
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
     # laplace
     bcs["r+"] = {"curvature": "6 * sin(z)"}  # adjust BC to fit laplacian better
-    res = sf.laplace(bcs)
+    res = sf.laplace(bcs, backend="numba")
     expect = ScalarField.from_expression(grid, "9 * r * sin(z) - r**3 * sin(z)")
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
@@ -187,7 +189,7 @@ def test_examples_vector_cyl():
     }
 
     # divergence
-    res = vf.divergence(bcs)
+    res = vf.divergence(bcs, backend="numba")
     expect = ScalarField.from_expression(grid, "4 * r**2 * sin(z) - r**4 * sin(z)")
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
@@ -196,7 +198,7 @@ def test_examples_vector_cyl():
     vf = VectorField.from_expression(grid, ["r**3 * sin(z)"] * 3)
     val_r_outer = np.broadcast_to(6 * np.sin(grid.axes_coords[1]), (3, 32))
     bcs = {"r-": {"derivative": 0}, "r+": {"curvature": val_r_outer}, "z": "periodic"}
-    res = vf.laplace(bcs)
+    res = vf.laplace(bcs, backend="numba")
     expr = [
         "8 * r * sin(z) - r**3 * sin(z)",
         "9 * r * sin(z) - r**3 * sin(z)",
@@ -207,7 +209,7 @@ def test_examples_vector_cyl():
 
     # vector gradient
     bcs = {"r-": {"derivative": 0}, "r+": {"curvature": val_r_outer}, "z": "periodic"}
-    res = vf.gradient(bcs)
+    res = vf.gradient(bcs, backend="numba")
     expr = [
         ["3 * r**2 * sin(z)", "r**3 * cos(z)", "-r**2 * sin(z)"],
         ["3 * r**2 * sin(z)", "r**3 * cos(z)", 0],
@@ -230,7 +232,7 @@ def test_examples_tensor_cyl():
         "r+": {"normal_curvature": val_r_outer},
         "z": "periodic",
     }
-    res = tf.divergence(bcs)
+    res = tf.divergence(bcs, backend="numba")
     expect = VectorField.from_expression(
         grid,
         [
