@@ -108,7 +108,7 @@ class NumpyBackend(BackendBase):
 
         if bcs is None:
             # just set the valid elements and leave ghost cells with arbitrary values
-            return set_valid  # type: ignore
+            return set_valid
 
         # set the valid elements and the ghost cells according to boundary condition
         set_bcs = self.make_ghost_cell_setter(bcs)
@@ -129,7 +129,7 @@ class NumpyBackend(BackendBase):
             set_valid(data_full, data_valid)
             set_bcs(data_full, args=args)
 
-        return set_valid_bcs  # type: ignore
+        return set_valid_bcs
 
     def make_operator(
         self,
