@@ -299,7 +299,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 dtype = complex
             dtype = np.dtype(dtype)
             if not issubclass(dtype.type, np.complexfloating):
-                msg = "Complex mean or std, but `dtype` is not complex"
+                msg = "Complex `mean` or `std`, but `dtype` is not complex"
                 raise TypeError(msg)
 
         else:
@@ -309,7 +309,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             dtype = np.dtype(dtype)
             if issubclass(dtype.type, np.complexfloating):
                 cls._logger.warning(
-                    "Requested complex dtype but both mean and std are real."
+                    "Requested complex `dtype` but both `mean` and `std` are real."
                 )
 
         # create a function for creating a single noise field
@@ -345,6 +345,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         if ret_complex:
             # create complex random numbers for the field
+            assert issubclass(dtype.type, np.complexfloating)  # assert complex dtype
             data: NumericArray = scale * make_random_field()
             # scale the result according to the mean and standard deviation
             real_part = np.real(mean) + np.real(std) * data.real
