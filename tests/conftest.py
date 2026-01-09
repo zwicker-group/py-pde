@@ -26,6 +26,13 @@ def _setup_and_teardown():
     # clean up open matplotlib figures after the test
     plt.close("all")
 
+    if module_available("torch"):
+        import torch
+
+        # Clean up torch cache of the compiler since otherwise some tests might fail
+        # with an exception due to too many recompilations.
+        torch.compiler.reset()
+
 
 @pytest.fixture(autouse=False, name="rng")
 def init_random_number_generators():

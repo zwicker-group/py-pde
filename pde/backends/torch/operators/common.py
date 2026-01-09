@@ -149,7 +149,7 @@ class IntegralOperator(torch.nn.Module):
         self.grid = grid
         self.spatial_dims = tuple(range(-grid.num_axes, 0, 1))
         cell_volumes = np.broadcast_to(grid.cell_volumes, grid.shape)
-        self.register_buffer("cell_volumes", torch.from_numpy(cell_volumes))
+        self.register_buffer("cell_volumes", torch.from_numpy(cell_volumes.copy()))
 
     def forward(self, arr: Tensor) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""

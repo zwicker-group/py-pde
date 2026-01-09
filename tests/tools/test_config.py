@@ -14,7 +14,10 @@ from pde.tools.config import (
 
 def test_environment():
     """Test the environment function."""
-    assert isinstance(environment(), dict)
+    env = environment()
+    assert isinstance(env, dict)
+    assert isinstance(env["config"], dict)
+    assert isinstance(env["config"]["default_backend"], str)
 
 
 def test_config_backends():

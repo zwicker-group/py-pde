@@ -259,10 +259,6 @@ class Config(collections.UserDict):
     def to_dict(self) -> dict[str, Any]:
         """Convert the configuration to a simple dictionary.
 
-        Args:
-            incl_backends (bool):
-                Whether to include items from the backends
-
         Returns:
             dict: A representation of the configuration in a normal :class:`dict`.
         """
@@ -589,8 +585,9 @@ def environment() -> dict[str, Any]:
     """
     import matplotlib as mpl
 
+    from pde import config
+
     from .. import __version__ as package_version
-    from .. import config
     from ..backends.numba.utils import numba_environment
     from . import mpi
     from .plotting import get_plotting_context
@@ -610,7 +607,7 @@ def environment() -> dict[str, Any]:
         result["ffmpeg version"] = ffmpeg_version
 
     # add the package configuration
-    result["config"] = config.to_dict()
+    result["config"] = {k: v.convert() for k, v in config.to_dict().items()}
 
     # add details for mandatory packages
     packages_min = packages_from_requirements(RESOURCE_PATH / "requirements_basic.txt")

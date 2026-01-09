@@ -74,14 +74,17 @@ class TorchBackend(NumpyBackend):
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self._device = torch.device(device)
 
-    def compile_function(self, func: TFunc) -> TFunc:
-        """General method that compiles a user function.
+    def compile_function(self, func: TFunc, **compile_options) -> TFunc:
+        r"""General method that compiles a user function.
 
         Args:
             func (callable):
                 The function that needs to be compiled for this backend
+            **compile_options:
+                Additional keyword arguments will be forwarded to :func:`torch.compile`
         """
-        return torch.compile(func, **self.compile_options)  # type: ignore
+        opts = self.compile_options | compile_options
+        return torch.compile(func, **opts)  # type: ignore
 
     def make_torch_operator(
         self,
