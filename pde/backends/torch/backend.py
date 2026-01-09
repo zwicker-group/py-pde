@@ -231,6 +231,46 @@ class TorchBackend(NumpyBackend):
         # return the compiled versions of the operator
         return apply_op
 
+    def make_integrator(self, grid: GridBase) -> Callable[[NumericArray], float]:
+        """Return function that integrates discretized data over a grid.
+
+        If this function is used in a multiprocessing run (using MPI), the integrals are
+        performed on all subgrids and then accumulated. Each process then receives the
+        same value representing the global integral.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the integrator is defined
+
+        Returns:
+            A function that takes a numpy array and returns the integral with the
+            correct weights given by the cell volumes.
+        """
+        from .operators.common import IntegralOperator
+
+        # create the torch operator
+        integrate_torch = self.compile_function(IntegralOperator(grid))
+        integrate_torch.to(self.device)
+
+        def integrate_global(arr: NumericArray) -> float:
+            """Integrate data.
+
+            Args:
+                arr (:class:`~numpy.ndarray`): discretized data on grid
+            """
+            # move data to device
+            arr_torch = torch.from_numpy(arr)
+            arr_torch.to(self.device)
+            # integrate on device
+            res = integrate_torch(arr_torch)
+            # return result
+            res_np = res.cpu().detach().numpy()
+            if res_np.ndim == 0:
+                return res_np[()]
+            return res_np
+
+        return integrate_global
+
     def make_pde_rhs(
         self, eq: PDEBase, state: TField
     ) -> Callable[[NumericArray, float], NumericArray]:

@@ -374,11 +374,6 @@ class VectorField(DataFieldBase):
         """
         return self.apply_operator("vector_laplace", bc=bc, out=out, **kwargs)  # type: ignore
 
-    @property
-    def integral(self) -> NumericArray:
-        """:class:`~numpy.ndarray`: integral of each component over space."""
-        return self.grid.integrate(self.data)  # type: ignore
-
     def to_scalar(
         self,
         scalar: str | int = "auto",

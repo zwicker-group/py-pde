@@ -841,9 +841,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         bcs.set_ghost_cells(self._data_full, args=args, **kwargs)
 
     @property
-    @abstractmethod
-    def integral(self) -> NumberOrArray:
-        """Integral of the scalar field over space."""
+    def integral(self) -> NumericArray:
+        """:class:`~numpy.ndarray`: integral of each component over space."""
+        return self.grid.integrate(self.data)  # type: ignore
 
     @abstractmethod
     def to_scalar(
