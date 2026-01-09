@@ -22,7 +22,13 @@ if TYPE_CHECKING:
     from ...grids import BoundariesBase, GridBase
     from ...grids.boundaries.axes import BoundariesData
     from ...pdes import PDEBase
-    from ...tools.typing import NumericArray, OperatorImplType, OperatorType, TField
+    from ...tools.typing import (
+        NumberOrArray,
+        NumericArray,
+        OperatorImplType,
+        OperatorType,
+        TField,
+    )
     from ..base import TFunc
     from ..numpy.backend import OperatorInfo
     from ..registry import BackendRegistry
@@ -231,7 +237,9 @@ class TorchBackend(NumpyBackend):
         # return the compiled versions of the operator
         return apply_op
 
-    def make_integrator(self, grid: GridBase) -> Callable[[NumericArray], float]:
+    def make_integrator(
+        self, grid: GridBase
+    ) -> Callable[[NumericArray], NumberOrArray]:
         """Return function that integrates discretized data over a grid.
 
         If this function is used in a multiprocessing run (using MPI), the integrals are
@@ -266,8 +274,8 @@ class TorchBackend(NumpyBackend):
             # return result
             res_np = res.cpu().detach().numpy()
             if res_np.ndim == 0:
-                return res_np[()]
-            return res_np
+                return res_np[()]  # type: ignore
+            return res_np  # type: ignore
 
         return integrate_global
 

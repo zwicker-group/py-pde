@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from torch import Tensor
 
     from ....grids import GridBase
-    from ....tools.typing import FloatOrArray
 
 
 class TorchOperator(torch.nn.Module):
@@ -146,13 +145,13 @@ class IntegralOperator(torch.nn.Module):
         """
         super().__init__()
 
-        # initialize buffer for full data (including ghost cells)
+        # initialize cell volumes array necessary for integration
         self.grid = grid
         self.spatial_dims = tuple(range(-grid.num_axes, 0, 1))
         cell_volumes = np.broadcast_to(grid.cell_volumes, grid.shape)
         self.register_buffer("cell_volumes", torch.from_numpy(cell_volumes))
 
-    def forward(self, arr: Tensor) -> FloatOrArray:
+    def forward(self, arr: Tensor) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
-        amounts = arr * self.cell_volumes
-        return torch.sum(amounts, dim=self.spatial_dims)  # type: ignore
+        amounts = arr * self.cell_volumes  # type: ignore
+        return torch.sum(amounts, dim=self.spatial_dims)
