@@ -187,8 +187,18 @@ DEFAULT_CONFIG: list[Parameter] = [
 ]
 
 
+ConfigValueType = str | float | int | bool | None
+
+
 class Config(collections.UserDict):
-    """Class handling general configurations."""
+    """Class handling general configurations.
+
+    Configurations are basically dictionaries with string keys that hold
+    :class:`Parameter` values, which contain a value with some extra information. For
+    user-friendliness, we also allow basic values, like strings or numbers as values.
+    """
+
+    data: dict[str, ConfigValueType | Parameter]
 
     def __init__(
         self,
@@ -226,7 +236,7 @@ class Config(collections.UserDict):
             return parameter.convert()
         return parameter
 
-    def __setitem__(self, key: str, value):
+    def __setitem__(self, key: str, value: ConfigValueType | Parameter):
         """Update item `key` with `value`"""
         # determine how to set the item
         if self.mode == "insert":
@@ -256,12 +266,18 @@ class Config(collections.UserDict):
             msg = "Configuration is not in `insert` mode"
             raise RuntimeError(msg)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, *, ret_values: bool = False) -> dict[str, Any]:
         """Convert the configuration to a simple dictionary.
+
+        Args:
+            ret_values (bool):
+                Only return values (and not :class:`Parameter` instances)
 
         Returns:
             dict: A representation of the configuration in a normal :class:`dict`.
         """
+        if ret_values:
+            return dict(**self)
         return self.data.copy()
 
     def __repr__(self) -> str:
@@ -427,17 +443,24 @@ class GlobalConfig:
         config, data_key = self._get_sub_config(key)
         del config[data_key]
 
-    def to_dict(self, incl_backends: bool = True) -> dict[str, Any]:
+    def to_dict(
+        self, *, ret_values: bool = False, incl_backends: bool = True
+    ) -> dict[str, Any]:
         """Convert the configuration to a simple dictionary.
 
         Args:
+            ret_values (bool):
+                Only return values (and not :class:`Parameter` instances)
             incl_backends (bool):
                 Whether to include items from the backends
 
         Returns:
             dict: A representation of the configuration in a normal :class:`dict`.
         """
-        res = self._config.to_dict()
+        # return the global configuration
+        res = self._config.to_dict(ret_values=ret_values)
+
+        # add configurations of the actual backends
         if incl_backends:
             from ..backends import backends
 

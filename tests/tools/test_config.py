@@ -7,6 +7,7 @@ import pytest
 from pde.tools.config import (
     Config,
     GlobalConfig,
+    Parameter,
     environment,
     packages_from_requirements,
 )
@@ -18,6 +19,16 @@ def test_environment():
     assert isinstance(env, dict)
     assert isinstance(env["config"], dict)
     assert isinstance(env["config"]["default_backend"], str)
+
+
+def test_config_basic():
+    """Test basic configuration system."""
+    c = GlobalConfig([Parameter("key", 1)])
+    assert c["key"] > 0
+    assert isinstance(c.to_dict(ret_values=False)["key"], Parameter)
+    assert c.to_dict(ret_values=True)["key"] == 1
+    c["key"] = 0
+    assert c["key"] == 0
 
 
 def test_config_backends():

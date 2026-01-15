@@ -140,7 +140,7 @@ def test_storage_truncation(tmp_path, rng):
             msg = f"truncate={truncate}, storage={storage}"
             np.testing.assert_allclose(storage.times, times, err_msg=msg)
 
-        if any(platform.win32_ver()):
+        if platform.system() == "Windows":
             for storage in storages:
                 if isinstance(storage, FileStorage):
                     storage.close()

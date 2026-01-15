@@ -38,15 +38,32 @@ if TYPE_CHECKING:
 TFunc = TypeVar("TFunc", bound=Callable[..., Any])
 
 
-def module_available(module_name: str) -> bool:
+_MODULE_CHECK_CACHE: dict[str, bool] = {}
+
+
+def module_available(module_name: str, *, cache: bool = True) -> bool:
     """Check whether a python module is available.
 
     Args:
-        module_name (str): The name of the module
+        module_name (str):
+            The name of the module to search
+        cache (bool):
+            Flag determining whether an internal cache is used to speed up the check
 
     Returns:
         `True` if the module can be imported and `False` otherwise
     """
+    if cache:
+        # use the cache
+        if module_name not in _MODULE_CHECK_CACHE:
+            # cache missed, so we need to check
+            _MODULE_CHECK_CACHE[module_name] = (
+                importlib.util.find_spec(module_name) is not None
+            )
+        # use cached entry
+        return _MODULE_CHECK_CACHE[module_name]
+
+    # do not use the cache
     return importlib.util.find_spec(module_name) is not None
 
 

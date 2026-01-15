@@ -2,7 +2,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import sys
+import platform
 
 import numba as nb
 import numpy as np
@@ -28,7 +28,7 @@ def test_wave_consistency(dim, rng):
     np.testing.assert_allclose(field.data, rhs(state.data, 0))
 
     # compare torch to numpy implementation
-    if module_available("torch") and sys.platform != "win32":
+    if module_available("torch") and platform.system() != "Windows":
         rhs = eq.make_pde_rhs(state, backend="torch")
         np.testing.assert_allclose(field.data, rhs(state.data, 0))
 

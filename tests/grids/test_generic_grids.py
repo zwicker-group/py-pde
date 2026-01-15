@@ -105,7 +105,7 @@ def test_coordinate_conversion(grid, rng):
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"])
+@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
 @pytest.mark.parametrize("rank", [0, 2])
 def test_integration_serial(grid, backend, rank, rng):
     """Test integration of fields."""
