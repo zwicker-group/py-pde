@@ -2,8 +2,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import platform
 import random
-import sys
 
 import numpy as np
 import pytest
@@ -12,7 +12,7 @@ from scipy import ndimage
 from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid, VectorField
 
 pytest.importorskip("torch")
-if sys.platform == "win32":
+if platform.system() == "Windows":
     pytest.skip("Skip torch tests on Windows", allow_module_level=True)
 
 π = np.pi

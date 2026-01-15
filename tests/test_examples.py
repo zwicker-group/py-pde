@@ -3,6 +3,7 @@
 """
 
 import os
+import platform
 import subprocess as sp
 import sys
 from pathlib import Path
@@ -33,7 +34,7 @@ if not module_available("utilitiez"):
 
 @pytest.mark.slow
 @pytest.mark.no_cover
-@pytest.mark.skipif(sys.platform == "win32", reason="Assumes unix setup")
+@pytest.mark.skipif(platform.system() == "Windows", reason="Assumes unix setup")
 @pytest.mark.parametrize("path", EXAMPLES)
 def test_example_scripts(path):
     """Runs an example script given by path."""

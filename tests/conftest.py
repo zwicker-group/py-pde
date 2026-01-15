@@ -3,6 +3,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import platform
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
@@ -26,6 +28,13 @@ def _setup_and_teardown():
     # clean up open matplotlib figures after the test
     plt.close("all")
 
+    if module_available("torch"):
+        import torch
+
+        # Clean up torch cache of the compiler since otherwise some tests might fail
+        # with an exception due to too many recompilations.
+        torch.compiler.reset()
+
 
 @pytest.fixture(autouse=False, name="rng")
 def init_random_number_generators():
@@ -36,6 +45,17 @@ def init_random_number_generators():
     """
     random_seed()
     return np.random.default_rng(0)
+
+
+@pytest.fixture
+def backend(request):
+    """Fixture that checks backends for availability."""
+    if request.param == "torch":
+        if not module_available("torch"):
+            pytest.skip("`torch` is not available")
+        if platform.system() == "Windows":
+            pytest.skip("Skip `torch` tests on Windows")
+    return request.param
 
 
 def pytest_configure(config):

@@ -252,11 +252,6 @@ class Tensor2Field(DataFieldBase):
         """
         return self.apply_operator("tensor_divergence", bc=bc, out=out, **kwargs)  # type: ignore
 
-    @property
-    def integral(self) -> NumericArray:
-        """:class:`~numpy.ndarray`: integral of each component over space."""
-        return self.grid.integrate(self.data)  # type: ignore
-
     def transpose(self, label: str = "transpose") -> Tensor2Field:
         """Return the transpose of the tensor field.
 

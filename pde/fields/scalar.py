@@ -268,11 +268,6 @@ class ScalarField(DataFieldBase):
         """
         return self.apply_operator("gradient", bc=bc, out=out, **kwargs)  # type: ignore
 
-    @property
-    def integral(self) -> Number:
-        """Number: integral of the scalar field over space"""
-        return self.grid.integrate(self.data)  # type: ignore
-
     def project(
         self,
         axes: str | Sequence[str],

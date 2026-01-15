@@ -11,6 +11,22 @@ import pytest
 from pde.tools import misc
 
 
+@pytest.mark.parametrize("cache", [True, False])
+def test_module_available(cache):
+    """Test the module_available function."""
+    # clear cache to provide a defined environment
+    misc._MODULE_CHECK_CACHE = {}
+
+    # run each test twice to check the cache
+    assert misc.module_available("numpy", cache=cache)
+    assert misc.module_available("numpy", cache=cache)
+    assert cache == ("numpy" in misc._MODULE_CHECK_CACHE)
+
+    assert not misc.module_available("not available", cache=cache)
+    assert not misc.module_available("not available", cache=cache)
+    assert cache == ("not available" in misc._MODULE_CHECK_CACHE)
+
+
 def test_ensure_directory_exists(tmp_path):
     """Tests the ensure_directory_exists function."""
     # create temporary name

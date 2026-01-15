@@ -105,16 +105,24 @@ def test_coordinate_conversion(grid, rng):
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-def test_integration_serial(grid, rng):
+@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
+@pytest.mark.parametrize("rank", [0, 2])
+def test_integration_serial(grid, backend, rank, rng):
     """Test integration of fields."""
-    arr = rng.normal(size=grid.shape)
-    res = grid.make_integrator()(arr)
-    assert np.isscalar(res)
-    assert res == pytest.approx(grid.integrate(arr))
-    if grid.num_axes == 1:
-        assert res == pytest.approx(grid.integrate(arr, axes=0))
+    if backend == "torch" and not module_available("torch"):
+        pytest.skip("`torch` is not available")
+
+    arr = rng.normal(size=(grid.dim,) * rank + grid.shape)
+    res = grid.make_integrator(backend=backend)(arr)
+    if rank == 0:
+        assert np.isscalar(res)
+        assert res == pytest.approx(grid.integrate(arr))
+        if grid.num_axes == 1:
+            assert res == pytest.approx(grid.integrate(arr, axes=0))
+        else:
+            assert res == pytest.approx(grid.integrate(arr, axes=range(grid.num_axes)))
     else:
-        assert res == pytest.approx(grid.integrate(arr, axes=range(grid.num_axes)))
+        np.testing.assert_allclose(res, grid.integrate(arr))
 
 
 def test_grid_plotting():

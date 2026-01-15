@@ -129,3 +129,29 @@ class TorchOperator(torch.nn.Module):
 
         # Assume `arr` already contains the full data
         return arr
+
+
+class IntegralOperator(torch.nn.Module):
+    """Operator integrating a field implemented in torch."""
+
+    def __init__(self, grid: GridBase, *, dtype=np.double):
+        """Initialize the torch operator.
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid on which the operator acts
+            dtype:
+                The data type of the field
+        """
+        super().__init__()
+
+        # initialize cell volumes array necessary for integration
+        self.grid = grid
+        self.spatial_dims = tuple(range(-grid.num_axes, 0, 1))
+        cell_volumes = np.broadcast_to(grid.cell_volumes, grid.shape)
+        self.register_buffer("cell_volumes", torch.from_numpy(cell_volumes.copy()))
+
+    def forward(self, arr: Tensor) -> Tensor:
+        """Fill internal data array, apply operator, and return valid data."""
+        amounts = arr * self.cell_volumes  # type: ignore
+        return torch.sum(amounts, dim=self.spatial_dims)

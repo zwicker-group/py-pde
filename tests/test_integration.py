@@ -3,7 +3,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import sys
+import platform
 from pathlib import Path
 
 import numpy as np
@@ -219,7 +219,9 @@ def test_array_data_hook(backend):
     np.testing.assert_allclose(info["solver"]["post_step_data"], value)
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="submit_job has issues on windows")
+@pytest.mark.skipif(
+    platform.system() == "Windows", reason="submit_job has issues on windows"
+)
 @pytest.mark.skipif(
     not module_available("modelrunner"), reason="requires `py-modelrunner`"
 )
@@ -266,7 +268,9 @@ def test_modelrunner_storage_one(tmp_path, capsys):
         path.unlink()
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="submit_jobs has issues on windows")
+@pytest.mark.skipif(
+    platform.system() == "Windows", reason="submit_jobs has issues on windows"
+)
 @pytest.mark.skipif(
     not module_available("modelrunner"), reason="requires `py-modelrunner`"
 )
