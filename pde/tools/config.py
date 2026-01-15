@@ -465,7 +465,7 @@ class GlobalConfig:
             from ..backends import backends
 
             for backend, config in backends._configs.items():
-                for name, p in config.data.items():
+                for name, p in config.to_dict(ret_values=ret_values).items():
                     res[f"backend.{backend}.{name}"] = p
         return res
 
@@ -630,7 +630,7 @@ def environment() -> dict[str, Any]:
         result["ffmpeg version"] = ffmpeg_version
 
     # add the package configuration
-    result["config"] = {k: v.convert() for k, v in config.to_dict().items()}
+    result["config"] = config.to_dict(ret_values=True)
 
     # add details for mandatory packages
     packages_min = packages_from_requirements(RESOURCE_PATH / "requirements_basic.txt")

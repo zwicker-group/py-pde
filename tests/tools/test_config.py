@@ -19,6 +19,7 @@ def test_environment():
     assert isinstance(env, dict)
     assert isinstance(env["config"], dict)
     assert isinstance(env["config"]["default_backend"], str)
+    assert isinstance(env["config"]["backend.numba.debug"], bool)
 
 
 def test_config_basic():
