@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 TFunc = TypeVar("TFunc", bound=Callable[..., Any])
 
 
-_MODULE_CHECK_CACHE: dict[str, bool] = {}
+_MODULE_AVAILABILITY_CACHE: dict[str, bool] = {}
 
 
 def module_available(module_name: str, *, cache: bool = True) -> bool:
@@ -53,18 +53,15 @@ def module_available(module_name: str, *, cache: bool = True) -> bool:
     Returns:
         `True` if the module can be imported and `False` otherwise
     """
-    if cache:
-        # use the cache
-        if module_name not in _MODULE_CHECK_CACHE:
-            # cache missed, so we need to check
-            _MODULE_CHECK_CACHE[module_name] = (
-                importlib.util.find_spec(module_name) is not None
-            )
-        # use cached entry
-        return _MODULE_CHECK_CACHE[module_name]
+    if cache and module_name in _MODULE_AVAILABILITY_CACHE:
+        return _MODULE_AVAILABILITY_CACHE[module_name]  # use cached entry
 
-    # do not use the cache
-    return importlib.util.find_spec(module_name) is not None
+    # determine whether module can be loaded
+    is_available = importlib.util.find_spec(module_name) is not None
+
+    if cache:
+        _MODULE_AVAILABILITY_CACHE[module_name] = is_available  # store value in cache
+    return is_available
 
 
 def ensure_directory_exists(folder: str | Path):
