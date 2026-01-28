@@ -180,7 +180,7 @@ class SolverBase:
             raise TypeError(msg, self.__backend_obj.name, new_backend)  # type: ignore
 
         # set the new backend
-        self._backend_name = new_backend
+        self._backend_name = self.info["backend"] = new_backend
         if not isinstance(value, str):
             self.__backend_obj = value
         else:
