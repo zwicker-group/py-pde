@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -252,18 +252,6 @@ class Tensor2Field(DataFieldBase):
         """
         return self.apply_operator("tensor_divergence", bc=bc, out=out, **kwargs)  # type: ignore
 
-    def transpose(self, label: str = "transpose") -> Tensor2Field:
-        """Return the transpose of the tensor field.
-
-        Args:
-            label (str, optional): Name of the returned field
-
-        Returns:
-            :class:`~pde.fields.tensorial.Tensor2Field`: transpose of the tensor field
-        """
-        axes = (1, 0, *tuple(range(2, 2 + self.grid.num_axes)))
-        return Tensor2Field(self.grid, self.data.transpose(axes), label=label)
-
     def is_symmetric(self, rtol=1e-05, atol=1e-08) -> bool:
         """Returns whether the tensor is symmetric.
 
@@ -276,36 +264,6 @@ class Tensor2Field(DataFieldBase):
         # transpose the tensor data for each grid point
         data_T = self.data.transpose((1, 0, *tuple(range(2, 2 + self.grid.num_axes))))
         return np.allclose(self.data, data_T, rtol=rtol, atol=atol)
-
-    def symmetrize(
-        self, make_traceless: bool = False, inplace: bool = False
-    ) -> Tensor2Field:
-        """Symmetrize the tensor field in place.
-
-        Args:
-            make_traceless (bool):
-                Determines whether the result is also traceless
-            inplace (bool):
-                Flag determining whether to symmetrize the current field or
-                return a new one
-
-        Returns:
-            :class:`~pde.fields.tensorial.Tensor2Field`: result of the operation
-        """
-        if inplace:
-            out = self
-        else:
-            out = self.copy()
-
-        out += self.transpose()
-        out *= 0.5
-
-        if make_traceless:
-            dim = self.grid.dim
-            value = self.trace() / dim
-            for i in range(dim):
-                out.data[i, i] -= value.data
-        return out
 
     def to_scalar(
         self, scalar: str = "auto", *, label: str | None = "scalar `{scalar}`"
@@ -401,7 +359,60 @@ class Tensor2Field(DataFieldBase):
 
         return ScalarField(self.grid, data, label=label)
 
-    def trace(self, label: str | None = "trace") -> ScalarField:
+    def local_operation(
+        self,
+        op: Literal["symmetrize", "anti-symmetrize", "transpose", "traceless"],
+        inplace: bool = False,
+        *,
+        label: str | None = None,
+    ) -> Tensor2Field:
+        """Apply an operation to the tensors in each point in space.
+
+        Args:
+            op (str):
+                Determines the operation to apply: `symmetrize`, `anti-symmetrize`,
+                `transpose`, or `traceless`
+            inplace (bool):
+                Overwrites current field if `True`
+            label (str, optional):
+                Name of the returned field
+
+        Returns:
+            :class:`~pde.fields.tensorial.Tensor2Field`: result of the operation
+        """
+        # prepare field to return
+        out = self if inplace else self.copy()
+        if label:
+            out.label = label
+
+        # apply actual operation
+        if op == "symmetrize" or op == "symmetric":
+            out += self.transpose()
+            out *= 0.5
+
+        elif op == "anti-symmetrize" or op == "anti-symmetric":
+            out -= self.transpose()
+            out *= 0.5
+
+        elif op == "transpose" or op == "transposed":
+            axes = (1, 0, *tuple(range(2, 2 + self.grid.num_axes)))
+            out.data = self.data.transpose(axes)
+            # This operation does an unnecessary copy, but we didn't figure out a safe
+            # way of transposing numpy arrays in place. In principle, this should be
+            # doable since transpose often returns a view.
+
+        elif op == "traceless" or op == "deviatoric":
+            trace = out.data.trace(axis1=0, axis2=1)
+            diag_idx = np.diag_indices(self.grid.dim, ndim=2)
+            out.data[diag_idx] -= trace / self.grid.dim
+
+        else:
+            msg = f"Undefined operation `{op}`"
+            raise ValueError(msg)
+
+        return out
+
+    def trace(self, *, label: str | None = "trace") -> ScalarField:
         """Return the trace of the tensor field as a scalar field.
 
         Args:
@@ -411,6 +422,47 @@ class Tensor2Field(DataFieldBase):
             :class:`~pde.fields.scalar.ScalarField`: scalar field of traces
         """
         return self.to_scalar(scalar="trace", label=label)
+
+    def transpose(
+        self, inplace: bool = False, *, label: str = "transpose"
+    ) -> Tensor2Field:
+        """Return the transpose of the tensor field.
+
+        Args:
+            inplace (bool):
+                Overwrites current field if `True`
+            label (str, optional):
+                Name of the returned field
+
+        Returns:
+            :class:`~pde.fields.tensorial.Tensor2Field`: transpose of the tensor field
+        """
+        return self.local_operation("transpose", inplace=inplace, label=label)
+
+    def symmetrize(
+        self,
+        make_traceless: bool = False,
+        inplace: bool = False,
+        *,
+        label: str | None = None,
+    ) -> Tensor2Field:
+        """Symmetrize the tensor field in place.
+
+        Args:
+            make_traceless (bool):
+                Determines whether the result is also traceless
+            inplace (bool):
+                Overwrites current field if `True`
+            label (str, optional):
+                Name of the returned field
+
+        Returns:
+            :class:`~pde.fields.tensorial.Tensor2Field`: result of the operation
+        """
+        res = self.local_operation("symmetrize", inplace=inplace, label=label)
+        if make_traceless:
+            res.local_operation("traceless", inplace=True)
+        return res
 
     def _update_plot_components(self, reference: list[list[PlotReference]]) -> None:
         """Update a plot collection with the current field values.
