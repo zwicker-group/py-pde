@@ -193,6 +193,9 @@ def test_tensor_invariants(rng):
             err_msg=f"Mismatch in invariant {i}",
         )
 
+    with pytest.raises(ValueError):
+        f.to_scalar("undefined")
+
 
 @pytest.mark.parametrize("backend", ["numba", "numpy"])
 def test_complex_tensors(backend, rng):
@@ -274,17 +277,20 @@ def test_tensor_symmetry():
     assert tf.symmetrize().is_symmetric()
 
 
-def test_tensor_local_operations():
-    """Test local tensor operations."""
+def test_tensor_convert():
+    """Test local tensor convert."""
     grid = UnitGrid([4, 5])
     tf = Tensor2Field.from_expression(grid, [[1, 1], ["x**2", "x * y"]])
 
     # test symmetrization
-    res = tf.local_operation("anti-symmetrize")
+    res = tf.convert("anti-symmetric")
     assert not res.is_symmetric()
     expect = (tf - tf.transpose()) / 2
     np.testing.assert_allclose(res.data, expect.data)
 
     # test traceless
-    res = tf.local_operation("traceless")
+    res = tf.convert("traceless")
     np.testing.assert_allclose(res.trace().data, 0)
+
+    with pytest.raises(ValueError):
+        tf.convert("undefined")

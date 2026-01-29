@@ -359,26 +359,26 @@ class Tensor2Field(DataFieldBase):
 
         return ScalarField(self.grid, data, label=label)
 
-    def local_operation(
+    def convert(
         self,
-        op: Literal["symmetrize", "anti-symmetrize", "transpose", "traceless"],
+        form: Literal["symmetric", "anti-symmetric", "transposed", "traceless"],
         inplace: bool = False,
         *,
         label: str | None = None,
     ) -> Tensor2Field:
-        """Apply an operation to the tensors in each point in space.
+        """Convert tensor to a specific form in each point in space.
 
         Args:
-            op (str):
-                Determines the operation to apply: `symmetrize`, `anti-symmetrize`,
-                `transpose`, or `traceless`
+            form (str):
+                Determines the form (`symmetric`, `anti-symmetric`, `transposed`,
+                or `traceless`) that the converted tensors should have.
             inplace (bool):
                 Overwrites current field if `True`
             label (str, optional):
                 Name of the returned field
 
         Returns:
-            :class:`~pde.fields.tensorial.Tensor2Field`: result of the operation
+            :class:`~pde.fields.tensorial.Tensor2Field`: converted tensor field
         """
         # prepare field to return
         out = self if inplace else self.copy()
@@ -386,28 +386,28 @@ class Tensor2Field(DataFieldBase):
             out.label = label
 
         # apply actual operation
-        if op == "symmetrize" or op == "symmetric":
+        if form == "symmetric":
             out += self.transpose()
             out *= 0.5
 
-        elif op == "anti-symmetrize" or op == "anti-symmetric":
+        elif form == "anti-symmetric":
             out -= self.transpose()
             out *= 0.5
 
-        elif op == "transpose" or op == "transposed":
+        elif form == "transposed":
             axes = (1, 0, *tuple(range(2, 2 + self.grid.num_axes)))
             out.data = self.data.transpose(axes)
             # This operation does an unnecessary copy, but we didn't figure out a safe
             # way of transposing numpy arrays in place. In principle, this should be
             # doable since transpose often returns a view.
 
-        elif op == "traceless" or op == "deviatoric":
+        elif form == "traceless":
             trace = out.data.trace(axis1=0, axis2=1)
             diag_idx = np.diag_indices(self.grid.dim, ndim=2)
             out.data[diag_idx] -= trace / self.grid.dim
 
         else:
-            msg = f"Undefined operation `{op}`"
+            msg = f"Undefined conversion `{form}`"
             raise ValueError(msg)
 
         return out
@@ -437,7 +437,7 @@ class Tensor2Field(DataFieldBase):
         Returns:
             :class:`~pde.fields.tensorial.Tensor2Field`: transpose of the tensor field
         """
-        return self.local_operation("transpose", inplace=inplace, label=label)
+        return self.convert("transposed", inplace=inplace, label=label)
 
     def symmetrize(
         self,
@@ -459,9 +459,9 @@ class Tensor2Field(DataFieldBase):
         Returns:
             :class:`~pde.fields.tensorial.Tensor2Field`: result of the operation
         """
-        res = self.local_operation("symmetrize", inplace=inplace, label=label)
+        res = self.convert("symmetric", inplace=inplace, label=label)
         if make_traceless:
-            res.local_operation("traceless", inplace=True)
+            res.convert("traceless", inplace=True)
         return res
 
     def _update_plot_components(self, reference: list[list[PlotReference]]) -> None:
