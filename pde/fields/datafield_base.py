@@ -1195,6 +1195,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             :class:`PlotReference`: Instance that contains information to update
             the plot with new data later.
         """
+        from matplotlib.colors import CenteredNorm
+
         # obtain image data with appropriate parameters
         data_kws = {}
         for arg in ["performance_goal", "scalar", "transpose"]:
@@ -1202,17 +1204,23 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 data_kws[arg] = kwargs.pop(arg)
         data = self.get_image_data(scalar, transpose, **data_kws)
 
-        # determine plot parameters
+        # determine general plot parameters
         kwargs.setdefault("origin", "lower")
         kwargs.setdefault("interpolation", "none")
+        # deal with symmetric color limits
         args = kwargs.copy()  # allow modifications in vmin and vmax
         args["vmin"], args["vmax"] = _symmetrize_vmin_vmax(
             args.get("vmin"), args.get("vmax"), data["data"]
         )
         if args.get("norm") in {"centered", "symmetric"}:
-            from matplotlib.colors import CenteredNorm
-
             args["norm"] = CenteredNorm()
+        # set a diverging colormap if color limits are symmetric
+        if (
+            kwargs.get("vmin") == "symmetric"
+            or kwargs.get("vmax") == "symmetric"
+            or isinstance(args.get("norm"), CenteredNorm)
+        ):
+            args.setdefault("cmap", "PiYG")
 
         # plot the image
         axes_image = ax.imshow(data["data"].T, extent=data["extent"], **args)
