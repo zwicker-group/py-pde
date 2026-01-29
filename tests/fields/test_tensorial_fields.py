@@ -75,6 +75,8 @@ def test_tensors_basic(rng):
     assert t1 == t2
     assert t1.grid is not t2.grid
 
+    t1.plot_components()
+
 
 @pytest.mark.parametrize("grid", [UnitGrid([1, 1]), PolarSymGrid(2, 1)])
 def test_tensors_transpose(grid):
@@ -83,13 +85,20 @@ def test_tensors_transpose(grid):
     def broadcast(arr):
         return np.asarray(arr)[(...,) + (np.newaxis,) * grid.num_axes]
 
+    # check transpose without inplace operation
     field = Tensor2Field(grid, broadcast([[0, 1], [2, 3]]))
     field_T = field.transpose(label="altered")
+    assert not np.shares_memory(field.data, field_T.data)
     assert field_T.label == "altered"
     np.testing.assert_allclose(field_T.data, broadcast([[0, 2], [1, 3]]))
 
+    # check inplace changes
+    field.transpose(inplace=True)
+    np.testing.assert_allclose(field.data, field_T.data)
 
-def test_tensor_symmetrize():
+
+@pytest.mark.parametrize("traceless", [True, False])
+def test_tensor_symmetrize(traceless):
     """Test advanced tensor calculations."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [2, 2])
     t1 = Tensor2Field(grid)
@@ -98,28 +107,25 @@ def test_tensor_symmetrize():
     t1.data[1, 0, :] = 3
     t1.data[1, 1, :] = 4
 
-    # traceless = False
-    t2 = t1.copy()
-    t1.symmetrize(make_traceless=False, inplace=True)
-    tr = t1.trace()
-    assert np.all(tr.data == 5)
-    t1_trans = np.swapaxes(t1.data, 0, 1)
-    np.testing.assert_allclose(t1.data, t1_trans.data)
-
-    ts = t1.copy()
-    ts.symmetrize(make_traceless=False, inplace=True)
-    np.testing.assert_allclose(t1.data, ts.data)
-
-    # traceless = True
-    t2.symmetrize(make_traceless=True, inplace=True)
+    t2 = t1.symmetrize(make_traceless=traceless, inplace=False)
+    assert not np.allclose(t1.data, t2.data)  # check that things are not done in place
     tr = t2.trace()
-    assert np.all(tr.data == 0)
+    if traceless:
+        assert np.all(tr.data == 0)
+    else:
+        assert np.all(tr.data == 5)
     t2_trans = np.swapaxes(t2.data, 0, 1)
     np.testing.assert_allclose(t2.data, t2_trans.data)
 
-    ts = t2.copy()
-    ts.symmetrize(make_traceless=True, inplace=True)
-    np.testing.assert_allclose(t2.data, ts.data)
+    # repeat operation (should not do anything)
+    t3 = t2.symmetrize(make_traceless=traceless, inplace=False)
+    assert not np.shares_memory(t2.data, t3.data)
+    np.testing.assert_allclose(t3.data, t2.data)
+
+    # check inplace operation
+    t4 = t1.symmetrize(make_traceless=traceless, inplace=True)
+    assert np.shares_memory(t1.data, t4.data)
+    np.testing.assert_allclose(t1.data, t2.data)
 
 
 @pytest.mark.parametrize("grid", iter_grids())
@@ -186,6 +192,9 @@ def test_tensor_invariants(rng):
             f_rot.to_scalar(f"invariant{i}").data,
             err_msg=f"Mismatch in invariant {i}",
         )
+
+    with pytest.raises(ValueError):
+        f.to_scalar("undefined")
 
 
 @pytest.mark.parametrize("backend", ["numba", "numpy"])
@@ -266,3 +275,22 @@ def test_tensor_symmetry():
     tf = Tensor2Field.from_expression(grid, [[1, 1], ["x**2", "x * y"]])
     assert not tf.is_symmetric()
     assert tf.symmetrize().is_symmetric()
+
+
+def test_tensor_convert():
+    """Test local tensor convert."""
+    grid = UnitGrid([4, 5])
+    tf = Tensor2Field.from_expression(grid, [[1, 1], ["x**2", "x * y"]])
+
+    # test symmetrization
+    res = tf.convert("anti-symmetric")
+    assert not res.is_symmetric()
+    expect = (tf - tf.transpose()) / 2
+    np.testing.assert_allclose(res.data, expect.data)
+
+    # test traceless
+    res = tf.convert("traceless")
+    np.testing.assert_allclose(res.trace().data, 0)
+
+    with pytest.raises(ValueError):
+        tf.convert("undefined")
