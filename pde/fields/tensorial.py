@@ -446,7 +446,7 @@ class Tensor2Field(DataFieldBase):
         *,
         label: str | None = None,
     ) -> Tensor2Field:
-        """Symmetrize the tensor field
+        """Symmetrize the tensor field.
 
         Args:
             make_traceless (bool):
