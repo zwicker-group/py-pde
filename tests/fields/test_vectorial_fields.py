@@ -70,8 +70,8 @@ def test_vectors_basic():
             np.testing.assert_allclose(s.data, np.full(grid.shape, 4))
 
     # test options for plotting images
-    if module_available("matplotlib"):
-        v1.plot(method="streamplot", transpose=True)
+    v1.plot(method="streamplot", transpose=True)
+    v1.plot_components()
 
 
 def test_divergence():

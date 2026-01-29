@@ -13,6 +13,7 @@ from ..grids.base import DimensionError, GridBase
 from ..grids.cartesian import CartesianGrid
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
+from ..tools.plotting import PlotReference, plot_on_figure
 from .datafield_base import DataFieldBase
 from .scalar import ScalarField
 
@@ -547,6 +548,58 @@ class VectorField(DataFieldBase):
             raise NotImplementedError(msg)
 
         return self.__class__(grid, data, label=label)
+
+    def _update_plot_components(self, reference: list[PlotReference]) -> None:
+        """Update a component plot with the current field values.
+
+        Args:
+            reference (list of :class:`PlotReference`):
+                All references of the plot to update
+        """
+        for i in range(self.grid.dim):
+            self[i]._update_plot(reference[i])
+
+    @plot_on_figure(update_method="_update_plot_components")
+    def plot_components(
+        self,
+        kind: str = "auto",
+        fig=None,
+        **kwargs,
+    ) -> list[PlotReference]:
+        r"""Visualize all the components of this vector field.
+
+        Args:
+            kind (str or list of str):
+                Determines the kind of the visualizations. Supported values are `image`
+                or `line`. Alternatively, `auto` determines the best visualization based
+                on the grid.
+            {PLOT_ARGS}
+            \**kwargs:
+                All additional keyword arguments are forwarded to the actual plotting
+                function of all subplots.
+
+        Returns:
+            list of :class:`PlotReference`: Instances that contain information
+            to update all the plots with new data later.
+        """
+        # create all the subpanels
+        dim = self.grid.dim
+        axs = fig.subplots(nrows=1, ncols=dim, squeeze=False)
+
+        # plot all the elements onto the respective axes
+        kwargs.setdefault("action", "none")
+        kwargs["kind"] = kind
+        comps = self.grid.axes + self.grid.axes_symmetric
+        references = [
+            self[i].plot(
+                ax=axs[0][i],
+                title=f"{comps[i]} Component",
+                **kwargs,
+            )
+            for i in range(dim)
+        ]
+        # return the references for all subplots
+        return references
 
     def _get_napari_layer_data(  # type: ignore
         self, max_points: int | None = None, args: dict[str, Any] | None = None

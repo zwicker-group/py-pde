@@ -446,7 +446,7 @@ class Tensor2Field(DataFieldBase):
         *,
         label: str | None = None,
     ) -> Tensor2Field:
-        """Symmetrize the tensor field in place.
+        """Symmetrize the tensor field
 
         Args:
             make_traceless (bool):
@@ -465,7 +465,7 @@ class Tensor2Field(DataFieldBase):
         return res
 
     def _update_plot_components(self, reference: list[list[PlotReference]]) -> None:
-        """Update a plot collection with the current field values.
+        """Update a component plot with the current field values.
 
         Args:
             reference (list of :class:`PlotReference`):

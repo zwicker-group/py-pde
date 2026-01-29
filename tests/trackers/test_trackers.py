@@ -91,8 +91,7 @@ def test_trackers(rng):
             None,  # should be ignored
             data,
         ]
-        if module_available("matplotlib"):
-            tracker_list.append(trackers.PlotTracker(interrupts=0.1, show=False))
+        tracker_list.append(trackers.PlotTracker(interrupts=0.1, show=False))
 
         grid = UnitGrid([16, 16])
         state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
