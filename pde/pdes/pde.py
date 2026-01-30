@@ -10,8 +10,6 @@ import re
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-from sympy import Symbol
-from sympy.core.function import UndefinedFunction
 
 from ..fields import FieldCollection, VectorField
 from ..fields.datafield_base import DataFieldBase
@@ -290,6 +288,8 @@ class PDE(SDEBase):
             callable: The function calculating the RHS
         """
         from numba.typed import Dict as NumbaDict
+        from sympy import Symbol
+        from sympy.core.function import UndefinedFunction
 
         # modify a copy of the expression and the general operator array
         expr = self._rhs_expr[var].copy()
