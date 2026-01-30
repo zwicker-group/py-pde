@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, overload
 
 import numpy as np
 
@@ -80,11 +80,16 @@ class Tensor2Field(DataFieldBase):
         """
         from ..tools.expressions import ScalarExpression
 
-        if (
-            isinstance(expressions, str)
-            or len(expressions) != grid.dim
-            or any(len(expr) != grid.dim for expr in expressions)
-        ):
+        # check whether the correct number of expressions is given
+        try:
+            dim_1 = len(expressions)
+            dim_2 = {len(expr) for expr in expressions}
+        except TypeError:
+            valid_exprs = False  # input is not a list of list
+        else:
+            # check whether dimension of inputs is correct
+            valid_exprs = dim_1 == grid.dim and dim_2 == {grid.dim}
+        if not valid_exprs:
             axes_names = grid.axes + grid.axes_symmetric
             msg = (
                 f"Expected a nested list of {grid.dim}x{grid.dim} expressions for the "
@@ -104,7 +109,7 @@ class Tensor2Field(DataFieldBase):
         # obtain the coordinates of the grid points
         points = [grid.cell_coords[..., i] for i in range(grid.num_axes)]
 
-        # evaluate all vector components at all points
+        # evaluate all components at all points
         data: list[list[NumericArray]] = [[None] * grid.dim for _ in range(grid.dim)]  # type: ignore
         for i in range(grid.dim):
             for j in range(grid.dim):
@@ -119,11 +124,19 @@ class Tensor2Field(DataFieldBase):
                 values = np.broadcast_to(expr(*points), grid.shape)
                 data[i][j] = values
 
-        # create vector field from the data
+        # create tensor field from the data
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 
     def _get_axes_index(self, key: tuple[int | str, int | str]) -> tuple[int, int]:
-        """Turns a general index of two axis into a tuple of two numeric indices."""
+        """Turns a general index of two axis into a tuple of two numeric indices.
+
+        Args:
+            key (tuple of str or int):
+                Specifies the two axes by their index or name
+
+        Returns:
+            tuple of int: The indices of the axes
+        """
         try:
             if len(key) != 2:
                 msg = "Index must be given as two integers"
@@ -171,6 +184,26 @@ class Tensor2Field(DataFieldBase):
             msg = "Spurious copy detected!"
             raise RuntimeError(msg)
 
+    @overload
+    def dot(
+        self,
+        other: VectorField,
+        out: VectorField | None = ...,
+        *,
+        conjugate: bool = ...,
+        label: str = ...,
+    ) -> VectorField: ...
+
+    @overload
+    def dot(
+        self,
+        other: Tensor2Field,
+        out: Tensor2Field | None = ...,
+        *,
+        conjugate: bool = ...,
+        label: str = ...,
+    ) -> Tensor2Field: ...
+
     def dot(
         self,
         other: VectorField | Tensor2Field,
@@ -181,9 +214,9 @@ class Tensor2Field(DataFieldBase):
     ) -> VectorField | Tensor2Field:
         """Calculate the dot product involving a tensor field.
 
-        This supports the dot product between two tensor fields as well as the
-        product between a tensor and a vector. The resulting fields will be a
-        tensor or vector, respectively.
+        This supports the dot product between two tensor fields as well as the product
+        between a tensor and a vector. The resulting fields will be a tensor or vector,
+        respectively.
 
         Args:
             other (VectorField or Tensor2Field):
