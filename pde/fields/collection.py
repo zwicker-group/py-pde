@@ -11,14 +11,6 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
-from matplotlib import cm
-from matplotlib.colors import LinearSegmentedColormap, Normalize
-
-try:
-    from matplotlib import colormaps
-except ImportError:
-    # fall-back to access cm.get_cmap
-    from matplotlib import cm as colormaps  # type: ignore
 
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import number_array
@@ -861,6 +853,9 @@ class FieldCollection(FieldBase):
             tuple: a :class:`~numpy.ndarray` of the merged data together with a dict of
             additional information, e.g., about the extent and the axes.
         """
+        from matplotlib import cm, colormaps
+        from matplotlib.colors import LinearSegmentedColormap, Normalize
+
         num_fields = len(self)
         if colors is None:
             colors = [f"C{i}" for i in range(num_fields)]

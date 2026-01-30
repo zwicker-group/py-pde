@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-from matplotlib.colors import Normalize
 from typing_extensions import Self
 
 from ..fields import FieldCollection
@@ -33,6 +32,7 @@ if TYPE_CHECKING:
     import types
     from collections.abc import Callable, Iterator, Sequence
 
+    from matplotlib.colors import Normalize
     from numpy.typing import ArrayLike
 
     from ..fields.base import FieldBase
@@ -298,6 +298,8 @@ class MovieStorage(StorageBase):
 
         The resulting normalization functions are stored in `self._norms`
         """
+        from matplotlib.colors import Normalize
+
         self._norms = []
         if isinstance(field, FieldCollection):
             fields: Sequence[DataFieldBase] = field.fields
