@@ -93,6 +93,12 @@ REQUIREMENTS = [
         usage="Display progress bars during calculations",
         essential=True,
     ),
+    Requirement(
+        name="typing_extensions",
+        version_min="4.10",
+        usage="Backports of typing features",
+        essential=True,
+    ),
     # general, optional requirements
     Requirement(
         name="ffmpeg-python",

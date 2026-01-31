@@ -28,7 +28,7 @@ classifiers = [
 ]
 
 # Requirements for setuptools
-dependencies = ["matplotlib>=3.1", "numba>=0.59", "numpy>=1.22", "scipy>=1.10", "sympy>=1.9", "tqdm>=4.66"]
+dependencies = ["matplotlib>=3.1", "numba>=0.59", "numpy>=1.22", "scipy>=1.10", "sympy>=1.9", "tqdm>=4.66", "typing_extensions>=4.10"]
 
 [project.optional-dependencies]
 io = ["h5py>=2.10", "pandas>=2", "ffmpeg-python>=0.2", "py-modelrunner>=0.19"]
