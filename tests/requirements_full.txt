@@ -12,3 +12,4 @@ scipy>=1.10
 sympy>=1.9
 torch>=2.9
 tqdm>=4.66
+typing_extensions>=4.10
