@@ -1,4 +1,4 @@
-"""Defines how boundaries are set using the numba backend.
+"""Defines how boundaries are set using the torch backend.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """

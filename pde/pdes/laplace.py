@@ -139,8 +139,7 @@ def helmholtz_decomposition(
             {ARG_BOUNDARIES}
 
     Returns:
-        :class:`~pde.fields.scalar.ScalarField`,
-        :class:`~pde.fields.vectorial.VectorField`:
+        :class:`~pde.fields.ScalarField`, :class:`~pde.fields.VectorField`:
             The two fields of the Helmholtz decomposition
     """
     bcs = field.grid.get_boundary_conditions(bc)

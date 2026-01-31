@@ -245,6 +245,7 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
     "sympy": ("https://docs.sympy.org/latest/", None),
+    "torch": ("https://docs.pytorch.org/docs/stable/", None),
 }
 
 

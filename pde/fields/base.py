@@ -368,7 +368,7 @@ class FieldBase(metaclass=ABCMeta):
                 The other field this one is compared to
             accept_scalar (bool, optional):
                 Determines whether it is acceptable that `other` is an instance of
-                :class:`~pde.fields.ScalarField`.
+                :class:`~pde.fields.scalar.ScalarField`.
         """
         from .scalar import ScalarField
 

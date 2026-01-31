@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
 
@@ -177,6 +177,26 @@ class VectorField(DataFieldBase):
             self.data[idx] = value.data
         else:
             self.data[idx] = value
+
+    @overload
+    def dot(
+        self,
+        other: VectorField,
+        out: ScalarField | None = ...,
+        *,
+        conjugate: bool = ...,
+        label: str = ...,
+    ) -> ScalarField: ...
+
+    @overload
+    def dot(
+        self,
+        other: Tensor2Field,
+        out: VectorField | None = ...,
+        *,
+        conjugate: bool = ...,
+        label: str = ...,
+    ) -> VectorField: ...
 
     def dot(
         self,

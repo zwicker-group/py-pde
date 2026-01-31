@@ -1,4 +1,4 @@
-"""Defines the numba backend class.
+"""Defines the :mod:`numba` backend class.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
