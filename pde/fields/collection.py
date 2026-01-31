@@ -386,7 +386,7 @@ class FieldCollection(FieldBase):
             other (FieldBase): Other field this is compared to
             accept_scalar (bool, optional): Determines whether it is acceptable
                 that `other` is an instance of
-                :class:`~pde.fields.ScalarField`.
+                :class:`~pde.fields.scalar.ScalarField`.
         """
         super().assert_field_compatible(other, accept_scalar=accept_scalar)
 

@@ -11,7 +11,7 @@
 from .. import backends
 from .backend import TorchBackend
 
-# add the loaded numba backend to the registry
+# add the loaded torch backend to the registry
 torch_backend = TorchBackend("torch", registry=backends)
 
 # register all the standard operators
