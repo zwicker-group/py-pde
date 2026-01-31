@@ -22,10 +22,12 @@ two different boundary conditions (lower duration is better):
 
 .. image:: /_images/performance_noflux.*
    :width: 49%
-   
-   
-Note that the call overhead is lower in the `py-pde` package, so that the
-performance on small grids is particularly good.
+
+
+Note that the call overhead is generally lower in the `py-pde` package, so that the
+performance on small grids is particularly good using the `numba` backend (blue line).
+Moreover, further speed-up is possible (blue dotted line) if boundary conditions do not
+need to be set, i.e., if ghost cells were set by some other function before.
 However, realistic use-cases probably need more complicated operations and it is
 thus always necessary to profile the respective code.
 This can be done using the function
@@ -39,6 +41,12 @@ Improving performance
 
 Beside the underlying implementation of the operators, a major factor for performance is
 numerical problem at hand and the methods that are used to solve it.
+It is thus paramount to choose the right backend.
+Here, compiled backends, like `numba` and `torch`, provide the fastest speed,
+particularly for larger systems, but they require an initial compilation, which can be
+costly.
+For small systems, it can thus be advisable to use the `numpy` backend.
+
 As a rule of thumb, simulations run faster when there are fewer degrees of freedom.
 In the case of partial differential equations, this often means using a coarser grid
 with fewer support points.
@@ -51,13 +59,13 @@ stability analysis <https://en.wikipedia.org/wiki/Von_Neumann_stability_analysis
 reveals that the maximal time step scales as one over the discretization length squared!
 Choosing the right time step obviously also affects performance of a simulation.
 The package supports automatic choice of suitable time steps, using adaptive stepping
-schemes.
-To enable those, it's best to specify an initial time step, like so
+schemes. To enable those, simply specify this in the solver call:
 
 .. code-block:: python
 
-    eq.solve(t_range=10, dt=1e-3, adaptive=True)
+    eq.solve(t_range=10, adaptive=True)
 
+An initial time step can be supplied, but is not necessary.
 Additional factors influencing the performance of the package include the compiler used
 for :mod:`numpy`, :mod:`scipy`, and of course :mod:`numba`.
 Moreover, the BLAS and LAPACK libraries might make a difference.
@@ -77,6 +85,10 @@ of typical packages
     port install py312-numba +tbb
 
 Note that you can disable the automatic multithreading via :ref:`configuration`.
+
+Note that many details of the installed packages can affect performance and one should
+thus test various options if speed is critical. The suggestions above might also already
+be outdated.
 
 
 Multiprocessing using MPI

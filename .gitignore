@@ -135,3 +135,4 @@ venv.bak/
 examples/output/allen_cahn.avi
 examples/output/allen_cahn.hdf
 debug
+docs/source/_cache

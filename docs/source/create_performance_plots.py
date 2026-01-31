@@ -4,17 +4,32 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import sys
+from pathlib import Path
+
+# determine path of the `py-pde` package
+PACKAGE_PATH = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PACKAGE_PATH))
+
+# disable multithreading
 import os
 
-os.environ["NUMBA_NUM_THREADS"] = "1"  # check single thread performance
+from pde import config
 
+os.environ["NUMBA_NUM_THREADS"] = "1"
+config["backend.numba.multithreading"] = "never"
+
+# import remaining packages
 import functools
+import json
 import timeit
+from datetime import datetime, timezone
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
+import pde
 from pde import ScalarField, UnitGrid
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.output import display_progress
@@ -28,9 +43,11 @@ else:
     opencv_laplace = functools.partial(
         cv2.Laplacian, ddepth=cv2.CV_64F, borderType=cv2.BORDER_REFLECT
     )
+# determine path of the cache for the ground truth of simulations
+GROUND_TRUTH_CACHE = Path(__file__).resolve().parent / "_cache" / "performance_data"
 
 
-def time_function(func, arg, repeat=3, use_out=False):
+def time_function(func, arg, repeat: int = 3, use_out: bool = False) -> float:
     """Estimates the computation speed of a function.
 
     Args:
@@ -52,7 +69,73 @@ def time_function(func, arg, repeat=3, use_out=False):
     return min(timeit.repeat(func, number=number, repeat=repeat)) / number
 
 
-def get_performance_data(periodic=False):
+def calculate_single_run(backend: str, size: int, periodic=False) -> float:
+    """Calculate performance data for a particular configuration.
+
+    Args:
+        backend (str):
+            Backend to test
+        size (int):
+            Dimension of the grid
+        periodic (bool):
+            Whether the grid is periodic or not
+    """
+    rng = np.random.default_rng(0)
+    grid = UnitGrid([size] * 2, periodic=periodic)
+    field = ScalarField.random_normal(grid, rng=rng)
+    field.set_ghost_cells(bc="auto_periodic_neumann")
+
+    if backend in {"numba", "torch", "scipy"}:
+        op = grid.make_operator("laplace", bc="auto_periodic_neumann", backend=backend)
+        return time_function(op, field.data)
+
+    if backend == "numba_no_bc":
+        op = grid.make_operator_no_bc("laplace", backend="numba")
+        return time_function(op, field._data_full, use_out=True)
+
+    if backend == "opencv" or backend == "cv":
+        return time_function(opencv_laplace, field.data)
+
+    msg = f"Unknown backend `{backend}`"
+    raise ValueError(msg)
+
+
+def get_single_run(backend: str, size: int, periodic=False) -> float:
+    """Get performance data for a particular configuration.
+
+    Args:
+        backend (str):
+            Backend to test
+        size (int):
+            Dimension of the grid
+        periodic (bool):
+            Whether the grid is periodic or not
+    """
+    cache_file = GROUND_TRUTH_CACHE / f"{backend}_{size}_{periodic}.json"
+
+    if cache_file.exists():
+        # read performance data
+        with cache_file.open() as f:
+            runtime = json.load(f)["runtime"]
+
+    else:
+        # calculate  performance data
+        runtime = calculate_single_run(backend, size, periodic)
+        data = {
+            "runtime": runtime,
+            "version": pde.__version__,
+            "date": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # write  performance data
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        with cache_file.open("w") as f:
+            return json.dump(data, f)
+
+    return runtime
+
+
+def collect_performance_data(periodic=False) -> dict[int, dict[str, float]]:
     """Obtain the data used in the performance plot.
 
     Args:
@@ -66,24 +149,10 @@ def get_performance_data(periodic=False):
 
     statistics = {}
     for size in display_progress(sizes):
-        data = {}
-        grid = UnitGrid([size] * 2, periodic=periodic)
-        field = ScalarField.random_normal(grid)
-        field.set_ghost_cells(bc="auto_periodic_neumann")
-
-        for backend in ["numba", "scipy"]:
-            op = grid.make_operator(
-                "laplace", bc="auto_periodic_neumann", backend=backend
-            )
-            data[backend] = time_function(op, field.data)
-
-        op = grid.make_operator_no_bc("laplace", backend="numba")
-        data["numba_no_bc"] = time_function(op, field._data_full, use_out=True)
-
-        if opencv_laplace:
-            data["opencv"] = time_function(opencv_laplace, field.data)
-
-        statistics[int(size)] = data
+        statistics[int(size)] = {
+            backend: get_single_run(backend, size, periodic)
+            for backend in ["numba", "numba_no_bc", "torch", "scipy", "opencv"]
+        }
 
     return statistics
 
@@ -99,10 +168,11 @@ def plot_performance(performance_data, title=None):
     plt.figure(figsize=[4, 3])
 
     PLOT_DATA = [
-        {"key": "scipy", "label": "scipy", "fmt": "C0.-"},
-        {"key": "opencv", "label": "opencv", "fmt": "C1.-"},
-        {"key": "numba", "label": "py-pde", "fmt": "C2.-"},
-        {"key": "numba_no_bc", "label": "py-pde (no BCs)", "fmt": "C2:"},
+        {"key": "numba", "label": "py-pde [numba]", "fmt": "C0.-"},
+        {"key": "numba_no_bc", "label": "", "fmt": "C0:"},
+        {"key": "torch", "label": "py-pde [torch:cpu]", "fmt": "C1.-"},
+        {"key": "opencv", "label": "opencv", "fmt": "C2.-"},
+        {"key": "scipy", "label": "scipy", "fmt": "C3.-"},
     ]
 
     sizes = np.array(sorted(performance_data.keys()))
@@ -129,13 +199,13 @@ def plot_performance(performance_data, title=None):
 
 def main():
     """Run main scripts."""
-    data = get_performance_data(periodic=False)
+    data = collect_performance_data(periodic=False)
     plot_performance(data, title="2D Laplacian (reflecting BCs)")
     plt.savefig("performance_noflux.pdf", transparent=True)
     plt.savefig("performance_noflux.png", transparent=True, dpi=200)
     plt.close()
 
-    data = get_performance_data(periodic=True)
+    data = collect_performance_data(periodic=True)
     plot_performance(data, title="2D Laplacian (periodic BCs)")
     plt.savefig("performance_periodic.pdf", transparent=True)
     plt.savefig("performance_periodic.png", transparent=True, dpi=200)
