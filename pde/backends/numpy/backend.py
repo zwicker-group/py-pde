@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 
 class NumpyBackend(BackendBase):
-    """Basic backend from which all other backends inherit."""
+    """Defines :mod:`numpy` backend, from which all other backends inherit."""
 
     def compile_function(self, func: TFunc) -> TFunc:
         """General method that compiles a user function.
