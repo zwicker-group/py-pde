@@ -269,7 +269,7 @@ class PDE(SDEBase):
         var: str,
         ops: dict[str, Callable],
         state: FieldBase,
-        backend: Literal["numpy", "numba"] = "numpy",
+        backend: Literal["numpy", "numba", "torch"],
     ):
         """Compile a function determining the right hand side for one variable.
 
@@ -287,7 +287,6 @@ class PDE(SDEBase):
         Returns:
             callable: The function calculating the RHS
         """
-        from numba.typed import Dict as NumbaDict
         from sympy import Symbol
         from sympy.core.function import UndefinedFunction
 
@@ -379,11 +378,27 @@ class PDE(SDEBase):
             backend=backend, single_arg=False, user_funcs=ops
         )
 
-        def rhs_func(*args) -> NumericArray:
-            """Wrapper that inserts the extra arguments and initialized bc_args."""
-            bc_args = NumbaDict()  # args for differential operators
-            bc_args["t"] = args[-1]  # pass time to differential operators
-            return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
+        if backend in {"numpy", "numba"}:
+            # Even in the `numpy` backend, we need to prepare the bc_args to be
+            # compatible with numba, since the standard operators in the `numpy`
+            # backend are still compiled with numba by default.
+            from numba.typed import Dict as NumbaDict
+
+            def rhs_func(*args) -> NumericArray:
+                """Wrapper that inserts the extra arguments and initialized bc_args."""
+                bc_args = NumbaDict()  # args for differential operators
+                bc_args["t"] = args[-1]  # pass time to differential operators
+                return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
+
+        elif backend == "torch":
+
+            def rhs_func(*args) -> NumericArray:
+                """Wrapper that inserts the extra arguments and initialized bc_args."""
+                return func_inner(*args, None, {"t": args[-1]}, *extra_args)  # type: ignore
+
+        else:
+            msg = f"Backend `{backend}` is not implemented"
+            raise NotImplementedError(msg)
 
         # compile the function if necessary
         from ..backends import backends
@@ -391,7 +406,7 @@ class PDE(SDEBase):
         return backends[backend].compile_function(rhs_func)
 
     def _prepare_cache(
-        self, state: TField, backend: Literal["numpy", "numba"] = "numpy"
+        self, state: TField, backend: Literal["numpy", "numba", "torch"]
     ) -> dict[str, Any]:
         """Prepare the expression by setting internal variables in the cache.
 
@@ -470,7 +485,7 @@ class PDE(SDEBase):
             # inner is a synonym for dot product operator
             ops_general["inner"] = VectorField(state.grid).make_dot_operator(backend)
 
-        if "outer" in operators:
+        if "outer" in operators and backend != "torch":
             # generate an operator that calculates an outer product
             vec_field = VectorField(state.grid)
             ops_general["outer"] = vec_field.make_outer_prod_operator(backend)
@@ -657,7 +672,7 @@ class PDE(SDEBase):
     def make_pde_rhs_numba(
         self, state: TField, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
-        """Create a compiled function evaluating the right hand side of the PDE.
+        """Create a numba-compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -677,6 +692,34 @@ class PDE(SDEBase):
         if isinstance(state, FieldCollection):
             # state is a collection of fields
             return self.make_pde_rhs_numba_collection(state, cache)
+
+        msg = f"Unsupported field {state.__class__.__name__}"
+        raise TypeError(msg)
+
+    def make_pde_rhs_torch(
+        self, state: TField, **kwargs
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Create a torch-compiled function evaluating the right hand side of the PDE.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state defining the grid and data types
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called with an
+            instance of :class:`~numpy.ndarray` of the state data and the time to
+            obtained an instance of :class:`~numpy.ndarray` giving the evolution rate.
+        """
+        cache = self._prepare_cache(state, backend="torch")
+
+        if isinstance(state, DataFieldBase):
+            # state is a single field
+            return cache["rhs_funcs"][0]  # type: ignore
+
+        if isinstance(state, FieldCollection):
+            # state is a collection of fields
+            raise NotImplementedError
+            return self.make_pde_rhs_torch_collection(state, cache)
 
         msg = f"Unsupported field {state.__class__.__name__}"
         raise TypeError(msg)

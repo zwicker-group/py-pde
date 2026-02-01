@@ -1269,7 +1269,7 @@ class NumbaBackend(NumpyBackend):
         single_arg: bool = False,
         user_funcs: dict[str, Callable] | None = None,
     ) -> Callable[..., NumberOrArray]:
-        """Return a function evaluating an expression for a particular backend.
+        """Return a function evaluating an expression.
 
         Args:
             expression (:class:`~pde.tools.expression.ExpressionBase`):
