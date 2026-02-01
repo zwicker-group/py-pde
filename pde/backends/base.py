@@ -267,6 +267,8 @@ class BackendBase:
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
+        *,
+        native: bool = False,
         **kwargs,
     ) -> OperatorImplType:
         """Return a compiled function applying an operator without boundary conditions.
@@ -288,6 +290,10 @@ class BackendBase:
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -304,7 +310,9 @@ class BackendBase:
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
+        *,
         bcs: BoundariesBase,
+        native: bool = False,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
@@ -316,8 +324,12 @@ class BackendBase:
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
-            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
                 The boundary conditions used before the operator is applied
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 

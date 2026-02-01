@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar
 
 import numpy as np
 from numpy.typing import ArrayLike  # noqa: F401
+from torch import Tensor
 
 if TYPE_CHECKING:
     from ..fields import DataFieldBase, FieldCollection
@@ -28,6 +29,7 @@ FloatOrArray = float | np.ndarray[Any, np.dtype[np.floating]]
 # miscellaneous types:
 BackendType = Literal["scipy", "numpy", "numba", "numba_mpi", "torch"]
 TField = TypeVar("TField", "FieldCollection", "DataFieldBase", covariant=True)
+TArray = TypeVar("TArray", NumericArray, Tensor)
 
 
 class OperatorInfo(NamedTuple):
@@ -42,7 +44,7 @@ class OperatorInfo(NamedTuple):
 class OperatorImplType(Protocol):
     """An operator that acts on an array."""
 
-    def __call__(self, arr: NumericArray, out: NumericArray) -> None:
+    def __call__(self, arr: TArray, out: TArray) -> None:
         """Evaluate the operator."""
 
 
@@ -58,10 +60,10 @@ class OperatorType(Protocol):
 
     def __call__(
         self,
-        arr: NumericArray,
-        out: NumericArray | None = None,
+        arr: TArray,
+        out: TArray | None = None,
         args: dict[str, Any] | None = None,
-    ) -> NumericArray:
+    ) -> TArray:
         """Evaluate the operator."""
 
 

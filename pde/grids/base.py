@@ -426,9 +426,9 @@ class GridBase(metaclass=ABCMeta):
     def compatible_with(self, other: GridBase) -> bool:
         """Tests whether this grid is compatible with other grids.
 
-        Grids are compatible when they cover the same area with the same
-        discretization. The difference to equality is that compatible grids do
-        not need to have the same periodicity in their boundaries.
+        Grids are compatible when they cover the same area with the same discretization.
+        The difference to equality is that compatible grids do not need to have the same
+        periodicity in their boundaries.
 
         Args:
             other (:class:`~pde.grids.base.GridBase`):
@@ -1124,6 +1124,7 @@ class GridBase(metaclass=ABCMeta):
         operator: str | OperatorInfo,
         *,
         backend: str | BackendBase = "default",
+        native: bool = False,
         **kwargs,
     ) -> OperatorImplType:
         """Return a compiled function applying an operator without boundary conditions.
@@ -1145,6 +1146,10 @@ class GridBase(metaclass=ABCMeta):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             backend (str):
                 The backend to use for making the operator
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -1156,7 +1161,9 @@ class GridBase(metaclass=ABCMeta):
         from ..backends import backends
 
         # determine the operator for the chosen backend
-        return backends[backend].make_operator_no_bc(self, operator, **kwargs)
+        return backends[backend].make_operator_no_bc(
+            self, operator=operator, native=native, **kwargs
+        )
 
     @cached_method()
     @fill_in_docstring
@@ -1166,6 +1173,7 @@ class GridBase(metaclass=ABCMeta):
         bc: BoundariesData,
         *,
         backend: str | BackendBase = "default",
+        native: bool = False,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
@@ -1180,6 +1188,10 @@ class GridBase(metaclass=ABCMeta):
                 {ARG_BOUNDARIES}
             backend (str):
                 The backend to use for making the operator
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -1218,7 +1230,7 @@ class GridBase(metaclass=ABCMeta):
 
         # set the boundary conditions before applying this operator
         bcs = self.get_boundary_conditions(bc, rank=operator_info.rank_in)
-        return backend_impl.make_operator(self, operator_info, bcs=bcs)
+        return backend_impl.make_operator(self, operator_info, bcs=bcs, native=native)
 
     def slice(self, indices: Sequence[int]) -> GridBase:
         """Return a subgrid of only the specified axes.

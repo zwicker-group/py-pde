@@ -158,17 +158,27 @@ class KuramotoSivashinskyPDE(SDEBase):
             the time to obtained an instance of :class:`torch.Tensor` giving
             the evolution rate.
         """
-        from ..backends.torch import torch_backend
-
         nu_value = self.nu
-        laplace = torch_backend.make_torch_operator(
-            grid=state.grid, operator="laplace", bcs=self.bc, dtype=state.dtype
+        laplace = state.grid.make_operator(
+            operator="laplace",
+            bc=self.bc,
+            backend="torch",
+            native=True,
+            dtype=state.dtype,
         )
-        laplace2 = torch_backend.make_torch_operator(
-            grid=state.grid, operator="laplace", bcs=self.bc_lap, dtype=state.dtype
+        laplace2 = state.grid.make_operator(
+            operator="laplace",
+            bc=self.bc_lap,
+            backend="torch",
+            native=True,
+            dtype=state.dtype,
         )
-        gradient_sq = torch_backend.make_torch_operator(
-            grid=state.grid, operator="gradient_squared", bcs=self.bc, dtype=state.dtype
+        gradient_sq = state.grid.make_operator(
+            operator="gradient_squared",
+            bc=self.bc,
+            backend="torch",
+            native=True,
+            dtype=state.dtype,
         )
 
         def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:

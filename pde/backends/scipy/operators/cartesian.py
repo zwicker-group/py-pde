@@ -280,7 +280,7 @@ def make_laplace(grid: CartesianGrid, **kwargs) -> OperatorImplType:
             # some errors can happen for ghost cells
             out[:] = ndimage.laplace(scaling * arr)[valid]
 
-    return laplace
+    return laplace  # type: ignore
 
 
 @scipy_backend.register_operator(CartesianGrid, "gradient", rank_in=0, rank_out=1)
@@ -331,7 +331,7 @@ def make_gradient(
             for i in range(dim):
                 out[i] = ndimage.correlate1d(arr, stencil, axis=i)[valid] * scaling[i]
 
-    return gradient
+    return gradient  # type: ignore
 
 
 @scipy_backend.register_operator(CartesianGrid, "divergence", rank_in=1, rank_out=0)
@@ -383,7 +383,7 @@ def make_divergence(
             for i in range(len(data_shape)):
                 out += ndimage.correlate1d(arr[i], stencil, axis=i)[valid] * scale[i]
 
-    return divergence
+    return divergence  # type: ignore
 
 
 def _vectorize_operator(
@@ -408,7 +408,7 @@ def _vectorize_operator(
         for i in range(dim):
             operator(arr[i], out[i])
 
-    return vectorized_operator
+    return vectorized_operator  # type: ignore
 
 
 @scipy_backend.register_operator(

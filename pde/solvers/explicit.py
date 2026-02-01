@@ -56,7 +56,9 @@ class EulerSolver(AdaptiveSolverBase):
                 if noise_realization is not None:
                     state_data += np.sqrt(dt) * noise_realization
 
-            self._logger.info("Init explicit Euler-Maruyama stepper with dt=%g", dt)
+            self._logger.info(
+                "Initialize explicit Euler-Maruyama stepper with dt=%g", dt
+            )
 
         else:
             # handle deterministic version of the pde
@@ -67,7 +69,7 @@ class EulerSolver(AdaptiveSolverBase):
                 """Perform a single Euler step."""
                 state_data += dt * rhs_pde(state_data, t)
 
-            self._logger.info("Init explicit Euler stepper with dt=%g", dt)
+            self._logger.info("Initialize explicit Euler stepper with dt=%g", dt)
 
         return stepper
 
@@ -180,7 +182,7 @@ class EulerSolver(AdaptiveSolverBase):
 
             return t, dt_opt, steps
 
-        self._logger.info("Init adaptive Euler stepper")
+        self._logger.info("Initialize adaptive Euler stepper")
         return adaptive_stepper
 
 
@@ -223,7 +225,7 @@ class RungeKuttaSolver(AdaptiveSolverBase):
 
             state_data += (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
-        self._logger.info("Init explicit Runge-Kutta-45 stepper with dt=%g", dt)
+        self._logger.info("Initialize explicit Runge-Kutta-45 stepper with dt=%g", dt)
         return stepper
 
     def _make_single_step_error_estimate(
@@ -310,7 +312,7 @@ class RungeKuttaSolver(AdaptiveSolverBase):
             state_new = state_data + c1 * k1 + c3 * k3 + c4 * k4 + c5 * k5
             return state_new, error
 
-        self._logger.info("Init adaptive Runge-Kutta-Fehlberg stepper")
+        self._logger.info("Initialize adaptive Runge-Kutta-Fehlberg stepper")
         return stepper
 
 

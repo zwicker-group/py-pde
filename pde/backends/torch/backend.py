@@ -11,23 +11,20 @@ import numpy as np
 import torch
 
 from ...grids import GridBase
-from ...grids.boundaries.axes import BoundariesBase
 from ..base import OperatorInfo, TFunc
 from ..numpy import NumpyBackend
-from .utils import AnyDType, get_torch_dtype
+from .utils import get_torch_dtype
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ...grids import BoundariesBase, GridBase
-    from ...grids.boundaries.axes import BoundariesData
+    from ...grids import GridBase
+    from ...grids.boundaries.axes import BoundariesBase
     from ...pdes import PDEBase
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
         NumberOrArray,
         NumericArray,
-        OperatorImplType,
-        OperatorType,
         TField,
     )
     from ..base import TFunc
@@ -87,56 +84,14 @@ class TorchBackend(NumpyBackend):
         opts = self.compile_options | compile_options
         return torch.compile(func, **opts)  # type: ignore
 
-    def make_torch_operator(
+    def make_operator_no_bc(  # type: ignore
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
-        bcs: BoundariesData | None,
-        dtype: AnyDType = np.double,
+        *,
+        native: bool = False,
         **kwargs,
     ) -> TorchOperatorType:
-        """Return a torch function applying an operator with boundary conditions.
-
-        Args:
-            grid (:class:`~pde.grid.base.GridBase`):
-                Grid for which the operator is needed
-            operator (str):
-                Identifier for the operator. Some examples are 'laplace', 'gradient', or
-                'divergence'. The registered operators for this grid can be obtained
-                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
-            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
-                The boundary conditions used before the operator is applied
-            **kwargs:
-                Specifies extra arguments influencing how the operator is created.
-
-        The returned function takes the discretized data on the grid as an input and
-        returns the data to which the operator `operator` has been applied. The function
-        only takes the valid grid points and allocates memory for the ghost points
-        internally to apply the boundary conditions specified as `bc`. Note that the
-        function supports an optional argument `out`, which if given should provide
-        space for the valid output array without the ghost cells. The result of the
-        operator is then written into this output array.
-
-        The function also accepts an optional parameter `args`, which is forwarded to
-        `set_ghost_cells`. This allows setting boundary conditions based on external
-        parameters, like time.
-
-        Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
-        """
-        # determine the operator for the chosen backend
-        operator_info = self.get_operator_info(grid, operator)
-        if bcs is not None:
-            bcs = grid.get_boundary_conditions(bcs, rank=operator_info.rank_in)
-        return operator_info.factory(grid, bcs, dtype=get_torch_dtype(dtype), **kwargs)  # type: ignore
-
-    def make_operator_no_bc(
-        self,
-        grid: GridBase,
-        operator: str | OperatorInfo,
-        **kwargs,
-    ) -> OperatorImplType:
         """Return a compiled function applying an operator without boundary conditions.
 
         A function that takes the discretized full data as an input and an array of
@@ -156,6 +111,10 @@ class TorchBackend(NumpyBackend):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -164,23 +123,36 @@ class TorchBackend(NumpyBackend):
             signature (arr: NumericArray, out: NumericArray), so they `out` array need
             to be supplied explicitly.
         """
-        # determine the operator for the chosen backend
-        torch_operator = self.make_torch_operator(grid, operator, bcs=None, **kwargs)
+        # obtain details about the operator
+        operator_info = self.get_operator_info(grid, operator)
+        dtype = get_torch_dtype(kwargs.pop("dtype", np.double))
+
+        # create an operator with or without BCs
+        torch_operator = operator_info.factory(grid, bcs=None, dtype=dtype, **kwargs)
+
+        # compile the function and move it to the device
+        torch_operator_jitted = self.compile_function(torch_operator)
+        torch_operator_jitted.to(self.device)  # type: ignore
+
+        if native:
+            return torch_operator_jitted  # type: ignore
 
         def operator_no_bc(arr: NumericArray, out: NumericArray) -> None:
             arr_torch = torch.from_numpy(arr)
-            out[...] = torch_operator(arr_torch)
+            out[...] = torch_operator_jitted(arr_torch)  # type: ignore
 
-        return operator_no_bc
+        return operator_no_bc  # type: ignore
 
-    def make_operator(
+    def make_operator(  # type: ignore
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
+        *,
         bcs: BoundariesBase,
+        native: bool = False,
         **kwargs,
-    ) -> OperatorType:
-        """Return a compiled function applying an operator with boundary conditions.
+    ) -> TorchOperatorType:
+        """Return a torch function applying an operator with boundary conditions.
 
         Args:
             grid (:class:`~pde.grid.base.GridBase`):
@@ -191,31 +163,34 @@ class TorchBackend(NumpyBackend):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 The boundary conditions used before the operator is applied
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
-
-        The returned function takes the discretized data on the grid as an input and
-        returns the data to which the operator `operator` has been applied. The function
-        only takes the valid grid points and allocates memory for the ghost points
-        internally to apply the boundary conditions specified as `bc`. Note that the
-        function supports an optional argument `out`, which if given should provide
-        space for the valid output array without the ghost cells. The result of the
-        operator is then written into this output array.
-
-        The function also accepts an optional parameter `args`, which is forwarded to
-        `set_ghost_cells`. This allows setting boundary conditions based on external
-        parameters, like time.
 
         Returns:
             callable: the function that applies the operator. This function has the
             signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
-        # determine the operator for the chosen backend
+        # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)
-        torch_operator = self.make_torch_operator(grid, operator, bcs, **kwargs)
+        dtype = get_torch_dtype(kwargs.pop("dtype", np.double))
+        bcs = grid.get_boundary_conditions(bcs, rank=operator_info.rank_in)
+
+        # create an operator with or without BCs
+        torch_operator = operator_info.factory(grid, bcs, dtype=dtype, **kwargs)  # type: ignore
+
+        # compile the function and move it to the device
         torch_operator_jitted = self.compile_function(torch_operator)
         torch_operator_jitted.to(self.device)  # type: ignore
 
+        if native:
+            # return the native representation if requested
+            return torch_operator_jitted  # type: ignore
+
+        # wrap the operator such that it can be called from numpy
         shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
 
         # define numpy version of the operator
@@ -231,11 +206,11 @@ class TorchBackend(NumpyBackend):
             elif out.shape != shape_out:
                 msg = f"Incompatible shapes {out.shape} != {shape_out}"
                 raise ValueError(msg)
-            out[:] = torch_operator_jitted(arr_torch)
+            out[:] = torch_operator_jitted(arr_torch)  # type: ignore
             return out
 
         # return the compiled versions of the operator
-        return apply_op
+        return apply_op  # type: ignore
 
     def make_integrator(
         self, grid: GridBase
@@ -311,7 +286,7 @@ class TorchBackend(NumpyBackend):
             arr_torch = torch.from_numpy(arr)
             arr_torch.to(self.device)
 
-            return rhs_torch(arr_torch).numpy()  # type: ignore
+            return rhs_torch(arr_torch, t).numpy()  # type: ignore
 
         return rhs
 

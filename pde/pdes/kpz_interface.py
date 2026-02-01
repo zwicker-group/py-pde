@@ -150,14 +150,20 @@ class KPZInterfacePDE(SDEBase):
             the time to obtained an instance of :class:`torch.Tensor` giving
             the evolution rate.
         """
-        from ..backends.torch import torch_backend
-
         nu_value, lambda_value = self.nu, self.lmbda
-        laplace = torch_backend.make_torch_operator(
-            grid=state.grid, operator="laplace", bcs=self.bc, dtype=state.dtype
+        laplace = state.grid.make_operator(
+            operator="laplace",
+            bc=self.bc,
+            backend="torch",
+            native=True,
+            dtype=state.dtype,
         )
-        gradient_squared = torch_backend.make_torch_operator(
-            grid=state.grid, operator="gradient_squared", bcs=self.bc, dtype=state.dtype
+        gradient_squared = state.grid.make_operator(
+            operator="gradient_squared",
+            bc=self.bc,
+            backend="torch",
+            native=True,
+            dtype=state.dtype,
         )
 
         def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:

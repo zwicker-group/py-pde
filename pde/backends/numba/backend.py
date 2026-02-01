@@ -390,7 +390,7 @@ class NumbaBackend(NumpyBackend):
         if isinstance(boundaries, BoundariesSetter):
             return self.compile_function(boundaries._setter)
 
-        msg = "Cannot handle boundaries {boundaries.__class__}"
+        msg = f"Cannot handle following boundary conditions: {boundaries}"
         raise NotImplementedError(msg)
 
     def make_data_setter(
@@ -464,7 +464,9 @@ class NumbaBackend(NumpyBackend):
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
+        *,
         bcs: BoundariesBase,
+        native: bool = False,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
@@ -478,6 +480,8 @@ class NumbaBackend(NumpyBackend):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 The boundary conditions used before the operator is applied
+            native (bool):
+                This flag has no effect for the `numba` backend.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -602,7 +606,7 @@ class NumbaBackend(NumpyBackend):
             return apply_op(arr, out, args)
 
         # return the compiled versions of the operator
-        return apply_op_compiled
+        return apply_op_compiled  # type: ignore
 
     def _make_local_integrator(
         self, grid: GridBase
