@@ -18,6 +18,7 @@ from ...grids import DimensionError, DomainError, GridBase
 from ...grids.boundaries.axes import BoundariesBase, BoundariesList, BoundariesSetter
 from ...grids.boundaries.local import BCBase, UserBC
 from ...solvers import AdaptiveSolverBase, SolverBase
+from ...tools.cache import cached_method
 from ...tools.config import is_hpc_environment
 from ...tools.typing import OperatorInfo
 from ..numpy.backend import NumpyBackend
@@ -460,6 +461,7 @@ class NumbaBackend(NumpyBackend):
 
         return set_valid_bcs
 
+    @cached_method(ignore_args=["native"])
     def make_operator(
         self,
         grid: GridBase,

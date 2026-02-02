@@ -1165,7 +1165,6 @@ class GridBase(metaclass=ABCMeta):
             self, operator=operator, native=native, **kwargs
         )
 
-    @cached_method()
     @fill_in_docstring
     def make_operator(
         self,
@@ -1205,9 +1204,9 @@ class GridBase(metaclass=ABCMeta):
 
         The function also accepts an optional parameter `args`, which is forwarded to
         `set_ghost_cells`. This allows setting boundary conditions based on external
-        parameters, like time. Note that since the returned operator will always be
-        compiled by Numba, the arguments need to be compatible with Numba. The
-        following example shows how to pass the current time `t`:
+        parameters, like time. Note that the `numba` backend requires a special calling
+        convention to make it compatible with Numba. The following example shows how to
+        pass the current time `t`:
 
         .. code-block:: python
 

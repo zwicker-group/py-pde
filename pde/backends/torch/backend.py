@@ -170,6 +170,13 @@ class TorchBackend(NumpyBackend):
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
+        Warning:
+            The same operator should not be assigned to different variables that are
+            used in the same code, because :mod:`torch` has problems compiling the
+            resulting code. This particularly precludes caching the operators, since
+            they then might be reused, e.g., if boundary conditions agree between
+            different operators.
+
         Returns:
             callable: the function that applies the operator. This function has the
             signature (arr: NumericArray, out: NumericArray = None, args=None).
