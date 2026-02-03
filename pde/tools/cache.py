@@ -22,7 +22,7 @@ import functools
 import logging
 import numbers
 from hashlib import sha1
-from typing import TYPE_CHECKING, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import numpy as np
 from scipy import sparse
@@ -131,7 +131,7 @@ def hash_mutable(obj) -> int:
     except TypeError:
         try:
             # try hashing the data buffer
-            return hash(sha1(obj))
+            return hash(sha1(obj, usedforsecurity=False))
         except (ValueError, TypeError):
             # otherwise, hash the internal dict
             return hash_mutable(obj.__dict__)
@@ -400,12 +400,12 @@ class _class_cache:
 
     def __init__(
         self,
-        factory=None,
-        extra_args=None,
-        ignore_args=None,
-        hash_function="hash_mutable",
-        doc=None,
-        name=None,
+        factory: Callable | None = None,
+        extra_args: Iterable[str] | None = None,
+        ignore_args: Iterable[str] | str | None = None,
+        hash_function: SerializerMethod = "hash_mutable",
+        doc: str | None = None,
+        name: str | None = None,
     ):
         r"""Decorator that caches calls in a dictionary attached to the instances. This
         can be used with most classes.
@@ -480,7 +480,7 @@ class _class_cache:
         if ignore_args is not None:
             if isinstance(ignore_args, str):
                 ignore_args = [ignore_args]
-            self.ignore_args = set(ignore_args)
+            self.ignore_args: Iterable[str] | None = set(ignore_args)
         else:
             self.ignore_args = None
 
@@ -495,7 +495,7 @@ class _class_cache:
 
         self.factory = factory
 
-    def _get_clear_cache_method(self):
+    def _get_clear_cache_method(self) -> Callable[[Any], None]:
         """Return a method that can be attached to classes to clear the cache of the
         wrapped method."""
 
