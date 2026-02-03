@@ -41,9 +41,10 @@ class TorchConstBC1stOrderBoundary(torch.nn.Module):
 
     def get_virtual_point_data_1storder(self):
         """Get the values relevant to calculate the boundary condition."""
+        grid = self.bc.grid
         # determine indices into full data array for the data cell near the boundary
         i_lower = 1  # data near lower boundary
-        i_upper = self.bc.grid.shape[self.bc.axis]  # data near upper boundary
+        i_upper = grid.shape[self.bc.axis]  # data near upper boundary
 
         if isinstance(self.bc, _PeriodicBC):
             self.i_read = i_lower if self.bc.upper else i_upper
@@ -56,13 +57,13 @@ class TorchConstBC1stOrderBoundary(torch.nn.Module):
             factor = np.full_like(const, -1)
 
         elif isinstance(self.bc, NeumannBC):
-            dx = self.bc.grid.discretization[self.bc.axis]
+            dx = grid.discretization[self.bc.axis]
             self.i_read = i_upper if self.bc.upper else i_lower
             const = dx * self.bc.value
             factor = np.ones_like(const)
 
         elif isinstance(self.bc, MixedBC):
-            dx = self.bc.grid.discretization[self.bc.axis]
+            dx = grid.discretization[self.bc.axis]
             with np.errstate(invalid="ignore"):
                 const = np.asarray(2 * dx * self.bc.const / (2 + dx * self.bc.value))
                 factor = np.asarray((2 - dx * self.bc.value) / (2 + dx * self.bc.value))
@@ -79,9 +80,14 @@ class TorchConstBC1stOrderBoundary(torch.nn.Module):
             msg = f"Unsupported BC {self.bc}"
             raise TypeError(msg)
 
-        # make the data available in the kernel
-        self.register_buffer("const", torch.from_numpy(np.asarray(const)))
-        self.register_buffer("factor", torch.from_numpy(np.asarray(factor)))
+        # broadcast values to correct shape
+        for name, arr in (("const", const), ("factor", factor)):
+            arr = np.asarray(arr)
+            if self.bc.homogeneous:
+                # add spatial axes in the boundary to enable broadcasting
+                arr = arr[(...,) + (np.newaxis,) * (grid.num_axes - 1)]
+            # make the data available in the kernel
+            self.register_buffer(name, torch.from_numpy(np.asarray(arr)))
 
     def forward(self, data_full: Tensor, args=None) -> Tensor:
         """Set the virtual points at the boundary."""

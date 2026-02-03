@@ -50,7 +50,10 @@ def init_random_number_generators():
 @pytest.fixture
 def backend(request):
     """Fixture that checks backends for availability."""
-    if request.param == "torch":
+    if request.param == "numba":
+        if not module_available("numba"):
+            pytest.skip("`numba` is not available")
+    elif request.param == "torch":
         if not module_available("torch"):
             pytest.skip("`torch` is not available")
         if platform.system() == "Windows":

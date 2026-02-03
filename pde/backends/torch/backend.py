@@ -11,22 +11,20 @@ import numpy as np
 import torch
 
 from ...grids import GridBase
-from ...grids.boundaries.axes import BoundariesBase
 from ..base import OperatorInfo, TFunc
 from ..numpy import NumpyBackend
-from .utils import AnyDType, get_torch_dtype
+from .utils import get_torch_dtype
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ...grids import BoundariesBase, GridBase
-    from ...grids.boundaries.axes import BoundariesData
+    from ...grids import GridBase
+    from ...grids.boundaries.axes import BoundariesBase
     from ...pdes import PDEBase
+    from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
         NumberOrArray,
         NumericArray,
-        OperatorImplType,
-        OperatorType,
         TField,
     )
     from ..base import TFunc
@@ -83,59 +81,21 @@ class TorchBackend(NumpyBackend):
             **compile_options:
                 Additional keyword arguments will be forwarded to :func:`torch.compile`
         """
+        if not self.config["compile"]:
+            return func
+
+        # compile the function using the torch backend
         opts = self.compile_options | compile_options
         return torch.compile(func, **opts)  # type: ignore
 
-    def make_torch_operator(
+    def make_operator_no_bc(  # type: ignore
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
-        bcs: BoundariesData | None,
-        dtype: AnyDType = np.double,
+        *,
+        native: bool = False,
         **kwargs,
     ) -> TorchOperatorType:
-        """Return a torch function applying an operator with boundary conditions.
-
-        Args:
-            grid (:class:`~pde.grid.base.GridBase`):
-                Grid for which the operator is needed
-            operator (str):
-                Identifier for the operator. Some examples are 'laplace', 'gradient', or
-                'divergence'. The registered operators for this grid can be obtained
-                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
-            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
-                The boundary conditions used before the operator is applied
-            **kwargs:
-                Specifies extra arguments influencing how the operator is created.
-
-        The returned function takes the discretized data on the grid as an input and
-        returns the data to which the operator `operator` has been applied. The function
-        only takes the valid grid points and allocates memory for the ghost points
-        internally to apply the boundary conditions specified as `bc`. Note that the
-        function supports an optional argument `out`, which if given should provide
-        space for the valid output array without the ghost cells. The result of the
-        operator is then written into this output array.
-
-        The function also accepts an optional parameter `args`, which is forwarded to
-        `set_ghost_cells`. This allows setting boundary conditions based on external
-        parameters, like time.
-
-        Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
-        """
-        # determine the operator for the chosen backend
-        operator_info = self.get_operator_info(grid, operator)
-        if bcs is not None:
-            bcs = grid.get_boundary_conditions(bcs, rank=operator_info.rank_in)
-        return operator_info.factory(grid, bcs, dtype=get_torch_dtype(dtype), **kwargs)  # type: ignore
-
-    def make_operator_no_bc(
-        self,
-        grid: GridBase,
-        operator: str | OperatorInfo,
-        **kwargs,
-    ) -> OperatorImplType:
         """Return a compiled function applying an operator without boundary conditions.
 
         A function that takes the discretized full data as an input and an array of
@@ -155,6 +115,10 @@ class TorchBackend(NumpyBackend):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -163,23 +127,37 @@ class TorchBackend(NumpyBackend):
             signature (arr: NumericArray, out: NumericArray), so they `out` array need
             to be supplied explicitly.
         """
-        # determine the operator for the chosen backend
-        torch_operator = self.make_torch_operator(grid, operator, bcs=None, **kwargs)
+        # obtain details about the operator
+        operator_info = self.get_operator_info(grid, operator)
+        dtype = get_torch_dtype(kwargs.pop("dtype", np.double))
+
+        # create an operator with or without BCs
+        torch_operator = operator_info.factory(grid, bcs=None, dtype=dtype, **kwargs)
+        torch_operator.eval()  # type: ignore
+
+        # compile the function and move it to the device
+        torch_operator_jitted = self.compile_function(torch_operator)
+        torch_operator_jitted.to(self.device)  # type: ignore
+
+        if native:
+            return torch_operator_jitted  # type: ignore
 
         def operator_no_bc(arr: NumericArray, out: NumericArray) -> None:
             arr_torch = torch.from_numpy(arr)
-            out[...] = torch_operator(arr_torch)
+            out[...] = torch_operator_jitted(arr_torch)  # type: ignore
 
-        return operator_no_bc
+        return operator_no_bc  # type: ignore
 
-    def make_operator(
+    def make_operator(  # type: ignore
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
+        *,
         bcs: BoundariesBase,
+        native: bool = False,
         **kwargs,
-    ) -> OperatorType:
-        """Return a compiled function applying an operator with boundary conditions.
+    ) -> TorchOperatorType:
+        """Return a torch function applying an operator with boundary conditions.
 
         Args:
             grid (:class:`~pde.grid.base.GridBase`):
@@ -190,31 +168,42 @@ class TorchBackend(NumpyBackend):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 The boundary conditions used before the operator is applied
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
-        The returned function takes the discretized data on the grid as an input and
-        returns the data to which the operator `operator` has been applied. The function
-        only takes the valid grid points and allocates memory for the ghost points
-        internally to apply the boundary conditions specified as `bc`. Note that the
-        function supports an optional argument `out`, which if given should provide
-        space for the valid output array without the ghost cells. The result of the
-        operator is then written into this output array.
-
-        The function also accepts an optional parameter `args`, which is forwarded to
-        `set_ghost_cells`. This allows setting boundary conditions based on external
-        parameters, like time.
+        Warning:
+            The same operator should not be assigned to different variables that are
+            used in the same code, because :mod:`torch` has problems compiling the
+            resulting code. This particularly precludes caching the operators, since
+            they then might be reused, e.g., if boundary conditions agree between
+            different operators.
 
         Returns:
             callable: the function that applies the operator. This function has the
             signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
-        # determine the operator for the chosen backend
+        # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)
-        torch_operator = self.make_torch_operator(grid, operator, bcs, **kwargs)
+        dtype = get_torch_dtype(kwargs.pop("dtype", np.double))
+        bcs = grid.get_boundary_conditions(bcs, rank=operator_info.rank_in)
+
+        # create an operator with or without BCs
+        torch_operator = operator_info.factory(grid, bcs, dtype=dtype, **kwargs)  # type: ignore
+        torch_operator.eval()  # type: ignore
+
+        # compile the function and move it to the device
         torch_operator_jitted = self.compile_function(torch_operator)
         torch_operator_jitted.to(self.device)  # type: ignore
 
+        if native:
+            # return the native representation if requested
+            return torch_operator_jitted  # type: ignore
+
+        # wrap the operator such that it can be called from numpy
         shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
 
         # define numpy version of the operator
@@ -230,11 +219,11 @@ class TorchBackend(NumpyBackend):
             elif out.shape != shape_out:
                 msg = f"Incompatible shapes {out.shape} != {shape_out}"
                 raise ValueError(msg)
-            out[:] = torch_operator_jitted(arr_torch)
+            out[:] = torch_operator_jitted(arr_torch)  # type: ignore
             return out
 
         # return the compiled versions of the operator
-        return apply_op
+        return apply_op  # type: ignore
 
     def make_integrator(
         self, grid: GridBase
@@ -310,6 +299,89 @@ class TorchBackend(NumpyBackend):
             arr_torch = torch.from_numpy(arr)
             arr_torch.to(self.device)
 
-            return rhs_torch(arr_torch).numpy()  # type: ignore
+            return rhs_torch(arr_torch, t).numpy()  # type: ignore
 
         return rhs
+
+    def make_expression_function(
+        self,
+        expression: ExpressionBase,
+        *,
+        single_arg: bool = False,
+        user_funcs: dict[str, Callable] | None = None,
+    ) -> Callable[..., NumberOrArray]:
+        """Return a function evaluating an expression.
+
+        Args:
+            expression (:class:`~pde.tools.expression.ExpressionBase`):
+                The expression that is converted to a function
+            single_arg (bool):
+                Determines whether the returned function accepts all variables in a
+                single argument as an array or whether all variables need to be
+                supplied separately.
+            user_funcs (dict):
+                Additional functions that can be used in the expression.
+
+        Returns:
+            function: the function
+        """
+        import sympy
+        from sympy.printing.pycode import PythonCodePrinter
+
+        from ...tools.expressions import SPECIAL_FUNCTIONS
+
+        # collect all the user functions
+        user_functions = expression.user_funcs.copy()
+        if user_funcs is not None:
+            user_functions.update(user_funcs)
+        user_functions.update(SPECIAL_FUNCTIONS)
+
+        user_functions = {
+            k: self.compile_function(v) for k, v in user_functions.items()
+        }
+
+        # initialize the printer that deals with numpy arrays correctly
+
+        class ListArrayPrinter(PythonCodePrinter):
+            """Special sympy printer returning arrays as lists."""
+
+            def _print_ImmutableDenseNDimArray(self, arr):
+                arrays = ", ".join(f"{self._print(expr)}" for expr in arr)
+                return f"[{arrays}]"
+
+        printer = ListArrayPrinter(
+            {
+                "fully_qualified_modules": False,
+                "inline": True,
+                "allow_unknown_functions": True,
+                "user_functions": {k: k for k in user_functions},
+            }
+        )
+
+        # determine the list of variables that the function depends on
+        variables = (expression.vars,) if single_arg else tuple(expression.vars)
+        constants = tuple(expression.consts)
+
+        # turn the expression into a callable function
+        self._logger.info("Parse sympy expression `%s`", expression._sympy_expr)
+        func = sympy.lambdify(
+            variables + constants,
+            expression._sympy_expr,
+            modules=[user_functions, "numpy"],
+            printer=printer,
+        )
+
+        # Apply the constants if there are any. Note that we use this pattern of a
+        # partial function instead of replacing the constants in the sympy expression
+        # directly since sympy does not work well with numpy arrays.
+        if constants:
+            const_values = tuple(expression.consts[c] for c in constants)
+
+            func = self.compile_function(func)
+
+            def result(*args):
+                return func(*args, *const_values)
+
+        else:
+            result = func
+        return self.compile_function(result)

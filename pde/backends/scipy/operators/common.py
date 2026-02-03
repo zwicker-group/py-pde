@@ -147,4 +147,4 @@ def make_general_poisson_solver(
         # convert the result to the correct format
         out[:] = result.reshape(arr.shape)
 
-    return solve_poisson
+    return solve_poisson  # type: ignore

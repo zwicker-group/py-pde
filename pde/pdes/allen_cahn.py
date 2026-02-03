@@ -141,12 +141,14 @@ class AllenCahnPDE(PDEBase):
             the time to obtained an instance of :class:`torch.Tensor` giving
             the evolution rate.
         """
-        from ..backends.torch import torch_backend
-
         interface_width = self.interface_width
         mobility = self.mobility
-        laplace = torch_backend.make_torch_operator(
-            grid=state.grid, operator="laplace", bcs=self.bc, dtype=state.dtype
+        laplace = state.grid.make_operator(
+            operator="laplace",
+            bc=self.bc,
+            backend="torch",
+            native=True,
+            dtype=state.dtype,
         )
 
         def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:

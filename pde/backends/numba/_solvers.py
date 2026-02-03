@@ -172,7 +172,7 @@ def _make_adams_bashforth_stepper(
 
         return t + dt
 
-    solver._logger.info("Init explicit Adams-Bashforth stepper with dt=%g", dt)
+    solver._logger.info("Initialize explicit Adams-Bashforth stepper with dt=%g", dt)
 
     return fixed_stepper
 

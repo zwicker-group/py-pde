@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
 
     import sympy
+    import torch
 
     from ..fields.base import FieldBase
     from ..grids.boundaries.axes import BoundariesData
@@ -269,7 +270,7 @@ class PDE(SDEBase):
         var: str,
         ops: dict[str, Callable],
         state: FieldBase,
-        backend: Literal["numpy", "numba"] = "numpy",
+        backend: Literal["numpy", "numba", "torch"],
     ):
         """Compile a function determining the right hand side for one variable.
 
@@ -287,14 +288,15 @@ class PDE(SDEBase):
         Returns:
             callable: The function calculating the RHS
         """
-        from numba.typed import Dict as NumbaDict
         from sympy import Symbol
         from sympy.core.function import UndefinedFunction
+
+        from ..backends import backends
 
         # modify a copy of the expression and the general operator array
         expr = self._rhs_expr[var].copy()
 
-        # obtain the (differential) operators for this variable
+        # obtain all (differential) operators for this variable
         for func in self._operators[var]:
             if func in ops:
                 continue
@@ -318,9 +320,14 @@ class PDE(SDEBase):
             msg = "Using boundary condition `%s` for operator `%s` in PDE for `%s`"
             self._logger.info(msg, bc, func, var)
 
-            # create the function evaluating the operator
+            # Create the function evaluating the operator. Note that we use the `numba`
+            # backend to create operators when `numpy` was selected since the `numpy`
+            # backend itself currently does not implement any operators.
+            op_backend = "numba" if backend == "numpy" else backend
             try:
-                ops[func] = state.grid.make_operator(func, bc=bc, backend="numba")
+                ops[func] = state.grid.make_operator(
+                    func, bc=bc, backend=op_backend, native=True
+                )
             except BCDataError:
                 # wrong data was supplied for the boundary condition
                 raise
@@ -331,29 +338,42 @@ class PDE(SDEBase):
                 )
                 raise
 
-            # add `bc_args` as an argument to the call of the operators to be able
-            # to pass additional information, like time
-            expr._sympy_expr = expr._sympy_expr.replace(
-                # only modify the relevant operator
-                lambda expr: isinstance(expr.func, UndefinedFunction)
-                and expr.name == func  # noqa: B023
-                # and do not modify it when the bc_args have already been set
-                and not (
-                    isinstance(expr.args[-1], Symbol)
-                    and expr.args[-1].name == "bc_args"
-                ),
-                # otherwise, add None and bc_args as arguments
-                lambda expr: expr.func(*expr.args, Symbol("none"), Symbol("bc_args")),
-            )
+            if backend != "torch":
+                # `torch` backend does not support `bc_args`, yet. For all other
+                # backends, we add `bc_args` as an argument to the call of the operators
+                # to be able to pass additional information, like time
+                expr._sympy_expr = expr._sympy_expr.replace(
+                    # only modify the relevant operator
+                    lambda expr: isinstance(expr.func, UndefinedFunction)
+                    and expr.name == func  # noqa: B023
+                    # and do not modify it when the bc_args have already been set
+                    and not (
+                        isinstance(expr.args[-1], Symbol)
+                        and expr.args[-1].name == "bc_args"
+                    ),
+                    # otherwise, add None and bc_args as arguments
+                    lambda expr: expr.func(
+                        *expr.args, Symbol("none"), Symbol("bc_args")
+                    ),
+                )
 
-        # obtain the function to calculate the right hand side
-        signature = (*self.variables, "t", "none", "bc_args")
+        # Define the signature of the function to calculate the right hand side. Here
+        # we `variables` denotes all fields the PDE evolves, i.e., the dynamical degrees
+        # of freedom, `t` is the `time`, and `bc_args` are additional arguments that are
+        # simply forwarded to the function setting the boundary conditions.
+        if backend == "torch":
+            # TODO: Add explicit support for arguments for BCs
+            signature = (*self.variables, "t")
+        else:
+            signature = (*self.variables, "t", "none", "bc_args")
+        # FIXME: it is currently not document why the "none" is necessary. We should
+        # either remove it from the call signature or clearly document why it is
+        # necessary.
 
-        # check whether this function depends on additional input
+        # We optionally, add explicit variables to denote the grid cell positions if
+        # they are used in the expression
         if any(expr.depends_on(c) for c in state.grid.axes):
-            # expression has a spatial dependence, too
-
-            # extend the signature
+            # extend the signature with the axes names
             signature += tuple(state.grid.axes)
             # inject the spatial coordinates into the expression for the rhs
             extra_args = tuple(
@@ -379,19 +399,37 @@ class PDE(SDEBase):
             backend=backend, single_arg=False, user_funcs=ops
         )
 
-        def rhs_func(*args) -> NumericArray:
-            """Wrapper that inserts the extra arguments and initialized bc_args."""
-            bc_args = NumbaDict()  # args for differential operators
-            bc_args["t"] = args[-1]  # pass time to differential operators
-            return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
+        if backend in {"numpy", "numba"}:
+            # Even in the `numpy` backend, we need to prepare the bc_args to be
+            # compatible with numba, since the standard operators in the `numpy`
+            # backend are still compiled with numba by default.
+            from numba.typed import Dict as NumbaDict
+
+            def rhs_func(*args) -> NumericArray:
+                """Wrapper that inserts the extra arguments and initialized bc_args."""
+                bc_args = NumbaDict()  # args for differential operators
+                bc_args["t"] = args[-1]  # pass time to differential operators
+                return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
+
+        elif backend == "torch":
+            # move extra arguments to the torch device?
+            # extra_args.to(backends["torch"].device)
+
+            def rhs_func(*args) -> torch.Tensor:  # type: ignore
+                """Wrapper that inserts the extra arguments and initialized bc_args."""
+                # TODO: torch backend does not support time-dependent parameters, yet
+                return func_inner(*args, *extra_args)  # type: ignore
+
+        else:
+            msg = f"Backend `{backend}` is not implemented"
+            raise NotImplementedError(msg)
 
         # compile the function if necessary
-        from ..backends import backends
 
         return backends[backend].compile_function(rhs_func)
 
     def _prepare_cache(
-        self, state: TField, backend: Literal["numpy", "numba"] = "numpy"
+        self, state: TField, backend: Literal["numpy", "numba", "torch"]
     ) -> dict[str, Any]:
         """Prepare the expression by setting internal variables in the cache.
 
@@ -470,7 +508,7 @@ class PDE(SDEBase):
             # inner is a synonym for dot product operator
             ops_general["inner"] = VectorField(state.grid).make_dot_operator(backend)
 
-        if "outer" in operators:
+        if "outer" in operators and backend != "torch":
             # generate an operator that calculates an outer product
             vec_field = VectorField(state.grid)
             ops_general["outer"] = vec_field.make_outer_prod_operator(backend)
@@ -657,7 +695,7 @@ class PDE(SDEBase):
     def make_pde_rhs_numba(
         self, state: TField, **kwargs
     ) -> Callable[[NumericArray, float], NumericArray]:
-        """Create a compiled function evaluating the right hand side of the PDE.
+        """Create a numba-compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -677,6 +715,34 @@ class PDE(SDEBase):
         if isinstance(state, FieldCollection):
             # state is a collection of fields
             return self.make_pde_rhs_numba_collection(state, cache)
+
+        msg = f"Unsupported field {state.__class__.__name__}"
+        raise TypeError(msg)
+
+    def make_pde_rhs_torch(
+        self, state: TField, **kwargs
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Create a torch-compiled function evaluating the right hand side of the PDE.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state defining the grid and data types
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called with an
+            instance of :class:`~numpy.ndarray` of the state data and the time to
+            obtained an instance of :class:`~numpy.ndarray` giving the evolution rate.
+        """
+        cache = self._prepare_cache(state, backend="torch")
+
+        if isinstance(state, DataFieldBase):
+            # state is a single field
+            return cache["rhs_funcs"][0]  # type: ignore
+
+        if isinstance(state, FieldCollection):
+            # state is a collection of fields
+            raise NotImplementedError
+            return self.make_pde_rhs_torch_collection(state, cache)
 
         msg = f"Unsupported field {state.__class__.__name__}"
         raise TypeError(msg)

@@ -87,7 +87,7 @@ def parse_number(
 # special functions that we want to support in expressions but that are not defined by
 # sympy version 1.6 or have a different signature than expected by numba/numpy
 SPECIAL_FUNCTIONS: dict[str, Callable] = {
-    "Heaviside": np.heaviside,  # _heaviside_implementation,
+    "Heaviside": np.heaviside,
     "hypot": np.hypot,
 }
 

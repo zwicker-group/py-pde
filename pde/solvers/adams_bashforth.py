@@ -73,6 +73,6 @@ class AdamsBashforthSolver(SolverBase):
 
             return t + dt
 
-        self._logger.info("Init explicit Adams-Bashforth stepper with dt=%g", dt)
+        self._logger.info("Initialize explicit Adams-Bashforth stepper with dt=%g", dt)
 
         return fixed_stepper

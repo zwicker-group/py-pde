@@ -79,7 +79,10 @@ class BackendRegistry:
                 "Reserved backend name `%s` should not be used.", backend.name
             )
         if backend.name in self._backends:
-            _logger.info("Reloading backend `%s`", backend.name)
+            if isinstance(self._backends[backend.name], str):
+                _logger.info("Loading backend `%s`", backend.name)
+            else:
+                _logger.info("Reloading backend `%s`", backend.name)
         self._backends[backend.name] = backend
         if backend.name not in self._configs:
             self._configs[backend.name] = Config()

@@ -137,14 +137,20 @@ class CahnHilliardPDE(PDEBase):
             the time to obtained an instance of :class:`torch.Tensor` giving
             the evolution rate.
         """
-        from ..backends.torch import torch_backend
-
         interface_width = self.interface_width
-        laplace_c = torch_backend.make_torch_operator(
-            grid=state.grid, operator="laplace", bcs=self.bc_c, dtype=state.dtype
+        laplace_c = state.grid.make_operator(
+            operator="laplace",
+            bc=self.bc_c,
+            backend="torch",
+            native=True,
+            dtype=state.dtype,
         )
-        laplace_mu = torch_backend.make_torch_operator(
-            grid=state.grid, operator="laplace", bcs=self.bc_mu, dtype=state.dtype
+        laplace_mu = state.grid.make_operator(
+            operator="laplace",
+            bc=self.bc_mu,
+            backend="torch",
+            native=True,
+            dtype=state.dtype,
         )
 
         def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:

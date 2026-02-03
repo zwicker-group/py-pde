@@ -284,14 +284,15 @@ def test_complex_vectors(rng):
         np.testing.assert_allclose(dot_op(v1.data, v2.data), res.data)
 
 
-def test_vector_bcs():
+@pytest.mark.parametrize("backend", ["numba", "torch"], indirect=True)
+def test_vector_bcs(backend):
     """Test boundary conditions on vector fields."""
     grid = UnitGrid([3, 3], periodic=False)
     v = VectorField.from_expression(grid, ["x", "cos(y)"])
 
     bcs = {"x": {"value": [0, 1]}, "y": {"value": [2, 3]}}
     s1 = v.divergence(bcs, backend="scipy").data
-    div = grid.make_operator("divergence", bcs, backend="numba")
+    div = grid.make_operator("divergence", bcs, backend=backend)
     s2 = div(v.data)
 
     np.testing.assert_allclose(s1, s2)

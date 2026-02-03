@@ -135,7 +135,9 @@ class NumpyBackend(BackendBase):
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
+        *,
         bcs: BoundariesBase,
+        native: bool = False,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
@@ -149,6 +151,10 @@ class NumpyBackend(BackendBase):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 The boundary conditions used before the operator is applied
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -204,7 +210,7 @@ class NumpyBackend(BackendBase):
             # return valid part of the output
             return out
 
-        return apply_operator
+        return apply_operator  # type: ignore
 
     def make_integrator(
         self, grid: GridBase
@@ -417,7 +423,7 @@ class NumpyBackend(BackendBase):
         single_arg: bool = False,
         user_funcs: dict[str, Callable] | None = None,
     ) -> Callable[..., NumberOrArray]:
-        """Return a function evaluating an expression for a particular backend.
+        """Return a function evaluating an expression.
 
         Args:
             expression (:class:`~pde.tools.expression.ExpressionBase`):

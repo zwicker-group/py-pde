@@ -63,13 +63,15 @@ class TorchOperator(torch.nn.Module):
 
         elif isinstance(bcs, BoundariesList):
             # get the ghost cell setters for all boundaries
-            assert grid == bcs.grid
+            if grid != bcs.grid:
+                msg = "Different grids for operator and BCs"
+                raise ValueError(msg)
             self.apply_bcs = True
-            self.ghost_cell_setters = []
-            for bc_axis in bcs:
-                for bc_local in bc_axis:
-                    ghost_cell_setter = make_local_ghost_cell_setter(bc_local)
-                    self.ghost_cell_setters.append(ghost_cell_setter)
+            self.ghost_cell_setters = [
+                make_local_ghost_cell_setter(bc_local)
+                for bc_axis in bcs
+                for bc_local in bc_axis
+            ]
 
         else:
             raise NotImplementedError

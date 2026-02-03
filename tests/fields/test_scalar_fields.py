@@ -104,16 +104,17 @@ def test_scalars(rng):
     np.testing.assert_allclose((arr * s1).data, (s1 * arr).data)
 
 
-def test_laplacian(rng):
-    """Test the gradient operator."""
+@pytest.mark.parametrize("backend", ["numba", "torch"], indirect=True)
+def test_laplacian(backend, rng):
+    """Test the Laplace operator."""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
     s = ScalarField.random_harmonic(grid, axis_combination=np.add, modes=1, rng=rng)
 
-    s_lap = s.laplace("auto_periodic_neumann")
+    s_lap = s.laplace("auto_periodic_neumann", backend=backend)
     assert s_lap.data.shape == (16, 16)
     np.testing.assert_allclose(s_lap.data, -s.data, rtol=0.1, atol=0.1)
 
-    s.laplace("auto_periodic_neumann", out=s_lap)
+    s.laplace("auto_periodic_neumann", out=s_lap, backend=backend)
     assert s_lap.data.shape == (16, 16)
     np.testing.assert_allclose(s_lap.data, -s.data, rtol=0.1, atol=0.1)
 

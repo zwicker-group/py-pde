@@ -11,6 +11,8 @@ import numpy as np
 from numpy.typing import ArrayLike  # noqa: F401
 
 if TYPE_CHECKING:
+    from torch import Tensor
+
     from ..fields import DataFieldBase, FieldCollection
     from ..grids.base import GridBase
 
@@ -25,9 +27,12 @@ NumberOrArray = Number | NumericArray  # number or array of numbers (incl comple
 FloatingArray = np.ndarray[Any, np.dtype[np.floating]]
 FloatOrArray = float | np.ndarray[Any, np.dtype[np.floating]]
 
+# generic array types that work for various fields or arrays
+TField = TypeVar("TField", "FieldCollection", "DataFieldBase")
+TArray = TypeVar("TArray", NumericArray, "Tensor")
+
 # miscellaneous types:
 BackendType = Literal["scipy", "numpy", "numba", "numba_mpi", "torch"]
-TField = TypeVar("TField", "FieldCollection", "DataFieldBase", covariant=True)
 
 
 class OperatorInfo(NamedTuple):
@@ -42,7 +47,7 @@ class OperatorInfo(NamedTuple):
 class OperatorImplType(Protocol):
     """An operator that acts on an array."""
 
-    def __call__(self, arr: NumericArray, out: NumericArray) -> None:
+    def __call__(self, arr: TArray, out: TArray) -> None:
         """Evaluate the operator."""
 
 
@@ -58,10 +63,10 @@ class OperatorType(Protocol):
 
     def __call__(
         self,
-        arr: NumericArray,
-        out: NumericArray | None = None,
+        arr: TArray,
+        out: TArray | None = None,
         args: dict[str, Any] | None = None,
-    ) -> NumericArray:
+    ) -> TArray:
         """Evaluate the operator."""
 
 

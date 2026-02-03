@@ -63,8 +63,6 @@ def test_const(expr):
         val = float(expr)
     assert e.constant
     assert e.value == val
-    assert e() == val
-    assert e.get_function("numba")() == val
     assert not e.depends_on("a")
     assert e.differentiate("a").value == 0
     assert e.shape == ()
@@ -106,7 +104,6 @@ def test_single_arg(rng):
     assert not e.constant
     assert e.depends_on("a")
     assert e(4) == 8
-    assert e.get_function("numba")(4) == 8
     assert e.differentiate("a").value == 2
     assert e.differentiate("b").value == 0
     assert e.shape == ()
@@ -120,25 +117,24 @@ def test_single_arg(rng):
 
     arr = rng.random(5)
     np.testing.assert_allclose(e(arr), 2 * arr)
-    np.testing.assert_allclose(e.get_function("numba")(arr), 2 * arr)
 
     g = e.derivatives
     assert g.shape == (1,)
     assert g.constant
     assert g(3) == [2]
-    assert g.get_function("numba")(3) == [2]
 
     with pytest.raises(TypeError):
         ScalarExpression(np.exp)
 
 
-def test_two_args(rng):
+@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
+def test_two_args(backend, rng):
     """Test simple expressions."""
     e = ScalarExpression("2 * a ** b")
     assert e.depends_on("b")
     assert not e.constant
     assert e(4, 2) == 32
-    assert e.get_function("numba")(4, 2) == 32
+    assert e.get_function(backend)(4, 2) == 32
     assert e.differentiate("a")(4, 2) == 16
     assert e.differentiate("b")(4, 2) == pytest.approx(32 * np.log(4))
     assert e.differentiate("c").value == 0
@@ -148,23 +144,20 @@ def test_two_args(rng):
 
     for x in [rng.random(2), rng.random((2, 5))]:
         res = 2 * x[0] ** x[1]
-        np.testing.assert_allclose(e(*x), res)
-        np.testing.assert_allclose(e.get_function("numba")(*x), res)
+        np.testing.assert_allclose(e.get_function(backend)(*x), res)
         if x.ndim == 1:
-            func = e.get_function(single_arg=True)
-            np.testing.assert_allclose(func(x), res)
-            func = e.get_function(backend="numba", single_arg=True)
+            func = e.get_function(backend, single_arg=True)
             np.testing.assert_allclose(func(x), res)
 
     g = e.derivatives
     assert g.shape == (2,)
     assert g.rank == 1
     assert not g.constant
-    np.testing.assert_allclose(g(2, 3), [24, 16 * np.log(2)])
-    np.testing.assert_allclose(g.get_function("numba")(2, 3), [24, 16 * np.log(2)])
+    np.testing.assert_allclose(g.get_function(backend)(2, 3), [24, 16 * np.log(2)])
 
 
-def test_derivatives():
+@pytest.mark.parametrize("backend", ["numba", "torch"], indirect=True)
+def test_derivatives(backend):
     """Test vector expressions."""
     e = ScalarExpression("a * b**2")
     assert e.depends_on("a")
@@ -175,12 +168,12 @@ def test_derivatives():
     d1 = e.derivatives
     assert d1.shape == (2,)
     np.testing.assert_allclose(d1(2, 3), [9, 12])
-    np.testing.assert_allclose(d1.get_function("numba")(2, 3), [9, 12])
+    np.testing.assert_allclose(d1.get_function(backend)(2, 3), [9, 12])
 
     d2 = d1.derivatives
     assert d2.shape == (2, 2)
     np.testing.assert_allclose(d2(2, 3), [[0, 6], [6, 4]])
-    np.testing.assert_allclose(d2.get_function("numba")(2, 3), [[0, 6], [6, 4]])
+    np.testing.assert_allclose(d2.get_function(backend)(2, 3), [[0, 6], [6, 4]])
 
     d3 = d2.derivatives
     assert d3.shape == (2, 2, 2)
@@ -188,10 +181,11 @@ def test_derivatives():
     d4 = d3.derivatives
     assert d4.shape == (2, 2, 2, 2)
     np.testing.assert_allclose(d4(2, 3), np.zeros((2, 2, 2, 2)))
-    np.testing.assert_allclose(d4.get_function("numba")(2, 3), np.zeros((2, 2, 2, 2)))
+    np.testing.assert_allclose(d4.get_function(backend)(2, 3), np.zeros((2, 2, 2, 2)))
 
 
-def test_indexed():
+@pytest.mark.parametrize("backend", ["numba", "torch"], indirect=True)
+def test_indexed(backend):
     """Test simple expressions."""
     e = ScalarExpression("2 * a[0] ** a[1]", allow_indexed=True)
     assert not e.constant
@@ -199,7 +193,7 @@ def test_indexed():
 
     a = np.array([4, 2])
     assert e(a) == 32
-    assert e.get_function("numba")(a) == 32
+    assert e.get_function(backend)(a) == 32
 
     assert e.differentiate("a[0]")(a) == 16
     assert e.differentiate("a[1]")(a) == pytest.approx(32 * np.log(4))
@@ -267,24 +261,25 @@ def test_expression_from_expression():
         ScalarExpression(expr, "b")
 
 
-def test_expression_user_funcs():
+@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
+def test_expression_user_funcs(backend):
     """Test the usage of user_funcs."""
     expr = ScalarExpression("func()", user_funcs={"func": lambda: 1})
     assert expr() == 1
-    assert expr.get_function("numba")() == 1
+    assert expr.get_function(backend)() == 1
     assert expr.value == 1
 
     expr = ScalarExpression("f(pi)", user_funcs={"f": np.sin})
     assert expr.constant
     assert expr() == pytest.approx(0)
-    assert expr.get_function("numba")() == pytest.approx(0)
+    assert expr.get_function(backend)() == pytest.approx(0)
     assert expr.value == pytest.approx(0)
 
     expr = TensorExpression("[0, f(pi)]", user_funcs={"f": np.sin})
     assert expr.constant
     np.testing.assert_allclose(expr(), np.array([0, 0]), atol=1e-14)
     np.testing.assert_allclose(
-        expr.get_function("numba")(), np.array([0, 0]), atol=1e-14
+        expr.get_function(backend)(), np.array([0, 0]), atol=1e-14
     )
     np.testing.assert_allclose(expr.value, np.array([0, 0]), atol=1e-14)
 
@@ -312,11 +307,12 @@ def test_complex_expression():
     np.testing.assert_allclose(expr.value, np.array([[1, -1], [1j, 2]]))
 
 
+@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
 @pytest.mark.parametrize(
     ("expression", "value"),
     [("Heaviside(x)", 0.5), ("Heaviside(x, 0.75)", 0.75), ("heaviside(x, 0.75)", 0.75)],
 )
-def test_expression_heaviside(expression, value):
+def test_expression_heaviside(backend, expression, value):
     """Test special cases of expressions."""
     expr = ScalarExpression(expression)
     assert not expr.constant
@@ -325,20 +321,33 @@ def test_expression_heaviside(expression, value):
     assert expr(1) == 1
     np.testing.assert_allclose(expr(np.array([-1, 0, 1])), np.array([0, value, 1]))
 
-    f = expr.get_function("numba")
-    assert f(-1) == 0
-    assert f(0) == value
-    assert f(1) == 1
+    f = expr.get_function(backend)
+    # we need to test different dtype, because torch handles then only in some cases
+    assert f(-1.0) == 0
+    assert f(0.0) == value
+    assert f(1.0) == 1
     np.testing.assert_allclose(f(np.array([-1, 0, 1])), np.array([0, value, 1]))
 
 
-def test_expression_consts():
+@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
+def test_expression_hypot(backend):
+    """Test special cases of hypot expressions."""
+    expr = ScalarExpression("hypot(a, b)")
+    assert not expr.constant
+    assert expr(3, 4) == 5
+
+    f = expr.get_function(backend)
+    assert f(3.0, 4.0) == 5.0
+
+
+@pytest.mark.parametrize("backend", ["numba", "torch"], indirect=True)
+def test_expression_consts(backend):
     """Test the usage of consts."""
     expr = ScalarExpression("a", consts={"a": 1})
     assert expr.constant
     assert not expr.depends_on("a")
     assert expr() == 1
-    assert expr.get_function("numba")() == 1
+    assert expr.get_function(backend)() == 1
     assert expr.value == 1
 
     expr = ScalarExpression("a + b", consts={"a": 1})
@@ -346,13 +355,13 @@ def test_expression_consts():
     assert not expr.depends_on("a")
     assert expr.depends_on("b")
     assert expr(2) == 3
-    assert expr.get_function("numba")(2) == 3
+    assert expr.get_function(backend)(2) == 3
 
     expr = ScalarExpression("a + b", consts={"a": np.array([1, 2])})
     assert not expr.constant
     np.testing.assert_allclose(expr(np.array([2, 3])), np.array([3, 5]))
     np.testing.assert_allclose(
-        expr.get_function("numba")(np.array([2, 3])), np.array([3, 5])
+        expr.get_function(backend)(np.array([2, 3])), np.array([3, 5])
     )
 
     expr = ScalarExpression("a * b", consts={"a": np.array([1, 2])})
