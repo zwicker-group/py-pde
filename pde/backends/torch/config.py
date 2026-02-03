@@ -20,4 +20,10 @@ DEFAULT_CONFIG: list[Parameter] = [
         "special value `auto` chooses `cuda` if it is available, and falls back to "
         "`cpu` if not.",
     ),
+    Parameter(
+        "compile",
+        True,
+        bool,
+        "Enables compilation in the `torch` backend.",
+    ),
 ]

@@ -81,6 +81,10 @@ class TorchBackend(NumpyBackend):
             **compile_options:
                 Additional keyword arguments will be forwarded to :func:`torch.compile`
         """
+        if not self.config["compile"]:
+            return func
+
+        # compile the function using the torch backend
         opts = self.compile_options | compile_options
         return torch.compile(func, **opts)  # type: ignore
 
@@ -129,6 +133,7 @@ class TorchBackend(NumpyBackend):
 
         # create an operator with or without BCs
         torch_operator = operator_info.factory(grid, bcs=None, dtype=dtype, **kwargs)
+        torch_operator.eval()  # type: ignore
 
         # compile the function and move it to the device
         torch_operator_jitted = self.compile_function(torch_operator)
@@ -188,6 +193,7 @@ class TorchBackend(NumpyBackend):
 
         # create an operator with or without BCs
         torch_operator = operator_info.factory(grid, bcs, dtype=dtype, **kwargs)  # type: ignore
+        torch_operator.eval()  # type: ignore
 
         # compile the function and move it to the device
         torch_operator_jitted = self.compile_function(torch_operator)
