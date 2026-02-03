@@ -131,7 +131,7 @@ def hash_mutable(obj) -> int:
     except TypeError:
         try:
             # try hashing the data buffer
-            return hash(sha1(obj))
+            return hash(sha1(obj, usedforsecurity=False))
         except (ValueError, TypeError):
             # otherwise, hash the internal dict
             return hash_mutable(obj.__dict__)
