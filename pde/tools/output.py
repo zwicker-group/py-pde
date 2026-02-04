@@ -121,7 +121,7 @@ class JupyterOutput(OutputBase):
         try:
             from IPython.display import HTML, display
         except ImportError:
-            print("\n".join(self.lines))
+            print("\n".join(self.lines), file=sys.stderr)
         else:
             html = self.header + "".join(self.lines) + self.footer
             display(HTML(html))

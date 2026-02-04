@@ -9,7 +9,7 @@ import inspect
 import logging
 from collections import defaultdict
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 from ..tools.typing import (
     DataSetter,
@@ -21,6 +21,7 @@ from ..tools.typing import (
     OperatorFactory,
     OperatorInfo,
     OperatorType,
+    TArray,
     TField,
 )
 
@@ -85,6 +86,14 @@ class BackendBase:
         super().__init_subclass__(**kwargs)
         # create logger for this specific field class
         cls._logger = _base_logger.getChild(cls.__qualname__)
+
+    def from_numpy(self, value: Any) -> Any:
+        """Convert values from numpy to native representation."""
+        return value
+
+    def to_numpy(self, value: Any) -> Any:
+        """Convert native values to numpy representation."""
+        return value
 
     def compile_function(self, func: TFunc) -> TFunc:
         """General method that compiles a user function.
@@ -442,8 +451,8 @@ class BackendBase:
         raise NotImplementedError(msg)
 
     def make_pde_rhs(
-        self, eq: PDEBase, state: TField
-    ) -> Callable[[NumericArray, float], NumericArray]:
+        self, eq: PDEBase, state: TField, *, native: bool = False
+    ) -> Callable[[TArray, float], TArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
         Args:
@@ -451,6 +460,10 @@ class BackendBase:
                 The object describing the differential equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which information can be extracted
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
 
         Returns:
             Function returning deterministic part of the right hand side of the PDE

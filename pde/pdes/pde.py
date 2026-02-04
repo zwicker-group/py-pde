@@ -118,8 +118,7 @@ class PDE(SDEBase):
                 A function with signature `(state_data, t)` that will be called after
                 every time step. The function can modify the :class:`~numpy.ndarray` of
                 the state_data in place and it can abort the simulation immediately by
-                raising `StopIteration`. Since the callback defined here will be called
-                often, it is best to compile the function with :mod:`numba` for speed.
+                raising `StopIteration` (currently does not work with `torch` backend).
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expressions in `rhs`.
@@ -293,6 +292,8 @@ class PDE(SDEBase):
 
         from ..backends import backends
 
+        backend_obj = backends[backend]
+
         # modify a copy of the expression and the general operator array
         expr = self._rhs_expr[var].copy()
 
@@ -361,11 +362,7 @@ class PDE(SDEBase):
         # we `variables` denotes all fields the PDE evolves, i.e., the dynamical degrees
         # of freedom, `t` is the `time`, and `bc_args` are additional arguments that are
         # simply forwarded to the function setting the boundary conditions.
-        if backend == "torch":
-            # TODO: Add explicit support for arguments for BCs
-            signature = (*self.variables, "t")
-        else:
-            signature = (*self.variables, "t", "none", "bc_args")
+        signature = (*self.variables, "t", "none", "bc_args")
         # FIXME: it is currently not document why the "none" is necessary. We should
         # either remove it from the call signature or clearly document why it is
         # necessary.
@@ -377,7 +374,8 @@ class PDE(SDEBase):
             signature += tuple(state.grid.axes)
             # inject the spatial coordinates into the expression for the rhs
             extra_args = tuple(
-                state.grid.cell_coords[..., i] for i in range(state.grid.num_axes)
+                backend_obj.from_numpy(state.grid.cell_coords[..., i])
+                for i in range(state.grid.num_axes)
             )
 
         else:
@@ -413,20 +411,18 @@ class PDE(SDEBase):
 
         elif backend == "torch":
             # move extra arguments to the torch device?
-            # extra_args.to(backends["torch"].device)
 
             def rhs_func(*args) -> torch.Tensor:  # type: ignore
                 """Wrapper that inserts the extra arguments and initialized bc_args."""
-                # TODO: torch backend does not support time-dependent parameters, yet
-                return func_inner(*args, *extra_args)  # type: ignore
+                bc_args = {"t": args[-1]}
+                return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
 
         else:
             msg = f"Backend `{backend}` is not implemented"
             raise NotImplementedError(msg)
 
         # compile the function if necessary
-
-        return backends[backend].compile_function(rhs_func)
+        return backend_obj.compile_function(rhs_func)
 
     def _prepare_cache(
         self, state: TField, backend: Literal["numpy", "numba", "torch"]

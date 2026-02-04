@@ -447,7 +447,7 @@ class ScalarField(DataFieldBase):
         elif scalar == "abs" or scalar == "norm":
             data = np.abs(self.data)
         elif scalar == "norm_squared":
-            data = self.data * self.data.conjugate()
+            data = self.data * self.data.conj()
         else:
             msg = f"Unknown method `{scalar}` for `to_scalar`"
             raise ValueError(msg)

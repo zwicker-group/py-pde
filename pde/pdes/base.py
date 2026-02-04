@@ -129,7 +129,8 @@ class PDEBase(metaclass=ABCMeta):
         is met by raising `StopIteration`. Note that this interrupts the inner-most
         loop, so that some final information might be still reflect the values they
         assumed at the last tracker interrupt. Additional information (beside the
-        current state) should be returned by the `post_step_data`.
+        current state) should be returned by the `post_step_data`. Note that raising
+        `StopIteration` might not work with the `torch` backend.
 
         Example:
             The following code provides an example that creates a hook function that
