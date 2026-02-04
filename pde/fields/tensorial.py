@@ -248,7 +248,7 @@ class Tensor2Field(DataFieldBase):
             self.grid.assert_grid_compatible(out.grid)
 
         # calculate the result
-        other_data = other.data.conjugate() if conjugate else other.data
+        other_data = other.data.conj() if conjugate else other.data
         np.einsum("ij...,j...->i...", self.data, other_data, out=out.data)
         if label is not None:
             out.label = label
@@ -348,7 +348,7 @@ class Tensor2Field(DataFieldBase):
             data = np.sum(self.data**2, axis=(0, 1))
 
         elif scalar == "norm_squared":
-            data = np.sum(self.data * self.data.conjugate(), axis=(0, 1))
+            data = np.sum(self.data * self.data.conj(), axis=(0, 1))
 
         elif scalar == "trace" or scalar == "invariant1":
             data = self.data.trace(axis1=0, axis2=1)

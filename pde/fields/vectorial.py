@@ -247,7 +247,7 @@ class VectorField(DataFieldBase):
             self.grid.assert_grid_compatible(out.grid)
 
         # calculate the result
-        other_data = other.data.conjugate() if conjugate else other.data
+        other_data = other.data.conj() if conjugate else other.data
         np.einsum("i...,i...->...", self.data, other_data, out=out.data)
         if label is not None:
             out.label = label
@@ -440,7 +440,7 @@ class VectorField(DataFieldBase):
             data = np.sum(self.data**2, axis=0)
 
         elif scalar == "norm_squared":
-            data = np.sum(self.data * self.data.conjugate(), axis=0)
+            data = np.sum(self.data * self.data.conj(), axis=0)
 
         else:
             msg = f"Unknown method `{scalar}` for `to_scalar`"

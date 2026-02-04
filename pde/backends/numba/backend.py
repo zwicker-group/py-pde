@@ -738,7 +738,7 @@ class NumbaBackend(NumpyBackend):
         @register_jitable
         def maybe_conj(arr: NumericArray) -> NumericArray:
             """Helper function implementing optional conjugation."""
-            return arr.conjugate() if conjugate else arr
+            return arr.conj() if conjugate else arr
 
         def get_rank(arr: nb.types.Type | nb.types.Optional) -> int:
             """Determine rank of field with type `arr`"""
@@ -1217,8 +1217,8 @@ class NumbaBackend(NumpyBackend):
 
         return insert
 
-    def make_pde_rhs(
-        self, eq: PDEBase, state: TField
+    def make_pde_rhs(  # type: ignore
+        self, eq: PDEBase, state: TField, *, native: bool = False
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
@@ -1227,6 +1227,10 @@ class NumbaBackend(NumpyBackend):
                 The object describing the differential equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which information can be extracted
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
 
         Returns:
             Function returning deterministic part of the right hand side of the PDE

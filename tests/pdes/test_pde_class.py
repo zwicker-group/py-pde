@@ -172,7 +172,7 @@ def test_custom_operators(rng):
     del backends["numba"]._operators[grids.UnitGrid]["undefined"]
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
 def test_pde_noise(backend, rng):
     """Test noise operator on PDE class."""
     grid = grids.UnitGrid([128, 128])
@@ -196,7 +196,7 @@ def test_pde_noise(backend, rng):
         eq = PDE({"a": 0}, noise=[0.01, 2.0])
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
 def test_pde_spatial_args(backend):
     """Test PDE with spatial dependence."""
     field = ScalarField(grids.UnitGrid([4]))
@@ -215,9 +215,8 @@ def test_pde_spatial_args(backend):
     if backend == "numpy":
         with pytest.raises(RuntimeError):
             eq.evolution_rate(field)
-    elif backend == "numba":
-        with pytest.raises(RuntimeError):
-            rhs = eq.make_pde_rhs(field, backend=backend)
+    with pytest.raises(RuntimeError):
+        eq.make_pde_rhs(field, backend=backend)(field.data, 0)
 
 
 def test_pde_user_funcs(rng):
@@ -333,16 +332,16 @@ def test_pde_bcs_warning(caplog):
     assert "Unused" in caplog.text
 
 
+@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
 @pytest.mark.parametrize("bc", ["asdf", [{"value": 1}] * 3])
-def test_pde_bcs_error(bc, rng):
+def test_pde_bcs_error(backend, bc, rng):
     """Test PDE with wrong boundary conditions."""
     eq = PDE({"u": "laplace(u)"}, bc=bc)
     grid = grids.UnitGrid([8, 8])
     field = ScalarField.random_normal(grid, rng=rng)
 
-    for backend in ["numpy", "numba"]:
-        with pytest.raises(BCDataError):
-            eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
+    with pytest.raises(BCDataError):
+        eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
 
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
@@ -359,7 +358,7 @@ def test_pde_time_dependent_bcs(backend):
     np.testing.assert_allclose(storage[-1].data, 1, rtol=1e-3)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
 def test_pde_integral(backend, rng):
     """Test PDE with integral."""
     grid = grids.UnitGrid([16])
@@ -398,7 +397,7 @@ def test_anti_periodic_bcs():
     assert res2.fluctuations > 0.1
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
 def test_pde_heaviside(backend):
     """Test PDE with a heaviside right hand side."""
     field = ScalarField(grids.CartesianGrid([[-1, 1]], 2), [-1, 1])
@@ -407,8 +406,21 @@ def test_pde_heaviside(backend):
     np.testing.assert_allclose(res.data, np.array([-1.0, 2]))
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
 def test_post_step_hook(backend):
+    """Test simple post step hook function."""
+
+    def post_step_hook(state_data, t):
+        state_data[:5, :] = 1
+
+    eq = PDE({"c": "laplace(c)"}, post_step_hook=post_step_hook)
+    state = ScalarField(grids.UnitGrid([10, 10]), 0)
+    result = eq.solve(state, dt=0.1, t_range=1, backend=backend, tracker=None)
+    np.testing.assert_allclose(result.data[:5, :], 1)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
+def test_post_step_hook_stopiteration(backend):
     """Test simple post step hook function."""
 
     def post_step_hook(state_data, t):

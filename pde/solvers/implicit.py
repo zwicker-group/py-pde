@@ -94,7 +94,7 @@ class ImplicitSolver(SolverBase):
                 err = 0.0
                 for j in range(state_data.size):
                     diff: NumericArray = state_data.flat[j] - state_prev.flat[j]
-                    err += (diff.conjugate() * diff).real
+                    err += (np.conj(diff) * diff).real  # type: ignore
                 err /= state_data.size
 
                 if err < maxerror2:
@@ -157,7 +157,7 @@ class ImplicitSolver(SolverBase):
                 err = 0.0
                 for j in range(state_data.size):
                     diff: NumericArray = state_data.flat[j] - state_prev.flat[j]
-                    err += (diff.conjugate() * diff).real
+                    err += (np.conj(diff) * diff).real  # type: ignore
                 err /= state_data.size
 
                 if err < maxerror2:

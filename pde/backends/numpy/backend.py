@@ -275,7 +275,7 @@ class NumpyBackend(BackendBase):
                 raise ValueError(msg)
 
             if conjugate:
-                b = b.conjugate()
+                b = b.conj()
 
             if rank_a == 1 and rank_b == 1:  # result is scalar field
                 return np.einsum("i...,i...->...", a, b, out=out)
@@ -324,8 +324,8 @@ class NumpyBackend(BackendBase):
 
         return outer
 
-    def make_pde_rhs(
-        self, eq: PDEBase, state: TField
+    def make_pde_rhs(  # type: ignore
+        self, eq: PDEBase, state: TField, *, native: bool = False
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
@@ -334,6 +334,10 @@ class NumpyBackend(BackendBase):
                 The object describing the differential equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which information can be extracted
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
 
         Returns:
             Function returning deterministic part of the right hand side of the PDE

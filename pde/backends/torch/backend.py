@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import numbers
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import torch
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
     from ...tools.typing import (
         NumberOrArray,
         NumericArray,
+        TArray,
         TField,
     )
     from ..base import TFunc
@@ -41,6 +43,7 @@ class TorchBackend(NumpyBackend):
         "dynamic": False,
         "options": {"epilogue_fusion": True, "max_autotune": True},
     }
+    """dict: defines options that affect compilation by torch"""
 
     def __init__(self, name: str, registry: BackendRegistry, *, device: str = "config"):
         """Initialize the torch backend.
@@ -71,6 +74,23 @@ class TorchBackend(NumpyBackend):
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self._device = torch.device(device)
+
+    def from_numpy(self, value: Any) -> Any:
+        """Convert values from numpy to native representation."""
+        if isinstance(value, np.ndarray):
+            arr_torch = torch.from_numpy(value)
+            arr_torch.to(self.device)
+            return arr_torch
+        if isinstance(value, numbers.Number):
+            return value
+        msg = f"Unsupported type `{value.__type__}"
+        raise TypeError(msg)
+
+    def to_numpy(self, value: Any) -> Any:
+        """Convert native values to numpy representation."""
+        if isinstance(value, torch.Tensor):
+            return value.numpy()
+        return value
 
     def compile_function(self, func: TFunc, **compile_options) -> TFunc:
         r"""General method that compiles a user function.
@@ -268,8 +288,8 @@ class TorchBackend(NumpyBackend):
         return integrate_global
 
     def make_pde_rhs(
-        self, eq: PDEBase, state: TField
-    ) -> Callable[[NumericArray, float], NumericArray]:
+        self, eq: PDEBase, state: TField, *, native: bool = False
+    ) -> Callable[[TArray, float], TArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
         Args:
@@ -277,9 +297,13 @@ class TorchBackend(NumpyBackend):
                 The object describing the differential equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which information can be extracted
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
 
         Returns:
-            Function returning deterministic part of the right hand side of the PDE
+            Function returning deterministic part of the right hand side of the PDE.
         """
         try:
             make_rhs = eq.make_pde_rhs_torch  # type: ignore
@@ -294,14 +318,16 @@ class TorchBackend(NumpyBackend):
 
         # get the compiled right hand side
         rhs_torch = self.compile_function(make_rhs(state))
+        if native:
+            return rhs_torch  # type: ignore
 
         def rhs(arr: NumericArray, t: float = 0) -> NumericArray:
-            arr_torch = torch.from_numpy(arr)
-            arr_torch.to(self.device)
+            """Helper wrapping function working with torch tensors."""
+            arr_torch = self.from_numpy(arr)
+            res_torch = rhs_torch(arr_torch, t)
+            return self.to_numpy(res_torch)  # type: ignore
 
-            return rhs_torch(arr_torch, t).numpy()  # type: ignore
-
-        return rhs
+        return rhs  # type: ignore
 
     def make_expression_function(
         self,
@@ -367,7 +393,7 @@ class TorchBackend(NumpyBackend):
         func = sympy.lambdify(
             variables + constants,
             expression._sympy_expr,
-            modules=[user_functions, "numpy"],
+            modules=[user_functions, "torch"],
             printer=printer,
         )
 
@@ -375,7 +401,9 @@ class TorchBackend(NumpyBackend):
         # partial function instead of replacing the constants in the sympy expression
         # directly since sympy does not work well with numpy arrays.
         if constants:
-            const_values = tuple(expression.consts[c] for c in constants)
+            const_values = tuple(
+                self.from_numpy(expression.consts[c]) for c in constants
+            )
 
             func = self.compile_function(func)
 
