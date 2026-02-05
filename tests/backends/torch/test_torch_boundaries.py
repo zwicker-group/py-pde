@@ -2,12 +2,18 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import platform
+
 import numpy as np
 import pytest
 
 from pde import ScalarField, UnitGrid
 from pde.backends.torch import torch_backend
 from pde.backends.torch._boundaries import make_ghost_cell_setter
+
+pytest.importorskip("torch")
+if platform.system() == "Windows":
+    pytest.skip("Skip torch tests on Windows", allow_module_level=True)
 
 
 @pytest.mark.parametrize("dim", [1, 2])
