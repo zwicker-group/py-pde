@@ -95,6 +95,33 @@ class BackendBase:
         """Convert native values to numpy representation."""
         return value
 
+    def _apply_native(
+        self, func: Callable, value: NumericArray, *, inplace: bool = False, **kwargs
+    ) -> NumericArray:
+        r"""Apply a native function to numpy data.
+
+        Args:
+            func (callable):
+                The function defined in the native space of the backend
+            value (:class:`~numpy.ndarray`):
+                The array data that is fed to the function
+            inplace (bool):
+                If true, `value` it is assumed the function modifies the data inplace,
+                so we return the modified `value`
+            \**kwargs:
+                Additional arguments
+
+        Returns:
+            :class:`~numpy.ndarray`: The result as a numpy array
+        """
+        value_native = self.from_numpy(value)
+        if inplace:
+            func(value_native, **kwargs)
+            value[...] = self.to_numpy(value_native)
+            return value
+        res_native = func(value_native, **kwargs)
+        return self.to_numpy(res_native)  # type: ignore
+
     def compile_function(self, func: TFunc) -> TFunc:
         """General method that compiles a user function.
 

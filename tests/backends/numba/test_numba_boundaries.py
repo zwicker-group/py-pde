@@ -10,26 +10,28 @@ from pde.backends.numba._boundaries import make_virtual_point_evaluator
 from pde.grids.boundaries.local import BCBase
 
 
-def test_virtual_points_nb():
-    """Test the calculation of virtual points."""
-    g = UnitGrid([2])
-    data = np.array([1, 2])
-
-    # test derivative boundary conditions (wrt to outwards derivative)
-    for up, b, val in [
+@pytest.mark.parametrize(
+    ("up", "b", "val"),
+    [
         (False, {"type": "derivative", "value": -1}, 0),
         (True, {"type": "derivative", "value": 1}, 3),
         (False, "extrapolate", 0),
         (True, "extrapolate", 3),
         (False, {"type": "mixed", "value": 4, "const": 1}, 0),
         (True, {"type": "mixed", "value": 2, "const": 4}, 2),
-    ]:
-        bc = BCBase.from_data(g, 0, up, b)
-        assert bc.upper == up
-        assert bc.get_virtual_point(data) == pytest.approx(val)
-        assert not bc.value_is_linked
-        ev = make_virtual_point_evaluator(bc)
-        assert ev(data, (2,) if up else (-1,)) == pytest.approx(val)
+    ],
+)
+def test_virtual_points_nb(up, b, val):
+    """Test the calculation of virtual points."""
+    g = UnitGrid([2])
+    data = np.array([1, 2])
+
+    bc = BCBase.from_data(g, 0, up, b)
+    assert bc.upper == up
+    assert bc.get_virtual_point(data) == pytest.approx(val)
+    assert not bc.value_is_linked
+    ev = make_virtual_point_evaluator(bc)
+    assert ev(data, (2,) if up else (-1,)) == pytest.approx(val)
 
 
 @pytest.mark.parametrize("upper", [False, True])
