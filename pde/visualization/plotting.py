@@ -259,7 +259,7 @@ class ScalarFieldPlot:
             if isinstance(fields, FieldCollection):
                 quantities = []
                 for i, field in enumerate(fields):
-                    title = field.label if field.label else f"Field {i + 1}"
+                    title = field.label or f"Field {i + 1}"
                     quantity = {"title": title, "source": i, "scale": scale}
                     quantities.append(quantity)
             else:

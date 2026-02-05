@@ -1047,7 +1047,7 @@ class FieldCollection(FieldBase):
             to update all the plots with new data later.
         """
         # determine how many panels we need
-        if kind in {"merged"}:
+        if kind == "merged":
             num_panels = 1
         else:
             num_panels = len(self)
@@ -1083,7 +1083,7 @@ class FieldCollection(FieldBase):
         # create all the subpanels
         axs = fig.subplots(nrows=nrows, ncols=ncols, squeeze=False)
 
-        if kind in {"merged"}:
+        if kind == "merged":
             # plot a single RGB representation
             reference = [
                 self._plot_merged_image(
