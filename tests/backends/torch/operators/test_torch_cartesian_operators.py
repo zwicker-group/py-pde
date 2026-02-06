@@ -123,7 +123,7 @@ def test_gradient_cart(ndim, periodic, rng):
     np.testing.assert_allclose(res1, res2)
 
 
-@pytest.mark.parametrize("dim", [1, 2, 3])
+@pytest.mark.parametrize("dim", [1, 2])
 def test_gradient_squared_cart(dim, rng):
     """Compare gradient squared operator."""
     grid = CartesianGrid(

@@ -344,13 +344,15 @@ class PDE(SDEBase):
                 # backends, we add `bc_args` as an argument to the call of the operators
                 # to be able to pass additional information, like time
                 expr._sympy_expr = expr._sympy_expr.replace(
-                    # only modify the relevant operator
-                    lambda expr: isinstance(expr.func, UndefinedFunction)
-                    and expr.name == func  # noqa: B023
-                    # and do not modify it when the bc_args have already been set
-                    and not (
-                        isinstance(expr.args[-1], Symbol)
-                        and expr.args[-1].name == "bc_args"
+                    lambda expr: (
+                        # only modify the relevant operator
+                        isinstance(expr.func, UndefinedFunction)
+                        and expr.name == func  # noqa: B023
+                        # and do not modify it when the bc_args have already been set
+                        and not (
+                            isinstance(expr.args[-1], Symbol)
+                            and expr.args[-1].name == "bc_args"
+                        )
                     ),
                     # otherwise, add None and bc_args as arguments
                     lambda expr: expr.func(
