@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
     from ..fields.base import FieldBase
     from ..grids.boundaries.axes import BoundariesData
+    from ..tools.expressions import ScalarExpression
     from ..tools.typing import (
         ArrayLike,
         BackendType,
@@ -264,40 +265,33 @@ class PDE(SDEBase):
         """Show the expressions of the PDE."""
         return {k: v.expression for k, v in self._rhs_expr.items()}
 
-    def _compile_rhs_single(
+    def _add_operators_to_expr(
         self,
         var: str,
+        expr: ScalarExpression,
         ops: dict[str, Callable],
+        *,
         state: FieldBase,
         backend: Literal["numpy", "numba", "torch"],
-    ):
-        """Compile a function determining the right hand side for one variable.
+    ) -> None:
+        """Adds (differential) operators to an expression.
 
         Args:
             var (str):
                 The variable that is considered
+            expr (:class:`~pde.tools.expressions.ScalarExpression`):
+                The expression whose operators are being added
             ops (dict):
                 A dictionary of operators that can be used by this function. Note that
-                this dictionary might be modified in place
+                this dictionary might be modified in place.
             state (:class:`~pde.fields.FieldBase`):
                 The field describing the state of the PDE
             backend (str):
-                The backend for which the data is prepared
-
-        Returns:
-            callable: The function calculating the RHS
+                The backend for which the operators are prepared
         """
         from sympy import Symbol
         from sympy.core.function import UndefinedFunction
 
-        from ..backends import backends
-
-        backend_obj = backends[backend]
-
-        # modify a copy of the expression and the general operator array
-        expr = self._rhs_expr[var].copy()
-
-        # obtain all (differential) operators for this variable
         for func in self._operators[var]:
             if func in ops:
                 continue
@@ -359,6 +353,40 @@ class PDE(SDEBase):
                         *expr.args, Symbol("none"), Symbol("bc_args")
                     ),
                 )
+
+    def _compile_rhs_single(
+        self,
+        var: str,
+        ops: dict[str, Callable],
+        state: FieldBase,
+        *,
+        backend: Literal["numpy", "numba", "torch"],
+    ):
+        """Compile a function determining the right hand side for one variable.
+
+        Args:
+            var (str):
+                The variable that is considered
+            ops (dict):
+                A dictionary of operators that can be used by this function. Note that
+                this dictionary might be modified in place
+            state (:class:`~pde.fields.FieldBase`):
+                The field describing the state of the PDE
+            backend (str):
+                The backend for which the data is prepared
+
+        Returns:
+            callable: The function calculating the RHS
+        """
+        from ..backends import backends
+
+        backend_obj = backends[backend]
+
+        # modify a copy of the expression and the general operator array
+        expr = self._rhs_expr[var].copy()
+
+        # obtain all (differential) operators for this variable
+        self._add_operators_to_expr(var, expr, ops=ops, state=state, backend=backend)
 
         # Define the signature of the function to calculate the right hand side. Here
         # we `variables` denotes all fields the PDE evolves, i.e., the dynamical degrees
@@ -427,7 +455,7 @@ class PDE(SDEBase):
         return backend_obj.compile_function(rhs_func)
 
     def _prepare_cache(
-        self, state: TField, backend: Literal["numpy", "numba", "torch"]
+        self, state: TField, *, backend: Literal["numpy", "numba", "torch"]
     ) -> dict[str, Any]:
         """Prepare the expression by setting internal variables in the cache.
 
@@ -519,7 +547,7 @@ class PDE(SDEBase):
         # separate function, so the closures work reliably
         self.diagnostics["pde"]["bcs_used"] = set()  # keep track of the used BCs
         cache["rhs_funcs"] = [
-            self._compile_rhs_single(var, ops_general.copy(), state, backend)
+            self._compile_rhs_single(var, ops_general.copy(), state, backend=backend)
             for var in self.variables
         ]
 
@@ -767,7 +795,7 @@ class PDE(SDEBase):
                 fields. If omitted, general expressions containing the fields are
                 returned.
             t (float):
-                Time point necessary for explicit time dependences
+                Time point necessary for explicit time dependence
             wave_vector (str or :class:`~sympy.Symbol`):
                 Symbol denoting the wave vector.
             check_steady_state (bool):
