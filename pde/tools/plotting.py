@@ -818,8 +818,6 @@ def napari_viewer(
             Whether to close the viewer immediately (e.g. for testing)
         **kwargs:
             Extra arguments are passed to :class:`napari.Viewer`
-        **kwargs:
-            Extra arguments are passed to :class:`napari.Viewer`
     """
     import napari
 
