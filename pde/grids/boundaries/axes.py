@@ -38,7 +38,11 @@ BC_LOCAL_KEYS = ["type", "value", *list(BCBase._conditions)]
 
 
 def _is_local_bc_data(data: dict[str, Any]) -> bool:
-    """Tries to identify whether data specifies a local boundary condition."""
+    """Tries to identify whether data specifies a local boundary condition.
+    
+    Args:
+        data (dict): The data to check
+    """
     return any(key in data for key in BC_LOCAL_KEYS)
 
 
@@ -51,8 +55,6 @@ class BoundariesBase:
         Args:
             data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
-            set_corners (bool):
-                Determines whether the corner cells are set using interpolation
             args:
                 Additional arguments that might be supported by special boundary
                 conditions.
@@ -66,7 +68,7 @@ class BoundariesBase:
         Args:
             data (str or dict or callable):
                 Data that describes the boundaries. If this is a callable, we create
-                :class:`~pde.grids.boundaries.axes.BoundariesSetter`. In all other,
+                :class:`~pde.grids.boundaries.axes.BoundariesSetter`. In all other
                 cases :class:`~pde.grids.boundaries.axes.BoundariesList` is created and
                 `data` can either be string denoting a specific boundary condition
                 applied to all sides or a dictionary with detailed information.
@@ -101,7 +103,11 @@ class BoundariesList(BoundariesBase):
     """Defines boundary conditions for all axes individually."""
 
     def __init__(self, boundaries: list[BoundaryAxisBase]):
-        """Initialize with a list of boundaries."""
+        """Initialize with a list of boundaries.
+        
+        Args:
+            boundaries (list): List of boundary axis conditions
+        """
         if len(boundaries) == 0:
             msg = "List of boundaries must not be empty"
             raise BCDataError(msg)
@@ -146,6 +152,8 @@ class BoundariesList(BoundariesBase):
                 The grid with which the boundary condition is associated
             rank (int):
                 The tensorial rank of the field for this boundary condition
+            **kwargs:
+                Additional keyword arguments (unused)
         """
         if config["boundaries.accept_lists"] and ("low" in data or "high" in data):
             # check for legacy format that has been deprecated on 2024-11-23
@@ -239,6 +247,8 @@ class BoundariesList(BoundariesBase):
                 The grid with which the boundary condition is associated
             rank (int):
                 The tensorial rank of the field for this boundary condition
+            **kwargs:
+                Additional keyword arguments (unused)
         """
         # distinguish different possible data formats based on their type
         if isinstance(data, BoundariesList):
@@ -419,7 +429,11 @@ class BoundariesList(BoundariesBase):
             self._axes[index] = data
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+        
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         result: list[str] = []
         try:
             for b in self._axes:
@@ -509,6 +523,8 @@ class BoundariesSetter(BoundariesBase):
         Args:
             data (callable):
                 Function that sets the ghost cells
+            **kwargs:
+                Additional keyword arguments (unused)
         """
         # check whether this is already the correct class
         if isinstance(data, BoundariesSetter):
@@ -530,8 +546,6 @@ class BoundariesSetter(BoundariesBase):
         Args:
             data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
-            set_corners (bool):
-                Determines whether the corner cells are set using interpolation
             args:
                 Additional arguments that might be supported by special boundary
                 conditions.

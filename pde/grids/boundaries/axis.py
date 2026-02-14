@@ -126,7 +126,11 @@ class BoundaryAxisBase:
         yield self.high
 
     def __getitem__(self, index) -> BCBase:
-        """Returns one of the sides."""
+        """Returns one of the sides.
+        
+        Args:
+            index (int or bool): The index of the boundary side
+        """
         if index == 0 or index is False:
             return self.low
         if index == 1 or index is True:
@@ -135,7 +139,12 @@ class BoundaryAxisBase:
         raise IndexError(msg)
 
     def __setitem__(self, index, data) -> None:
-        """Set one of the sides."""
+        """Set one of the sides.
+        
+        Args:
+            index (int or bool): The index of the boundary side
+            data: Data describing the boundary condition
+        """
         # determine which side was selected
         upper = {0: False, 1: True}[index]
 
@@ -176,7 +185,11 @@ class BoundaryAxisBase:
         return self.low.rank
 
     def get_mathematical_representation(self, field_name: str = "C") -> tuple[str, str]:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+        
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         return (
             self.low.get_mathematical_representation(field_name),
             self.high.get_mathematical_representation(field_name),

@@ -50,7 +50,11 @@ CoordsType = Literal["cartesian", "grid", "cell"]
 
 
 def _check_shape(shape: int | Sequence[int]) -> tuple[int, ...]:
-    """Checks the consistency of shape tuples."""
+    """Checks the consistency of shape tuples.
+    
+    Args:
+        shape (int or list): The shape to check
+    """
     if hasattr(shape, "__iter__"):
         shape_list: Sequence[int] = shape  # type: ignore
     else:
@@ -157,7 +161,11 @@ class GridBase(metaclass=ABCMeta):
         self.axes_symmetric = [self.c.axes[i] for i in self._axes_symmetric]
 
     def __init_subclass__(cls, **kwargs) -> None:
-        """Initialize class-level attributes of subclasses."""
+        """Initialize class-level attributes of subclasses.
+        
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent class
+        """
         super().__init_subclass__(**kwargs)
 
         # create logger for this specific field class
@@ -392,6 +400,9 @@ class GridBase(metaclass=ABCMeta):
 
         This function is for instance called when
         a grid instance appears in another object that is copied using `copy.deepcopy`
+        
+        Args:
+            memo (dict): Dictionary of already copied objects
         """
         # this implementation assumes that a simple call to copy is sufficient
         result = self.copy()
