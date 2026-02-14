@@ -359,8 +359,8 @@ else:
             >>> numba.carray(address_as_void_pointer(addr), arr.shape, arr.dtype
 
         Args:
-            typingctx: The typing context from numba
-            src: The memory address source
+            typingctx: The Numba typing context
+            src: Integer memory address to be converted to a void pointer
 
         Returns:
             :class:`numba.core.types.voidptr`: Pointer to the memory address
