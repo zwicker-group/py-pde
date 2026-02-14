@@ -400,8 +400,9 @@ class NumbaBackend(NumpyBackend):
         """Create a function to set the valid part of a full data array.
 
         Args:
-            grid
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
+            grid (:class:`~pde.grid.base.GridBase`):
+                The grid for which the data setter is created
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 Defines the boundary conditions for a particular grid, for which the
                 setter should be defined.
 
@@ -425,6 +426,8 @@ class NumbaBackend(NumpyBackend):
                     The full array with ghost cells that the data is written to
                 data_valid (:class:`~numpy.ndarray`):
                     The valid data that is written to `data_full`
+                args:
+                    Additional arguments (not used in this function)
             """
             if num_axes == 1:
                 data_full[..., 1:-1] = data_valid
@@ -860,8 +863,6 @@ class NumbaBackend(NumpyBackend):
         Args:
             field (:class:`~pde.fields.datafield_base.DataFieldBase`):
                 Field for which the outer product is defined
-            conjugate (bool):
-                Whether to use the complex conjugate for the second operand
 
         Returns:
             function that takes two instance of :class:`~numpy.ndarray`, which contain
@@ -1447,6 +1448,8 @@ class NumbaBackend(NumpyBackend):
         Args:
             solver (:class:`~pde.solvers.base.SolverBase`):
                 The solver instance, which determines how the stepper is constructed
+            stepper_style (str):
+                Either "fixed" or "adaptive" to select the type of stepper
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
