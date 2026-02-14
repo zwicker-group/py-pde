@@ -84,6 +84,7 @@ class Cuboid:
         Args:
             p1 (list): Coordinates of first corner point
             p2 (list): Coordinates of second corner point
+            **kwargs: Additional keyword arguments passed to the constructor
 
         Returns:
             Cuboid: cuboid with positive size
@@ -98,6 +99,7 @@ class Cuboid:
 
         Args:
             bounds (list): Two dimensional array of axes bounds
+            **kwargs: Additional keyword arguments passed to the constructor
 
         Returns:
             Cuboid: cuboid with positive size
@@ -114,6 +116,7 @@ class Cuboid:
         Args:
             centerpoint (list): Coordinates of the center
             size (list): Size of the cuboid
+            **kwargs: Additional keyword arguments passed to the constructor
 
         Returns:
             Cuboid: cuboid with positive size
@@ -129,7 +132,11 @@ class Cuboid:
         return f"{self.__class__.__name__}(pos={self.pos}, size={self.size})"
 
     def __add__(self, other: Cuboid) -> Cuboid:
-        """The sum of two cuboids is the minimal cuboid enclosing both."""
+        """The sum of two cuboids is the minimal cuboid enclosing both.
+        
+        Args:
+            other: The cuboid to add
+        """
         if isinstance(other, Cuboid):
             if self.dim != other.dim:
                 msg = "Incompatible dimensions"
@@ -141,7 +148,11 @@ class Cuboid:
         return NotImplemented
 
     def __eq__(self, other) -> bool:
-        """Override the default equality test."""
+        """Override the default equality test.
+        
+        Args:
+            other: The object to compare to
+        """
         if not isinstance(other, self.__class__):
             return NotImplemented
         return np.all(self.pos == other.pos) and np.all(self.size == other.size)  # type: ignore
@@ -197,7 +208,12 @@ class Cuboid:
         return np.prod(self.size)  # type: ignore
 
     def buffer(self, amount: FloatOrArray = 0, inplace=False) -> Cuboid:
-        """Dilate the cuboid by a certain amount in all directions."""
+        """Dilate the cuboid by a certain amount in all directions.
+        
+        Args:
+            amount: The amount to dilate (can be a scalar or array)
+            inplace (bool): Whether to modify in place or return a new cuboid
+        """
         amount = np.asarray(amount)
         if inplace:
             self.pos -= amount
@@ -238,7 +254,7 @@ def asanyarray_flags(
 
     Args:
         data (:class:`~numpy.ndarray`): numpy array that whose flags are adjusted
-        dtype: the resulant dtype
+        dtype: The resultant dtype
         writeable (bool): Flag determining whether the results is writable
 
     Returns:

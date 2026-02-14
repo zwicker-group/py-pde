@@ -196,7 +196,11 @@ def make_correlated_noise(
         else:
 
             def corr_spectrum(k2s):
-                """Fourier transform of a Gaussian function."""
+                """Fourier transform of a Gaussian function.
+                
+                Args:
+                    k2s: Squared wave vectors
+                """
                 return np.exp(-0.5 * length_scale**2 * k2s)
 
     elif correlation == "power law":
@@ -207,7 +211,11 @@ def make_correlated_noise(
         else:
 
             def corr_spectrum(k2s):
-                """Fourier transform of a power law."""
+                """Fourier transform of a power law.
+                
+                Args:
+                    k2s: Squared wave vectors
+                """
                 return k2s ** (exponent / 4)
 
     elif correlation == "cosine":
@@ -217,7 +225,11 @@ def make_correlated_noise(
         sharpness2 = sharpness**2
 
         def corr_spectrum(k2s):
-            """Fourier transform of a function that has a dominant harmonic mode."""
+            """Fourier transform of a function that has a dominant harmonic mode.
+            
+            Args:
+                k2s: Squared wave vectors
+            """
             return np.exp(-sharpness2 * (length_scale * np.sqrt(k2s) - 1) ** 2)
 
     else:

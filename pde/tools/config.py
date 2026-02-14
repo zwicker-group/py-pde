@@ -229,7 +229,11 @@ class Config(collections.UserDict):
         self.mode = mode
 
     def __getitem__(self, key: str):
-        """Retrieve item `key`"""
+        """Retrieve item `key`.
+        
+        Args:
+            key (str): The configuration key
+        """
         parameter = self.data[key]
 
         if isinstance(parameter, Parameter):
@@ -237,7 +241,12 @@ class Config(collections.UserDict):
         return parameter
 
     def __setitem__(self, key: str, value: ConfigValueType | Parameter):
-        """Update item `key` with `value`"""
+        """Update item `key` with `value`.
+        
+        Args:
+            key (str): The configuration key
+            value: The value to set
+        """
         # determine how to set the item
         if self.mode == "insert":
             self.data[key] = value
@@ -259,7 +268,11 @@ class Config(collections.UserDict):
             raise ValueError(msg)
 
     def __delitem__(self, key: str):
-        """Removes item `key`"""
+        """Removes item `key`.
+        
+        Args:
+            key (str): The configuration key
+        """
         if self.mode == "insert":
             del self.data[key]
         else:
@@ -271,7 +284,7 @@ class Config(collections.UserDict):
 
         Args:
             ret_values (bool):
-                Only return values (and not :class:`Parameter` instances)
+                Whether to return only values (and not :class:`Parameter` instances)
 
         Returns:
             dict: A representation of the configuration in a normal :class:`dict`.
@@ -370,7 +383,15 @@ class GlobalConfig:
         return self._config, key
 
     def _convert_value(self, key: str, value):
-        """Helper function converting certain values."""
+        """Helper function converting certain values.
+        
+        Args:
+            key (str): The configuration key
+            value: The value to convert
+        
+        Returns:
+            The converted value
+        """
         if key.endswith("numba.multithreading") and isinstance(value, bool):
             value = "always" if value else "never"
             # Deprecated on 2025-02-12
@@ -387,7 +408,11 @@ class GlobalConfig:
         return data_key in config
 
     def __getitem__(self, key: str):
-        """Retrieve item `key`"""
+        """Retrieve item `key`.
+        
+        Args:
+            key (str): The configuration key
+        """
         config, data_key = self._get_sub_config(key)
         return config[data_key]
 
@@ -406,7 +431,7 @@ class GlobalConfig:
         Args:
             just_values (bool):
                 Whether to yield converted parameter values (`True`) or raw
-                :class:`Parameter` objects (`False`).
+                :class:`Parameter` objects (`False`)
 
         Yields:
             tuple: Key-value pairs of configuration items, including items from all
@@ -434,12 +459,21 @@ class GlobalConfig:
             self[k] = v
 
     def __setitem__(self, key: str, value):
-        """Update item `key` with `value`"""
+        """Update item `key` with `value`.
+        
+        Args:
+            key (str): The configuration key
+            value: The value to set
+        """
         config, data_key = self._get_sub_config(key)
         config[data_key] = self._convert_value(key, value)
 
     def __delitem__(self, key: str):
-        """Removes item `key`"""
+        """Removes item `key`.
+        
+        Args:
+            key (str): The configuration key
+        """
         config, data_key = self._get_sub_config(key)
         del config[data_key]
 
@@ -450,7 +484,7 @@ class GlobalConfig:
 
         Args:
             ret_values (bool):
-                Only return values (and not :class:`Parameter` instances)
+                Whether to return only values (and not :class:`Parameter` instances)
             incl_backends (bool):
                 Whether to include items from the backends
 
@@ -523,7 +557,14 @@ def get_package_versions(
 
 
 def parse_version_str(ver_str: str) -> list[int]:
-    """Helper function converting a version string into a list of integers."""
+    """Helper function converting a version string into a list of integers.
+    
+    Args:
+        ver_str (str): The version string to parse
+    
+    Returns:
+        list[int]: List of version numbers as integers
+    """
     result = []
     for token in ver_str.split(".")[:3]:
         with contextlib.suppress(ValueError):
@@ -532,7 +573,12 @@ def parse_version_str(ver_str: str) -> list[int]:
 
 
 def check_package_version(package_name: str, min_version: str):
-    """Checks whether a package has a sufficient version."""
+    """Checks whether a package has a sufficient version.
+    
+    Args:
+        package_name (str): The name of the package to check
+        min_version (str): The minimum required version
+    """
 
     msg = f"`{package_name}` version {min_version} required for py-pde"
     try:

@@ -71,7 +71,14 @@ def objects_equal(a, b) -> bool:
 
 
 def _hash_iter(it: Iterable) -> int:
-    """Get hash of an iterable but turning it into a tuple first."""
+    """Get hash of an iterable but turning it into a tuple first.
+    
+    Args:
+        it: An iterable object
+    
+    Returns:
+        int: The hash value
+    """
     return hash(tuple(it))
 
 
@@ -344,7 +351,7 @@ class SerializedDict(collections.abc.MutableMapping):
                 Determines the serialization method for values
             storage_dict (dict):
                 Can be used to chose a different dictionary for the underlying
-                storage mechanism, e.g., storage_dict = PersistentDict()
+                storage mechanism (e.g., PersistentDict())
         """
         # initialize the dictionary that actually stores the data
         if storage_dict is None:
@@ -500,7 +507,11 @@ class _class_cache:
         wrapped method."""
 
         def clear_cache(obj) -> None:
-            """Clears the cache associated with this method."""
+            """Clears the cache associated with this method.
+            
+            Args:
+                obj: The object instance
+            """
             try:
                 # try getting an initialized cache
                 cache = obj._cache_methods[self.name]
@@ -521,7 +532,11 @@ class _class_cache:
         return clear_cache
 
     def _get_wrapped_function(self, func: TFunc) -> TFunc:
-        """Return the wrapped method, which implements the cache."""
+        """Return the wrapped method, which implements the cache.
+        
+        Args:
+            func: The function to wrap
+        """
 
         if self.name is None:
             self.name = func.__name__
@@ -614,7 +629,11 @@ class cached_property(_class_cache):
     """
 
     def __call__(self, method) -> Self:
-        """Apply the cache decorator to the property."""
+        """Apply the cache decorator to the property.
+        
+        Args:
+            method: The method to decorate
+        """
         # save name, e.g., to be able to delete cache later
         self._cache_name = self.name
         self.clear_cache_of_obj = self._get_clear_cache_method()
@@ -626,7 +645,12 @@ class cached_property(_class_cache):
         return self
 
     def __get__(self, obj, owner):
-        """Call the method to obtain the result for this property."""
+        """Call the method to obtain the result for this property.
+        
+        Args:
+            obj: The instance
+            owner: The owner class
+        """
         return self.func(obj)
 
 
@@ -656,7 +680,11 @@ class cached_method(_class_cache):
     """
 
     def __call__(self, method: TFunc) -> TFunc:
-        """Apply the cache decorator to the method."""
+        """Apply the cache decorator to the method.
+        
+        Args:
+            method: The method to decorate
+        """
 
         wrapper = self._get_wrapped_function(method)
 

@@ -142,7 +142,11 @@ def replace_in_docstring(
     # initialize textwrapper for formatting docstring
 
     def repl(matchobj) -> str:
-        """Helper function replacing token in docstring."""
+        """Helper function replacing token in docstring.
+        
+        Args:
+            matchobj: The regex match object
+        """
         bare_text = textwrap.dedent(value).strip()
         return textwrap.indent(bare_text, matchobj.group(1))
 
@@ -161,13 +165,22 @@ def replace_in_docstring(
 
 
 def fill_in_docstring(f: TFunc) -> TFunc:
-    """Decorator that replaces text in the docstring of a function."""
+    """Decorator that replaces text in the docstring of a function.
+    
+    Args:
+        f: The function to decorate
+    """
     tw = textwrap.TextWrapper(
         width=80, expand_tabs=True, replace_whitespace=True, drop_whitespace=True
     )
 
     def repl(matchobj, value: str) -> str:
-        """Helper function replacing token in docstring."""
+        """Helper function replacing token in docstring.
+        
+        Args:
+            matchobj: The regex match object
+            value: The replacement value
+        """
         tw.initial_indent = tw.subsequent_indent = matchobj.group(1)
         return tw.fill(textwrap.dedent(value))
 

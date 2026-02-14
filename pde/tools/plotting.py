@@ -653,7 +653,7 @@ class BasicPlottingContext(PlottingContextBase):
                 If axes are given, they are used. If a figure is given, it is
                 set as active.
             title (str):
-                The shown in the plot
+                The title shown in the plot
             show (bool):
                 Flag determining whether plots are actually shown
         """
@@ -816,6 +816,8 @@ def napari_viewer(
             Whether to run the event loop of napari.
         close (bool):
             Whether to close the viewer immediately (e.g. for testing)
+        **kwargs:
+            Extra arguments are passed to :class:`napari.Viewer`
         **kwargs:
             Extra arguments are passed to :class:`napari.Viewer`
     """
