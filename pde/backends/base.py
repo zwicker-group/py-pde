@@ -82,17 +82,29 @@ class BackendBase:
             registry.add(self)
 
     def __init_subclass__(cls, **kwargs) -> None:
-        """Initialize class-level attributes of subclasses."""
+        """Initialize class-level attributes of subclasses.
+        
+        Args:
+            **kwargs: Additional arguments for subclass initialization
+        """
         super().__init_subclass__(**kwargs)
         # create logger for this specific field class
         cls._logger = _base_logger.getChild(cls.__qualname__)
 
     def from_numpy(self, value: Any) -> Any:
-        """Convert values from numpy to native representation."""
+        """Convert values from numpy to native representation.
+        
+        Args:
+            value: The value to convert from numpy representation
+        """
         return value
 
     def to_numpy(self, value: Any) -> Any:
-        """Convert native values to numpy representation."""
+        """Convert native values to numpy representation.
+        
+        Args:
+            value: The value to convert to numpy representation
+        """
         return value
 
     def _apply_native(
@@ -108,7 +120,7 @@ class BackendBase:
             inplace (bool):
                 If true, `value` it is assumed the function modifies the data inplace,
                 so we return the modified `value`
-            \**kwargs:
+            **kwargs:
                 Additional arguments
 
         Returns:
@@ -158,8 +170,8 @@ class BackendBase:
                 def make_operator(grid: GridBase): ...
 
         Args:
-            grid (:class:`~pde.grid.base.GridBase`):
-                Grid for which the operator is defined
+            grid_cls (:class:`~pde.grid.base.GridBase`):
+                Grid class for which the operator is defined
             name (str):
                 The name of the operator to register
             factory_func (callable):
@@ -176,7 +188,12 @@ class BackendBase:
         """
 
         def register_operator(factor_func_arg: OperatorFactory):
-            """Helper function to register the operator."""
+            """Helper function to register the operator.
+            
+            Args:
+                factor_func_arg (OperatorFactory):
+                    The operator factory function to register
+            """
             self._operators[grid_cls][name] = OperatorInfo(
                 factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out, name=name
             )
@@ -193,8 +210,8 @@ class BackendBase:
         """Returns all operators defined for a grid.
 
         Args:
-            grid (:class:`~pde.grid.base.GridBase` or its type):
-                Grid for which the operator need to be returned
+            grid_id (:class:`~pde.grid.base.GridBase` or its type):
+                Grid or grid class for which the operators need to be returned
         """
         grid_cls = grid_id if inspect.isclass(grid_id) else grid_id.__class__
 
@@ -420,8 +437,6 @@ class BackendBase:
         Args:
             field (:class:`~pde.fields.datafield_base.DataFieldBase`):
                 Field for which the outer product is defined
-            conjugate (bool):
-                Whether to use the complex conjugate for the second operand
 
         Returns:
             function that takes two instance of :class:`~numpy.ndarray`, which contain
@@ -465,11 +480,11 @@ class BackendBase:
         """Return a function for evaluating the noise term of the PDE.
 
         Args:
+            eq (:class:`~pde.pdes.base.PDEBase`):
+                The PDE instance describing the evolution equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            noise (float or :class:`~numpy.ndarray` or None):
-                Variance of the additive Gaussian white noise
 
         Returns:
             Function calculating noise
@@ -510,11 +525,13 @@ class BackendBase:
         Args:
             solver (:class:`~pde.solvers.base.SolverBase`):
                 The solver instance, which determines how the stepper is constructed
+            stepper_style (str):
+                Determines how the stepper is expected to work
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            stepper_style (str):
-                Determines how the stepper is expected to work
+            dt (float):
+                The time step for the stepper
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
