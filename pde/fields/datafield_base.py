@@ -605,7 +605,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Args:
             filename (str):
                 The path to the image that will be created
-            \**kwargs:
+            **kwargs:
                 Additional keyword arguments that affect the image. For
                 instance, some fields support a `scalar` argument that
                 determines how they are converted to a scalar. Non-Cartesian
@@ -1075,7 +1075,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         r"""Return data for a vector plot of the field.
 
         Args:
-            \**kwargs: Additional parameters are forwarded to
+            transpose (bool):
+                Determines whether the transpose of the data should be plotted.
+            **kwargs: Additional parameters are forwarded to
                 `grid.get_image_data`
 
         Returns:
@@ -1107,7 +1109,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 the data field.
             ylim (tuple of float):
                 Limits of the y-axis. If omitted, the data range is used
-            \**kwargs:
+            **kwargs:
                 Additional arguments are passed to :func:`matplotlib.pyplot.plot`
 
         Returns:
@@ -1183,7 +1185,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 :meth:`DataFieldBase.to_scalar`.
             transpose (bool):
                 Determines whether the transpose of the data is plotted
-            \**kwargs:
+            **kwargs:
                 Additional keyword arguments that affect the image. Non-Cartesian grids
                 might support `performance_goal` to influence how an image is created
                 from raw data. `vmin` and `vmax` support the special option `symmetric`
@@ -1285,7 +1287,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             max_points (int):
                 The maximal number of points that is used along each axis. This argument
                 is only used for quiver plots. `None` indicates all points are used.
-            \**kwargs:
+            **kwargs:
                 Additional keyword arguments are passed to
                 :meth:`~pde.field.base.DataFieldBase.get_vector_data` and
                 :func:`matplotlib.pyplot.quiver` or
@@ -1395,7 +1397,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 `line`, `vector`, or `interactive`. Alternatively, `auto`
                 determines the best visualization based on the field itself.
             {PLOT_ARGS}
-            \**kwargs:
+            **kwargs:
                 All additional keyword arguments are forwarded to the actual
                 plotting function determined by `kind`.
 
@@ -1496,7 +1498,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         r"""Returns data for plotting this field using :mod:`napari`
 
         Args:
-            \**kwargs: all arguments are forwarded to `_get_napari_layer_data`
+            **kwargs: all arguments are forwarded to `_get_napari_layer_data`
 
         Returns:
             dict: all the information necessary to plot this field

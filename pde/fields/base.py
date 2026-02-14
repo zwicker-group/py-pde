@@ -303,7 +303,7 @@ class FieldBase(metaclass=ABCMeta):
         Args:
             filename (str):
                 Path where the data is stored
-            \**kwargs:
+            **kwargs:
                 Additional parameters may be supported for some formats
         """
         extension = Path(filename).suffix.lower()
@@ -337,6 +337,7 @@ class FieldBase(metaclass=ABCMeta):
 
         Args:
             filename (str): The path to the image that will be created
+            **kwargs: Additional parameters may be supported by subclasses
         """
         msg = f"Cannot save {self.__class__.__name__} as an image"
         raise NotImplementedError(msg)
@@ -652,7 +653,7 @@ class FieldBase(metaclass=ABCMeta):
 
         Args:
             func (callable or str):
-                The (vectorized) function being applied to the data or an expression
+                (vectorized) function being applied to the data or an expression
                 that can be parsed using sympy (:func:`~pde.tools.expressions.evaluate`
                 is used in this case). The local field values can be accessed using the
                 field labels for a field collection and via the variable `c` otherwise.
@@ -733,15 +734,6 @@ class FieldBase(metaclass=ABCMeta):
     @abstractmethod
     def get_image_data(self) -> dict[str, Any]:
         r"""Return data for plotting an image of the field.
-
-        Args:
-            scalar (str or int):
-                The method for extracting scalars as described in
-                :meth:`DataFieldBase.to_scalar`.
-            transpose (bool):
-                Determines whether the transpose of the data should is plotted
-            \**kwargs:
-                Additional parameters are forwarded to `grid.get_image_data`
 
         Returns:
             dict: Information useful for plotting an image of the field

@@ -275,8 +275,6 @@ class Tensor2Field(DataFieldBase):
                 {ARG_BOUNDARIES_OPTIONAL}
             out (VectorField, optional):
                 Optional scalar field to which the  result is written.
-            label (str, optional):
-                Name of the returned field
             **kwargs:
                 Additional arguments affecting how the operator behaves.
 
@@ -523,7 +521,7 @@ class Tensor2Field(DataFieldBase):
                 or `line`. Alternatively, `auto` determines the best visualization based
                 on the grid.
             {PLOT_ARGS}
-            \**kwargs:
+            **kwargs:
                 All additional keyword arguments are forwarded to the actual plotting
                 function of all subplots.
 
