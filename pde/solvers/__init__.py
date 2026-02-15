@@ -14,7 +14,6 @@
    ~crank_nicolson.CrankNicolsonSolver
    ~adams_bashforth.AdamsBashforthSolver
    ~scipy.ScipySolver
-   ~base.ConvergenceError
    ~base.registered_solvers
 
 

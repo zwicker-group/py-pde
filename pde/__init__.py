@@ -1,10 +1,10 @@
 """The py-pde package provides tools for solving partial differential equations.
 
-This package provides classes and methods for solving partial differential equations (PDEs)
-on various grids using different numerical methods. Key components include:
+This package provides classes and methods for solving partial differential equations
+(PDEs) on various grids using different numerical methods. Key components include:
 
 - **Fields**: Data structures representing scalar, vector, and tensor fields on grids
-- **Grids**: Spatial discretizations including Cartesian, polar, spherical, and cylindrical
+- **Grids**: Spatial discretizations including Cartesian and curvilinear coordinates
 - **PDEs**: Pre-defined PDEs and a framework for defining custom PDEs
 - **Solvers**: Time-stepping algorithms for evolving PDEs
 - **Trackers**: Tools for monitoring and analyzing simulations
