@@ -720,7 +720,7 @@ class DataTracker(CallbackTracker):
         Args:
             filename (str):
                 Path where the data is stored
-            \**kwargs:
+            **kwargs:
                 Additional parameters may be supported for some formats
         """
         from pathlib import Path

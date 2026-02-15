@@ -209,7 +209,7 @@ class MemoryStorage(StorageBase):
 
         Args:
             data (:class:`~numpy.ndarray`): The actual data
-            time (float, optional): The time point associated with the data
+            time (float): The time point associated with the data
         """
         if data.shape != self.data_shape:
             msg = f"Data must have shape {self.data_shape}"

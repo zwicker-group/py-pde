@@ -853,9 +853,6 @@ def make_divergence(
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
-        backend (str):
-            Backend used for calculating the divergence operator. The value is read from
-            the configuration for `config`, and a suitable backend is chosen for `auto`.
         method (str):
             The method for calculating the derivative. Possible values are 'central',
             'forward', and 'backward'.
@@ -885,8 +882,8 @@ def _vectorize_operator(
             The function that creates the basic operator
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
-        backend (str):
-            Backend used for calculating the vectorized operator.
+        **kwargs:
+            Additional keyword arguments passed to the operator
 
     Returns:
         A function that can be applied to an array of values

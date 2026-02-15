@@ -136,6 +136,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
                 Give the coordinate range for the radial axis.
             shape (tuple):
                 The number of support points for the radial axis
+            periodic (tuple):
+                Flag indicating whether the grid is periodic (not used here)
 
         Returns:
             :class:`SphericalGridBase`: represents the region chosen by bounds

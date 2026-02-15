@@ -325,8 +325,6 @@ class VectorField(DataFieldBase):
                 {ARG_BOUNDARIES_OPTIONAL}
             out (ScalarField, optional):
                 Optional scalar field to which the  result is written.
-            label (str, optional):
-                Name of the returned field
             **kwargs:
                 Additional arguments affecting how the operator behaves.
 
@@ -355,8 +353,6 @@ class VectorField(DataFieldBase):
                 {ARG_BOUNDARIES_OPTIONAL}
             out (VectorField, optional):
                 Optional vector field to which the result is written.
-            label (str, optional):
-                Name of the returned field
             **kwargs:
                 Additional arguments affecting how the operator behaves.
 
@@ -385,8 +381,6 @@ class VectorField(DataFieldBase):
                 {ARG_BOUNDARIES_OPTIONAL}
             out (VectorField, optional):
                 Optional vector field to which the  result is written.
-            label (str, optional):
-                Name of the returned field
             **kwargs:
                 Additional arguments affecting how the operator behaves.
 
@@ -462,7 +456,7 @@ class VectorField(DataFieldBase):
             max_points (int):
                 The maximal number of points that is used along each axis. This
                 option can be used to sub-sample the data.
-            \**kwargs:
+            **kwargs:
                 Additional parameters forwarded to `grid.get_image_data`
 
         Returns:
@@ -594,7 +588,7 @@ class VectorField(DataFieldBase):
                 or `line`. Alternatively, `auto` determines the best visualization based
                 on the grid.
             {PLOT_ARGS}
-            \**kwargs:
+            **kwargs:
                 All additional keyword arguments are forwarded to the actual plotting
                 function of all subplots.
 

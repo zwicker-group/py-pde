@@ -653,7 +653,7 @@ class BasicPlottingContext(PlottingContextBase):
                 If axes are given, they are used. If a figure is given, it is
                 set as active.
             title (str):
-                The shown in the plot
+                The title shown in the plot
             show (bool):
                 Flag determining whether plots are actually shown
         """

@@ -202,7 +202,11 @@ class BCBase(metaclass=ABCMeta):
         )
 
     def __init_subclass__(cls, **kwargs):
-        """Register all subclasses to reconstruct them later."""
+        """Register all subclasses to reconstruct them later.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent class
+        """
         super().__init_subclass__(**kwargs)
 
         if cls is not BCBase:
@@ -248,7 +252,11 @@ class BCBase(metaclass=ABCMeta):
         return f"{field_name}"
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         raise NotImplementedError
 
     @classmethod
@@ -287,7 +295,11 @@ class BCBase(metaclass=ABCMeta):
         return f"{self.__class__.__name__}({', '.join(args)})"
 
     def __eq__(self, other):
-        """Checks for equality neglecting the `upper` property."""
+        """Checks for equality neglecting the `upper` property.
+
+        Args:
+            other: The object to compare with
+        """
         if not isinstance(other, self.__class__):
             return NotImplemented
         return (
@@ -576,7 +588,11 @@ class _MPIBC(BCBase):
         return [f"neighbor={self._neighbor_id}"]
 
     def __eq__(self, other):
-        """Checks for equality neglecting the `upper` property."""
+        """Checks for equality neglecting the `upper` property.
+
+        Args:
+            other: The object to compare with
+        """
         if not isinstance(other, self.__class__):
             return NotImplemented
         return (
@@ -588,7 +604,11 @@ class _MPIBC(BCBase):
         )
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         axis_name = self.grid.axes[self.axis]
         return f"MPI @ {axis_name}={self.axis_coord}"
 
@@ -598,6 +618,9 @@ class _MPIBC(BCBase):
         Args:
             data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
+            args:
+                Additional arguments that might be supported by special boundary
+                conditions
         """
         from ...tools.mpi import mpi_send
 
@@ -628,12 +651,21 @@ class UserBC(BCBase):
     names = ["user"]
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         axis_name = self.grid.axes[self.axis]
         return f"user-controlled  @ {axis_name}={self.axis_coord}"
 
     def copy(self, upper: bool | None = None, rank: int | None = None) -> Self:
-        """Return a copy of itself, but with a reference to the same grid."""
+        """Return a copy of itself, but with a reference to the same grid.
+
+        Args:
+            upper (bool): The upper flag of the returned object
+            rank (int): The rank of the returned object
+        """
         return self.__class__(
             grid=self.grid,
             axis=self.axis,
@@ -841,7 +873,11 @@ class ExpressionBC(BCBase):
         return tuple(test_values)
 
     def _prepare_function(self, func: Callable | str | complex) -> Callable:
-        """Helper function that compiles a single function given as a parameter."""
+        """Helper function that compiles a single function given as a parameter.
+
+        Args:
+            func (callable or str or complex): The function to prepare
+        """
         if not callable(func):
             # the function is just a number, which we also support
             func_value = number(func)
@@ -914,7 +950,11 @@ class ExpressionBC(BCBase):
         return res
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         axis_name = self.grid.axes[self.axis]
         target = self._input["target"]
 
@@ -945,7 +985,11 @@ class ExpressionBC(BCBase):
         raise NotImplementedError(msg)
 
     def __eq__(self, other):
-        """Checks for equality neglecting the `upper` property."""
+        """Checks for equality neglecting the `upper` property.
+
+        Args:
+            other: The object to compare with
+        """
         if not isinstance(other, self.__class__):
             return NotImplemented
         return (
@@ -957,7 +1001,12 @@ class ExpressionBC(BCBase):
     def copy(
         self: ExpressionBC, upper: bool | None = None, rank: int | None = None
     ) -> ExpressionBC:
-        """Return a copy of itself, but with a reference to the same grid."""
+        """Return a copy of itself, but with a reference to the same grid.
+
+        Args:
+            upper (bool): The upper flag of the returned object
+            rank (int): The rank of the returned object
+        """
         return self.__class__(
             grid=self.grid,
             axis=self.axis,
@@ -1219,9 +1268,6 @@ class ConstBCBase(BCBase):
                 of the local normal vector of the boundary.
             rank (int):
                 The tensorial rank of the field for this boundary condition
-            normal (bool):
-                Flag indicating whether the condition is only applied in the normal
-                direction.
             value (float or str or :class:`~numpy.ndarray`):
                 a value stored with the boundary condition. The interpretation of this
                 value depends on the type of boundary condition. If value is a single
@@ -1234,7 +1280,11 @@ class ConstBCBase(BCBase):
         self.value = value
 
     def __eq__(self, other):
-        """Checks for equality neglecting the `upper` property."""
+        """Checks for equality neglecting the `upper` property.
+
+        Args:
+            other: The object to compare with
+        """
         if not isinstance(other, self.__class__):
             return NotImplemented
         return super().__eq__(other) and np.array_equal(self.value, other.value)
@@ -1387,7 +1437,11 @@ class ConstBCBase(BCBase):
         return result
 
     def link_value(self, value: NumericArray):
-        """Link value of this boundary condition to external array."""
+        """Link value of this boundary condition to external array.
+
+        Args:
+            value (:class:`~numpy.ndarray`): The array to link to
+        """
         assert value.data.c_contiguous
 
         shape = self._shape_tensor + self._shape_boundary
@@ -1407,7 +1461,16 @@ class ConstBCBase(BCBase):
         rank: int | None = None,
         value: float | NumericArray | str | None = None,
     ) -> ConstBCBase:
-        """Return a copy of itself, but with a reference to the same grid."""
+        """Return a copy of itself, but with a reference to the same grid.
+
+        Args:
+            upper (bool):
+                The upper flag of the returned object
+            rank (int):
+                The rank of the returned object
+            value (float or :class:`~numpy.ndarray` or str):
+                The value of the returned object
+        """
         obj = self.__class__(
             grid=self.grid,
             axis=self.axis,
@@ -1574,7 +1637,11 @@ class _PeriodicBC(ConstBC1stOrderBase):
         return '"periodic"'
 
     def copy(self: _PeriodicBC, upper: bool | None = None) -> _PeriodicBC:  # type: ignore
-        """Return a copy of itself, but with a reference to the same grid."""
+        """Return a copy of itself, but with a reference to the same grid.
+
+        Args:
+            upper (bool): The upper flag of the returned object
+        """
         return self.__class__(
             grid=self.grid,
             axis=self.axis,
@@ -1604,7 +1671,11 @@ class _PeriodicBC(ConstBC1stOrderBase):
         )
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         if self.upper:
             other_coord = self.grid.axes_bounds[self.axis][0]
         else:
@@ -1633,7 +1704,11 @@ class DirichletBC(ConstBC1stOrderBase):
     names = ["value", "dirichlet"]  # identifiers for this boundary condition
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         axis_name = self.grid.axes[self.axis]
         field = self._field_repr(field_name)
         return f"{field} = {self.value}   @ {axis_name}={self.axis_coord}"
@@ -1652,7 +1727,11 @@ class NeumannBC(ConstBC1stOrderBase):
     names = ["derivative", "neumann"]  # identifiers for this boundary condition
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         sign = " " if self.upper else "-"
         axis_name = self.grid.axes[self.axis]
         deriv = f"∂{self._field_repr(field_name)}/∂{axis_name}"
@@ -1731,7 +1810,11 @@ class MixedBC(ConstBC1stOrderBase):
         self.const = self._parse_value(const)
 
     def __eq__(self, other):
-        """Checks for equality neglecting the `upper` property."""
+        """Checks for equality neglecting the `upper` property.
+
+        Args:
+            other: The object to compare with
+        """
         if not isinstance(other, self.__class__):
             return NotImplemented
         return super().__eq__(other) and self.const == other.const
@@ -1743,7 +1826,18 @@ class MixedBC(ConstBC1stOrderBase):
         value: float | NumericArray | str | None = None,
         const: float | NumericArray | str | None = None,
     ) -> MixedBC:
-        """Return a copy of itself, but with a reference to the same grid."""
+        """Return a copy of itself, but with a reference to the same grid.
+
+        Args:
+            upper (bool):
+                The upper flag of the returned object
+            rank (int):
+                The rank of the returned object
+            value (float or :class:`~numpy.ndarray` or str):
+                The value of the returned object
+            const (float or :class:`~numpy.ndarray` or str):
+                The constant value of the returned object
+        """
         obj = self.__class__(
             grid=self.grid,
             axis=self.axis,
@@ -1783,7 +1877,11 @@ class MixedBC(ConstBC1stOrderBase):
         )
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         sign = "" if self.upper else "-"
         axis_name = self.grid.axes[self.axis]
         field_repr = self._field_repr(field_name)
@@ -1937,7 +2035,11 @@ class CurvatureBC(ConstBC2ndOrderBase):
     names = ["curvature", "second_derivative", "extrapolate"]  # identifiers for this BC
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         sign = " " if self.upper else "-"
         axis_name = self.grid.axes[self.axis]
         deriv = f"∂²{self._field_repr(field_name)}/∂{axis_name}²"

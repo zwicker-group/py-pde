@@ -72,6 +72,11 @@ class FixedInterrupts(InterruptsBase):
     """Interrupts at fixed, predetermined times."""
 
     def __init__(self, interrupts: NumericArray | Sequence[float]):
+        """
+        Args:
+            interrupts (sequence of float):
+                A sequence of time points at which interrupts occur
+        """
         self.interrupts = np.atleast_1d(interrupts)
         if self.interrupts.ndim != 1:
             msg = "`interrupts` must be a 1d sequence"

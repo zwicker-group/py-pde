@@ -110,6 +110,8 @@ def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> list[GridBa
     """Subdivide the grid along a given axis.
 
     Args:
+        grid (:class:`~pde.grids.base.GridBase`):
+            The grid to subdivide
         axis (int):
             The axis along which the subdivision will happen
         chunks (int):
@@ -373,7 +375,7 @@ class GridMesh:
         """Get MPI flag indicating the boundary between this node and its neighbor.
 
         Args:
-            node_id (int):
+            neighbor (int):
                 The ID of the neighboring node
             upper (bool):
                 Flag indicating the boundary of the current node
@@ -563,15 +565,15 @@ class GridMesh:
         """Extract one subfield from a global field.
 
         Args:
-            field (:class:`~pde.fields.base.DataFieldBase`):
-                The field that will be split. An array with the correct shape and dtype
-                also needs to be passed to the receiving nodes.
+            field_data (:class:`~numpy.ndarray`):
+                The field data array that will be split. An array with the correct shape
+                and dtype also needs to be passed to the receiving nodes.
             with_ghost_cells (bool):
                 Indicates whether the ghost cells are included in data. If `True`,
                 `field_data` must be the full data field.
 
         Returns:
-            :class:`~pde.fields.base.DataFieldBase`: The sub field of the current node
+            :class:`~numpy.ndarray`: The sub field data of the current node
         """
         from ..tools.mpi import mpi_recv, mpi_send
 

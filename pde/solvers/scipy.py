@@ -39,9 +39,7 @@ class ScipySolver(SolverBase):
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
             backend (str):
-                Determines how the function is created. Accepted  values are
-                'numpy` and 'numba'. Alternatively, 'auto' lets the code decide
-                for the most optimal backend.
+                The backend used for numerical operations
             **kwargs:
                 All extra arguments are forwarded to :func:`scipy.integrate.solve_ivp`.
         """

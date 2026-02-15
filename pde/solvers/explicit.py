@@ -86,11 +86,10 @@ class EulerSolver(AdaptiveSolverBase):
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            post_step_hook (callable or None):
-                A function that runs the post_step_hook
-            adjust_dt (callable or None):
-                A function that is used to adjust the time step. The function takes the
-                current time step and a relative error and returns an adjusted time step
+            post_step_hook (callable, optional):
+                Function called after each step with signature (state, t, dt)
+            adjust_dt (callable, optional):
+                Function to adjust time step based on error with signature (dt, error)
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
@@ -334,17 +333,9 @@ class ExplicitSolver(AdaptiveSolverBase):
             scheme (str):
                 Defines the explicit scheme to use. Supported values are 'euler' and
                 'runge-kutta' (or 'rk' for short).
-            backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
-            adaptive (bool):
-                When enabled, the time step is adjusted during the simulation using the
-                error tolerance set with `tolerance`.
-            tolerance (float):
-                The error tolerance used in adaptive time stepping. This is used in
-                adaptive time stepping to choose a time step which is small enough so
-                the truncation error of a single step is below `tolerance`.
+            **kwargs:
+                Additional arguments such as `backend`, `adaptive`, and `tolerance` that
+                are forwarded to the chosen solver class.
         """
         # deprecated since 2025-11-01
         warnings.warn(

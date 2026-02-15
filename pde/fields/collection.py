@@ -579,7 +579,7 @@ class FieldCollection(FieldBase):
         """Create new collection with appended field(s)
 
         Args:
-            fields (`FieldCollection` or `DataFieldBase`):
+            *fields (`FieldCollection` or `DataFieldBase`):
                 A sequence of single fields or collection of fields that will be
                 appended to the fields in the current collection. The data of all fields
                 will be copied.
@@ -681,13 +681,14 @@ class FieldCollection(FieldBase):
         This function respects periodic boundary conditions of the underlying
         grid, using reflection when no periodicity is specified.
 
-        sigma (float):
-            Gives the standard deviation of the smoothing in real length units
-            (default: 1)
-        out (FieldCollection, optional):
-            Optional field into which the smoothed data is stored
-        label (str, optional):
-            Name of the returned field
+        Args:
+            sigma (float):
+                Gives the standard deviation of the smoothing in real length units
+                (default: 1)
+            out (FieldCollection, optional):
+                Optional field into which the smoothed data is stored
+            label (str, optional):
+                Name of the returned field
 
         Returns:
             :class:`~pde.fields.collection.FieldCollection`:
@@ -737,9 +738,8 @@ class FieldCollection(FieldBase):
                 attribute.
             label (str, optional):
                 Name of the returned collection. If omitted, the current label is used.
-            method (str):
-                The projection method. This can be either 'integral' to integrate over
-                the removed axes or 'average' to perform an average instead.
+            **kwargs:
+                Additional arguments forwarded to the projection method (e.g., method).
 
         Returns:
             :class:`~pde.fields.collection.FieldCollection`:
@@ -768,9 +768,8 @@ class FieldCollection(FieldBase):
                 supported to reference relative positions along the axis.
             label (str, optional):
                 Name of the returned collection. If omitted, the current label is used.
-            method (str):
-                The method used for slicing. Currently, we only support `nearest`, which
-                takes data from cells defined on the grid.
+            **kwargs:
+                Additional arguments forwarded to the slicing method (e.g., method).
 
         Returns:
             :class:`~pde.fields.collection.FieldCollection`:
@@ -809,7 +808,7 @@ class FieldCollection(FieldBase):
 
         Args:
             index (int): Index of the field whose data is returned
-            \**kwargs: Arguments forwarded to the `get_image_data` method
+            **kwargs: Arguments forwarded to the `get_image_data` method
 
         Returns:
             dict: Information useful for plotting an image of the field
@@ -1038,7 +1037,7 @@ class FieldCollection(FieldBase):
                 dictionary of arguments for each subplot. Supplying an empty dict allows
                 to keep the default setting of specific subplots.
             {PLOT_ARGS}
-            \**kwargs:
+            **kwargs:
                 All additional keyword arguments are forwarded to the actual plotting
                 function of all subplots.
 
@@ -1109,7 +1108,7 @@ class FieldCollection(FieldBase):
         r"""Returns data for plotting all fields.
 
         Args:
-            \**kwargs: all arguments are forwarded to `_get_napari_layer_data`
+            **kwargs: all arguments are forwarded to `_get_napari_layer_data`
 
         Returns:
             dict: all the information necessary to plot all fields

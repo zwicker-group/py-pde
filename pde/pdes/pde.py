@@ -726,6 +726,8 @@ class PDE(SDEBase):
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state defining the grid and data types
+            **kwargs:
+                Additional keyword arguments (currently unused)
 
         Returns:
             A function with signature `(state_data, t)`, which can be called with an
@@ -753,6 +755,8 @@ class PDE(SDEBase):
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state defining the grid and data types
+            **kwargs:
+                Additional keyword arguments (currently unused)
 
         Returns:
             A function with signature `(state_data, t)`, which can be called with an

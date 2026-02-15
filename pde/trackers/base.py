@@ -61,6 +61,7 @@ class TrackerBase(metaclass=ABCMeta):
 
         Args:
             data (str or TrackerBase): Data describing the tracker
+            **kwargs: Additional keyword arguments passed to the tracker constructor
 
         Returns:
             :class:`TrackerBase`: An instance representing the tracker
@@ -218,6 +219,7 @@ class TrackerCollection:
 
         Args:
             data: Data describing the tracker collection
+            **kwargs: Additional keyword arguments passed to tracker constructors
 
         Returns:
             :class:`TrackerCollection`:

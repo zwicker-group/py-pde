@@ -37,18 +37,13 @@ class CrankNicolsonSolver(SolverBase):
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
             maxiter (int):
-                The maximal number of iterations per step
+                Maximum number of iterations for the implicit solver
             maxerror (float):
-                The maximal error that is permitted in each step
+                Maximum error tolerance for the implicit solver
             explicit_fraction (float):
-                Hyperparameter determining the fraction of explicit time stepping in the
-                implicit step. `explicit_fraction == 0` is the simple Crank-Nicolson
-                scheme, while `explicit_fraction == 1` reduces to the explicit Euler
-                method. Intermediate values can improve convergence.
+                Fraction of explicit time stepping (0 for fully implicit)
             backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
+                The backend used for numerical operations
         """
         super().__init__(pde, backend=backend)
         self.maxiter = maxiter

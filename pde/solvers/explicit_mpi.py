@@ -92,23 +92,19 @@ class ExplicitMPISolver(EulerSolver):
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
-            decomposition (list of ints):
+            decomposition (str, int, or list of ints):
                 Number of subdivision in each direction. Should be a list of length
                 `grid.num_axes` specifying the number of nodes for this axis. If one
                 value is `-1`, its value will be determined from the number of available
-                nodes. The default value `auto` tries to determine an optimal
+                nodes. A single integer is interpreted as the number of subdivisions
+                along one axis. The default value `auto` tries to determine an optimal
                 decomposition by minimizing communication between nodes.
             backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
+                The backend used for numerical operations
             adaptive (bool):
-                When enabled, the time step is adjusted during the simulation using the
-                error tolerance set with `tolerance`.
+                Whether to use adaptive time stepping
             tolerance (float):
-                The error tolerance used in adaptive time stepping. This is used in
-                adaptive time stepping to choose a time step which is small enough so
-                the truncation error of a single step is below `tolerance`.
+                Error tolerance for adaptive time stepping
         """
         pde._mpi_synchronization = self._mpi_synchronization
         super().__init__(pde, backend=backend, adaptive=adaptive, tolerance=tolerance)

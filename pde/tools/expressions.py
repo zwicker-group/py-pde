@@ -120,7 +120,12 @@ def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.B
     local_dict = {}
 
     def fill_locals(element, sympy_cls):
-        """Recursive function for obtaining all symbols."""
+        """Recursive function for obtaining all symbols.
+
+        Args:
+            element: Element to process (can be a string or iterable)
+            sympy_cls: Sympy class to use for creating symbols
+        """
         if isinstance(element, str):
             local_dict[element] = sympy_cls(element)
         elif hasattr(element, "__iter__"):
@@ -136,7 +141,11 @@ def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.B
     # upper-case Heaviside, which is directly recognized by sympy. Down the line, this
     # allows easier handling of special cases
     def substitute(expr):
-        """Helper function substituting expressions."""
+        """Helper function substituting expressions.
+
+        Args:
+            expr: The expression to substitute
+        """
         if isinstance(expr, list):
             return [substitute(e) for e in expr]
         return expr.subs(sympy.Function("heaviside"), sympy.Heaviside)
@@ -211,7 +220,11 @@ class ExpressionBase(metaclass=ABCMeta):
                 )
 
     def __init_subclass__(cls, **kwargs):
-        """Initialize class-level attributes of subclasses."""
+        """Initialize class-level attributes of subclasses.
+
+        Args:
+            **kwargs: Keyword arguments passed to parent class
+        """
         super().__init_subclass__(**kwargs)
         # create logger for this specific field class
         cls._logger = _base_logger.getChild(cls.__qualname__)
@@ -220,7 +233,11 @@ class ExpressionBase(metaclass=ABCMeta):
         return f'{self.__class__.__name__}("{self.expression}", signature={self.vars})'
 
     def __eq__(self, other):
-        """Compare this expression to another one."""
+        """Compare this expression to another one.
+
+        Args:
+            other: The expression to compare to
+        """
         if not isinstance(other, self.__class__):
             return NotImplemented
         # compare what the expressions depend on
@@ -260,7 +277,11 @@ class ExpressionBase(metaclass=ABCMeta):
         """tuple: the shape of the tensor"""
 
     def _check_signature(self, signature: Sequence[str | list[str]] | None = None):
-        """Validate the variables of the expression against the signature."""
+        """Validate the variables of the expression against the signature.
+
+        Args:
+            signature: The expected signature to validate against
+        """
         # get arguments of the expressions
         if self.constant:
             # constant expression do not depend on any variables
@@ -345,7 +366,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
         Args:
             backend (str):
-                Backend (e.g., `numba` or `numpy`) for constructing the operator
+                The backend (e.g., `numba` or `numpy`) for constructing the operator
             single_arg (bool):
                 Determines whether the returned function accepts all variables in a
                 single argument as an array or whether all variables need to be
@@ -400,7 +421,12 @@ class ExpressionBase(metaclass=ABCMeta):
         return self.get_function(backend="numpy", single_arg=False)
 
     def __call__(self, *args, **kwargs) -> NumberOrArray:
-        """Return the value of the expression for the given values."""
+        """Return the value of the expression for the given values.
+
+        Args:
+            *args: Positional arguments passed to the expression
+            **kwargs: Keyword arguments passed to the expression
+        """
         return self._get_function_cached()(*args, **kwargs)
 
     @cached_method()
@@ -579,7 +605,11 @@ class ScalarExpression(ExpressionBase):
         return expression
 
     def _var_indexed(self, var: str) -> bool:
-        """Checks whether the variable `var` is used in an indexed form."""
+        """Checks whether the variable `var` is used in an indexed form.
+
+        Args:
+            var (str): The variable name to check
+        """
         from sympy.tensor.indexed import Indexed
 
         return any(
@@ -587,7 +617,11 @@ class ScalarExpression(ExpressionBase):
         )
 
     def differentiate(self, var: str) -> ScalarExpression:
-        """Return the expression differentiated with respect to var."""
+        """Return the expression differentiated with respect to var.
+
+        Args:
+            var (str): The variable to differentiate with respect to
+        """
         if self.constant:
             # return empty expression
             return ScalarExpression(
@@ -773,7 +807,11 @@ class TensorExpression(ExpressionBase):
         raise TypeError(msg)
 
     def differentiate(self, var: str) -> TensorExpression:
-        """Return the expression differentiated with respect to var."""
+        """Return the expression differentiated with respect to var.
+
+        Args:
+            var (str): The variable to differentiate with respect to
+        """
         if self.constant:
             derivative = np.zeros(self.shape)
         else:

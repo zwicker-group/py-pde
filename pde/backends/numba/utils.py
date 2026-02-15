@@ -263,7 +263,10 @@ def flat_idx(arr: NumericArray, i: int) -> Number:
     """Helper function allowing indexing of scalars as if they arrays.
 
     Args:
-        arr
+        arr (:class:`~numpy.ndarray` or scalar):
+            Array or scalar value to index
+        i (int):
+            Index to access
     """
     if np.isscalar(arr):
         return arr  # type: ignore
@@ -356,7 +359,8 @@ else:
             >>> numba.carray(address_as_void_pointer(addr), arr.shape, arr.dtype
 
         Args:
-            addr (int): The memory address
+            typingctx: The Numba typing context
+            src: Integer memory address to be converted to a void pointer
 
         Returns:
             :class:`numba.core.types.voidptr`: Pointer to the memory address
@@ -402,8 +406,9 @@ def numba_dict(data: dict[str, Any] | None = None, /, **kwargs) -> NumbaDict:
     """Converts a python dictionary to a numba typed dictionary.
 
     Args:
-        data (dict):
-            Data to be converted to a dictionary
+        data (dict, optional):
+            Data to be converted to a dictionary. If None, an empty dictionary is
+            created.
         **kwargs:
             Additional items added to the dictionary
 

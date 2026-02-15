@@ -96,7 +96,12 @@ class PDEBase(metaclass=ABCMeta):
         self.rng = np.random.default_rng(rng)
 
     def __init_subclass__(cls, **kwargs):
-        """Initialize class-level attributes of subclasses."""
+        """Initialize class-level attributes of subclasses.
+
+        Args:
+            **kwargs:
+                Additional keyword arguments passed to the superclass
+        """
         super().__init_subclass__(**kwargs)
         # create logger for this specific PDE class
         cls._logger = _base_logger.getChild(cls.__qualname__)
@@ -571,9 +576,6 @@ class SDEBase(PDEBase):
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted.
-            backend (str):
-                Determines how the function is created. Accepted values are 'numpy' and
-                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
 
         Returns:
             callable: Function calculating the noise realization

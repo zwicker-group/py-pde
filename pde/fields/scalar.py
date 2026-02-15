@@ -209,8 +209,8 @@ class ScalarField(DataFieldBase):
                 {ARG_BOUNDARIES_OPTIONAL}
             out (ScalarField, optional):
                 Optional scalar field to which the  result is written.
-            label (str, optional):
-                Name of the returned field
+            **kwargs:
+                Additional keyword arguments (e.g., label)
 
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the Laplacian of the field
@@ -234,9 +234,7 @@ class ScalarField(DataFieldBase):
                 {ARG_BOUNDARIES_OPTIONAL}
             out (ScalarField, optional):
                 Optional vector field to which the result is written.
-            label (str, optional):
-                Name of the returned field
-            \**kwargs:
+            **kwargs:
                 Extra arguments are forwarded to
                 :meth:`~pde.fields.datafield_base.DataFieldBase.apply_operator`
 
@@ -260,8 +258,8 @@ class ScalarField(DataFieldBase):
                 {ARG_BOUNDARIES_OPTIONAL}
             out (VectorField, optional):
                 Optional vector field to which the result is written.
-            label (str, optional):
-                Name of the returned field
+            **kwargs:
+                Additional keyword arguments (e.g., label)
 
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator

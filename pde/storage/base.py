@@ -116,7 +116,7 @@ class StorageBase(metaclass=ABCMeta):
 
         Args:
             data (:class:`~numpy.ndarray`): The actual data
-            time (float, optional): The time point associated with the data
+            time (float): The time point associated with the data
         """
 
     def append(self, field: FieldBase, time: float | None = None) -> None:

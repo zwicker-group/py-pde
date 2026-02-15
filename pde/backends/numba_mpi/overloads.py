@@ -41,7 +41,7 @@ def ol_mpi_recv(data, source: int, tag: int):
 
         Args:
             data: A buffer into which the received data is written
-            dest (int): The ID of the sending node
+            source (int): The ID of the sending node
             tag (int): A numeric tag identifying the message
         """
         status = numba_mpi.recv(data, source, tag)

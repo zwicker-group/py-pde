@@ -96,9 +96,9 @@ class TorchOperator(torch.nn.Module):
         """Return function that sets the ghost cells on a full array.
 
         Args:
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
-                Defines the boundary conditions for a particular grid, for which the
-                setter should be defined.
+            args:
+                Additional arguments that might be used in the ghost cell setters, e.g.,
+                the time `t` during solving a PDE.
 
         Returns:
             Callable with signature :code:`(data_full: NumericArray, args=None)`, which
@@ -116,6 +116,8 @@ class TorchOperator(torch.nn.Module):
                 The input data. If boundary conditions are applied, this should contain
                 only the valid grid points. Otherwise, it should already include ghost
                 cells.
+            args:
+                Additional arguments passed to ghost cell setters, e.g., the time `t`.
 
         Returns:
             :class:`torch.Tensor`:
