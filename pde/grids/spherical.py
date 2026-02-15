@@ -124,7 +124,6 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         return obj
 
     @classmethod
-    @classmethod
     def from_bounds(  # type: ignore
         cls,
         bounds: tuple[tuple[float, float]],
