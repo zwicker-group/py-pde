@@ -1,5 +1,10 @@
 """Defines a scalar field over a grid.
 
+.. autosummary::
+   :nosignatures:
+
+   ScalarField
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

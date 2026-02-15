@@ -3,6 +3,11 @@
 This package requires the optional :mod:`ffmpeg-python` package to use FFmpeg for
 reading and writing movies.
 
+.. autosummary::
+   :nosignatures:
+
+   MovieStorage
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

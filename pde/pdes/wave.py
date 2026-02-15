@@ -1,5 +1,10 @@
 """A simple wave equation.
 
+.. autosummary::
+   :nosignatures:
+
+   WavePDE
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

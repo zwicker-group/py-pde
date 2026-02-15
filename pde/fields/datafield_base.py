@@ -1,5 +1,10 @@
 """Defines base class of single fields with arbitrary rank.
 
+.. autosummary::
+   :nosignatures:
+
+   DataFieldBase
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

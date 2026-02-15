@@ -1,5 +1,10 @@
 """Defines a collection of fields to represent multiple fields defined on a common grid.
 
+.. autosummary::
+   :nosignatures:
+
+   FieldCollection
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

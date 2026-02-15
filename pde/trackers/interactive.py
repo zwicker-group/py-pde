@@ -1,6 +1,11 @@
 """Special module for defining an interactive tracker that uses napari to display
 fields.
 
+.. autosummary::
+   :nosignatures:
+
+   InteractivePlotTracker
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

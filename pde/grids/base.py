@@ -1,5 +1,15 @@
 """Defines the base class for all grids.
 
+.. autosummary::
+   :nosignatures:
+
+   GridBase
+   DomainError
+   PeriodicityError
+   discretize_interval
+   registered_grids
+   registered_operators
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

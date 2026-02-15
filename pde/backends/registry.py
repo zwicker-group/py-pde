@@ -1,4 +1,9 @@
-"""Defines base class of backends that implement computations.
+"""Defines the registry for managing backends.
+
+.. autosummary::
+   :nosignatures:
+
+   BackendRegistry
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """

@@ -1,5 +1,10 @@
 """Defines a solver using :mod:`scipy.integrate`
 
+.. autosummary::
+   :nosignatures:
+
+   ScipySolver
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

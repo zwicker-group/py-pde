@@ -1,5 +1,10 @@
 """Defines a class storing data in memory.
 
+.. autosummary::
+   :nosignatures:
+
+   MemoryStorage
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

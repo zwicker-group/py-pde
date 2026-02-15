@@ -1,5 +1,10 @@
 """The Swift-Hohenberg equation.
 
+.. autosummary::
+   :nosignatures:
+
+   SwiftHohenbergPDE
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

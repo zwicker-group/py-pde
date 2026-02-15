@@ -1,5 +1,10 @@
 """Defines base class of backends that implement computations.
 
+.. autosummary::
+   :nosignatures:
+
+   BackendBase
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

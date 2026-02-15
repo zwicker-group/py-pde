@@ -1,5 +1,11 @@
 """Defines a class used for subdividing a grid for parallel execution using MPI.
 
+.. autosummary::
+   :nosignatures:
+
+   GridMesh
+   MPIFlags
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

@@ -4,6 +4,13 @@ choice implies that differential operators might not be applicable to all fields
 instance, the divergence of a vector field on a spherical grid can only be represented
 as a scalar field on the same grid if the θ-component of the vector field vanishes.
 
+.. autosummary::
+   :nosignatures:
+
+   PolarSymGrid
+   SphericalSymGrid
+   volume_from_radius
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

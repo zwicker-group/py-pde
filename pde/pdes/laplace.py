@@ -1,5 +1,12 @@
 """Solvers for Poisson's and Laplace's equation.
 
+.. autosummary::
+   :nosignatures:
+
+   solve_poisson_equation
+   solve_laplace_equation
+   helmholtz_decomposition
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

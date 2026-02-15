@@ -1,6 +1,11 @@
 """Defines a class storing data on the file system using the hierarchical data format
 (hdf)
 
+.. autosummary::
+   :nosignatures:
+
+   FileStorage
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

@@ -1,5 +1,13 @@
 """Base classes for trackers.
 
+.. autosummary::
+   :nosignatures:
+
+   TrackerBase
+   TrackerCollection
+   TransformedTrackerBase
+   FinishedSimulation
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

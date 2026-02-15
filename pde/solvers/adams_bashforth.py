@@ -1,5 +1,10 @@
 """Defines an explicit Adams-Bashforth solver.
 
+.. autosummary::
+   :nosignatures:
+
+   AdamsBashforthSolver
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
