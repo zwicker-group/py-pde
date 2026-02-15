@@ -76,7 +76,7 @@ def extract_field(
     Args:
         fields (:class:`~pde.fields.FieldBase`):
             The field from which data is extracted
-        source (int or callable, optional):
+        source (int, callable, or None, optional):
             Determines how a field is extracted from `fields`. If `None`,
             `fields` is passed as is, assuming it is already a scalar field.
             This works for the simple, standard case where only a single
@@ -144,7 +144,7 @@ class ScalarFieldPlot:
             fig (:class:`matplotlib.figure.Figure):
                 Figure to be used for plotting. If `None`, a new figure is
                 created.
-            title (str):
+            title (str, optional):
                 Title of the plot.
             tight (bool):
                 Whether to call :func:`matplotlib.pyplot.tight_layout`. This
@@ -306,7 +306,7 @@ class ScalarFieldPlot:
             fig (:class:`matplotlib.figure.Figure):
                 Figure to be used for plotting. If `None`, a new figure is
                 created.
-            title (str):
+            title (str, optional):
                 Title of the plot.
             tight (bool):
                 Whether to call :func:`matplotlib.pyplot.tight_layout`. This
@@ -524,7 +524,7 @@ def plot_magnitudes(
         quantities:
             {ARG_PLOT_QUANTITIES}
         {PLOT_ARGS}
-        \**kwargs:
+        **kwargs:
             All remaining parameters are forwarded to the `ax.plot` method
 
     Returns:
@@ -615,7 +615,7 @@ def _plot_kymograph(
             Whether to show a colorbar or not
         transpose (bool):
             Determines whether the transpose of the data should is plotted
-        \**kwargs:
+        **kwargs:
             Additional keyword arguments are passed to
             :func:`matplotlib.pyplot.imshow`.
 
@@ -679,7 +679,7 @@ def plot_kymograph(
     Args:
         storage (:class:`~droplets.simulation.storage.StorageBase`):
             The storage instance that contains all the data
-        field_index (int):
+        field_index (int, optional):
             An index to choose a single field out of many in a collection
             stored in `storage`. This option should not be used if only a single
             field is stored in a collection.
@@ -694,7 +694,7 @@ def plot_kymograph(
         transpose (bool):
             Determines whether the transpose of the data should is plotted
         {PLOT_ARGS}
-        \**kwargs:
+        **kwargs:
             Additional keyword arguments are passed to
             :func:`matplotlib.pyplot.imshow`.
 
@@ -768,7 +768,7 @@ def plot_kymographs(
         resize_fig (bool):
             Whether to resize the figure to adjust to the number of panels
         {PLOT_ARGS}
-        \**kwargs:
+        **kwargs:
             Additional keyword arguments are passed to the calls to
             :func:`matplotlib.pyplot.imshow`.
 
@@ -841,7 +841,7 @@ def plot_interactive(
             actual time points are used), or "scaled" (the axis is scaled so that it has
             similar dimension to the spatial axes). Note that the spatial axes will
             never be scaled.
-        viewer_args (dict):
+        viewer_args (dict, optional):
             Arguments passed to :class:`napari.viewer.Viewer` to affect the viewer.
         **kwargs:
             Extra arguments passed to the plotting function
