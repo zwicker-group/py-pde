@@ -3,11 +3,12 @@
 .. autosummary::
    :nosignatures:
 
-   ~memory.get_memory_storage
+   ~base.StorageBase
    ~memory.MemoryStorage
-   ~modelrunner.ModelrunnerStorage
+   ~memory.get_memory_storage
    ~file.FileStorage
    ~movie.MovieStorage
+   ~modelrunner.ModelrunnerStorage
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """

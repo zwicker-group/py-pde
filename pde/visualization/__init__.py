@@ -3,8 +3,13 @@
 .. autosummary::
    :nosignatures:
 
-   movies
-   plotting
+   ~movies.movie
+   ~movies.movie_scalar
+   ~movies.movie_multiple
+   ~plotting.plot_interactive
+   ~plotting.plot_kymograph
+   ~plotting.plot_kymographs
+   ~plotting.plot_magnitudes
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """

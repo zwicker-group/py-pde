@@ -13,6 +13,8 @@ deal with raw data for faster simulations.
 .. autosummary::
    :nosignatures:
 
+   ~base.PDEBase
+   ~base.SDEBase
    ~pde.PDE
    ~allen_cahn.AllenCahnPDE
    ~cahn_hilliard.CahnHilliardPDE
