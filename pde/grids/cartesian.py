@@ -1,5 +1,11 @@
 """Cartesian grids of arbitrary dimension.
 
+.. autosummary::
+   :nosignatures:
+
+   CartesianGrid
+   UnitGrid
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

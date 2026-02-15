@@ -1,5 +1,18 @@
 """Provides support for mypy type checking of the package.
 
+.. autosummary::
+   :nosignatures:
+
+   OperatorInfo
+   OperatorImplType
+   OperatorFactory
+   OperatorType
+   CellVolume
+   VirtualPointEvaluator
+   GhostCellSetter
+   DataSetter
+   StepperHook
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

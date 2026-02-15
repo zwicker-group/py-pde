@@ -1,5 +1,11 @@
 """Base class for defining partial differential equations.
 
+.. autosummary::
+   :nosignatures:
+
+   PDEBase
+   SDEBase
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

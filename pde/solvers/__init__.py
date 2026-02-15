@@ -3,7 +3,10 @@
 .. autosummary::
    :nosignatures:
 
+   ~base.SolverBase
+   ~base.AdaptiveSolverBase
    ~controller.Controller
+   ~explicit.ExplicitSolver
    ~explicit.EulerSolver
    ~explicit.RungeKuttaSolver
    ~explicit_mpi.ExplicitMPISolver
@@ -11,7 +14,7 @@
    ~crank_nicolson.CrankNicolsonSolver
    ~adams_bashforth.AdamsBashforthSolver
    ~scipy.ScipySolver
-   ~registered_solvers
+   ~base.registered_solvers
 
 
 Inheritance structure of the classes:

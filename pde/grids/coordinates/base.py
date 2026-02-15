@@ -1,4 +1,11 @@
-"""
+"""Base classes for coordinate systems.
+
+.. autosummary::
+   :nosignatures:
+
+   CoordinatesBase
+   DimensionError
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

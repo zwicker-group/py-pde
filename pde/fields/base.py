@@ -1,5 +1,11 @@
 """Defines base class of fields or collections, which are discretized on grids.
 
+.. autosummary::
+   :nosignatures:
+
+   FieldBase
+   RankError
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

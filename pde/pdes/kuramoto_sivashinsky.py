@@ -1,4 +1,4 @@
-"""The Kardar–Parisi–Zhang (KPZ) equation describing the evolution of an interface.
+"""The Kuramoto-Sivashinsky equation.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """

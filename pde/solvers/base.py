@@ -3,6 +3,13 @@
 Beside the abstract base class :class:`SolverBase` defining the interfaces, we also
 provide :class:`AdaptiveSolverBase`, which contains methods for adaptive solvers.
 
+.. autosummary::
+   :nosignatures:
+
+   SolverBase
+   AdaptiveSolverBase
+   ConvergenceError
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

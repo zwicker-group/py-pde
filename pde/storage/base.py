@@ -1,5 +1,11 @@
 """Base classes for storing data.
 
+.. autosummary::
+   :nosignatures:
+
+   StorageBase
+   StorageTracker
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

@@ -1,5 +1,12 @@
 """Defines an explicit solver supporting various methods.
 
+.. autosummary::
+   :nosignatures:
+
+   ExplicitSolver
+   EulerSolver
+   RungeKuttaSolver
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
