@@ -35,14 +35,6 @@ class ImplicitSolver(SolverBase):
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
-            maxiter (int):
-                The maximal number of iterations per step
-            maxerror (float):
-                The maximal error that is permitted in each step
-            backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
         """
         super().__init__(pde, backend=backend)
         self.maxiter = maxiter

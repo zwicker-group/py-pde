@@ -70,10 +70,6 @@ class SolverBase:
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
-            backend (str or :class:`~pde.backends.base.BackendBase`):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the PDE decide for the most optimal
-                backend.
         """
         self.pde = pde
         self.info: dict[str, Any] = {"class": self.__class__.__name__}
@@ -111,7 +107,7 @@ class SolverBase:
                 The name of the solver to construct
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
-            \**kwargs:
+            **kwargs:
                 Additional arguments for the constructor of the solver
 
         Returns:
@@ -211,9 +207,6 @@ class SolverBase:
         Args:
             backend (str):
                 The backend to use for making the synchronizer
-            operator (str or int):
-                Flag determining how the value from multiple nodes is combined.
-                Possible values include "MAX", "MIN", and "SUM".
 
         Returns:
             Function that can be used to synchronize errors across nodes
@@ -400,17 +393,6 @@ class AdaptiveSolverBase(SolverBase):
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
-            backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
-            adaptive (bool):
-                When enabled, the time step is adjusted during the simulation using the
-                error tolerance set with `tolerance`.
-            tolerance (float):
-                The error tolerance used in adaptive time stepping. This is used in
-                adaptive time stepping to choose a time step which is small enough so
-                the truncation error of a single step is below `tolerance`.
         """
         super().__init__(pde, backend=backend)
         self.adaptive = adaptive
@@ -486,9 +468,6 @@ class AdaptiveSolverBase(SolverBase):
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            adjust_dt (callable or None):
-                A function that is used to adjust the time step. The function takes the
-                current time step and a relative error and returns an adjusted time step
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
