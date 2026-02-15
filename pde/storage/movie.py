@@ -293,8 +293,6 @@ class MovieStorage(StorageBase):
         Args:
             field (:class:`~pde.fields.base.FieldBase):
                 Example field to obtain information about grid and data rank
-            inverse (bool):
-                Whether inverse normalization function should be returned
 
         The resulting normalization functions are stored in `self._norms`
         """
@@ -422,7 +420,7 @@ class MovieStorage(StorageBase):
 
         Args:
             data (:class:`~numpy.ndarray`): The actual data
-            time (float): The time point associated with the data (currently not used)
+            time (float): The time point associated with the data
         """
         if self._state != "writing" or self._ffmpeg is None:
             RuntimeError(
