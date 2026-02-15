@@ -565,22 +565,7 @@ class LivePlotTracker(PlotTracker):
         Args:
             interrupts:
                 {ARG_TRACKER_INTERRUPT}
-            title (str or callable):
-                Title text of the figure. If this is a string, it is shown with a
-                potential placeholder named `time` being replaced by the current
-                simulation time. Conversely, if `title` is a function, it is called with
-                the current (potentially transformed) state and the time as arguments.
-                This function is expected to return a string.
-            output_file (str, optional):
-                Specifies a single image file, which is updated periodically, so
-                that the progress can be monitored (e.g. on a compute cluster)
-            output_folder (str, optional):
-                Specifies a folder to which all images are written. The files
-                will have names with increasing numbers.
-            movie_file (str, optional):
-                Specifies a filename to which a movie of all the frames is
-                written after the simulation.
-            show (bool, optional):
+            show (bool):
                 Determines whether the plot is shown while the simulation is
                 running. If `False`, the files are created in the background.
                 This option can slow down a simulation severely.
@@ -589,18 +574,10 @@ class LivePlotTracker(PlotTracker):
                 updated. Some plots are skipped if the tracker receives data at a higher
                 rate. A larger value (e.g., `math.inf`) can be used to ensure every
                 frame is drawn, which might penalizes the overall performance.
-            plot_args (dict):
-                Extra arguments supplied to the plot call. For example, this can
-                be used to specify axes ranges when a single panel is shown. For
-                instance, the value `{'ax_style': {'ylim': (0, 1)}}` enforces
-                the y-axis to lie between 0 and 1.
-            transformation (callable, optional):
-                A function that transforms the current state into a new field or field
-                collection, which is then plotted. This allows to show derived
-                quantities of the field during calculations. The argument needs
-                to be a callable function taking 1 or 2 arguments. The first argument
-                always is the current field, while the optional second argument is the
-                associated time.
+            **kwargs:
+                Additional keyword arguments are forwarded to :class:`PlotTracker`.
+                Supported arguments include `title`, `output_file`, `movie`,
+                `tight_layout`, `plot_args`, and `transformation`.
         """
         super().__init__(interrupts=interrupts, show=show, max_fps=max_fps, **kwargs)
 
@@ -720,7 +697,7 @@ class DataTracker(CallbackTracker):
         Args:
             filename (str):
                 Path where the data is stored
-            \**kwargs:
+            **kwargs:
                 Additional parameters may be supported for some formats
         """
         from pathlib import Path
