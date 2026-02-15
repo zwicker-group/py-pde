@@ -124,6 +124,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         return obj
 
     @classmethod
+    @classmethod
     def from_bounds(  # type: ignore
         cls,
         bounds: tuple[tuple[float, float]],
@@ -136,6 +137,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
                 Give the coordinate range for the radial axis.
             shape (tuple):
                 The number of support points for the radial axis
+            periodic (tuple):
+                Flag indicating whether the grid is periodic (not used for spherical grids)
 
         Returns:
             :class:`SphericalGridBase`: represents the region chosen by bounds
@@ -390,6 +393,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         r"""Visualize the spherically symmetric grid in two dimensions.
 
         Args:
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting
             {PLOT_ARGS}
             \**kwargs:
                 Extra arguments are passed on the to the matplotlib plotting routines,

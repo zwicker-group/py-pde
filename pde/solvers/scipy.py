@@ -38,6 +38,8 @@ class ScipySolver(SolverBase):
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
+            backend (str):
+                The backend used for numerical operations
             **kwargs:
                 All extra arguments are forwarded to :func:`scipy.integrate.solve_ivp`.
         """

@@ -587,6 +587,8 @@ class VectorField(DataFieldBase):
                 Determines the kind of the visualizations. Supported values are `image`
                 or `line`. Alternatively, `auto` determines the best visualization based
                 on the grid.
+            fig:
+                Figure to use for plotting. If `None`, a new figure is created.
             {PLOT_ARGS}
             **kwargs:
                 All additional keyword arguments are forwarded to the actual plotting

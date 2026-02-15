@@ -71,11 +71,11 @@ class NumpyBackend(BackendBase):
         """Create a function to set the valid part of a full data array.
 
         Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid for which the data setter is created
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 If supplied, the returned function also enforces boundary conditions by
                 setting the ghost cells to the correct values
-            backend (str):
-                The backend to use for making the operator
 
         Returns:
             callable:
@@ -96,6 +96,8 @@ class NumpyBackend(BackendBase):
                     The full array with ghost cells that the data is written to
                 data_valid (:class:`~numpy.ndarray`):
                     The valid data that is written to `data_full`
+                args:
+                    Additional arguments (unused in this implementation)
             """
             if num_axes == 1:
                 data_full[..., 1:-1] = data_valid
@@ -304,8 +306,6 @@ class NumpyBackend(BackendBase):
         Args:
             field (:class:`~pde.fields.datafield_base.DataFieldBase`):
                 Field for which the outer product is defined
-            conjugate (bool):
-                Whether to use the complex conjugate for the second operand
 
         Returns:
             function that takes two instance of :class:`~numpy.ndarray`, which contain
@@ -398,6 +398,8 @@ class NumpyBackend(BackendBase):
         Args:
             solver (:class:`~pde.solvers.base.SolverBase`):
                 The solver instance, which determines how the stepper is constructed
+            stepper_style (str):
+                The style of the stepper, either "fixed" or "adaptive"
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted

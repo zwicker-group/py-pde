@@ -99,6 +99,12 @@ class ExplicitMPISolver(EulerSolver):
                 nodes. A single integer is interpreted as the number of subdivisions along
                 one axis. The default value `auto` tries to determine an optimal
                 decomposition by minimizing communication between nodes.
+            backend (str):
+                The backend used for numerical operations
+            adaptive (bool):
+                Whether to use adaptive time stepping
+            tolerance (float):
+                Error tolerance for adaptive time stepping
         """
         pde._mpi_synchronization = self._mpi_synchronization
         super().__init__(pde, backend=backend, adaptive=adaptive, tolerance=tolerance)

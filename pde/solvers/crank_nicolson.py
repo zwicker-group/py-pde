@@ -36,6 +36,14 @@ class CrankNicolsonSolver(SolverBase):
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
+            maxiter (int):
+                Maximum number of iterations for the implicit solver
+            maxerror (float):
+                Maximum error tolerance for the implicit solver
+            explicit_fraction (float):
+                Fraction of explicit time stepping (0 for fully implicit)
+            backend (str):
+                The backend used for numerical operations
         """
         super().__init__(pde, backend=backend)
         self.maxiter = maxiter

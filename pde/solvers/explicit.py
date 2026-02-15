@@ -86,6 +86,10 @@ class EulerSolver(AdaptiveSolverBase):
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
+            post_step_hook (callable, optional):
+                Function called after each step with signature (state, t, dt)
+            adjust_dt (callable, optional):
+                Function to adjust time step based on error with signature (dt, error)
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to

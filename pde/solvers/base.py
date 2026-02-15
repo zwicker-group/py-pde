@@ -70,6 +70,8 @@ class SolverBase:
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
         """
         self.pde = pde
         self.info: dict[str, Any] = {"class": self.__class__.__name__}
@@ -207,6 +209,8 @@ class SolverBase:
         Args:
             backend (str):
                 The backend to use for making the synchronizer
+            operator (str or int):
+                The MPI operator to use for synchronization (e.g., "MAX", "SUM")
 
         Returns:
             Function that can be used to synchronize errors across nodes
@@ -393,6 +397,12 @@ class AdaptiveSolverBase(SolverBase):
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
+            backend (str):
+                The backend used for numerical operations
+            adaptive (bool):
+                Whether to use adaptive time stepping
+            tolerance (float):
+                Error tolerance for adaptive time stepping
         """
         super().__init__(pde, backend=backend)
         self.adaptive = adaptive
@@ -468,6 +478,8 @@ class AdaptiveSolverBase(SolverBase):
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
+            adjust_dt (callable, optional):
+                Function to adjust time step based on error with signature (dt, error)
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
