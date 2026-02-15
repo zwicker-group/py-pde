@@ -142,7 +142,7 @@ class WavePDE(PDEBase):
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
-            state (:class:`~pde.fields.ScalarField`):
+            state (:class:`~pde.fields.FieldCollection`):
                 An example for the state defining the grid and data types
 
         Returns:

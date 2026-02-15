@@ -57,7 +57,7 @@ def solve_poisson_equation(
             The name of the backend to use to implement this operator.
         label (str):
             The label of the returned field.
-        \**kwargs:
+        **kwargs:
             Additional parameters influence how the Laplace operator is constructed.
 
     Returns:
