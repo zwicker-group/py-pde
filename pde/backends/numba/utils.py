@@ -407,7 +407,8 @@ def numba_dict(data: dict[str, Any] | None = None, /, **kwargs) -> NumbaDict:
 
     Args:
         data (dict, optional):
-            Data to be converted to a dictionary. If None, an empty dictionary is created.
+            Data to be converted to a dictionary. If None, an empty dictionary is
+            created.
         **kwargs:
             Additional items added to the dictionary
 

@@ -83,7 +83,7 @@ class BackendBase:
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Initialize class-level attributes of subclasses.
-        
+
         Args:
             **kwargs: Additional arguments for subclass initialization
         """
@@ -93,7 +93,7 @@ class BackendBase:
 
     def from_numpy(self, value: Any) -> Any:
         """Convert values from numpy to native representation.
-        
+
         Args:
             value: The value to convert from numpy representation
         """
@@ -101,7 +101,7 @@ class BackendBase:
 
     def to_numpy(self, value: Any) -> Any:
         """Convert native values to numpy representation.
-        
+
         Args:
             value: The value to convert to numpy representation
         """
@@ -189,7 +189,7 @@ class BackendBase:
 
         def register_operator(factor_func_arg: OperatorFactory):
             """Helper function to register the operator.
-            
+
             Args:
                 factor_func_arg (OperatorFactory):
                     The operator factory function to register

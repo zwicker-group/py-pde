@@ -72,10 +72,10 @@ def objects_equal(a, b) -> bool:
 
 def _hash_iter(it: Iterable) -> int:
     """Get hash of an iterable but turning it into a tuple first.
-    
+
     Args:
         it: An iterable object
-    
+
     Returns:
         int: The hash value
     """
@@ -508,7 +508,7 @@ class _class_cache:
 
         def clear_cache(obj) -> None:
             """Clears the cache associated with this method.
-            
+
             Args:
                 obj: The object instance
             """
@@ -533,7 +533,7 @@ class _class_cache:
 
     def _get_wrapped_function(self, func: TFunc) -> TFunc:
         """Return the wrapped method, which implements the cache.
-        
+
         Args:
             func: The function to wrap
         """
@@ -630,7 +630,7 @@ class cached_property(_class_cache):
 
     def __call__(self, method) -> Self:
         """Apply the cache decorator to the property.
-        
+
         Args:
             method: The method to decorate
         """
@@ -646,7 +646,7 @@ class cached_property(_class_cache):
 
     def __get__(self, obj, owner):
         """Call the method to obtain the result for this property.
-        
+
         Args:
             obj: The instance
             owner: The owner class
@@ -681,7 +681,7 @@ class cached_method(_class_cache):
 
     def __call__(self, method: TFunc) -> TFunc:
         """Apply the cache decorator to the method.
-        
+
         Args:
             method: The method to decorate
         """

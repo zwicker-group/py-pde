@@ -203,7 +203,7 @@ class BCBase(metaclass=ABCMeta):
 
     def __init_subclass__(cls, **kwargs):
         """Register all subclasses to reconstruct them later.
-        
+
         Args:
             **kwargs: Additional keyword arguments passed to the parent class
         """
@@ -253,7 +253,7 @@ class BCBase(metaclass=ABCMeta):
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition.
-        
+
         Args:
             field_name (str): Name of the field to use in the representation
         """
@@ -296,7 +296,7 @@ class BCBase(metaclass=ABCMeta):
 
     def __eq__(self, other):
         """Checks for equality neglecting the `upper` property.
-        
+
         Args:
             other: The object to compare with
         """
@@ -589,7 +589,7 @@ class _MPIBC(BCBase):
 
     def __eq__(self, other):
         """Checks for equality neglecting the `upper` property.
-        
+
         Args:
             other: The object to compare with
         """
@@ -605,7 +605,7 @@ class _MPIBC(BCBase):
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition.
-        
+
         Args:
             field_name (str): Name of the field to use in the representation
         """
@@ -652,7 +652,7 @@ class UserBC(BCBase):
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition.
-        
+
         Args:
             field_name (str): Name of the field to use in the representation
         """
@@ -661,7 +661,7 @@ class UserBC(BCBase):
 
     def copy(self, upper: bool | None = None, rank: int | None = None) -> Self:
         """Return a copy of itself, but with a reference to the same grid.
-        
+
         Args:
             upper (bool): The upper flag of the returned object
             rank (int): The rank of the returned object
@@ -874,7 +874,7 @@ class ExpressionBC(BCBase):
 
     def _prepare_function(self, func: Callable | str | complex) -> Callable:
         """Helper function that compiles a single function given as a parameter.
-        
+
         Args:
             func (callable or str or complex): The function to prepare
         """
@@ -951,7 +951,7 @@ class ExpressionBC(BCBase):
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition.
-        
+
         Args:
             field_name (str): Name of the field to use in the representation
         """
@@ -986,7 +986,7 @@ class ExpressionBC(BCBase):
 
     def __eq__(self, other):
         """Checks for equality neglecting the `upper` property.
-        
+
         Args:
             other: The object to compare with
         """
@@ -1002,7 +1002,7 @@ class ExpressionBC(BCBase):
         self: ExpressionBC, upper: bool | None = None, rank: int | None = None
     ) -> ExpressionBC:
         """Return a copy of itself, but with a reference to the same grid.
-        
+
         Args:
             upper (bool): The upper flag of the returned object
             rank (int): The rank of the returned object
@@ -1281,7 +1281,7 @@ class ConstBCBase(BCBase):
 
     def __eq__(self, other):
         """Checks for equality neglecting the `upper` property.
-        
+
         Args:
             other: The object to compare with
         """
@@ -1438,7 +1438,7 @@ class ConstBCBase(BCBase):
 
     def link_value(self, value: NumericArray):
         """Link value of this boundary condition to external array.
-        
+
         Args:
             value (:class:`~numpy.ndarray`): The array to link to
         """
@@ -1462,11 +1462,14 @@ class ConstBCBase(BCBase):
         value: float | NumericArray | str | None = None,
     ) -> ConstBCBase:
         """Return a copy of itself, but with a reference to the same grid.
-        
+
         Args:
-            upper (bool): The upper flag of the returned object
-            rank (int): The rank of the returned object
-            value (float or :class:`~numpy.ndarray` or str): The value of the returned object
+            upper (bool):
+                The upper flag of the returned object
+            rank (int):
+                The rank of the returned object
+            value (float or :class:`~numpy.ndarray` or str):
+                The value of the returned object
         """
         obj = self.__class__(
             grid=self.grid,
@@ -1635,7 +1638,7 @@ class _PeriodicBC(ConstBC1stOrderBase):
 
     def copy(self: _PeriodicBC, upper: bool | None = None) -> _PeriodicBC:  # type: ignore
         """Return a copy of itself, but with a reference to the same grid.
-        
+
         Args:
             upper (bool): The upper flag of the returned object
         """
@@ -1669,7 +1672,7 @@ class _PeriodicBC(ConstBC1stOrderBase):
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition.
-        
+
         Args:
             field_name (str): Name of the field to use in the representation
         """
@@ -1702,7 +1705,7 @@ class DirichletBC(ConstBC1stOrderBase):
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition.
-        
+
         Args:
             field_name (str): Name of the field to use in the representation
         """
@@ -1725,7 +1728,7 @@ class NeumannBC(ConstBC1stOrderBase):
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition.
-        
+
         Args:
             field_name (str): Name of the field to use in the representation
         """
@@ -1808,7 +1811,7 @@ class MixedBC(ConstBC1stOrderBase):
 
     def __eq__(self, other):
         """Checks for equality neglecting the `upper` property.
-        
+
         Args:
             other: The object to compare with
         """
@@ -1824,12 +1827,16 @@ class MixedBC(ConstBC1stOrderBase):
         const: float | NumericArray | str | None = None,
     ) -> MixedBC:
         """Return a copy of itself, but with a reference to the same grid.
-        
+
         Args:
-            upper (bool): The upper flag of the returned object
-            rank (int): The rank of the returned object
-            value (float or :class:`~numpy.ndarray` or str): The value of the returned object
-            const (float or :class:`~numpy.ndarray` or str): The const of the returned object
+            upper (bool):
+                The upper flag of the returned object
+            rank (int):
+                The rank of the returned object
+            value (float or :class:`~numpy.ndarray` or str):
+                The value of the returned object
+            const (float or :class:`~numpy.ndarray` or str):
+                The constant value of the returned object
         """
         obj = self.__class__(
             grid=self.grid,
@@ -1871,7 +1878,7 @@ class MixedBC(ConstBC1stOrderBase):
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition.
-        
+
         Args:
             field_name (str): Name of the field to use in the representation
         """
@@ -2029,7 +2036,7 @@ class CurvatureBC(ConstBC2ndOrderBase):
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition.
-        
+
         Args:
             field_name (str): Name of the field to use in the representation
         """

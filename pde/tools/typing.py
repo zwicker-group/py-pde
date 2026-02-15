@@ -49,7 +49,7 @@ class OperatorImplType(Protocol):
 
     def __call__(self, arr: TArray, out: TArray) -> None:
         """Evaluate the operator.
-        
+
         Args:
             arr: Input array
             out: Output array
@@ -61,7 +61,7 @@ class OperatorFactory(Protocol):
 
     def __call__(self, grid: GridBase, **kwargs) -> OperatorImplType:
         """Create the operator.
-        
+
         Args:
             grid: The grid for which the operator is created
             **kwargs: Additional keyword arguments
@@ -78,7 +78,7 @@ class OperatorType(Protocol):
         args: dict[str, Any] | None = None,
     ) -> TArray:
         """Evaluate the operator.
-        
+
         Args:
             arr: Input array
             out: Output array (optional)
@@ -89,7 +89,7 @@ class OperatorType(Protocol):
 class CellVolume(Protocol):
     def __call__(self, *args: int) -> float:
         """Calculate the volume of the cell at the given position.
-        
+
         Args:
             *args: Position indices
         """
@@ -98,7 +98,7 @@ class CellVolume(Protocol):
 class VirtualPointEvaluator(Protocol):
     def __call__(self, arr: NumericArray, idx: tuple[int, ...], args=None) -> float:
         """Evaluate the virtual point at the given position.
-        
+
         Args:
             arr: Data array
             idx: Index tuple
@@ -109,7 +109,7 @@ class VirtualPointEvaluator(Protocol):
 class GhostCellSetter(Protocol):
     def __call__(self, data_full: NumericArray, args=None) -> None:
         """Set the ghost cells.
-        
+
         Args:
             data_full: Full data array including ghost cells
             args: Additional arguments (optional)
@@ -121,7 +121,7 @@ class DataSetter(Protocol):
         self, data_full: NumericArray, data_valid: NumericArray, args=None
     ) -> None:
         """Set the valid data cells (and potentially BCs).
-        
+
         Args:
             data_full: Full data array including ghost cells
             data_valid: Valid data array
@@ -134,7 +134,7 @@ class StepperHook(Protocol):
         self, state_data: NumericArray, t: float, post_step_data: NumericArray
     ) -> None:
         """Function analyzing and potentially modifying the current state.
-        
+
         Args:
             state_data: Current state data
             t: Current time

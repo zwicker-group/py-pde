@@ -143,7 +143,7 @@ def replace_in_docstring(
 
     def repl(matchobj) -> str:
         """Helper function replacing token in docstring.
-        
+
         Args:
             matchobj: The regex match object
         """
@@ -166,7 +166,7 @@ def replace_in_docstring(
 
 def fill_in_docstring(f: TFunc) -> TFunc:
     """Decorator that replaces text in the docstring of a function.
-    
+
     Args:
         f: The function to decorate
     """
@@ -176,7 +176,7 @@ def fill_in_docstring(f: TFunc) -> TFunc:
 
     def repl(matchobj, value: str) -> str:
         """Helper function replacing token in docstring.
-        
+
         Args:
             matchobj: The regex match object
             value: The replacement value

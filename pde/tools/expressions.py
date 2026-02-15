@@ -121,7 +121,7 @@ def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.B
 
     def fill_locals(element, sympy_cls):
         """Recursive function for obtaining all symbols.
-        
+
         Args:
             element: Element to process (can be a string or iterable)
             sympy_cls: Sympy class to use for creating symbols
@@ -142,7 +142,7 @@ def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.B
     # allows easier handling of special cases
     def substitute(expr):
         """Helper function substituting expressions.
-        
+
         Args:
             expr: The expression to substitute
         """
@@ -221,7 +221,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
     def __init_subclass__(cls, **kwargs):
         """Initialize class-level attributes of subclasses.
-        
+
         Args:
             **kwargs: Keyword arguments passed to parent class
         """
@@ -234,7 +234,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
     def __eq__(self, other):
         """Compare this expression to another one.
-        
+
         Args:
             other: The expression to compare to
         """
@@ -278,7 +278,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
     def _check_signature(self, signature: Sequence[str | list[str]] | None = None):
         """Validate the variables of the expression against the signature.
-        
+
         Args:
             signature: The expected signature to validate against
         """
@@ -422,7 +422,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
     def __call__(self, *args, **kwargs) -> NumberOrArray:
         """Return the value of the expression for the given values.
-        
+
         Args:
             *args: Positional arguments passed to the expression
             **kwargs: Keyword arguments passed to the expression
@@ -606,7 +606,7 @@ class ScalarExpression(ExpressionBase):
 
     def _var_indexed(self, var: str) -> bool:
         """Checks whether the variable `var` is used in an indexed form.
-        
+
         Args:
             var (str): The variable name to check
         """
@@ -618,7 +618,7 @@ class ScalarExpression(ExpressionBase):
 
     def differentiate(self, var: str) -> ScalarExpression:
         """Return the expression differentiated with respect to var.
-        
+
         Args:
             var (str): The variable to differentiate with respect to
         """
@@ -808,7 +808,7 @@ class TensorExpression(ExpressionBase):
 
     def differentiate(self, var: str) -> TensorExpression:
         """Return the expression differentiated with respect to var.
-        
+
         Args:
             var (str): The variable to differentiate with respect to
         """

@@ -230,7 +230,7 @@ class Config(collections.UserDict):
 
     def __getitem__(self, key: str):
         """Retrieve item `key`.
-        
+
         Args:
             key (str): The configuration key
         """
@@ -242,7 +242,7 @@ class Config(collections.UserDict):
 
     def __setitem__(self, key: str, value: ConfigValueType | Parameter):
         """Update item `key` with `value`.
-        
+
         Args:
             key (str): The configuration key
             value: The value to set
@@ -269,7 +269,7 @@ class Config(collections.UserDict):
 
     def __delitem__(self, key: str):
         """Removes item `key`.
-        
+
         Args:
             key (str): The configuration key
         """
@@ -384,11 +384,11 @@ class GlobalConfig:
 
     def _convert_value(self, key: str, value):
         """Helper function converting certain values.
-        
+
         Args:
             key (str): The configuration key
             value: The value to convert
-        
+
         Returns:
             The converted value
         """
@@ -409,7 +409,7 @@ class GlobalConfig:
 
     def __getitem__(self, key: str):
         """Retrieve item `key`.
-        
+
         Args:
             key (str): The configuration key
         """
@@ -460,7 +460,7 @@ class GlobalConfig:
 
     def __setitem__(self, key: str, value):
         """Update item `key` with `value`.
-        
+
         Args:
             key (str): The configuration key
             value: The value to set
@@ -470,7 +470,7 @@ class GlobalConfig:
 
     def __delitem__(self, key: str):
         """Removes item `key`.
-        
+
         Args:
             key (str): The configuration key
         """
@@ -558,10 +558,10 @@ def get_package_versions(
 
 def parse_version_str(ver_str: str) -> list[int]:
     """Helper function converting a version string into a list of integers.
-    
+
     Args:
         ver_str (str): The version string to parse
-    
+
     Returns:
         list[int]: List of version numbers as integers
     """
@@ -574,7 +574,7 @@ def parse_version_str(ver_str: str) -> list[int]:
 
 def check_package_version(package_name: str, min_version: str):
     """Checks whether a package has a sufficient version.
-    
+
     Args:
         package_name (str): The name of the package to check
         min_version (str): The minimum required version

@@ -96,8 +96,8 @@ class ExplicitMPISolver(EulerSolver):
                 Number of subdivision in each direction. Should be a list of length
                 `grid.num_axes` specifying the number of nodes for this axis. If one
                 value is `-1`, its value will be determined from the number of available
-                nodes. A single integer is interpreted as the number of subdivisions along
-                one axis. The default value `auto` tries to determine an optimal
+                nodes. A single integer is interpreted as the number of subdivisions
+                along one axis. The default value `auto` tries to determine an optimal
                 decomposition by minimizing communication between nodes.
             backend (str):
                 The backend used for numerical operations

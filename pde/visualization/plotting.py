@@ -523,8 +523,6 @@ def plot_magnitudes(
             the simulation data that will be plotted
         quantities:
             {ARG_PLOT_QUANTITIES}
-        ax (:class:`matplotlib.axes.Axes`):
-            Figure axes to be used for plotting
         {PLOT_ARGS}
         **kwargs:
             All remaining parameters are forwarded to the `ax.plot` method
@@ -695,8 +693,6 @@ def plot_kymograph(
             Whether to show a colorbar or not
         transpose (bool):
             Determines whether the transpose of the data should is plotted
-        ax (:class:`matplotlib.axes.Axes`):
-            Figure axes to be used for plotting
         {PLOT_ARGS}
         **kwargs:
             Additional keyword arguments are passed to
@@ -771,8 +767,6 @@ def plot_kymographs(
             Determines whether the transpose of the data should is plotted
         resize_fig (bool):
             Whether to resize the figure to adjust to the number of panels
-        fig:
-            Figure to use for plotting. If `None`, a new figure is created.
         {PLOT_ARGS}
         **kwargs:
             Additional keyword arguments are passed to the calls to

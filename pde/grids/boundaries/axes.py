@@ -39,7 +39,7 @@ BC_LOCAL_KEYS = ["type", "value", *list(BCBase._conditions)]
 
 def _is_local_bc_data(data: dict[str, Any]) -> bool:
     """Tries to identify whether data specifies a local boundary condition.
-    
+
     Args:
         data (dict): The data to check
     """
@@ -104,7 +104,7 @@ class BoundariesList(BoundariesBase):
 
     def __init__(self, boundaries: list[BoundaryAxisBase]):
         """Initialize with a list of boundaries.
-        
+
         Args:
             boundaries (list): List of boundary axis conditions
         """
@@ -430,7 +430,7 @@ class BoundariesList(BoundariesBase):
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition.
-        
+
         Args:
             field_name (str): Name of the field to use in the representation
         """

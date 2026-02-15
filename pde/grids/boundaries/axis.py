@@ -127,7 +127,7 @@ class BoundaryAxisBase:
 
     def __getitem__(self, index) -> BCBase:
         """Returns one of the sides.
-        
+
         Args:
             index (int or bool): The index of the boundary side
         """
@@ -140,7 +140,7 @@ class BoundaryAxisBase:
 
     def __setitem__(self, index, data) -> None:
         """Set one of the sides.
-        
+
         Args:
             index (int or bool): The index of the boundary side
             data: Data describing the boundary condition
@@ -186,7 +186,7 @@ class BoundaryAxisBase:
 
     def get_mathematical_representation(self, field_name: str = "C") -> tuple[str, str]:
         """Return mathematical representation of the boundary condition.
-        
+
         Args:
             field_name (str): Name of the field to use in the representation
         """

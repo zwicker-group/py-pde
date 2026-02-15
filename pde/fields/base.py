@@ -653,7 +653,7 @@ class FieldBase(metaclass=ABCMeta):
 
         Args:
             func (callable or str):
-                (vectorized) function being applied to the data or an expression
+                (Vectorized) function being applied to the data or an expression
                 that can be parsed using sympy (:func:`~pde.tools.expressions.evaluate`
                 is used in this case). The local field values can be accessed using the
                 field labels for a field collection and via the variable `c` otherwise.

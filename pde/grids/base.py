@@ -51,7 +51,7 @@ CoordsType = Literal["cartesian", "grid", "cell"]
 
 def _check_shape(shape: int | Sequence[int]) -> tuple[int, ...]:
     """Checks the consistency of shape tuples.
-    
+
     Args:
         shape (int or list): The shape to check
     """
@@ -162,7 +162,7 @@ class GridBase(metaclass=ABCMeta):
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Initialize class-level attributes of subclasses.
-        
+
         Args:
             **kwargs: Additional keyword arguments passed to the parent class
         """
@@ -400,7 +400,7 @@ class GridBase(metaclass=ABCMeta):
 
         This function is for instance called when
         a grid instance appears in another object that is copied using `copy.deepcopy`
-        
+
         Args:
             memo (dict): Dictionary of already copied objects
         """

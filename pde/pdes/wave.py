@@ -137,7 +137,7 @@ class WavePDE(PDEBase):
         return pde_rhs
 
     def make_pde_rhs_torch(
-        self, state: ScalarField
+        self, state: FieldCollection
     ) -> Callable[[torch.Tensor, float], torch.Tensor]:
         """Create a compiled function evaluating the right hand side of the PDE.
 

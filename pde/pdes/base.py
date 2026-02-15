@@ -97,7 +97,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def __init_subclass__(cls, **kwargs):
         """Initialize class-level attributes of subclasses.
-        
+
         Args:
             **kwargs:
                 Additional keyword arguments passed to the superclass

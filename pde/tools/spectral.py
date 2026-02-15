@@ -197,7 +197,7 @@ def make_correlated_noise(
 
             def corr_spectrum(k2s):
                 """Fourier transform of a Gaussian function.
-                
+
                 Args:
                     k2s: Squared wave vectors
                 """
@@ -212,7 +212,7 @@ def make_correlated_noise(
 
             def corr_spectrum(k2s):
                 """Fourier transform of a power law.
-                
+
                 Args:
                     k2s: Squared wave vectors
                 """
@@ -226,7 +226,7 @@ def make_correlated_noise(
 
         def corr_spectrum(k2s):
             """Fourier transform of a function that has a dominant harmonic mode.
-            
+
             Args:
                 k2s: Squared wave vectors
             """

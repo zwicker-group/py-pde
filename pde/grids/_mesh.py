@@ -785,8 +785,6 @@ class GridMesh:
         r"""Visualize the grid mesh.
 
         Args:
-            ax (:class:`matplotlib.axes.Axes`):
-                Figure axes to be used for plotting
             {PLOT_ARGS}
             \**kwargs:
                 Extra arguments are passed on the to the matplotlib plotting routines,

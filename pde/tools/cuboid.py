@@ -133,7 +133,7 @@ class Cuboid:
 
     def __add__(self, other: Cuboid) -> Cuboid:
         """The sum of two cuboids is the minimal cuboid enclosing both.
-        
+
         Args:
             other: The cuboid to add
         """
@@ -149,7 +149,7 @@ class Cuboid:
 
     def __eq__(self, other) -> bool:
         """Override the default equality test.
-        
+
         Args:
             other: The object to compare to
         """
@@ -209,7 +209,7 @@ class Cuboid:
 
     def buffer(self, amount: FloatOrArray = 0, inplace=False) -> Cuboid:
         """Dilate the cuboid by a certain amount in all directions.
-        
+
         Args:
             amount: The amount to dilate (can be a scalar or array)
             inplace (bool): Whether to modify in place or return a new cuboid
