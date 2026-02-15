@@ -1,10 +1,5 @@
 """Defines a vectorial field over a grid.
 
-.. autosummary::
-   :nosignatures:
-
-   VectorField
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

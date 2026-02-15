@@ -1,10 +1,5 @@
 """Defines a class controlling the simulations of PDEs.
 
-.. autosummary::
-   :nosignatures:
-
-   Controller
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

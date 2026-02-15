@@ -1,10 +1,5 @@
 """A Cahn-Hilliard equation.
 
-.. autosummary::
-   :nosignatures:
-
-   CahnHilliardPDE
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

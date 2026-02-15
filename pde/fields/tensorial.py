@@ -1,10 +1,5 @@
 """Defines a tensorial field of rank 2 over a grid.
 
-.. autosummary::
-   :nosignatures:
-
-   Tensor2Field
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

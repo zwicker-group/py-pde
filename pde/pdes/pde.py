@@ -1,10 +1,5 @@
 """Defines a PDE class whose right hand side is given as a string.
 
-.. autosummary::
-   :nosignatures:
-
-   PDE
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

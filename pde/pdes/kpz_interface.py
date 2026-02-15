@@ -1,10 +1,5 @@
 """The Kardar–Parisi–Zhang (KPZ) equation describing the evolution of an interface.
 
-.. autosummary::
-   :nosignatures:
-
-   KPZInterfacePDE
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

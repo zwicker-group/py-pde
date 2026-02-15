@@ -1,10 +1,5 @@
 """A simple diffusion equation.
 
-.. autosummary::
-   :nosignatures:
-
-   DiffusionPDE
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

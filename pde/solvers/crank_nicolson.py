@@ -1,10 +1,5 @@
 """Defines a Crank-Nicolson solver.
 
-.. autosummary::
-   :nosignatures:
-
-   CrankNicolsonSolver
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

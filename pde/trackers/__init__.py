@@ -18,8 +18,8 @@ store, or output it. The trackers defined in this module are:
    ~trackers.MaterialConservationTracker
    ~interactive.InteractivePlotTracker
 
-Some trackers can also be referenced by name for convenience when using them in
-simulations. The list of supported names is returned by :func:`~pde.registered_trackers`.
+Some trackers can be referenced by name for convenience when using them in simulations.
+The list of supported names is returned by :func:`~pde.registered_trackers`.
 
 Multiple trackers can be collected in a :class:`~base.TrackerCollection`, which provides
 methods for handling them efficiently. Moreover, custom trackers can be implemented by

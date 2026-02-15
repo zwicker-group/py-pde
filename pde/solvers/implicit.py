@@ -1,10 +1,5 @@
 """Defines an implicit Euler solver.
 
-.. autosummary::
-   :nosignatures:
-
-   ImplicitSolver
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

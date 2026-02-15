@@ -1,10 +1,5 @@
 """Cylindrical grids with azimuthal symmetry.
 
-.. autosummary::
-   :nosignatures:
-
-   CylindricalSymGrid
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

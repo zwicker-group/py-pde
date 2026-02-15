@@ -1,10 +1,5 @@
 """A Allen-Cahn equation.
 
-.. autosummary::
-   :nosignatures:
-
-   AllenCahnPDE
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

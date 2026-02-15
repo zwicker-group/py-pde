@@ -3,11 +3,6 @@
 This module defines the :class:`Cuboid` class, which represents an n-dimensional
 cuboid that is aligned with the axes of a Cartesian coordinate system.
 
-.. autosummary::
-   :nosignatures:
-
-   Cuboid
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
