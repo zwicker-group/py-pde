@@ -4,7 +4,7 @@ Contributing code
 
 Structure of the package
 """"""""""""""""""""""""
-The functionality of the :mod:`pde` package is split into multiple sub-package.
+The functionality of the :mod:`pde` package is split into multiple sub-packages.
 The domain, together with its symmetries, periodicities, and discretizations, is
 described by classes defined in :mod:`~pde.grids`.
 Discretized fields are represented by classes in :mod:`~pde.fields`, which have
@@ -93,7 +93,7 @@ being created.
 
 Running unit tests
 """"""""""""""""""
-The :mod:`pde` package contains several unit tests, collection in the :file:`tests`
+The :mod:`pde` package contains several unit tests, collected in the :file:`tests`
 folder in the project root. These tests ensure that basic functions work as expected,
 in particular when code is changed in future versions. To run all tests, there are a
 few convenience scripts in the root directory :file:`scripts`. The most basic script is

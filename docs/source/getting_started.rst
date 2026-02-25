@@ -14,7 +14,7 @@ Advantages of this approach include:
 However, there are of course also disadvantages to the approach taken by `py-pde`:
 
 * Only suited for simple geometries (like rectangles, disks, or cylinders) with a fixed discretization.
-* Optimized for PDEs that describe the time-evolution of a physical system. Neither time-independent systems nor integro-differential equation are fully supported.
+* Optimized for PDEs that describe the time-evolution of a physical system. Neither time-independent systems nor integro-differential equations are fully supported.
 * Finite-differences can lead to numerical instabilities.
 * Provided generic solvers might not be most suitable choice for particular equations.
 
@@ -46,7 +46,7 @@ install the following optional packages:
 
     pip install h5py pandas pyfftw tqdm
 
-Moreover, :command:`ffmpeg` needs to be installed and for creating movies.    
+Moreover, :command:`ffmpeg` needs to be installed for creating movies.
 
 
 Install using conda

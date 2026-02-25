@@ -57,7 +57,7 @@ field (:code:`bc="value_expression"`) or its derivative
 (:code:`bc="derivative_expression"`). Beyond the spatial coordinates that are already
 supported for the constant conditions above, the expressions of these boundary
 conditions can depend on the time variable :code:`t`. Moreover, these boundary
-conditions also except python functions with signature `(adjacent_value, dx, *coords, t)`,
+conditions also accept python functions with signature `(adjacent_value, dx, *coords, t)`,
 thus greatly enlarging the flexibility with which boundary conditions can be expressed.
 Note that PDEs need to supply the current time `t` when setting the boundary conditions,
 e.g., when applying the differential operators. The pre-defined PDEs and the general
@@ -79,7 +79,7 @@ the following boundary condition can be used:
 
     grid = pde.UnitGrid([16, 16], periodic=[True, False])
     field = pde.ScalarField(grid)
-    field.laplace({"x": "periodic", "y": {"derivative": 0})
+    field.laplace({"x": "periodic", "y": {"derivative": 0}})
 
 For convenience, this typical situation can be described with the special boundary
 condition `auto_periodic_neumann`, e.g., calling the Laplace operator using 
