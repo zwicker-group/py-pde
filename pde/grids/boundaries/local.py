@@ -613,7 +613,7 @@ class _MPIBC(BCBase):
         return f"MPI @ {axis_name}={self.axis_coord}"
 
     def send_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
-        """mpi_send the ghost cell values for this boundary.
+        """Send the ghost cell values for this boundary.
 
         Args:
             data_full (:class:`~numpy.ndarray`):
@@ -633,7 +633,7 @@ class _MPIBC(BCBase):
 
 
 class UserBC(BCBase):
-    """Represents a boundary whose virtual point are set by the user.
+    """Represents a boundary whose virtual points are set by the user.
 
     Boundary conditions will only be set when a dictionary :code:`{TARGET: value}` is
     supplied as argument `args` to :meth:`set_ghost_cells` or the numba equivalent.

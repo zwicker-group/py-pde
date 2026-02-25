@@ -29,10 +29,10 @@ class KuramotoSivashinskyPDE(SDEBase):
 
     .. math::
         \partial_t u = -\nu \nabla^4 u  - \nabla^2 u -
-            \frac{1}{2} \left(\nabla h\right)^2  + \eta(\boldsymbol r, t)
+            \frac{1}{2} \left(\nabla u\right)^2  + \eta(\boldsymbol r, t)
 
     where :math:`u` is the height of the interface in Monge parameterization. The
-    dynamics are governed by the parameters :math:`\nu` , while :math:`\eta` is Gaussian
+    dynamics are governed by the parameter :math:`\nu`, while :math:`\eta` is Gaussian
     white noise, whose strength is controlled by the `noise` argument.
     """
 
@@ -66,7 +66,7 @@ class KuramotoSivashinskyPDE(SDEBase):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
                 used for stochastic simulations. Note that this random number generator
-                is only used for numpy function, while compiled numba code uses the
+                is only used for numpy functions, while compiled numba code uses the
                 random number generator of numba. Moreover, in simulations using
                 multiprocessing, setting the same generator in all processes might yield
                 unintended correlations in the simulation results.
@@ -124,7 +124,7 @@ class KuramotoSivashinskyPDE(SDEBase):
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`~numpy.ndarray` of the state data and
-            the time to obtained an instance of :class:`~numpy.ndarray` giving
+            the time to obtain an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
         nu_value = self.nu
@@ -155,7 +155,7 @@ class KuramotoSivashinskyPDE(SDEBase):
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`torch.Tensor` of the state data and
-            the time to obtained an instance of :class:`torch.Tensor` giving
+            the time to obtain an instance of :class:`torch.Tensor` giving
             the evolution rate.
         """
         nu_value = self.nu

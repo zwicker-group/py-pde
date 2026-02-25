@@ -92,7 +92,7 @@ class PDEBase(metaclass=ABCMeta):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
                 used for stochastic simulations. Note that this random number generator
-                is only used for numpy function, while other backends might not use it.
+                is only used for numpy functions, while other backends might not use it.
                 Moreover, in simulations using multiprocessing, setting the same
                 generator in all processes might yield unintended correlations in the
                 simulation results.
@@ -210,7 +210,7 @@ class PDEBase(metaclass=ABCMeta):
         *,
         tol: float = 1e-7,
     ) -> None:
-        """Checks the a implementation the right hand side versus the numpy variant.
+        """Checks an implementation of the right hand side versus the numpy variant.
 
         Args:
             rhs_implementation (callable):
@@ -487,7 +487,7 @@ class SDEBase(PDEBase):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
                 used for stochastic simulations. Note that this random number generator
-                is only used for numpy function, while other backends might not use it.
+                is only used for numpy functions, while other backends might not use it.
                 Moreover, in simulations using multiprocessing, setting the same
                 generator in all processes might yield unintended correlations in the
                 simulation results.

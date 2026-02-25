@@ -56,7 +56,7 @@ class KPZInterfacePDE(SDEBase):
             nu (float):
                 Parameter :math:`\nu` for the strength of the diffusive term
             lmbda (float):
-                Parameter :math:`\lambda` for the strenth of the gradient term
+                Parameter :math:`\lambda` for the strength of the gradient term
             bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
@@ -65,7 +65,7 @@ class KPZInterfacePDE(SDEBase):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
                 used for stochastic simulations. Note that this random number generator
-                is only used for numpy function, while compiled numba code uses the
+                is only used for numpy functions, while compiled numba code uses the
                 random number generator of numba. Moreover, in simulations using
                 multiprocessing, setting the same generator in all processes might yield
                 unintended correlations in the simulation results.
@@ -118,7 +118,7 @@ class KPZInterfacePDE(SDEBase):
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`~numpy.ndarray` of the state data and
-            the time to obtained an instance of :class:`~numpy.ndarray` giving
+            the time to obtain an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
         nu_value, lambda_value = self.nu, self.lmbda
@@ -147,7 +147,7 @@ class KPZInterfacePDE(SDEBase):
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`torch.Tensor` of the state data and
-            the time to obtained an instance of :class:`torch.Tensor` giving
+            the time to obtain an instance of :class:`torch.Tensor` giving
             the evolution rate.
         """
         nu_value, lambda_value = self.nu, self.lmbda
