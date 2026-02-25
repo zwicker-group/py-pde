@@ -13,7 +13,7 @@ difference scheme.
 Grids are defined by instance of various classes that capture the symmetries of the 
 underlying space.
 In particular, the package offers Cartesian grids of `1` to `3` dimensions via
-:class:`~pde.grids.cartesian.CartesianGrid`, as well as curvilinear coordinate for
+:class:`~pde.grids.cartesian.CartesianGrid`, as well as curvilinear coordinates for
 spherically symmetric systems in two dimension (:class:`~pde.grids.spherical.PolarSymGrid`)
 and three dimensions (:class:`~pde.grids.spherical.SphericalSymGrid`), as well as the
 special class :class:`~pde.grids.cylindrical.CylindricalSymGrid` for a cylindrical geometry
@@ -38,7 +38,7 @@ Initializing a field
 """"""""""""""""""""
 Fields specifying the values at the discrete points of the grid defined in the previous
 section.
-Most PDEs discussed in the package describe a scalar variable, which can be encoded th
+Most PDEs discussed in the package describe a scalar variable, which can be encoded by the
 class :class:`~pde.fields.scalar.ScalarField`.
 However, tensors with rank 1 (vectors) and rank 2 are also supported using 
 :class:`~pde.fields.vectorial.VectorField` and
@@ -59,7 +59,7 @@ e.g., the result of applying the Laplacian to a scalar field is returned by
 calling the method :meth:`~pde.fields.scalar.ScalarField.laplace`, which
 returns another instance of :class:`~pde.fields.scalar.ScalarField`, whereas
 :meth:`~pde.fields.scalar.ScalarField.gradient` returns a
-:class:`~pde.fields.vector.VectorField`.
+:class:`~pde.fields.vectorial.VectorField`.
 Combining these functions with ordinary arithmetics on fields allows to
 represent the right hand side of many partial differential equations that appear
 in physics.
@@ -92,7 +92,7 @@ Running the simulation
 """"""""""""""""""""""
 To solve the PDE, we use the generated initial condition, i.e., the initial
 field :code:`field`, which are evolved forward in time by the PDE.
-This field also defined the geometry on which the PDE is solved.
+This field also defines the geometry on which the PDE is solved.
 In the simplest case, the solution is then obtain by running
 
  .. code-block:: python

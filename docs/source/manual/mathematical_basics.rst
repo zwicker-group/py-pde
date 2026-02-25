@@ -116,7 +116,7 @@ spaced equidistantly along a given axis, i.e., the discretization
 :math:`\Delta x` is constant.
 If a given axis covers values in a range
 :math:`[x_\mathrm{min}, x_\mathrm{max}]`, a discretization with :math:`N`
-support points can then be though of as covering the axis with :math:`N`
+support points can then be thought of as covering the axis with :math:`N`
 equal-sized boxes; see inset.
 Field values are then specified for each box, i.e., the support points lie at
 the centers of the box:
