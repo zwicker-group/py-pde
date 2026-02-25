@@ -127,7 +127,7 @@ class SwiftHohenbergPDE(PDEBase):
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`~numpy.ndarray` of the state data and
-            the time to obtained an instance of :class:`~numpy.ndarray` giving
+            the time to obtain an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
         rate = self.rate
@@ -164,7 +164,7 @@ class SwiftHohenbergPDE(PDEBase):
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`torch.Tensor` of the state data and
-            the time to obtained an instance of :class:`torch.Tensor` giving
+            the time to obtain an instance of :class:`torch.Tensor` giving
             the evolution rate.
         """
         rate = self.rate

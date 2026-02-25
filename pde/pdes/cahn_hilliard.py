@@ -105,7 +105,7 @@ class CahnHilliardPDE(PDEBase):
         Returns:
             A function with signature `(state_data, t)`, which can be called with an
             instance of :class:`~numpy.ndarray` of the state data and the time to
-            obtained an instance of :class:`~numpy.ndarray` giving the evolution rate.
+            obtain an instance of :class:`~numpy.ndarray` giving the evolution rate.
         """
         interface_width = self.interface_width
         laplace_c = state.grid.make_operator("laplace", bc=self.bc_c, backend="numba")
@@ -134,7 +134,7 @@ class CahnHilliardPDE(PDEBase):
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`torch.Tensor` of the state data and
-            the time to obtained an instance of :class:`torch.Tensor` giving
+            the time to obtain an instance of :class:`torch.Tensor` giving
             the evolution rate.
         """
         interface_width = self.interface_width

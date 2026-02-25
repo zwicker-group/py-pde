@@ -65,7 +65,7 @@ class SmoothData1D:
         return float(self.x.min()), float(self.x.max())
 
     def __contains__(self, x: float) -> bool:
-        """Checks whether the value `x` is contain in the range of x-values."""
+        """Checks whether the value `x` is contained in the range of x-values."""
         return self.x.min() <= x <= self.x.max()  # type: ignore
 
     def __call__(self, xs: ArrayLike) -> NumericArray:
