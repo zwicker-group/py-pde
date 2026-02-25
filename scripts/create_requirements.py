@@ -153,7 +153,7 @@ REQUIREMENTS = [
         name="mpi4py",
         version_min="3",
         usage="Parallel processing using MPI",
-        collections={"multiprocessing"},
+        collections={"multiprocessing", "docs"},
     ),
     Requirement(
         name="napari",
@@ -165,7 +165,7 @@ REQUIREMENTS = [
         name="numba-mpi",
         version_min="0.22",
         usage="Parallel processing using MPI+numba",
-        collections={"multiprocessing"},
+        collections={"multiprocessing", "docs"},
     ),
     # for documentation only
     Requirement(name="Sphinx", version_min="4", docs_only=True),

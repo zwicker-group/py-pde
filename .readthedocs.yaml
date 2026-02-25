@@ -13,6 +13,7 @@ build:
   apt_packages:
     - ffmpeg
     - graphviz
+    - python3-mpi4py
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:

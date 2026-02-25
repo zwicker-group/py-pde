@@ -12,8 +12,11 @@
 Inheritance structure of the classes:
 
 
-.. inheritance-diagram:: scalar.ScalarField vectorial.VectorField tensorial.Tensor2Field
-        collection.FieldCollection
+.. inheritance-diagram::
+      scalar.ScalarField
+      vectorial.VectorField
+      tensorial.Tensor2Field
+      collection.FieldCollection
    :parts: 1
 
 The details of the classes are explained below:
