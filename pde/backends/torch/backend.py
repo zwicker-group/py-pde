@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import numbers
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -14,10 +15,12 @@ import torch
 from ...grids import GridBase
 from ..base import OperatorInfo, TFunc
 from ..numpy import NumpyBackend
-from .utils import get_torch_dtype
+from .utils import NUMPY_TO_TORCH_DTYPE, TORCH_TO_NUMPY_DTYPE
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from numpy.typing import DTypeLike
 
     from ...grids import GridBase
     from ...grids.boundaries.axes import BoundariesBase
@@ -44,6 +47,8 @@ class TorchBackend(NumpyBackend):
         "options": {"epilogue_fusion": True, "max_autotune": True},
     }
     """dict: defines options that affect compilation by torch"""
+
+    _dtype_cache: dict[str, dict[DTypeLike, torch.dtype]] = defaultdict(dict)
 
     def __init__(self, name: str, registry: BackendRegistry, *, device: str = "config"):
         """Initialize the torch backend.
@@ -75,12 +80,70 @@ class TorchBackend(NumpyBackend):
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self._device = torch.device(device)
 
+    def get_torch_dtype(self, dtype: DTypeLike) -> torch.dtype:
+        """Convert dtype to torch dtype.
+
+        Args:
+            dtype:
+                numpy dtype to convert to corresponding torch dtype
+
+        Returns:
+            :class:`torch.dtype`:
+                A proper dtype for torch
+        """
+        if isinstance(dtype, torch.dtype):
+            return dtype
+
+        # load the dtype cache of the current device
+        type_cache = self._dtype_cache[self.device.type]
+        np_dtype = np.dtype(dtype)
+        try:
+            # try returning type from cache
+            return type_cache[np_dtype]
+        except KeyError:
+            pass
+
+        # convert numpy dtype to corresponding torch dtype
+        torch_dtype = NUMPY_TO_TORCH_DTYPE[dtype]
+
+        try:
+            # Try to create a tensor of this dtype on the device
+            torch.empty(1, dtype=torch_dtype, device=self.device)
+        except TypeError:
+            # dtype is not supported
+            if self.config["dtype_downcasting"] and torch_dtype == torch.float64:
+                # TODO: Add warning
+                torch_dtype = torch.float32
+            else:
+                raise
+
+        # store dtype in cache
+        type_cache[np_dtype] = torch_dtype
+        return torch_dtype
+
+    def get_numpy_dtype(self, dtype: DTypeLike) -> np.dtype:
+        """Determine numpy dtype suitable for the torch backend.
+
+        Args:
+            dtype:
+                numpy dtype to convert to supported dtype
+
+        Returns:
+            :class:`torch.dtype`:
+                A numpy dtype that is compatible with the torch backend
+        """
+        return TORCH_TO_NUMPY_DTYPE[self.get_torch_dtype(dtype)]
+
     def from_numpy(self, value: Any) -> Any:
-        """Convert values from numpy to native representation."""
+        """Convert values from numpy to torch representation.
+
+        This method also ensures that the value is copied to the selected device.
+        """
+        if isinstance(value, torch.Tensor):
+            return value.to(self.device)
         if isinstance(value, np.ndarray):
             arr_torch = torch.from_numpy(value)
-            arr_torch.to(self.device)
-            return arr_torch
+            return arr_torch.to(self.device, dtype=self.get_torch_dtype(value.dtype))
         if isinstance(value, numbers.Number):
             return value
         msg = f"Unsupported type `{value.__type__}"
@@ -89,7 +152,7 @@ class TorchBackend(NumpyBackend):
     def to_numpy(self, value: Any) -> Any:
         """Convert native values to numpy representation."""
         if isinstance(value, torch.Tensor):
-            return value.numpy()
+            return value.cpu().numpy()
         return value
 
     def compile_function(self, func: TFunc, **compile_options) -> TFunc:
@@ -149,7 +212,7 @@ class TorchBackend(NumpyBackend):
         """
         # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)
-        dtype = get_torch_dtype(kwargs.pop("dtype", np.double))
+        dtype = self.get_numpy_dtype(kwargs.pop("dtype", np.double))
 
         # create an operator with or without BCs
         torch_operator = operator_info.factory(grid, bcs=None, dtype=dtype, **kwargs)
@@ -163,8 +226,9 @@ class TorchBackend(NumpyBackend):
             return torch_operator_jitted  # type: ignore
 
         def operator_no_bc(arr: NumericArray, out: NumericArray) -> None:
-            arr_torch = torch.from_numpy(arr)
-            out[...] = torch_operator_jitted(arr_torch)  # type: ignore
+            arr_torch = self.from_numpy(arr)
+            out_torch = torch_operator_jitted(arr_torch)
+            out[...] = self.to_numpy(out_torch)
 
         return operator_no_bc  # type: ignore
 
@@ -208,7 +272,7 @@ class TorchBackend(NumpyBackend):
         """
         # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)
-        dtype = get_torch_dtype(kwargs.pop("dtype", np.double))
+        dtype = self.get_numpy_dtype(kwargs.pop("dtype", np.double))
         bcs = grid.get_boundary_conditions(bcs, rank=operator_info.rank_in)
 
         # create an operator with or without BCs
@@ -231,15 +295,15 @@ class TorchBackend(NumpyBackend):
             arr: NumericArray, out: NumericArray | None = None, args=None
         ) -> NumericArray:
             """Set boundary conditions and apply operator."""
-            arr_torch = torch.from_numpy(arr)
-            arr_torch.to(self.device)
+            arr_torch = self.from_numpy(arr)
 
             if out is None:
                 out = np.empty(shape_out, dtype=arr.dtype)
             elif out.shape != shape_out:
                 msg = f"Incompatible shapes {out.shape} != {shape_out}"
                 raise ValueError(msg)
-            out[:] = torch_operator_jitted(arr_torch)  # type: ignore
+            out_torch = torch_operator_jitted(arr_torch)  # type: ignore
+            out[:] = self.to_numpy(out_torch)
             return out
 
         # return the compiled versions of the operator
@@ -275,12 +339,11 @@ class TorchBackend(NumpyBackend):
                 arr (:class:`~numpy.ndarray`): discretized data on grid
             """
             # move data to device
-            arr_torch = torch.from_numpy(arr)
-            arr_torch.to(self.device)
+            arr_torch = self.from_numpy(arr)
             # integrate on device
             res = integrate_torch(arr_torch)
             # return result
-            res_np = res.cpu().detach().numpy()
+            res_np = self.to_numpy(res)
             if res_np.ndim == 0:
                 return res_np[()]  # type: ignore
             return res_np  # type: ignore

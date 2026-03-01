@@ -21,6 +21,14 @@ DEFAULT_CONFIG: list[Parameter] = [
         "`cpu` if not.",
     ),
     Parameter(
+        "dtype_downcasting",
+        True,
+        bool,
+        "Determines whether dtype downcasting is used automatically. A typical example "
+        "are torch devices that only support float32, so the numpy arrays using float64"
+        " need to be converted. If enabled, this happens automatically.",
+    ),
+    Parameter(
         "compile",
         True,
         bool,

@@ -45,7 +45,8 @@ def test_conservative_laplace_polar(rng):
     f = ScalarField.random_uniform(grid, rng=rng)
 
     res = f.laplace("auto_periodic_neumann", backend="torch")
-    np.testing.assert_allclose(res.integral, 0, atol=1e-12)
+    # we here use a threshold for float32 since some torch backends use this
+    np.testing.assert_allclose(res.integral, 0, atol=3e-6)
 
 
 @pytest.mark.parametrize(

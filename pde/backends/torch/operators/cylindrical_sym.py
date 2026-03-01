@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
 import torch
 
 from ....grids import CylindricalSymGrid, GridBase
@@ -24,10 +23,10 @@ from .. import torch_backend
 from .common import TorchOperator
 
 if TYPE_CHECKING:
+    import numpy as np
     from torch import Tensor
 
     from ....grids.boundaries import BoundariesList
-    from ..utils import AnyDType
 
 
 @torch_backend.register_operator(CylindricalSymGrid, "laplace", rank_in=0, rank_out=0)
@@ -40,9 +39,7 @@ class CylindricalLaplacian(TorchOperator):
 
     rank_in = 0
 
-    def __init__(
-        self, grid: GridBase, bcs: BoundariesList | None, *, dtype: AnyDType = np.double
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Cylindrical Laplacian operator.
 
         Args:
@@ -60,7 +57,7 @@ class CylindricalLaplacian(TorchOperator):
         dr = grid.discretization[0]
         self.dr_2, self.dz_2 = 1 / grid.discretization**2
         factor_r = 1 / (2 * grid.axes_coords[0] * dr)
-        self.register_buffer("factor_r", torch.from_numpy(factor_r[:, None]))
+        self.register_array("factor_r", factor_r[:, None])
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
@@ -91,7 +88,7 @@ class CylindricalGradient(TorchOperator):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
     ):
         """Initialize the Cylindrical gradient operator.
 
@@ -137,7 +134,7 @@ class CylindricalGradientSquared(TorchOperator):
         bcs: BoundariesList | None,
         *,
         central: bool = True,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
     ):
         """Initialize the Cylindrical gradient squared operator.
 
@@ -190,9 +187,7 @@ class CylindricalDivergence(TorchOperator):
 
     rank_in = 1
 
-    def __init__(
-        self, grid: GridBase, bcs: BoundariesList | None, *, dtype: AnyDType = np.double
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Cylindrical divergence operator.
 
         Args:
@@ -208,7 +203,7 @@ class CylindricalDivergence(TorchOperator):
 
         self.scale_r, self.scale_z = 1 / (2 * grid.discretization)
         rs = grid.axes_coords[0]
-        self.register_buffer("rs", torch.from_numpy(rs[:, None]))
+        self.register_array("rs", rs[:, None])
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
@@ -234,7 +229,7 @@ class CylindricalDivergence(TorchOperator):
 #         grid: GridBase,
 #         bcs: BoundariesList | None,
 #         *,
-#         dtype: AnyDType = np.double,
+#         dtype: np.dtype,
 #     ):
 #         """Initialize the Cylindrical divergence operator.
 
@@ -250,7 +245,7 @@ class CylindricalDivergence(TorchOperator):
 #         super().__init__(grid, bcs, dtype=dtype)
 
 #         dr = self.grid.discretization[0]
-#         self.register_buffer("rs", torch.from_numpy(self.grid.axes_coords[0]))
+#         self.register_array("rs", self.grid.axes_coords[0])
 #         self.scale_r = 1 / (2 * dr)
 
 #     def forward(self, arr: Tensor, args=None) -> Tensor:
