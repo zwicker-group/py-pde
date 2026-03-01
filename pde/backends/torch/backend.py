@@ -121,7 +121,7 @@ class TorchBackend(NumpyBackend):
             pass
 
         # convert numpy dtype to corresponding torch dtype
-        torch_dtype = NUMPY_TO_TORCH_DTYPE[dtype]
+        torch_dtype = NUMPY_TO_TORCH_DTYPE[np_dtype]
 
         try:
             # Try to create a tensor of this dtype on the device

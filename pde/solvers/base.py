@@ -65,7 +65,7 @@ class SolverBase:
 
     _logger: logging.Logger
     _backend_name: str
-    __backend_obj: BackendBase | None
+    _backend_obj: BackendBase
 
     def __init__(
         self,
@@ -181,11 +181,11 @@ class SolverBase:
 
         # check whether the new backend contradicts the old backend object
         if (
-            getattr(self, "__backend_obj", None) is not None
-            and self.__backend_obj.name != new_backend  # type: ignore
+            getattr(self, "_backend_obj", None) is not None
+            and self._backend_obj.name != new_backend  # type: ignore
         ):
             msg = "Tried changing the loaded backend of the solver from `%s` to `%s`"
-            raise TypeError(msg, self.__backend_obj.name, new_backend)  # type: ignore
+            raise TypeError(msg, self._backend_obj.name, new_backend)  # type: ignore
 
         # set the new backend
         self._backend_name = self.info["backend"] = new_backend
