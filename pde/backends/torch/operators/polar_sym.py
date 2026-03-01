@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-import numpy as np
 import torch
 
 from ....grids import GridBase, PolarSymGrid
@@ -24,10 +23,10 @@ from .. import torch_backend
 from .common import TorchOperator
 
 if TYPE_CHECKING:
+    import numpy as np
     from torch import Tensor
 
     from ....grids.boundaries import BoundariesList
-    from ..utils import AnyDType
 
 
 @torch_backend.register_operator(PolarSymGrid, "laplace", rank_in=0, rank_out=0)
@@ -45,7 +44,7 @@ class PolarLaplacian(TorchOperator):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
     ):
         """Initialize the Polar Laplacian operator.
 
@@ -63,7 +62,7 @@ class PolarLaplacian(TorchOperator):
         # calculate preliminary quantities
         dr = grid.discretization[0]
         factor_r = 1 / (2 * self.grid.axes_coords[0] * dr)
-        self.register_buffer("factor_r", torch.from_numpy(factor_r))
+        self.register_array("factor_r", factor_r)
         self.dr_2 = 1 / dr**2
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
@@ -90,7 +89,7 @@ class PolarGradient(TorchOperator):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
         method: Literal["central", "forward", "backward"] = "central",
     ):
         """Initialize the Polar gradient operator.
@@ -151,7 +150,7 @@ class PolarGradientSquared(TorchOperator):
         bcs: BoundariesList | None,
         *,
         central: bool = True,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
     ):
         """Initialize the Polar gradient squared operator.
 
@@ -203,7 +202,7 @@ class PolarDivergence(TorchOperator):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
     ):
         """Initialize the Polar divergence operator.
 
@@ -219,7 +218,7 @@ class PolarDivergence(TorchOperator):
         super().__init__(grid, bcs, dtype=dtype)
 
         dr = self.grid.discretization[0]
-        self.register_buffer("rs", torch.from_numpy(self.grid.axes_coords[0]))
+        self.register_array("rs", self.grid.axes_coords[0])
         self.scale_r = 1 / (2 * dr)
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
@@ -244,7 +243,7 @@ class PolarDivergence(TorchOperator):
 #         grid: GridBase,
 #         bcs: BoundariesList | None,
 #         *,
-#         dtype: AnyDType = np.double,
+#         dtype: np.dtype,
 #     ):
 #         """Initialize the Polar divergence operator.
 
@@ -260,7 +259,7 @@ class PolarDivergence(TorchOperator):
 #         super().__init__(grid, bcs, dtype=dtype)
 
 #         dr = self.grid.discretization[0]
-#         self.register_buffer("rs", torch.from_numpy(self.grid.axes_coords[0]))
+#         self.register_array("rs", self.grid.axes_coords[0])
 #         self.scale_r = 1 / (2 * dr)
 
 #     def forward(self, arr: Tensor, args=None) -> Tensor:

@@ -38,9 +38,10 @@ class TorchConstBC1stOrderBoundary(torch.nn.Module):
     const: Tensor
     factor: Tensor
 
-    def __init__(self, bc: ConstBC1stOrderBase):
+    def __init__(self, bc: ConstBC1stOrderBase, *, dtype: np.dtype):
         super().__init__()
         self.bc = bc
+        self.dtype = dtype
         if bc.value_is_linked:
             raise NotImplementedError
 
@@ -62,27 +63,32 @@ class TorchConstBC1stOrderBoundary(torch.nn.Module):
         elif isinstance(self.bc, DirichletBC):
             self.i_read = i_upper if self.bc.upper else i_lower
             const = 2 * self.bc.value
-            factor = np.full_like(const, -1)
+            factor = np.full_like(const, -1, dtype=self.dtype)
 
         elif isinstance(self.bc, NeumannBC):
             dx = grid.discretization[self.bc.axis]
             self.i_read = i_upper if self.bc.upper else i_lower
             const = dx * self.bc.value
-            factor = np.ones_like(const)
+            factor = np.ones_like(const, dtype=self.dtype)
 
         elif isinstance(self.bc, MixedBC):
             dx = grid.discretization[self.bc.axis]
             with np.errstate(invalid="ignore"):
-                const = np.asarray(2 * dx * self.bc.const / (2 + dx * self.bc.value))
-                factor = np.asarray((2 - dx * self.bc.value) / (2 + dx * self.bc.value))
+                const = np.asarray(
+                    2 * dx * self.bc.const / (2 + dx * self.bc.value), dtype=self.dtype
+                )
+                factor = np.asarray(
+                    (2 - dx * self.bc.value) / (2 + dx * self.bc.value),
+                    dtype=self.dtype,
+                )
 
             # correct at places of infinite values
             const[~np.isfinite(factor)] = 0
             factor[~np.isfinite(factor)] = -1
 
             self.i_read = i_upper if self.bc.upper else i_lower
-            const = np.array(const)
-            factor = np.array(factor)
+            const = np.array(const, dtype=self.dtype)
+            factor = np.array(factor, dtype=self.dtype)
 
         else:
             msg = f"Unsupported BC {self.bc}"
@@ -95,7 +101,9 @@ class TorchConstBC1stOrderBoundary(torch.nn.Module):
                 # add spatial axes in the boundary to enable broadcasting
                 arr = arr[(...,) + (np.newaxis,) * (grid.num_axes - 1)]
             # make the data available in the kernel
-            self.register_buffer(name, torch.from_numpy(np.asarray(arr)))
+            self.register_buffer(
+                name, torch.from_numpy(np.asarray(arr, dtype=self.dtype))
+            )
 
     def forward(self, data_full: Tensor, args=None) -> Tensor:
         """Set the virtual points at the boundary."""
@@ -161,9 +169,10 @@ class TorchConstBC2ndOrderBoundary(torch.nn.Module):
     const: Tensor
     factor: Tensor
 
-    def __init__(self, bc: ConstBC2ndOrderBase):
+    def __init__(self, bc: ConstBC2ndOrderBase, *, dtype: np.dtype):
         super().__init__()
         self.bc = bc
+        self.dtype = dtype
         if bc.value_is_linked:
             raise NotImplementedError
 
@@ -187,8 +196,8 @@ class TorchConstBC2ndOrderBoundary(torch.nn.Module):
                 self.f1 = 2.0
                 self.f2 = -1.0
             elif grid.num_axes == 2:
-                self.f1 = torch.from_numpy(np.atleast_1d(2.0))
-                self.f2 = torch.from_numpy(np.atleast_1d(-1.0))
+                self.f1 = torch.from_numpy(np.atleast_1d(2.0).astype(self.dtype))
+                self.f2 = torch.from_numpy(np.atleast_1d(-1.0).astype(self.dtype))
             else:
                 raise NotImplementedError
 
@@ -205,7 +214,9 @@ class TorchConstBC2ndOrderBoundary(torch.nn.Module):
             # add spatial axes in the boundary to enable broadcasting
             value = value[(...,) + (np.newaxis,) * (grid.num_axes - 1)]
         # make the data available in the kernel
-        self.register_buffer("value", torch.from_numpy(np.asarray(value)))
+        self.register_buffer(
+            "value", torch.from_numpy(np.asarray(value, dtype=self.dtype))
+        )
 
     def forward(self, data_full: Tensor, args=None) -> Tensor:
         """Set the virtual points at the boundary."""
@@ -250,13 +261,17 @@ class TorchConstBC2ndOrderBoundary(torch.nn.Module):
         return data_full
 
 
-def make_local_ghost_cell_setter(bc: BCBase) -> Callable[[torch.Tensor, Any], None]:
+def make_local_ghost_cell_setter(
+    bc: BCBase, *, dtype: np.dtype
+) -> Callable[[torch.Tensor, Any], None]:
     """Return function that sets virtual points for a local BC.
 
     Args:
         bc (:class:`~pde.grids.boundaries.local.BCBase`):
             Defines the boundary conditions for a particular side, for which the setter
             should be defined.
+        dtype:
+            The dtype of the data
 
     Returns:
         function: A function that takes the full data array
@@ -264,14 +279,16 @@ def make_local_ghost_cell_setter(bc: BCBase) -> Callable[[torch.Tensor, Any], No
     # if isinstance(bc, UserBC):
     #     return _make_user_virtual_point_evaluator(bc)
     if isinstance(bc, ConstBC1stOrderBase):
-        return TorchConstBC1stOrderBoundary(bc)
+        return TorchConstBC1stOrderBoundary(bc, dtype=dtype)
     if isinstance(bc, ConstBC2ndOrderBase):
-        return TorchConstBC2ndOrderBoundary(bc)
+        return TorchConstBC2ndOrderBoundary(bc, dtype=dtype)
     msg = f"Cannot handle local boundary {bc.__class__}"
     raise NotImplementedError(msg)
 
 
-def make_ghost_cell_setter(bcs: BoundariesList) -> Callable[[torch.Tensor, Any], None]:
+def make_ghost_cell_setter(
+    bcs: BoundariesList, *, dtype: np.dtype
+) -> Callable[[torch.Tensor, Any], None]:
     """Return function that sets virtual points for a local BC.
 
     Args:
@@ -279,12 +296,14 @@ def make_ghost_cell_setter(bcs: BoundariesList) -> Callable[[torch.Tensor, Any],
             The boundary conditions applied to the field. If `None`, no boundary
             conditions are enforced and it is assumed that the operator is applied
             to the full field.
+        dtype:
+            The dtype of the data
 
     Returns:
         function: A function that takes the full data array
     """
     ghost_cell_setters = [
-        make_local_ghost_cell_setter(bc_local)
+        make_local_ghost_cell_setter(bc_local, dtype=dtype)
         for bc_axis in bcs
         for bc_local in bc_axis
     ]

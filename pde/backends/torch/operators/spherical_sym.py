@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-import numpy as np
 import torch
 
 from .... import config
@@ -25,10 +24,10 @@ from .. import torch_backend
 from .common import TorchOperator
 
 if TYPE_CHECKING:
+    import numpy as np
     from torch import Tensor
 
     from ....grids.boundaries import BoundariesList
-    from ..utils import AnyDType
 
 
 @torch_backend.register_operator(SphericalSymGrid, "laplace", rank_in=0, rank_out=0)
@@ -46,7 +45,7 @@ class SphericalLaplacian(TorchOperator):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
         conservative: bool | None = None,
     ):
         """Initialize the Spherical Laplacian operator.
@@ -81,10 +80,10 @@ class SphericalLaplacian(TorchOperator):
             rl = rs - dr / 2  # inner radii of spherical shells
             rh = rs + dr / 2  # outer radii
             volumes = (rh**3 - rl**3) / 3  # volume of the spherical shells
-            self.register_buffer("factor_l", torch.from_numpy(rl**2 / (dr * volumes)))
-            self.register_buffer("factor_h", torch.from_numpy(rh**2 / (dr * volumes)))
+            self.register_array("factor_l", rl**2 / (dr * volumes))
+            self.register_array("factor_h", rh**2 / (dr * volumes))
         else:
-            self.register_buffer("factor", torch.from_numpy(1 / (rs * dr)))
+            self.register_array("factor", 1 / (rs * dr))
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
@@ -115,7 +114,7 @@ class SphericalGradient(TorchOperator):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
         method: Literal["central", "forward", "backward"] = "central",
     ):
         """Initialize the Spherical gradient operator.
@@ -176,7 +175,7 @@ class SphericalGradientSquared(TorchOperator):
         bcs: BoundariesList | None,
         *,
         central: bool = True,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
     ):
         """Initialize the Spherical gradient squared operator.
 
@@ -228,7 +227,7 @@ class SphericalDivergence(TorchOperator):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
         safe: bool | None = None,
         conservative: bool | None = None,
         method: Literal["central", "forward", "backward"] = "central",
@@ -268,18 +267,16 @@ class SphericalDivergence(TorchOperator):
         dr = self.grid.discretization[0]
         self.dr = dr
         rs = self.grid.axes_coords[0]
-        self.register_buffer("rs", torch.from_numpy(rs))
+        self.register_array("rs", rs)
         self.scale_r = 1 / (2 * dr)
 
-        if conservative:
-            # create a conservative spherical divergence operator
-            rl = rs - dr / 2  # inner radii of spherical shells
-            rh = rs + dr / 2  # outer radii
-            volumes = (rh**3 - rl**3) / 3  # volume of the spherical shells
-            self.register_buffer("factor_l", torch.from_numpy(rl**2 / (2 * volumes)))
-            self.register_buffer("factor_h", torch.from_numpy(rh**2 / (2 * volumes)))
-        else:
-            self.register_buffer("factor", torch.from_numpy(1 / (rs * dr)))
+        # create a conservative spherical divergence operator
+        rl = rs - dr / 2  # inner radii of spherical shells
+        rh = rs + dr / 2  # outer radii
+        volumes = (rh**3 - rl**3) / 3  # volume of the spherical shells
+        self.register_array("factor_l", rl**2 / (2 * volumes))
+        self.register_array("factor_h", rh**2 / (2 * volumes))
+        self.register_array("factor", 1 / (rs * dr))
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
@@ -328,7 +325,7 @@ class SphericalDivergence(TorchOperator):
 #         grid: GridBase,
 #         bcs: BoundariesList | None,
 #         *,
-#         dtype: AnyDType = np.double,
+#         dtype: np.dtype,
 #     ):
 #         """Initialize the Spherical divergence operator.
 
@@ -344,7 +341,7 @@ class SphericalDivergence(TorchOperator):
 #         super().__init__(grid, bcs, dtype=dtype)
 
 #         dr = self.grid.discretization[0]
-#         self.register_buffer("rs", torch.from_numpy(self.grid.axes_coords[0]))
+#         self.register_array("rs", self.grid.axes_coords[0])
 #         self.scale_r = 1 / (2 * dr)
 
 #     def forward(self, arr: Tensor, args=None) -> Tensor:

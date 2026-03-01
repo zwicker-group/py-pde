@@ -23,7 +23,7 @@ def test_findiff_sph():
     v = VectorField(grid, [[1, 2, 4], [0] * 3, [0] * 3])
 
     # test gradient
-    grad = s.gradient(bc={"r-": "derivative", "r+": "value"})
+    grad = s.gradient(bc={"r-": "derivative", "r+": "value"}, backend="torch")
     np.testing.assert_allclose(grad.data[0, :], [1, 3, -6])
     grad = s.gradient(bc="derivative", backend="torch")
     np.testing.assert_allclose(grad.data[0, :], [1, 3, 2])
@@ -36,15 +36,16 @@ def test_findiff_sph():
     div = v.divergence(
         bc={"r-": "derivative", "r+": "value"}, conservative=False, backend="torch"
     )
-    np.testing.assert_allclose(div.data, [9, 3 + 4 / r1, -6 + 8 / r2])
+    # we here use a threshold for float32 since some torch backends use this
+    np.testing.assert_allclose(div.data, [9, 3 + 4 / r1, -6 + 8 / r2], rtol=1e-6)
     div = v.divergence(
         bc="derivative", method="forward", conservative=False, backend="torch"
     )
-    np.testing.assert_allclose(div.data, [10, 4 + 4 / r1, 8 / r2])
+    np.testing.assert_allclose(div.data, [10, 4 + 4 / r1, 8 / r2], rtol=1e-6)
     div = v.divergence(
         bc="derivative", method="backward", conservative=False, backend="torch"
     )
-    np.testing.assert_allclose(div.data, [8, 2 + 4 / r1, 4 + 8 / r2])
+    np.testing.assert_allclose(div.data, [8, 2 + 4 / r1, 4 + 8 / r2], rtol=1e-6)
 
 
 def test_conservative_sph():
@@ -62,7 +63,8 @@ def test_conservative_sph():
 
     # test laplacian of scalar field
     lap = vf[0].laplace("derivative", backend="torch")
-    assert lap.integral == pytest.approx(0, abs=1e-13)
+    # we here use a threshold for float32 since some torch backends use this
+    assert lap.integral == pytest.approx(0, abs=3e-5)
 
 
 @pytest.mark.parametrize(

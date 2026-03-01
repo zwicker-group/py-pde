@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
 import torch
 
 from ....grids import CartesianGrid, GridBase
@@ -26,10 +25,10 @@ from .. import torch_backend
 from .common import TorchOperator
 
 if TYPE_CHECKING:
+    import numpy as np
     from torch import Tensor
 
     from ....grids.boundaries import BoundariesList
-    from ..utils import AnyDType
 
 
 @torch_backend.register_operator(CartesianGrid, "laplace", rank_in=0, rank_out=0)
@@ -43,7 +42,7 @@ class CartesianLaplacian(TorchOperator):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
     ):
         """Initialize the Cartesian Laplacian operator.
 
@@ -103,7 +102,7 @@ class CartesianGradient(TorchOperator):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
     ):
         """Initialize the Cartesian gradient operator.
 
@@ -158,7 +157,7 @@ class CartesianGradientSquared(TorchOperator):
         bcs: BoundariesList | None,
         *,
         central: bool = True,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
     ):
         """Initialize the Cartesian gradient squared operator.
 
@@ -237,7 +236,7 @@ class CartesianDivergence(TorchOperator):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
     ):
         """Initialize the Cartesian divergence operator.
 
@@ -289,7 +288,7 @@ class CartesianVectorGradient(TorchOperator):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
     ):
         """Initialize the Cartesian vector gradient operator.
 
@@ -323,7 +322,7 @@ class CartesianVectorLaplacian(TorchOperator):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
     ):
         """Initialize the Cartesian vector Laplacian operator.
 
@@ -359,7 +358,7 @@ class CartesianTensorDivergence(TorchOperator):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype: AnyDType = np.double,
+        dtype: np.dtype,
     ):
         """Initialize the Cartesian tensor divergence operator.
 

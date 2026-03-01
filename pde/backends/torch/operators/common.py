@@ -36,7 +36,7 @@ class TorchOperator(torch.nn.Module):
         grid: GridBase,
         bcs: BoundariesList | None,
         *,
-        dtype=np.double,
+        dtype: np.dtype,
     ):
         """Initialize the torch operator.
 
@@ -48,15 +48,16 @@ class TorchOperator(torch.nn.Module):
                 conditions are enforced and it is assumed that the operator is applied
                 to the full field.
             dtype:
-                The data type of the field
+                The data type of the field using the numpy convention
         """
         super().__init__()
 
         # initialize buffer for full data (including ghost cells)
+        self.dtype = dtype
         self.grid = grid
         full_shape = (grid.dim,) * self.rank_in + tuple(n + 2 for n in self.grid.shape)
-        data_full = torch.empty(full_shape, dtype=dtype)
-        self.register_buffer("data_full", data_full)
+        data_full = np.empty(full_shape, dtype=dtype)
+        self.register_array("data_full", data_full)
 
         if bcs is None:
             self.apply_bcs = False
@@ -68,13 +69,32 @@ class TorchOperator(torch.nn.Module):
                 raise ValueError(msg)
             self.apply_bcs = True
             self.ghost_cell_setters = [
-                make_local_ghost_cell_setter(bc_local)
+                make_local_ghost_cell_setter(bc_local, dtype=dtype)
                 for bc_axis in bcs
                 for bc_local in bc_axis
             ]
 
         else:
             raise NotImplementedError
+
+    def register_array(self, name: str, arr: np.ndarray | torch.Tensor) -> None:
+        """Register an array as a buffer in the torch module.
+
+        Args:
+            name (str):
+                The name under which the buffer is registered
+            arr (:class:`numpy.ndarray` or :class:`torch.Tensor`):
+                The array to register. If a numpy array is provided, it will be
+                converted to a torch tensor with the appropriate dtype.
+        """
+        if isinstance(arr, np.ndarray):
+            tensor = torch.from_numpy(arr.astype(self.dtype))
+        elif isinstance(arr, torch.Tensor):
+            tensor = arr
+        else:
+            raise TypeError
+
+        self.register_buffer(name, tensor)
 
     def set_valid(self, arr: Tensor) -> None:
         """Set valid data in the internal full array.
@@ -153,7 +173,7 @@ class IntegralOperator(torch.nn.Module):
         self.grid = grid
         self.spatial_dims = tuple(range(-grid.num_axes, 0, 1))
         cell_volumes = np.broadcast_to(grid.cell_volumes, grid.shape)
-        self.register_buffer("cell_volumes", torch.from_numpy(cell_volumes.copy()))
+        self.register_array("cell_volumes", cell_volumes)
 
     def forward(self, arr: Tensor) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
