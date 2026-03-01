@@ -13,7 +13,7 @@ from pde.tools.config import Parameter
 DEFAULT_CONFIG: list[Parameter] = [
     Parameter(
         "device",
-        "auto",
+        "mps",
         str,
         "Determines the torch device that is used for the torch backend. Common "
         "options include `cpu`, `cuda`, and more specific choices, like `cuda:0`. The "
@@ -30,7 +30,7 @@ DEFAULT_CONFIG: list[Parameter] = [
     ),
     Parameter(
         "compile",
-        True,
+        False,
         bool,
         "Enables compilation in the `torch` backend.",
     ),

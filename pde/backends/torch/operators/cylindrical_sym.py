@@ -20,7 +20,7 @@ import torch
 from ....grids import CylindricalSymGrid, GridBase
 from ....tools.docstrings import fill_in_docstring
 from .. import torch_backend
-from .common import TorchOperator
+from .common import TorchDifferentialOperator
 
 if TYPE_CHECKING:
     import numpy as np
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 @torch_backend.register_operator(CylindricalSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
-class CylindricalLaplacian(TorchOperator):
+class CylindricalLaplacian(TorchDifferentialOperator):
     """Cylindrical Laplace using torch.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -75,7 +75,7 @@ class CylindricalLaplacian(TorchOperator):
 
 @torch_backend.register_operator(CylindricalSymGrid, "gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
-class CylindricalGradient(TorchOperator):
+class CylindricalGradient(TorchDifferentialOperator):
     """Cylindrical gradient operator using torch.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -120,7 +120,7 @@ class CylindricalGradient(TorchOperator):
     CylindricalSymGrid, "gradient_squared", rank_in=0, rank_out=0
 )
 @fill_in_docstring
-class CylindricalGradientSquared(TorchOperator):
+class CylindricalGradientSquared(TorchDifferentialOperator):
     """Cylindrical gradient squared operator using torch.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -179,7 +179,7 @@ class CylindricalGradientSquared(TorchOperator):
     CylindricalSymGrid, "divergence", rank_in=1, rank_out=0
 )
 @fill_in_docstring
-class CylindricalDivergence(TorchOperator):
+class CylindricalDivergence(TorchDifferentialOperator):
     """Cylindrical divergence operator using torch.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -219,7 +219,7 @@ class CylindricalDivergence(TorchOperator):
 # @torch_backend.register_operator(
 #     CylindricalSymGrid, "vector_gradient", rank_in=1, rank_out=2
 # )
-# class CylindricalVectorGradient(TorchOperator):
+# class CylindricalVectorGradient(TorchDifferentialOperator):
 #     """Cylindrical vector gradient operator using torch."""
 
 #     rank_in = 1

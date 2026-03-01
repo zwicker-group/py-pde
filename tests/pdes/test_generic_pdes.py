@@ -44,7 +44,8 @@ def test_pde_consistency(pde_class, dim, rng):
     if module_available("torch") and platform.system() != "Windows":
         rhs = eq.make_pde_rhs(state, backend="torch")
         res = rhs(state.data, 0)
-        np.testing.assert_allclose(field.data, res)
+        # use reduced tolerance to support potential float32 devices
+        np.testing.assert_allclose(field.data, res, rtol=5e-6)
 
     # compare to generic implementation
     assert isinstance(eq.expression, str)

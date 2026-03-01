@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
+from pde.backends import backends
 from pde.backends.numba import numba_backend
 from pde.tools.expressions import (
     BCDataError,
@@ -343,6 +344,7 @@ def test_expression_hypot(backend):
 @pytest.mark.parametrize("backend", ["numba", "torch"], indirect=True)
 def test_expression_consts(backend):
     """Test the usage of consts."""
+    backend_obj = backends[backend]
     expr = ScalarExpression("a", consts={"a": 1})
     assert expr.constant
     assert not expr.depends_on("a")
@@ -360,10 +362,8 @@ def test_expression_consts(backend):
     expr = ScalarExpression("a + b", consts={"a": np.array([1, 2])})
     assert not expr.constant
     np.testing.assert_allclose(expr(np.array([2, 3])), np.array([3, 5]))
-    np.testing.assert_allclose(
-        expr.get_function(backend)(np.array([2, 3])), np.array([3, 5])
-    )
-
+    res = backend_obj._apply_native(expr.get_function(backend), np.array([2, 3]))
+    np.testing.assert_allclose(res, np.array([3, 5]))
     expr = ScalarExpression("a * b", consts={"a": np.array([1, 2])})
     dexpr_da = expr.differentiate("b")
     np.testing.assert_allclose(dexpr_da(np.array([2, 3])), np.array([1, 2]))

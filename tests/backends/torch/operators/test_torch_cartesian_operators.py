@@ -63,7 +63,8 @@ def test_laplace_1d(periodic, rng):
     )
     l1 = field.laplace(bcs, backend="scipy")
     l2 = field.laplace(bcs, backend="torch")
-    np.testing.assert_allclose(l1.data, l2.data)
+    # use bigger tolerance in case of float32 backend
+    np.testing.assert_allclose(l1.data, l2.data, rtol=1e-6)
 
 
 @pytest.mark.parametrize("periodic", [True, False])
@@ -82,7 +83,8 @@ def test_laplace_2d_nonuniform(periodic, rng):
 
     field = ScalarField(bcs.grid, data=a)
     lap = field.laplace(bcs, backend="torch")
-    np.testing.assert_allclose(lap.data, res)
+    # use bigger tolerance in case of float32 backend
+    np.testing.assert_allclose(lap.data, res, rtol=1e-5)
 
 
 @pytest.mark.parametrize("periodic", [True, False])
@@ -92,7 +94,8 @@ def test_laplace_3d(periodic, rng):
     field = ScalarField.random_uniform(bcs.grid, rng=rng)
     l1 = field.laplace(bcs, backend="scipy")
     l2 = field.laplace(bcs, backend="torch")
-    np.testing.assert_allclose(l1.data, l2.data)
+    # use bigger tolerance in case of float32 backend
+    np.testing.assert_allclose(l1.data, l2.data, rtol=2e-6)
 
 
 def test_gradient_1d():
@@ -120,7 +123,8 @@ def test_gradient_cart(ndim, periodic, rng):
     res1 = field.gradient(bcs, backend="scipy").data
     res2 = field.gradient(bcs, backend="torch").data
     assert res1.shape == (ndim, *bcs.grid.shape)
-    np.testing.assert_allclose(res1, res2)
+    # use bigger tolerance in case of float32 backend
+    np.testing.assert_allclose(res1, res2, rtol=1e-5)
 
 
 @pytest.mark.parametrize("dim", [1, 2])
@@ -148,7 +152,8 @@ def test_divergence_cart(ndim, periodic, rng):
     field = VectorField.random_uniform(bcs.grid, rng=rng)
     res1 = field.divergence(bcs, backend="scipy").data
     res2 = field.divergence(bcs, backend="torch").data
-    np.testing.assert_allclose(res1, res2)
+    # use bigger tolerance in case of float32 backend
+    np.testing.assert_allclose(res1, res2, rtol=2e-6)
 
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
@@ -159,7 +164,8 @@ def test_vector_gradient(ndim, rng):
     res1 = field.gradient(bcs, backend="scipy").data
     res2 = field.gradient(bcs, backend="torch").data
     assert res1.shape == (ndim, ndim, *bcs.grid.shape)
-    np.testing.assert_allclose(res1, res2)
+    # use bigger tolerance in case of float32 backend
+    np.testing.assert_allclose(res1, res2, rtol=5e-6)
 
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
@@ -170,7 +176,8 @@ def test_vector_laplace_cart(ndim, rng):
     res1 = field.laplace(bcs, backend="scipy").data
     res2 = field.laplace(bcs, backend="torch").data
     assert res1.shape == (ndim, *bcs.grid.shape)
-    np.testing.assert_allclose(res1, res2)
+    # use bigger tolerance in case of float32 backend
+    np.testing.assert_allclose(res1, res2, rtol=2e-5)
 
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
@@ -181,7 +188,8 @@ def test_tensor_divergence_cart(ndim, rng):
     res1 = field.divergence(bcs, backend="scipy").data
     res2 = field.divergence(bcs, backend="torch").data
     assert res1.shape == (ndim, *bcs.grid.shape)
-    np.testing.assert_allclose(res1, res2)
+    # use bigger tolerance in case of float32 backend
+    np.testing.assert_allclose(res1, res2, rtol=2e-5)
 
 
 def test_2nd_order_bc(rng):

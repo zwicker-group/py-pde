@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
@@ -22,26 +22,24 @@ from ...grids.boundaries.local import (
     NeumannBC,
     _PeriodicBC,
 )
+from .utils import TorchOperatorBase
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from ...grids.boundaries import BoundariesList
 
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger instance."""
 
 
-class TorchConstBC1stOrderBoundary(torch.nn.Module):
+class TorchConstBC1stOrderBoundary(TorchOperatorBase):
     """Class implementing simple first order boundary conditions in torch."""
 
     const: Tensor
     factor: Tensor
 
     def __init__(self, bc: ConstBC1stOrderBase, *, dtype: np.dtype):
-        super().__init__()
+        super().__init__(dtype=dtype)
         self.bc = bc
-        self.dtype = dtype
         if bc.value_is_linked:
             raise NotImplementedError
 
@@ -101,9 +99,7 @@ class TorchConstBC1stOrderBoundary(torch.nn.Module):
                 # add spatial axes in the boundary to enable broadcasting
                 arr = arr[(...,) + (np.newaxis,) * (grid.num_axes - 1)]
             # make the data available in the kernel
-            self.register_buffer(
-                name, torch.from_numpy(np.asarray(arr, dtype=self.dtype))
-            )
+            self.register_array(name, arr)
 
     def forward(self, data_full: Tensor, args=None) -> Tensor:
         """Set the virtual points at the boundary."""
@@ -163,16 +159,15 @@ class TorchConstBC1stOrderBoundary(torch.nn.Module):
         return data_full
 
 
-class TorchConstBC2ndOrderBoundary(torch.nn.Module):
+class TorchConstBC2ndOrderBoundary(TorchOperatorBase):
     """Class implementing simple second order boundary conditions in torch."""
 
     const: Tensor
     factor: Tensor
 
     def __init__(self, bc: ConstBC2ndOrderBase, *, dtype: np.dtype):
-        super().__init__()
+        super().__init__(dtype=dtype)
         self.bc = bc
-        self.dtype = dtype
         if bc.value_is_linked:
             raise NotImplementedError
 
@@ -196,8 +191,8 @@ class TorchConstBC2ndOrderBoundary(torch.nn.Module):
                 self.f1 = 2.0
                 self.f2 = -1.0
             elif grid.num_axes == 2:
-                self.f1 = torch.from_numpy(np.atleast_1d(2.0).astype(self.dtype))
-                self.f2 = torch.from_numpy(np.atleast_1d(-1.0).astype(self.dtype))
+                self.register_array("f1", np.atleast_1d(2.0))
+                self.register_array("f2", np.atleast_1d(-1.0))
             else:
                 raise NotImplementedError
 
@@ -214,9 +209,7 @@ class TorchConstBC2ndOrderBoundary(torch.nn.Module):
             # add spatial axes in the boundary to enable broadcasting
             value = value[(...,) + (np.newaxis,) * (grid.num_axes - 1)]
         # make the data available in the kernel
-        self.register_buffer(
-            "value", torch.from_numpy(np.asarray(value, dtype=self.dtype))
-        )
+        self.register_array("value", value)
 
     def forward(self, data_full: Tensor, args=None) -> Tensor:
         """Set the virtual points at the boundary."""
@@ -261,9 +254,7 @@ class TorchConstBC2ndOrderBoundary(torch.nn.Module):
         return data_full
 
 
-def make_local_ghost_cell_setter(
-    bc: BCBase, *, dtype: np.dtype
-) -> Callable[[torch.Tensor, Any], None]:
+def make_local_ghost_cell_setter(bc: BCBase, *, dtype: np.dtype) -> torch.nn.Module:
     """Return function that sets virtual points for a local BC.
 
     Args:
@@ -286,31 +277,30 @@ def make_local_ghost_cell_setter(
     raise NotImplementedError(msg)
 
 
-def make_ghost_cell_setter(
-    bcs: BoundariesList, *, dtype: np.dtype
-) -> Callable[[torch.Tensor, Any], None]:
-    """Return function that sets virtual points for a local BC.
+class GhostCellSetter(torch.nn.Module):
+    """Return function that sets virtual points for a local BC."""
 
-    Args:
-        bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
-            The boundary conditions applied to the field. If `None`, no boundary
-            conditions are enforced and it is assumed that the operator is applied
-            to the full field.
-        dtype:
-            The dtype of the data
+    def __init__(self, bcs: BoundariesList, *, dtype: np.dtype):
+        """
+        Args:
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
+                The boundary conditions applied to the field. If `None`, no boundary
+                conditions are enforced and it is assumed that the operator is applied
+                to the full field.
+            dtype:
+                The dtype of the data
+        """
+        super().__init__()
+        self.ghost_cell_setters = torch.nn.ModuleList(
+            [
+                make_local_ghost_cell_setter(bc_local, dtype=dtype)
+                for bc_axis in bcs
+                for bc_local in bc_axis
+            ]
+        )
 
-    Returns:
-        function: A function that takes the full data array
-    """
-    ghost_cell_setters = [
-        make_local_ghost_cell_setter(bc_local, dtype=dtype)
-        for bc_axis in bcs
-        for bc_local in bc_axis
-    ]
-
-    def set_ghost_cells(data_full: Tensor, args=None) -> None:
-        """Sets ghost cells of all boundaries."""
-        for set_ghost_cells in ghost_cell_setters:
-            set_ghost_cells(data_full, args=args)  # type: ignore
-
-    return set_ghost_cells
+    def forward(self, data_full: Tensor, args=None) -> Tensor:
+        """Set the virtual points at all boundaries."""
+        for set_ghost_cells in self.ghost_cell_setters:
+            set_ghost_cells(data_full, args=args)
+        return data_full

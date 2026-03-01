@@ -208,7 +208,8 @@ def test_pde_spatial_args(backend):
     # test combination of spatial dependence and differential operators
     eq = PDE({"a": "dot(gradient(x), gradient(a))"})
     rhs = eq.make_pde_rhs(field, backend=backend)
-    np.testing.assert_allclose(rhs(field.data, 0.0), np.array([0.0, 0.0, 0.0, 0.0]))
+    res = backends[backend]._apply_native(rhs, field.data, t=0.0)
+    np.testing.assert_allclose(res, np.array([0.0, 0.0, 0.0, 0.0]))
 
     # test invalid spatial dependence
     eq = PDE({"a": "x + y"})

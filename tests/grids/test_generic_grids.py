@@ -122,7 +122,8 @@ def test_integration_serial(grid, backend, rank, rng):
         else:
             assert res == pytest.approx(grid.integrate(arr, axes=range(grid.num_axes)))
     else:
-        np.testing.assert_allclose(res, grid.integrate(arr))
+        # use reduced tolerance to support potential float32 backends
+        np.testing.assert_allclose(res, grid.integrate(arr), rtol=1e-6)
 
 
 def test_grid_plotting():
