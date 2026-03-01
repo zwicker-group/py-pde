@@ -49,6 +49,8 @@ class TorchBackend(NumpyBackend):
     """dict: defines options that affect compilation by torch"""
     _dtype_cache: dict[str, dict[DTypeLike, torch.dtype]] = defaultdict(dict)
     """dict: contains information about the dtypes available for the current device"""
+    _emitted_downcast_warning: bool = False
+    """bool: global flag to track whether we already warned about downcasting"""
 
     def __init__(self, name: str, registry: BackendRegistry, *, device: str = "config"):
         """Initialize the torch backend.
@@ -125,9 +127,14 @@ class TorchBackend(NumpyBackend):
             # Try to create a tensor of this dtype on the device
             torch.empty(1, dtype=torch_dtype, device=self.device)
         except TypeError:
-            # dtype is not supported
+            # dtype is not supported, so we see whether we need to use downcasting
             if self.config["dtype_downcasting"] and torch_dtype == torch.float64:
-                # TODO: Add warning
+                if not self._emitted_downcast_warning:
+                    self._logger.warning(
+                        " %s device doesn't support float64, so we use float32 instead",
+                        self.device.type,
+                    )
+                    self._emitted_downcast_warning = True
                 torch_dtype = torch.float32
             else:
                 raise
