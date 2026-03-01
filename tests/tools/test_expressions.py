@@ -128,7 +128,9 @@ def test_single_arg(rng):
         ScalarExpression(np.exp)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 def test_two_args(backend, rng):
     """Test simple expressions."""
     e = ScalarExpression("2 * a ** b")
@@ -157,7 +159,9 @@ def test_two_args(backend, rng):
     np.testing.assert_allclose(g.get_function(backend)(2, 3), [24, 16 * np.log(2)])
 
 
-@pytest.mark.parametrize("backend", ["numba", "torch"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 def test_derivatives(backend):
     """Test vector expressions."""
     e = ScalarExpression("a * b**2")
@@ -185,7 +189,9 @@ def test_derivatives(backend):
     np.testing.assert_allclose(d4.get_function(backend)(2, 3), np.zeros((2, 2, 2, 2)))
 
 
-@pytest.mark.parametrize("backend", ["numba", "torch"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 def test_indexed(backend):
     """Test simple expressions."""
     e = ScalarExpression("2 * a[0] ** a[1]", allow_indexed=True)
@@ -262,7 +268,9 @@ def test_expression_from_expression():
         ScalarExpression(expr, "b")
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 def test_expression_user_funcs(backend):
     """Test the usage of user_funcs."""
     expr = ScalarExpression("func()", user_funcs={"func": lambda: 1})
@@ -308,7 +316,9 @@ def test_complex_expression():
     np.testing.assert_allclose(expr.value, np.array([[1, -1], [1j, 2]]))
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 @pytest.mark.parametrize(
     ("expression", "value"),
     [("Heaviside(x)", 0.5), ("Heaviside(x, 0.75)", 0.75), ("heaviside(x, 0.75)", 0.75)],
@@ -330,7 +340,9 @@ def test_expression_heaviside(backend, expression, value):
     np.testing.assert_allclose(f(np.array([-1, 0, 1])), np.array([0, value, 1]))
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 def test_expression_hypot(backend):
     """Test special cases of hypot expressions."""
     expr = ScalarExpression("hypot(a, b)")
@@ -341,7 +353,9 @@ def test_expression_hypot(backend):
     assert f(3.0, 4.0) == 5.0
 
 
-@pytest.mark.parametrize("backend", ["numba", "torch"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 def test_expression_consts(backend):
     """Test the usage of consts."""
     backend_obj = backends[backend]

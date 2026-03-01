@@ -19,6 +19,7 @@ from ..fields import ScalarField, VectorField
 from ..tools.docstrings import fill_in_docstring
 
 if TYPE_CHECKING:
+    from ..backends.base import BackendBase
     from ..grids.base import GridBase
     from ..grids.boundaries.axes import BoundariesData
 
@@ -28,7 +29,7 @@ def solve_poisson_equation(
     rhs: ScalarField,
     bc: BoundariesData,
     *,
-    backend: str = "scipy",
+    backend: str | BackendBase = "scipy",
     label: str = "Solution to Poisson's equation",
     **kwargs,
 ) -> ScalarField:
@@ -100,7 +101,7 @@ def solve_laplace_equation(
     grid: GridBase,
     bc: BoundariesData,
     *,
-    backend: str = "scipy",
+    backend: str | BackendBase = "scipy",
     label: str = "Solution to Laplace's equation",
 ) -> ScalarField:
     """Solve Laplace's equation on a given grid.

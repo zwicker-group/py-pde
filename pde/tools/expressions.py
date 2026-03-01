@@ -41,6 +41,7 @@ from .typing import Number, NumberOrArray, NumericArray
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
 
+    from ..backends.base import BackendBase
     from ..grids.base import GridBase
     from ..grids.boundaries.axes import BoundariesData
 
@@ -357,7 +358,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
     def get_function(
         self,
-        backend: str = "numpy",
+        backend: str | BackendBase = "numpy",
         *,
         single_arg: bool = False,
         user_funcs: dict[str, Callable] | None = None,

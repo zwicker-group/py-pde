@@ -104,6 +104,7 @@ ignore = [
     "B007",  # this check seems wrong since the loop variable could be used outside loop
     "B027",  # allow empty methods
     "E402",  # allow Module level import not at top of file
+    "PERF203",  # allow try-except in loops
     "PT011",  # allow broad exceptions
     "RET504",  # cannot use this because of numba
     "RUF001",  # allow single greek letters

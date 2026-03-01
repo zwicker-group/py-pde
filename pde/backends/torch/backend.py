@@ -63,8 +63,11 @@ class TorchBackend(NumpyBackend):
                 configuration) and "auto" (use CUDA if available, otherwise CPU)
         """
         super().__init__(name=name, registry=registry)
-
-        self.device = device
+        try:
+            self.device = device
+        except RuntimeError:
+            # device is not available, so we delete the backend from the registry again
+            del registry._backends[name]
 
     @property
     def device(self) -> torch.device:
@@ -74,10 +77,21 @@ class TorchBackend(NumpyBackend):
     @device.setter
     def device(self, device: str) -> None:
         """Set a new torch device."""
+        # determine which device we need to use
         if device == "config":
             device = self.config["device"]
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        # check whether the device is available
+        if device.startswith("cuda") and not torch.cuda.is_available():
+            msg = "cuda device is not available"
+            raise RuntimeError(msg)
+        if device.startswith("mps") and not torch.backends.mps.is_available():
+            msg = "mps device is not available"
+            raise RuntimeError(msg)
+
+        # set the actual device
         self._device = torch.device(device)
 
     def get_torch_dtype(self, dtype: DTypeLike) -> torch.dtype:

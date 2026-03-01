@@ -19,12 +19,12 @@ import logging
 import warnings
 from collections.abc import Callable
 from inspect import isabstract
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from ..tools.math import OnlineStatistics
-from ..tools.typing import BackendType, NumericArray, StepperHook, TField
+from ..tools.typing import NumericArray, StepperHook, TField
 
 if TYPE_CHECKING:
     from ..backends.base import BackendBase
@@ -64,14 +64,14 @@ class SolverBase:
     """dict: dictionary of all inheriting classes"""
 
     _logger: logging.Logger
-    _backend_name: BackendType
+    _backend_name: str
     __backend_obj: BackendBase | None
 
     def __init__(
         self,
         pde: PDEBase,
         *,
-        backend: BackendBase | BackendType | Literal["auto"] = "auto",
+        backend: BackendBase | str = "auto",
     ):
         """
         Args:
@@ -140,12 +140,12 @@ class SolverBase:
         return solver_class(pde, **kwargs)
 
     @property
-    def backend(self) -> BackendType:
+    def backend(self) -> str:
         """str: The name of the backend used for this solver."""
         return self._backend_name
 
     @backend.setter
-    def backend(self, value: BackendBase | BackendType | Literal["auto"]) -> None:
+    def backend(self, value: BackendBase | str) -> None:
         """Sets a new backend for the solver.
 
         This setter tries to ensure consistency and make sure that backends are not
@@ -158,15 +158,18 @@ class SolverBase:
             value:
                 The backend object or name
         """
-        # determine the name of the new backend
-        if isinstance(value, str):
-            new_backend = value
-        else:
-            # assume value is of type BackendBase
-            new_backend = value.name  # type: ignore
+        from ..backends import backends
+        from ..backends.base import BackendBase
 
-        if new_backend == "auto":
-            new_backend = self.pde.determine_auto_backend()
+        # determine the name of the new backend
+        if value == "auto":
+            new_backend: str = self.pde.determine_auto_backend()
+        elif isinstance(value, str):
+            new_backend = value
+        elif isinstance(value, BackendBase):
+            new_backend = value.name
+        else:
+            raise TypeError
 
         # check whether the new name contradicts the old backend name
         if getattr(self, "_backend_name", new_backend) != new_backend:
@@ -186,17 +189,8 @@ class SolverBase:
 
         # set the new backend
         self._backend_name = self.info["backend"] = new_backend
-        if not isinstance(value, str):
-            self.__backend_obj = value
-        else:
-            self.__backend_obj = None
-
-    @property
-    def _backend_obj(self) -> BackendBase:
-        """:class:`~pde.backends.base.BackendBase`: The backend used for this solver."""
-        if self.__backend_obj is None:
-            from ..backends import backends
-
+        if isinstance(value, str):
+            # load the backend object lazily
             if self._backend_name == "auto":
                 self._logger.warning(
                     "Automatic backend has not been selected yet. Choosing `numpy` "
@@ -204,12 +198,13 @@ class SolverBase:
                 )
                 self._backend_name = "numpy"  # conservative fall-back
 
-            self.__backend_obj = backends[self._backend_name]
-
-        return self.__backend_obj
+            self._backend_obj = backends[self._backend_name]
+        else:
+            # just set the backend object
+            self._backend_obj = value
 
     def _make_error_synchronizer(
-        self, backend: str = "numpy", *, operator: int | str = "MAX"
+        self, backend: str | BackendBase = "numpy", *, operator: int | str = "MAX"
     ) -> Callable[[float], float]:
         """Return function that synchronizes errors between multiple processes.
 
@@ -261,7 +256,7 @@ class SolverBase:
             try:
                 # try to get hook function and initial data from PDE instance
                 post_step_hook, self._post_step_data_init = (
-                    self.pde.make_post_step_hook(state, backend=self._backend_name)
+                    self.pde.make_post_step_hook(state, backend=self._backend_obj)
                 )
                 self._logger.info("Created post-step hook from PDE")
 
@@ -396,7 +391,7 @@ class AdaptiveSolverBase(SolverBase):
         self,
         pde: PDEBase,
         *,
-        backend: BackendType | Literal["auto"] = "auto",
+        backend: str | BackendBase = "auto",
         adaptive: bool = False,
         tolerance: float = 1e-4,
     ):

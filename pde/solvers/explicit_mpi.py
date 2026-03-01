@@ -16,8 +16,9 @@ from .explicit import EulerSolver
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from ..backends.base import BackendBase
     from ..pdes.base import PDEBase
-    from ..tools.typing import BackendType, TField
+    from ..tools.typing import TField
     from .base import AdaptiveStepperType, FixedStepperType
 
 
@@ -84,7 +85,7 @@ class ExplicitMPISolver(EulerSolver):
         # scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
         decomposition: Literal["auto"] | int | list[int] = "auto",
         *,
-        backend: BackendType | Literal["auto"] = "auto",
+        backend: str | BackendBase = "auto",
         adaptive: bool = False,
         tolerance: float = 1e-4,
     ):
@@ -163,7 +164,7 @@ class ExplicitMPISolver(EulerSolver):
         self.info["use_mpi"] = True
 
         # decompose the state into multiple cells
-        self.mesh = GridMesh.from_grid(state.grid, self.decomposition)
+        self.mesh: GridMesh = GridMesh.from_grid(state.grid, self.decomposition)
         sub_state = self.mesh.extract_subfield(state)
         self.info["grid_decomposition"] = self.mesh.shape
 
