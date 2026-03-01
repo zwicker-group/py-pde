@@ -228,7 +228,6 @@ class SphericalDivergence(TorchDifferentialOperator):
         bcs: BoundariesList | None,
         *,
         dtype: np.dtype,
-        safe: bool | None = None,
         conservative: bool | None = None,
         method: Literal["central", "forward", "backward"] = "central",
     ):
@@ -242,9 +241,6 @@ class SphericalDivergence(TorchDifferentialOperator):
                 conditions are enforced.
             dtype:
                 The data type of the field
-            safe (bool):
-                Add extra checks for the validity of the input. If `None`. the value is
-                read from the configuration option `operators.tensor_symmetry_check`.
             conservative (bool):
                 Flag indicating whether the operator should be conservative (which
                 results in slightly slower computations). Conservative operators ensure
@@ -256,9 +252,6 @@ class SphericalDivergence(TorchDifferentialOperator):
         """
         super().__init__(grid, bcs, dtype=dtype)
 
-        if safe is None:
-            safe = config["operators.tensor_symmetry_check"]
-        self.safe = safe
         if conservative is None:
             conservative = config["operators.conservative_stencil"]
         self.conservative = conservative
@@ -271,23 +264,18 @@ class SphericalDivergence(TorchDifferentialOperator):
         self.scale_r = 1 / (2 * dr)
 
         # create a conservative spherical divergence operator
-        rl = rs - dr / 2  # inner radii of spherical shells
-        rh = rs + dr / 2  # outer radii
-        volumes = (rh**3 - rl**3) / 3  # volume of the spherical shells
-        self.register_array("factor_l", rl**2 / (2 * volumes))
-        self.register_array("factor_h", rh**2 / (2 * volumes))
-        self.register_array("factor", 1 / (rs * dr))
+        if self.conservative:
+            rl = rs - dr / 2  # inner radii of spherical shells
+            rh = rs + dr / 2  # outer radii
+            volumes = (rh**3 - rl**3) / 3  # volume of the spherical shells
+            self.register_array("factor_l", rl**2 / (2 * volumes))
+            self.register_array("factor_h", rh**2 / (2 * volumes))
+        else:
+            self.register_array("factor", 1 / (rs * dr))
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
-
-        if self.safe:
-            # the θ-component of the vector field are required to be zero. If this
-            # was not the case the scale field resulting from the divergence would
-            # contain components that cannot be expressed in spherically symmetric
-            # coordinates
-            assert torch.all(data_full[1, 1:-1] == 0)
         arr_r = data_full[0]
 
         if self.conservative:
