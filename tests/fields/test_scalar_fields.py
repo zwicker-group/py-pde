@@ -104,7 +104,9 @@ def test_scalars(rng):
     np.testing.assert_allclose((arr * s1).data, (s1 * arr).data)
 
 
-@pytest.mark.parametrize("backend", ["numba", "torch"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 def test_laplacian(backend, rng):
     """Test the Laplace operator."""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)

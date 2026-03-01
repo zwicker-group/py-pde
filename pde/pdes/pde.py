@@ -24,12 +24,12 @@ if TYPE_CHECKING:
     import sympy
     import torch
 
+    from ..backends.base import BackendBase
     from ..fields.base import FieldBase
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.expressions import ScalarExpression
     from ..tools.typing import (
         ArrayLike,
-        BackendType,
         NumberOrArray,
         NumericArray,
         StepperHook,
@@ -619,7 +619,7 @@ class PDE(SDEBase):
         return result
 
     def make_post_step_hook(
-        self, state: FieldBase, backend: BackendType = "numpy"
+        self, state: FieldBase, backend: str | BackendBase = "numpy"
     ) -> tuple[StepperHook, Any]:
         """Returns a function that is called after each step.
 

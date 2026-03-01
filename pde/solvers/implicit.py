@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -14,8 +14,9 @@ from .base import ConvergenceError, SolverBase
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from ..backends.base import BackendBase
     from ..pdes.base import PDEBase
-    from ..tools.typing import BackendType, NumericArray, TField
+    from ..tools.typing import NumericArray, TField
 
 
 class ImplicitSolver(SolverBase):
@@ -29,7 +30,7 @@ class ImplicitSolver(SolverBase):
         *,
         maxiter: int = 100,
         maxerror: float = 1e-4,
-        backend: BackendType | Literal["auto"] = "auto",
+        backend: str | BackendBase = "auto",
     ):
         """
         Args:

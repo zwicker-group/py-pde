@@ -196,7 +196,9 @@ def test_pde_noise(backend, rng):
         eq = PDE({"a": 0}, noise=[0.01, 2.0])
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 def test_pde_spatial_args(backend):
     """Test PDE with spatial dependence."""
     field = ScalarField(grids.UnitGrid([4]))
@@ -208,7 +210,7 @@ def test_pde_spatial_args(backend):
     # test combination of spatial dependence and differential operators
     eq = PDE({"a": "dot(gradient(x), gradient(a))"})
     rhs = eq.make_pde_rhs(field, backend=backend)
-    res = backends[backend]._apply_native(rhs, field.data, t=0.0)
+    res = backends[backend]._apply_native(rhs, field.data, 0.0)
     np.testing.assert_allclose(res, np.array([0.0, 0.0, 0.0, 0.0]))
 
     # test invalid spatial dependence
@@ -333,7 +335,9 @@ def test_pde_bcs_warning(caplog):
     assert "Unused" in caplog.text
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 @pytest.mark.parametrize("bc", ["asdf", [{"value": 1}] * 3])
 def test_pde_bcs_error(backend, bc, rng):
     """Test PDE with wrong boundary conditions."""
@@ -398,7 +402,9 @@ def test_anti_periodic_bcs():
     assert res2.fluctuations > 0.1
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-cuda"], indirect=True
+)
 def test_pde_heaviside(backend):
     """Test PDE with a heaviside right hand side."""
     field = ScalarField(grids.CartesianGrid([[-1, 1]], 2), [-1, 1])
@@ -407,7 +413,9 @@ def test_pde_heaviside(backend):
     np.testing.assert_allclose(res.data, np.array([-1.0, 2]))
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 def test_post_step_hook(backend):
     """Test simple post step hook function."""
 

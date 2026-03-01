@@ -18,7 +18,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, TypeVar
 
 import numpy as np
 from numpy.typing import ArrayLike  # noqa: F401
@@ -43,9 +43,6 @@ FloatOrArray = float | np.ndarray[Any, np.dtype[np.floating]]
 # generic array types that work for various fields or arrays
 TField = TypeVar("TField", "FieldCollection", "DataFieldBase")
 TArray = TypeVar("TArray", NumericArray, "Tensor")
-
-# miscellaneous types:
-BackendType = Literal["scipy", "numpy", "numba", "numba_mpi", "torch"]
 
 
 class OperatorInfo(NamedTuple):

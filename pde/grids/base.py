@@ -1466,7 +1466,7 @@ class GridBase(metaclass=ABCMeta):
         return numba_backend.make_inserter(grid=self, with_ghost_cells=with_ghost_cells)
 
     def make_integrator(
-        self, backend: str = "numpy"
+        self, backend: str | BackendBase = "numpy"
     ) -> Callable[[NumericArray], NumberOrArray]:
         """Return function that can be used to integrates discretized data over the
         grid.

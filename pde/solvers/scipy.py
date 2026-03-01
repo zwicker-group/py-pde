@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -14,8 +14,9 @@ from .base import SolverBase
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from ..backends.base import BackendBase
     from ..pdes.base import PDEBase
-    from ..tools.typing import BackendType, NumericArray, TField
+    from ..tools.typing import NumericArray, TField
 
 
 class ScipySolverError(RuntimeError): ...
@@ -31,9 +32,7 @@ class ScipySolver(SolverBase):
 
     name = "scipy"
 
-    def __init__(
-        self, pde: PDEBase, *, backend: BackendType | Literal["auto"] = "auto", **kwargs
-    ):
+    def __init__(self, pde: PDEBase, *, backend: str | BackendBase = "auto", **kwargs):
         r"""
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):

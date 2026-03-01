@@ -549,7 +549,7 @@ def get_package_versions(
     for name in sorted(packages):
         try:
             version = importlib.metadata.version(name)
-        except ImportError:  # noqa: PERF203
+        except ImportError:
             versions[name] = na_str
         else:
             versions[name] = version

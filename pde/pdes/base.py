@@ -15,7 +15,7 @@ import copy
 import logging
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -26,10 +26,11 @@ from ..tools.misc import module_available
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from ..backends.base import BackendBase
     from ..fields.base import FieldBase
     from ..solvers.base import SolverBase
     from ..solvers.controller import TRangeType
-    from ..tools.typing import ArrayLike, BackendType, NumericArray, StepperHook, TField
+    from ..tools.typing import ArrayLike, NumericArray, StepperHook, TField
     from ..trackers.base import TrackerCollectionDataType
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
@@ -127,7 +128,7 @@ class PDEBase(metaclass=ABCMeta):
         return False
 
     def make_post_step_hook(
-        self, state: FieldBase, backend: BackendType = "numpy"
+        self, state: FieldBase, backend: str | BackendBase = "numpy"
     ) -> tuple[StepperHook, Any]:
         """Returns a function that is called after each step.
 
@@ -319,7 +320,7 @@ class PDEBase(metaclass=ABCMeta):
 
         return rhs  # type: ignore
 
-    def determine_auto_backend(self) -> BackendType:
+    def determine_auto_backend(self) -> str:
         """Returns backend that will be chosen automatically for this PDE.
 
         Returns:
@@ -332,7 +333,9 @@ class PDEBase(metaclass=ABCMeta):
         return "numpy"
 
     def make_pde_rhs(
-        self, state: TField, backend: BackendType | Literal["auto"] = "auto"
+        self,
+        state: TField,
+        backend: str | BackendBase = "auto",
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
@@ -363,7 +366,7 @@ class PDEBase(metaclass=ABCMeta):
         dt: float | None = None,
         tracker: TrackerCollectionDataType = "auto",
         *,
-        backend: BackendType | Literal["auto"] = "auto",
+        backend: str | BackendBase = "auto",
         solver: str | SolverBase = "euler",
         ret_info: bool = False,
         **kwargs,
@@ -643,7 +646,7 @@ class SDEBase(PDEBase):
         return noise_realization
 
     def make_noise_realization(
-        self, state: TField, backend: BackendType | Literal["auto"] = "auto"
+        self, state: TField, backend: str | BackendBase = "auto"
     ) -> Callable[[NumericArray, float], NumericArray | None]:
         """Return a function for determining one realization of the noise term.
 

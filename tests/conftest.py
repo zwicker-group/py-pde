@@ -3,17 +3,21 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import logging
 import platform
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
+from pde.backends import backends
 from pde.backends.numba.utils import random_seed
 from pde.tools.misc import module_available
 
 # ensure we use the Agg backend, so figures are not displayed
 plt.switch_backend("agg")
+
+_logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(autouse=True)
@@ -47,18 +51,51 @@ def init_random_number_generators():
     return np.random.default_rng(0)
 
 
+# try registering specific torch backends for various devices
+if module_available("torch"):
+    from pde.backends.torch import TorchBackend, torch_backend
+
+    for device in ["cpu", "cuda", "mps"]:
+        try:
+            backend = TorchBackend(f"torch-{device}", registry=backends, device=device)
+        except RuntimeError:
+            _logger.info("Torch device `%s` is unavailable", device)
+        else:
+            backend._operators = torch_backend._operators
+            backend.config = torch_backend.config
+
+
 @pytest.fixture
 def backend(request):
-    """Fixture that checks backends for availability."""
+    """Fixture that sets up the backend.
+
+    This fixture can generate special backends with custom configurations and it makes
+    sure that backends are available. If they are not, the respective test is skipped
+    automatically.
+    """
     if request.param == "numba":
+        # a numba backend
         if not module_available("numba"):
             pytest.skip("`numba` is not available")
-    elif request.param == "torch":
+        backend = backends["numba"]
+
+    elif request.param.startswith("torch"):
+        # a torch backend, which might possible include a device
         if not module_available("torch"):
             pytest.skip("`torch` is not available")
         if platform.system() == "Windows":
             pytest.skip("Skip `torch` tests on Windows")
-    return request.param
+
+        try:
+            backend = backends[request.param]
+        except KeyError as err:
+            pytest.skip(str(err))
+
+    else:
+        # try loading a generic backend by name
+        backend = backends[request.param]
+
+    return backend
 
 
 def pytest_configure(config):

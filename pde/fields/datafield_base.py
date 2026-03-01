@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import DTypeLike
 
+    from ..backends.base import BackendBase
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import (
         ArrayLike,
@@ -632,7 +633,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         *,
         fill: Number | None = None,
         with_ghost_cells: bool = False,
-        backend: str = "default",
+        backend: str | BackendBase = "default",
     ) -> Callable[[FloatingArray, NumericArray], NumberOrArray]:
         r"""Returns a function that can be used to interpolate values.
 
@@ -902,7 +903,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         out: DataFieldBase | None = None,
         *,
         label: str | None = None,
-        backend: str = "default",
+        backend: str | BackendBase = "default",
         args: dict[str, Any] | None = None,
         **kwargs,
     ) -> DataFieldBase:
@@ -961,7 +962,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return out
 
     def make_dot_operator(
-        self, backend: str = "default", *, conjugate: bool = True
+        self, backend: str | BackendBase = "default", *, conjugate: bool = True
     ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
         """Return operator calculating the dot product between two fields.
 

@@ -11,6 +11,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
+from ..tools.config import Config
 from ..tools.typing import (
     DataSetter,
     FloatingArray,
@@ -30,7 +31,6 @@ if TYPE_CHECKING:
     from ..grids import BoundariesBase, GridBase
     from ..pdes.base import PDEBase
     from ..solvers.base import SolverBase
-    from ..tools.config import Config
     from ..tools.expressions import ExpressionBase
     from ..tools.typing import OperatorImplType
     from .registry import BackendRegistry
@@ -79,7 +79,11 @@ class BackendBase:
         self.name = name
         self._operators = defaultdict(dict)
         if registry:
+            # add this backend to the registry, which also sets its configuration
             registry.add(self)
+        else:
+            # initialize blank configuration if registry is not defined
+            self.config = Config(mode="insert")
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Initialize class-level attributes of subclasses.
@@ -108,7 +112,12 @@ class BackendBase:
         return value
 
     def _apply_native(
-        self, func: Callable, value: NumericArray, *, inplace: bool = False, **kwargs
+        self,
+        func: Callable,
+        value: NumericArray,
+        *args,
+        inplace: bool = False,
+        **kwargs,
     ) -> NumericArray:
         r"""Apply a native function to numpy data.
 
@@ -120,18 +129,18 @@ class BackendBase:
             inplace (bool):
                 If true, `value` it is assumed the function modifies the data inplace,
                 so we return the modified `value`
-            **kwargs:
-                Additional arguments
+            *args, **kwargs:
+                Additional arguments that are forwarded to the function call
 
         Returns:
             :class:`~numpy.ndarray`: The result as a numpy array
         """
         value_native = self.from_numpy(value)
         if inplace:
-            func(value_native, **kwargs)
+            func(value_native, *args, **kwargs)
             value[...] = self.to_numpy(value_native)
             return value
-        res_native = func(value_native, **kwargs)
+        res_native = func(value_native, *args, **kwargs)
         return self.to_numpy(res_native)  # type: ignore
 
     def compile_function(self, func: TFunc) -> TFunc:
