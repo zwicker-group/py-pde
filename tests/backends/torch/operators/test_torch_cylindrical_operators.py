@@ -20,34 +20,43 @@ if platform.system() == "Windows":
     pytest.skip("Skip torch tests on Windows", allow_module_level=True)
 
 
-def test_laplacian_field_cyl():
+@pytest.mark.parametrize(
+    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_laplacian_field_cyl(backend):
     """Test the gradient operator."""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [8, 16], periodic_z=True)
     r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     s = ScalarField(grid, data=np.cos(r) + np.sin(z))
-    s_lap = s.laplace(bc="auto_periodic_neumann", backend="torch")
+    s_lap = s.laplace(bc="auto_periodic_neumann", backend=backend)
     assert s_lap.data.shape == (8, 16)
     res = -np.cos(r) - np.sin(r) / r - np.sin(z)
     np.testing.assert_allclose(s_lap.data, res, rtol=0.1, atol=0.1)
 
 
-def test_gradient_field_cyl():
+@pytest.mark.parametrize(
+    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_gradient_field_cyl(backend):
     """Test the gradient operator."""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [8, 16], periodic_z=True)
     r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     s = ScalarField(grid, data=np.cos(r) + np.sin(z))
-    v = s.gradient(bc="auto_periodic_neumann", backend="torch")
+    v = s.gradient(bc="auto_periodic_neumann", backend=backend)
     assert v.data.shape == (3, 8, 16)
     np.testing.assert_allclose(v.data[0], -np.sin(r), rtol=0.1, atol=0.1)
     np.testing.assert_allclose(v.data[1], np.cos(z), rtol=0.1, atol=0.1)
     np.testing.assert_allclose(v.data[2], 0, rtol=0.1, atol=0.1)
 
 
-def test_divergence_field_cyl():
+@pytest.mark.parametrize(
+    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_divergence_field_cyl(backend):
     """Test the divergence operator."""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [16, 32], periodic_z=True)
     v = VectorField.from_expression(grid, ["cos(r) + sin(z)**2", "z * cos(r)**2", 0])
-    s = v.divergence(bc="auto_periodic_neumann", backend="torch")
+    s = v.divergence(bc="auto_periodic_neumann", backend=backend)
     assert s.data.shape == grid.shape
     res = ScalarField.from_expression(
         grid, "cos(r)**2 - sin(r) + (cos(r) + sin(z)**2) / r"
@@ -61,7 +70,7 @@ def test_divergence_field_cyl():
         (np.pi, 2 * np.pi), [0, 2 * np.pi], [8, 32], periodic_z=True
     )
     v2 = VectorField.from_expression(grid2, ["cos(r) + sin(z)**2", "z * cos(r)**2", 0])
-    s2 = v2.divergence(bc="auto_periodic_neumann", backend="torch")
+    s2 = v2.divergence(bc="auto_periodic_neumann", backend=backend)
     assert s2.data.shape == grid2.shape
     res2 = ScalarField.from_expression(
         grid2, "cos(r)**2 - sin(r) + (cos(r) + sin(z)**2) / r"
@@ -73,19 +82,22 @@ def test_divergence_field_cyl():
 
 
 @pytest.mark.skip("Not currently supported")
-def test_vector_gradient_divergence_field_cyl():
+def test_vector_gradient_divergence_field_cyl(backend):
     """Test the divergence operator."""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [8, 16], periodic_z=True)
     r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = [np.cos(r) + np.sin(z) ** 2, np.cos(r) ** 2 + np.sin(z), np.zeros_like(r)]
     v = VectorField(grid, data=data)
-    t = v.gradient(bc="auto_periodic_neumann", backend="torch")
+    t = v.gradient(bc="auto_periodic_neumann", backend=backend)
     assert t.data.shape == (3, 3, 8, 16)
-    v = t.divergence(bc="auto_periodic_neumann", backend="torch")
+    v = t.divergence(bc="auto_periodic_neumann", backend=backend)
     assert v.data.shape == (3, 8, 16)
 
 
-def test_findiff_cyl():
+@pytest.mark.parametrize(
+    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_findiff_cyl(backend):
     """Test operator for a simple cylindrical grid.
 
     Note that we only really test the polar symmetry
@@ -96,16 +108,19 @@ def test_findiff_cyl():
     s = ScalarField(grid, [[1, 1], [2, 2], [4, 4]])
 
     # test laplace
-    lap = s.laplace(bc={"r": {"value": 3}, "z": "periodic"}, backend="torch")
+    lap = s.laplace(bc={"r": {"value": 3}, "z": "periodic"}, backend=backend)
     y1 = 4 + 3 / r1
     y2 = -16
     np.testing.assert_allclose(lap.data, [[8, 8], [y1, y1], [y2, y2]])
-    lap = s.laplace(bc={"r": {"derivative": 3}, "z": "periodic"}, backend="torch")
+    lap = s.laplace(bc={"r": {"derivative": 3}, "z": "periodic"}, backend=backend)
     y2 = -2 + 3.5 / r2
     np.testing.assert_allclose(lap.data, [[8, 8], [y1, y1], [y2, y2]])
 
 
-def test_grid_laplace():
+@pytest.mark.parametrize(
+    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_grid_laplace(backend):
     """Test the cylindrical implementation of the laplace operator."""
     grid_cyl = CylindricalSymGrid(7, (0, 4), (4, 4))
     grid_cart = CartesianGrid([[-5, 5], [-5, 5], [0, 4]], [10, 10, 4])
@@ -113,36 +128,42 @@ def test_grid_laplace():
     a_2d = ScalarField.from_expression(grid_cyl, expression="exp(-5 * r) * cos(z / 3)")
     a_3d = a_2d.interpolate_to_grid(grid_cart)
 
-    b_2d = a_2d.laplace("auto_periodic_neumann", backend="torch")
-    b_3d = a_3d.laplace("auto_periodic_neumann", backend="torch")
+    b_2d = a_2d.laplace("auto_periodic_neumann", backend=backend)
+    b_3d = a_3d.laplace("auto_periodic_neumann", backend=backend)
     b_2d_3 = b_2d.interpolate_to_grid(grid_cart)
 
     np.testing.assert_allclose(b_2d_3.data, b_3d.data, rtol=0.2, atol=0.2)
 
 
-def test_gradient_squared_cyl(rng):
+@pytest.mark.parametrize(
+    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_gradient_squared_cyl(backend, rng):
     """Compare gradient squared operator."""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], 64)
     field = ScalarField.random_harmonic(grid, modes=1, rng=rng)
-    s1 = field.gradient("auto_periodic_neumann", backend="torch").to_scalar(
+    s1 = field.gradient("auto_periodic_neumann", backend=backend).to_scalar(
         "squared_sum"
     )
-    s2 = field.gradient_squared("auto_periodic_neumann", backend="torch", central=True)
+    s2 = field.gradient_squared("auto_periodic_neumann", backend=backend, central=True)
     np.testing.assert_allclose(s1.data, s2.data, rtol=0.2, atol=0.2)
-    s3 = field.gradient_squared("auto_periodic_neumann", backend="torch", central=False)
+    s3 = field.gradient_squared("auto_periodic_neumann", backend=backend, central=False)
     np.testing.assert_allclose(s1.data, s3.data, rtol=0.2, atol=0.2)
     assert not np.array_equal(s2.data, s3.data)
 
 
-def test_grid_div_grad_cyl():
+@pytest.mark.parametrize(
+    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_grid_div_grad_cyl(backend):
     """Compare div grad to laplacian."""
     grid = CylindricalSymGrid(2 * np.pi, (0, 2 * np.pi), (16, 16), periodic_z=True)
     field = ScalarField.from_expression(grid, "cos(r) + sin(z)")
 
     bcs = grid.get_boundary_conditions()
-    a = field.laplace(bcs, backend="torch")
-    c = field.gradient(bcs, backend="torch")
-    b = c.divergence("auto_periodic_curvature", backend="torch")
+    a = field.laplace(bcs, backend=backend)
+    c = field.gradient(bcs, backend=backend)
+    b = c.divergence("auto_periodic_curvature", backend=backend)
     res = ScalarField.from_expression(grid, "-sin(r)/r - cos(r) - sin(z)")
 
     # do not test the radial boundary points
@@ -150,7 +171,10 @@ def test_grid_div_grad_cyl():
     np.testing.assert_allclose(b.data[1:-1], res.data[1:-1], rtol=0.1, atol=0.05)
 
 
-def test_examples_scalar_cyl():
+@pytest.mark.parametrize(
+    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_examples_scalar_cyl(backend):
     """Compare derivatives of scalar fields for cylindrical grids."""
     grid = CylindricalSymGrid(1, [0, 2 * np.pi], 32)
     expr = "r**3 * sin(z)"
@@ -163,7 +187,7 @@ def test_examples_scalar_cyl():
     }
 
     # gradient - The coordinates are ordered as (r, z, φ) in py-pde
-    res = sf.gradient(bcs, backend="torch")
+    res = sf.gradient(bcs, backend=backend)
     expect = VectorField.from_expression(
         grid, ["3 * r**2 * sin(z)", "r**3 * cos(z)", 0]
     )
@@ -173,17 +197,20 @@ def test_examples_scalar_cyl():
     expect = ScalarField.from_expression(
         grid, "r**6 * cos(z)**2 + 9 * r**4 * sin(z)**2"
     )
-    res = sf.gradient_squared(bcs, central=True, backend="torch")
+    res = sf.gradient_squared(bcs, central=True, backend=backend)
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
     # laplace
     bcs["r+"] = {"curvature": "6 * sin(z)"}  # adjust BC to fit laplacian better
-    res = sf.laplace(bcs, backend="torch")
+    res = sf.laplace(bcs, backend=backend)
     expect = ScalarField.from_expression(grid, "9 * r * sin(z) - r**3 * sin(z)")
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-def test_examples_vector_cyl():
+@pytest.mark.parametrize(
+    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_examples_vector_cyl(backend):
     """Compare derivatives of vector fields for cylindrical grids."""
     grid = CylindricalSymGrid(1, [0, 2 * np.pi], 32)
     e_r = "r**3 * sin(z)"
@@ -197,7 +224,7 @@ def test_examples_vector_cyl():
     }
 
     # divergence
-    res = vf.divergence(bcs, backend="torch")
+    res = vf.divergence(bcs, backend=backend)
     expect = ScalarField.from_expression(grid, "4 * r**2 * sin(z) - r**4 * sin(z)")
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
@@ -206,7 +233,7 @@ def test_examples_vector_cyl():
     # vf = VectorField.from_expression(grid, ["r**3 * sin(z)"] * 3)
     # val_r_outer = np.broadcast_to(6 * np.sin(grid.axes_coords[1]), (3, 32))
     # bcs = {"r-": {"derivative": 0}, "r+": {"curvature": val_r_outer}, "z": "periodic"}
-    # res = vf.laplace(bcs, backend="torch")
+    # res = vf.laplace(bcs, backend=backend)
     # expr = [
     #     "8 * r * sin(z) - r**3 * sin(z)",
     #     "9 * r * sin(z) - r**3 * sin(z)",
@@ -217,7 +244,7 @@ def test_examples_vector_cyl():
 
     # # vector gradient
     # bcs = {"r-": {"derivative": 0}, "r+": {"curvature": val_r_outer}, "z": "periodic"}
-    # res = vf.gradient(bcs, backend="torch")
+    # res = vf.gradient(bcs, backend=backend)
     # expr = [
     #     ["3 * r**2 * sin(z)", "r**3 * cos(z)", "-r**2 * sin(z)"],
     #     ["3 * r**2 * sin(z)", "r**3 * cos(z)", 0],

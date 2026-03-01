@@ -13,10 +13,16 @@ if platform.system() == "Windows":
 
 import torch
 
-from pde.backends.torch import torch_backend
 
-
-def test_torch_dtype():
+@pytest.mark.parametrize(
+    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_torch_dtype(backend):
     """Test the `get_torch_dtype` function."""
-    assert torch.float32 == torch_backend.get_torch_dtype(np.float32)
-    assert torch.float32 == torch_backend.get_torch_dtype("float32")
+    assert torch.float32 == backend.get_torch_dtype(np.float32)
+    assert torch.float32 == backend.get_torch_dtype("float32")
+
+    if backend.name == "torch-mps":
+        assert torch.float32 == backend.get_torch_dtype(np.float64)
+    else:
+        assert torch.float64 == backend.get_torch_dtype(np.float64)

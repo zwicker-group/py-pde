@@ -47,8 +47,8 @@ class TorchBackend(NumpyBackend):
         "options": {"epilogue_fusion": True, "max_autotune": True},
     }
     """dict: defines options that affect compilation by torch"""
-
     _dtype_cache: dict[str, dict[DTypeLike, torch.dtype]] = defaultdict(dict)
+    """dict: contains information about the dtypes available for the current device"""
 
     def __init__(self, name: str, registry: BackendRegistry, *, device: str = "config"):
         """Initialize the torch backend.
@@ -68,6 +68,7 @@ class TorchBackend(NumpyBackend):
         except RuntimeError:
             # device is not available, so we delete the backend from the registry again
             del registry._backends[name]
+            raise
 
     @property
     def device(self) -> torch.device:
