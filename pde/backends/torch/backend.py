@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from ..base import TFunc
     from ..numpy.backend import OperatorInfo
     from ..registry import BackendRegistry
-    from .utils import TorchOperatorType
+    from .utils import TorchDifferentialOperatorType
 
 
 class TorchBackend(NumpyBackend):
@@ -178,7 +178,7 @@ class TorchBackend(NumpyBackend):
         *,
         native: bool = False,
         **kwargs,
-    ) -> TorchOperatorType:
+    ) -> TorchDifferentialOperatorType:
         """Return a compiled function applying an operator without boundary conditions.
 
         A function that takes the discretized full data as an input and an array of
@@ -227,7 +227,7 @@ class TorchBackend(NumpyBackend):
 
         def operator_no_bc(arr: NumericArray, out: NumericArray) -> None:
             arr_torch = self.from_numpy(arr)
-            out_torch = torch_operator_jitted(arr_torch)
+            out_torch = torch_operator_jitted(arr_torch)  # type: ignore
             out[...] = self.to_numpy(out_torch)
 
         return operator_no_bc  # type: ignore
@@ -240,7 +240,7 @@ class TorchBackend(NumpyBackend):
         bcs: BoundariesBase,
         native: bool = False,
         **kwargs,
-    ) -> TorchOperatorType:
+    ) -> TorchDifferentialOperatorType:
         """Return a torch function applying an operator with boundary conditions.
 
         Args:
@@ -310,7 +310,7 @@ class TorchBackend(NumpyBackend):
         return apply_op  # type: ignore
 
     def make_integrator(
-        self, grid: GridBase
+        self, grid: GridBase, *, dtype: DTypeLike = np.double
     ) -> Callable[[NumericArray], NumberOrArray]:
         """Return function that integrates discretized data over a grid.
 
@@ -321,18 +321,22 @@ class TorchBackend(NumpyBackend):
         Args:
             grid (:class:`~pde.grid.base.GridBase`):
                 Grid for which the integrator is defined
+            dtype:
+                The data type of the field that is being integrated
 
         Returns:
             A function that takes a numpy array and returns the integral with the
             correct weights given by the cell volumes.
         """
-        from .operators.common import IntegralOperator
+        from .operators.common import TorchIntegralOperator
 
         # create the torch operator
-        integrate_torch = self.compile_function(IntegralOperator(grid))
+        integrate_torch = self.compile_function(
+            TorchIntegralOperator(grid, dtype=self.get_numpy_dtype(dtype))
+        )
         integrate_torch.to(self.device)
 
-        def integrate_global(arr: NumericArray) -> float:
+        def integrate_global(arr: NumericArray) -> NumberOrArray:
             """Integrate data.
 
             Args:

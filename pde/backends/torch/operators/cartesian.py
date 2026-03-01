@@ -22,7 +22,7 @@ import torch
 
 from ....grids import CartesianGrid, GridBase
 from .. import torch_backend
-from .common import TorchOperator
+from .common import TorchDifferentialOperator
 
 if TYPE_CHECKING:
     import numpy as np
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 
 @torch_backend.register_operator(CartesianGrid, "laplace", rank_in=0, rank_out=0)
-class CartesianLaplacian(TorchOperator):
+class CartesianLaplacian(TorchDifferentialOperator):
     """Cartesian Laplace using torch."""
 
     rank_in = 0
@@ -92,7 +92,7 @@ class CartesianLaplacian(TorchOperator):
 
 
 @torch_backend.register_operator(CartesianGrid, "gradient", rank_in=0, rank_out=1)
-class CartesianGradient(TorchOperator):
+class CartesianGradient(TorchDifferentialOperator):
     """Cartesian gradient operator using torch."""
 
     rank_in = 0
@@ -146,7 +146,7 @@ class CartesianGradient(TorchOperator):
 @torch_backend.register_operator(
     CartesianGrid, "gradient_squared", rank_in=0, rank_out=0
 )
-class CartesianGradientSquared(TorchOperator):
+class CartesianGradientSquared(TorchDifferentialOperator):
     """Cartesian gradient squared operator using torch."""
 
     rank_in = 0
@@ -226,7 +226,7 @@ class CartesianGradientSquared(TorchOperator):
 
 
 @torch_backend.register_operator(CartesianGrid, "divergence", rank_in=1, rank_out=0)
-class CartesianDivergence(TorchOperator):
+class CartesianDivergence(TorchDifferentialOperator):
     """Cartesian divergence operator using torch."""
 
     rank_in = 1
@@ -278,7 +278,7 @@ class CartesianDivergence(TorchOperator):
 @torch_backend.register_operator(
     CartesianGrid, "vector_gradient", rank_in=1, rank_out=2
 )
-class CartesianVectorGradient(TorchOperator):
+class CartesianVectorGradient(TorchDifferentialOperator):
     """Cartesian vector gradient operator using torch."""
 
     rank_in = 1
@@ -312,7 +312,7 @@ class CartesianVectorGradient(TorchOperator):
 
 
 @torch_backend.register_operator(CartesianGrid, "vector_laplace", rank_in=1, rank_out=1)
-class CartesianVectorLaplacian(TorchOperator):
+class CartesianVectorLaplacian(TorchDifferentialOperator):
     """Cartesian vector Laplacian operator using torch."""
 
     rank_in = 1
@@ -348,7 +348,7 @@ class CartesianVectorLaplacian(TorchOperator):
 @torch_backend.register_operator(
     CartesianGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
-class CartesianTensorDivergence(TorchOperator):
+class CartesianTensorDivergence(TorchDifferentialOperator):
     """Cartesian tensor divergence operator using torch."""
 
     rank_in = 2

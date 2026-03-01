@@ -20,7 +20,7 @@ import torch
 from ....grids import GridBase, PolarSymGrid
 from ....tools.docstrings import fill_in_docstring
 from .. import torch_backend
-from .common import TorchOperator
+from .common import TorchDifferentialOperator
 
 if TYPE_CHECKING:
     import numpy as np
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 @torch_backend.register_operator(PolarSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
-class PolarLaplacian(TorchOperator):
+class PolarLaplacian(TorchDifferentialOperator):
     """Polar Laplace using torch.
 
     {DESCR_POLAR_GRID}
@@ -76,7 +76,7 @@ class PolarLaplacian(TorchOperator):
 
 @torch_backend.register_operator(PolarSymGrid, "gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
-class PolarGradient(TorchOperator):
+class PolarGradient(TorchDifferentialOperator):
     """Polar gradient operator using torch.
 
     {DESCR_POLAR_GRID}
@@ -136,7 +136,7 @@ class PolarGradient(TorchOperator):
     PolarSymGrid, "gradient_squared", rank_in=0, rank_out=0
 )
 @fill_in_docstring
-class PolarGradientSquared(TorchOperator):
+class PolarGradientSquared(TorchDifferentialOperator):
     """Polar gradient squared operator using torch.
 
     {DESCR_POLAR_GRID}
@@ -189,7 +189,7 @@ class PolarGradientSquared(TorchOperator):
 
 @torch_backend.register_operator(PolarSymGrid, "divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
-class PolarDivergence(TorchOperator):
+class PolarDivergence(TorchDifferentialOperator):
     """Polar divergence operator using torch.
 
     {DESCR_POLAR_GRID}
@@ -233,7 +233,7 @@ class PolarDivergence(TorchOperator):
 # @torch_backend.register_operator(
 #     PolarSymGrid, "vector_gradient", rank_in=1, rank_out=2
 # )
-# class PolarVectorGradient(TorchOperator):
+# class PolarVectorGradient(TorchDifferentialOperator):
 #     """Polar vector gradient operator using torch."""
 
 #     rank_in = 1
