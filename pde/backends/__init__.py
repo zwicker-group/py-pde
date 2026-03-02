@@ -1,5 +1,14 @@
 """Defines backends, which implement efficient numerical simulations.
 
+Backends are classes that provide logic to carry out numerical calculations. In
+particular, each of these classes implements various operators. In principle, backend
+classes can be defined independently, but we use some inheritance to share logic.
+
+Moreover, we provide :obj:`~pde.backends.backends`, which is an object of type
+:class:`~pde.backends.registry.BackendRegistry`. This registry allows selecting backends
+by their identifier, so users do not usually need to construct backend classes.
+
+
 .. autosummary::
    :nosignatures:
 
@@ -25,16 +34,12 @@ Inheritance structure of the classes:
 
 from pathlib import Path
 
-# load and register the numpy backend, which is the default
-from .numpy import numpy_backend
-
 # load the registry, which manages all backends
 from .registry import backends, load_default_config, registered_backends
 
-backends.add(numpy_backend)
-
-# register additional backends without loading them
+# register backends without loading them
 BACKENDS_FOLDER = Path(__file__).parent
+backends.register_package("numpy", "pde.backends.numpy")
 backends.register_package(
     "numba",
     "pde.backends.numba",
@@ -48,4 +53,4 @@ backends.register_package(
     config=load_default_config(BACKENDS_FOLDER / "torch" / "config.py"),
 )
 
-__all__ = ["backends", "numpy_backend", "registered_backends"]
+__all__ = ["backends", "registered_backends"]
