@@ -109,8 +109,7 @@ class BackendRegistry:
             else:
                 _logger.info("Reloading backend `%s`", backend.name)
         self._backends[backend.name] = backend
-        # if name not in self._configs:
-        #     self._configs[name] = Config()
+
         if link_config:
             self._configs[backend.name] = backend.config
 
