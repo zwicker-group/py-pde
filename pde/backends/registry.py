@@ -70,7 +70,24 @@ class BackendRegistry:
         self._backends[name] = package_path
         self._configs[name] = Config(config)
 
-    def add(self, backend: BackendBase) -> None:
+    def get_config(self, name: str) -> Config:
+        """Get configuration of a particular backend.
+
+        An empty configuration is returned if nothing was found.
+
+        Args:
+            name (str):
+                Name of the backend
+
+        Returns:
+            :class:`~pde.tools.config.Config`: the configuration
+        """
+        try:
+            return self._configs[name]
+        except KeyError:
+            return Config()
+
+    def add(self, backend: BackendBase, *, link_config: bool = True) -> None:
         """Add a loaded backend object.
 
         This object can replace a previously registered python package.
@@ -78,6 +95,9 @@ class BackendRegistry:
         Args:
             backend (:class:`~pde.backends.base.BackendBase`):
                 Implementation of the backend
+            link_config (bool):
+                If True, the configuration of `backend` is linked with the global
+                configuration, so that both show consistent values
         """
         if backend.name in _RESERVED_BACKEND_NAMES:
             _logger.warning(
@@ -89,9 +109,9 @@ class BackendRegistry:
             else:
                 _logger.info("Reloading backend `%s`", backend.name)
         self._backends[backend.name] = backend
-        if backend.name not in self._configs:
-            self._configs[backend.name] = Config()
-        backend.config = self._configs[backend.name]
+
+        if link_config:
+            self._configs[backend.name] = backend.config
 
     def __getitem__(self, backend: str | BackendBase) -> BackendBase:
         """Return backend object, potentially loading the respective package.

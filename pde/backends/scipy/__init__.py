@@ -12,7 +12,8 @@ from .. import backends
 from .backend import ScipyBackend
 
 # add the loaded scipy backend to the registry
-scipy_backend = ScipyBackend("scipy", backends)
+scipy_backend = ScipyBackend(backends.get_config("scipy"), name="scipy")
+backends.add(scipy_backend)
 
 # register all the standard operators
 from . import operators
