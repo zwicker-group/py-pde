@@ -222,9 +222,14 @@ class Config(collections.UserDict):
         """
         super().__init__()
         self.mode = "insert"  # temporarily allow inserting items
-        if isinstance(items, (dict, Config)):
+        if isinstance(items, dict):
+            # use the parameters from the supplied dictionary
             self.update(items)
+        elif isinstance(items, Config):
+            # use the underlying dictionary to copy the actual Parameter instances
+            self.update(items.data)
         elif items:
+            # assume that this is a sequence of Parameter
             self.update({p.name: p for p in items})
         self.mode = mode
 

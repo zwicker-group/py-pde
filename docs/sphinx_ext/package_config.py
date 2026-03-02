@@ -15,9 +15,12 @@ class PackageConfigDirective(SphinxDirective):
 
         items = []
 
-        for name, p in config.to_dict().items():
-            description = nodes.paragraph(text=p.description + " ")
-            description += nodes.strong(text=f"(Default value: {config[name]!r})")
+        for name, p in config.to_dict(ret_values=False).items():
+            if p.__class__.__name__ == "Parameter":
+                description = nodes.paragraph(text=p.description + " ")
+                description += nodes.strong(text=f"(Default value: {config[name]!r})")
+            else:
+                description = nodes.paragraph(text=str(p))
 
             items += nodes.definition_list_item(
                 "",
