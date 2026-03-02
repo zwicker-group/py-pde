@@ -57,12 +57,13 @@ if module_available("torch"):
 
     for device in ["cpu", "cuda", "mps"]:
         try:
-            backend = TorchBackend(f"torch-{device}", registry=backends, device=device)
+            backend = TorchBackend(
+                torch_backend.config, name=f"torch-{device}", device=device
+            )
         except RuntimeError:
             _logger.info("Torch device `%s` is unavailable", device)
         else:
-            backend._operators = torch_backend._operators
-            backend.config = torch_backend.config
+            backends.add(backend)
 
 
 @pytest.fixture

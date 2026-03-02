@@ -8,10 +8,10 @@ from __future__ import annotations
 import inspect
 import logging
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
-from ..tools.config import Config
+from ..tools.config import Config, Parameter
 from ..tools.typing import (
     DataSetter,
     FloatingArray,
@@ -33,7 +33,6 @@ if TYPE_CHECKING:
     from ..solvers.base import SolverBase
     from ..tools.expressions import ExpressionBase
     from ..tools.typing import OperatorImplType
-    from .registry import BackendRegistry
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
@@ -63,27 +62,36 @@ class BackendBase:
 
     _logger: logging.Logger  # logger instance to output information
     _operators: dict[type[GridBase], dict[str, OperatorInfo]]
-    """dict: all operators registered for all backends"""
+    """dict: all operators registered for this backend class.
 
-    def __init__(self, name: str, registry: BackendRegistry | None):
+    Operators are registered for each grid class individually. Note that operators are
+    registered on the backend classes, so that we can use inheritance to find operators
+    defined on parent classes.
+    """
+
+    def __init__(
+        self,
+        config: Sequence[Parameter] | dict[str, Any] | Config | None,
+        *,
+        name: str | None = None,
+    ):
         """Initialize the backend.
 
         Args:
+            config (:class:`~pde.tools.config.Config`):
+                Configuration data for the backend
             name (str):
                 The name of the backend
-            registry (:class:`~pde.backends.registry.BackendRegistry`):
-                The registry to which this backend is added.
         """
+        if config is None:
+            self.config = Config(mode="insert")
+        else:
+            self.config = Config(config)
+        if name is None:
+            name = self.__class__.__name__  # extract a default name
         if name in _RESERVED_BACKEND_NAMES:
             self._logger.warning("Backend uses reserved name.")
         self.name = name
-        self._operators = defaultdict(dict)
-        if registry:
-            # add this backend to the registry, which also sets its configuration
-            registry.add(self)
-        else:
-            # initialize blank configuration if registry is not defined
-            self.config = Config(mode="insert")
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Initialize class-level attributes of subclasses.
@@ -94,6 +102,7 @@ class BackendBase:
         super().__init_subclass__(**kwargs)
         # create logger for this specific field class
         cls._logger = _base_logger.getChild(cls.__qualname__)
+        cls._operators = defaultdict(dict)
 
     def from_numpy(self, value: Any) -> Any:
         """Convert values from numpy to native representation.

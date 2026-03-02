@@ -182,13 +182,14 @@ class SolverBase:
         # check whether the new backend contradicts the old backend object
         if (
             getattr(self, "_backend_obj", None) is not None
-            and self._backend_obj.name != new_backend  # type: ignore
+            and self._backend_obj.name != new_backend
         ):
             msg = "Tried changing the loaded backend of the solver from `%s` to `%s`"
-            raise TypeError(msg, self._backend_obj.name, new_backend)  # type: ignore
+            raise TypeError(msg, self._backend_obj.name, new_backend)
 
         # set the new backend
-        self._backend_name = self.info["backend"] = new_backend
+        self._backend_name = new_backend
+        self.info["backend"] = {"name": new_backend}
         if isinstance(value, str):
             # load the backend object lazily
             if self._backend_name == "auto":

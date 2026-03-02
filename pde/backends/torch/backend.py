@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import numbers
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import torch
@@ -25,6 +25,8 @@ if TYPE_CHECKING:
     from ...grids import GridBase
     from ...grids.boundaries.axes import BoundariesBase
     from ...pdes import PDEBase
+    from ...solvers.base import SolverBase
+    from ...tools.config import Config
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
         NumberOrArray,
@@ -34,7 +36,6 @@ if TYPE_CHECKING:
     )
     from ..base import TFunc
     from ..numpy.backend import OperatorInfo
-    from ..registry import BackendRegistry
     from .utils import TorchDifferentialOperatorType
 
 
@@ -52,25 +53,29 @@ class TorchBackend(NumpyBackend):
     _emitted_downcast_warning: bool = False
     """bool: global flag to track whether we already warned about downcasting"""
 
-    def __init__(self, name: str, registry: BackendRegistry, *, device: str = "config"):
+    def __init__(
+        self,
+        config: Config | None = None,
+        *,
+        name: str | None = None,
+        device: str = "config",
+    ):
         """Initialize the torch backend.
 
         Args:
-            registry (:class:`~pde.backends.registry.BackendRegistry`):
-                The registry to which this backend is added
+            config (:class:`~pde.tools.config.Config`):
+                Configuration data for the backend
             name (str):
                 The name of the backend
             device (str):
                 The torch device to use. Special values are "config" (read from
                 configuration) and "auto" (use CUDA if available, otherwise CPU)
         """
-        super().__init__(name=name, registry=registry)
-        try:
-            self.device = device
-        except RuntimeError:
-            # device is not available, so we delete the backend from the registry again
-            del registry._backends[name]
-            raise
+        if config is None:
+            from .config import DEFAULT_CONFIG as config  # type: ignore
+
+        super().__init__(config, name=name)
+        self.device = device
 
     @property
     def device(self) -> torch.device:
@@ -417,6 +422,35 @@ class TorchBackend(NumpyBackend):
             return self.to_numpy(res_torch)  # type: ignore
 
         return rhs  # type: ignore
+
+    def make_inner_stepper(
+        self,
+        solver: SolverBase,
+        stepper_style: Literal["fixed", "adaptive"],
+        state: TField,
+        dt: float,
+    ) -> Callable:
+        """Return a stepper function using an explicit scheme.
+
+        Args:
+            solver (:class:`~pde.solvers.base.SolverBase`):
+                The solver instance, which determines how the stepper is constructed
+            stepper_style (str):
+                The style of the stepper, either "fixed" or "adaptive"
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        solver.info["backend"]["device"] = self.device.type
+        solver.info["backend"]["compile"] = self.config["compile"]
+        return super().make_inner_stepper(solver, stepper_style, state, dt)
 
     def make_expression_function(
         self,

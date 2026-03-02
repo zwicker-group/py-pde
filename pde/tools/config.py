@@ -202,7 +202,7 @@ class Config(collections.UserDict):
 
     def __init__(
         self,
-        items: Sequence[Parameter] | dict[str, Any] | None = None,
+        items: Sequence[Parameter] | dict[str, Any] | Config | None = None,
         mode: str = "update",
     ):
         """
@@ -222,7 +222,7 @@ class Config(collections.UserDict):
         """
         super().__init__()
         self.mode = "insert"  # temporarily allow inserting items
-        if isinstance(items, dict):
+        if isinstance(items, (dict, Config)):
             self.update(items)
         elif items:
             self.update({p.name: p for p in items})
