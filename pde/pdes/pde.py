@@ -790,7 +790,6 @@ class PDE(SDEBase):
             A function with signature `(state_data, t)`, which can be called with an
             instance of the state data and time to obtain the associated evolution rate.
         """
-        backend = backends[backend]
         if backend.implementation == "numba":
             return self._make_evolution_rate_numba(state, backend=backend)
         if backend.implementation == "torch":
