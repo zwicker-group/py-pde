@@ -344,12 +344,13 @@ class PDEBase(metaclass=ABCMeta):
 
         # try various backends and see whether they are implemented
         for backend in ["numba", "torch", "numpy"]:
+            # TODO: Could first add a check whether module is available
             try:
                 self.make_pde_rhs(state, backend=backend)
-            except NotImplementedError as err:
+            except (NotImplementedError, ModuleNotFoundError) as err:
                 self._logger.info("Using backend `%s` failed: %s", backend, str(err))
             else:
-                break  # found a
+                break  # found a suitable backend
         else:
             msg = "Could not select a suitable backend"
             raise RuntimeError(msg)
