@@ -6,11 +6,11 @@ Measuring performance
 
 The performance of the `py-pde` package depends on many details and general 
 statements are thus difficult to make.
-However, since the core operators are just-in-time compiled using :mod:`numba`,
+However, since the core operators can be compiled using :mod:`numba` or :mod:`torch`,
 many operations of the package proceed at performances close to most compiled
 languages.
 For instance, a simple Laplace operator applied to fields defined on a Cartesian
-grid has performance that is similar to the operators supplied by the popular
+grid has performance that is similar to the operators supplied by the
 `OpenCV <https://opencv.org>`_ package.
 The following figures illustrate this by showing the duration of evaluating the
 Laplacian on grids of increasing number of support points for

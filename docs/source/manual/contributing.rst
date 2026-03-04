@@ -84,11 +84,10 @@ Finally, we have pre-commit hooks, which you should install using `pre-commit in
 We also have some conventions that should make the package more consistent and
 thus easier to use. For instance, we try to use ``properties`` instead of getter
 and setter methods as often as possible.
-Because we use a lot of :mod:`numba` just-in-time compilation to speed up computations,
-we need to pass around (compiled) functions regularly. The names of the methods
-and functions that make such functions, i.e. that return callables, should start
-with 'make_*' where the wildcard should describe the purpose of the function
-being created. 
+Because we use :mod:`numba` or :mod:`torch` to speed up computations, we need to pass
+around (compiled) functions regularly. The names of the methods and functions that make
+such functions, i.e. that return callables, should start with 'make_*' where the
+wildcard should describe the purpose of the function being created. 
 
 
 Running unit tests
