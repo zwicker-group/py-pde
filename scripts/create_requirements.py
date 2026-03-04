@@ -177,7 +177,7 @@ REQUIREMENTS = [
     Requirement(name="utilitiez", version_min="0.3", docs_only=True, tests_only=True),
     # for scripts only
     Requirement(name="docformatter", version_min="1.7", scripts_only=True),
-    Requirement(name="mypy", version_min="1.8", scripts_only=True),
+    Requirement(name="mypy", version_min="1.8", scripts_only=True, tests_only=True),
     Requirement(name="pre-commit", version_min="3", scripts_only=True),
     Requirement(name="ruff", version_min="0.6", scripts_only=True),
     # for tests only
