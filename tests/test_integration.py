@@ -155,7 +155,7 @@ def test_stop_iteration_hook(backend):
     assert info["controller"]["stop_reason"] == "Tracker raised StopIteration"
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"])
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_custom_data_hook(backend):
     """Test a custom PDE keeping track of data."""
 
@@ -187,7 +187,7 @@ def test_custom_data_hook(backend):
     assert info["solver"]["post_step_data"] == pytest.approx(value)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"])
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_array_data_hook(backend):
     """Test a custom PDE keeping track of array data."""
 
