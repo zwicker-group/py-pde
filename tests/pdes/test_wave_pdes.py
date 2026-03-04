@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from pde import PDE, ScalarField, UnitGrid, WavePDE
+from pde.backends import backends
 from pde.tools.misc import module_available
 
 
@@ -26,7 +27,7 @@ def test_wave_consistency(dim, rng):
 
     # compare numba to numpy implementation
     if module_available("numba"):
-        rhs = eq.make_pde_rhs(state, backend="numba")
+        rhs = eq.make_pde_rhs(state, backend=backends["numba"])
         np.testing.assert_allclose(field.data, rhs(state.data, 0), rtol=1e-6)
 
     # compare torch to numpy implementation
