@@ -127,26 +127,11 @@ class KuramotoSivashinskyPDE(SDEBase):
             instance of the state data and time to obtain the associated evolution rate.
         """
         nu_value = self.nu
-        laplace = state.grid.make_operator(
-            operator="laplace",
-            bc=self.bc,
-            backend=backend,
-            native=True,
-            dtype=state.dtype,
-        )
-        laplace2 = state.grid.make_operator(
-            operator="laplace",
-            bc=self.bc_lap,
-            backend=backend,
-            native=True,
-            dtype=state.dtype,
-        )
+        args = {"backend": backend, "native": True, "dtype": state.dtype}
+        laplace = state.grid.make_operator(operator="laplace", bc=self.bc, **args)
+        laplace2 = state.grid.make_operator(operator="laplace", bc=self.bc_lap, **args)
         gradient_sq = state.grid.make_operator(
-            operator="gradient_squared",
-            bc=self.bc,
-            backend=backend,
-            native=True,
-            dtype=state.dtype,
+            operator="gradient_squared", bc=self.bc, **args
         )
 
         def pde_rhs(state_data, t=0):

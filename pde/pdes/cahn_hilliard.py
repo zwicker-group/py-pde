@@ -107,20 +107,9 @@ class CahnHilliardPDE(PDEBase):
             instance of the state data and time to obtain the associated evolution rate.
         """
         interface_width = self.interface_width
-        laplace_c = state.grid.make_operator(
-            operator="laplace",
-            bc=self.bc_c,
-            backend=backend,
-            native=True,
-            dtype=state.dtype,
-        )
-        laplace_mu = state.grid.make_operator(
-            operator="laplace",
-            bc=self.bc_mu,
-            backend=backend,
-            native=True,
-            dtype=state.dtype,
-        )
+        args = {"backend": backend, "native": True, "dtype": state.dtype}
+        laplace_c = state.grid.make_operator(operator="laplace", bc=self.bc_c, **args)
+        laplace_mu = state.grid.make_operator(operator="laplace", bc=self.bc_mu, **args)
 
         def pde_rhs(state_data, t=0):
             """Evaluate right hand side of PDE."""

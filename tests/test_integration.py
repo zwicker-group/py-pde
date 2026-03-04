@@ -82,7 +82,7 @@ def test_custom_pde_mpi(rng):
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
 
-        def make_pde_rhs_numba(self, state):
+        def make_evolution_rate(self, state, backend):
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
 
@@ -138,7 +138,7 @@ def test_stop_iteration_hook(backend):
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
 
-        def make_pde_rhs_numba(self, state):
+        def make_evolution_rate(self, state, backend):
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
 
@@ -155,7 +155,7 @@ def test_stop_iteration_hook(backend):
     assert info["controller"]["stop_reason"] == "Tracker raised StopIteration"
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"])
 def test_custom_data_hook(backend):
     """Test a custom PDE keeping track of data."""
 
@@ -169,7 +169,7 @@ def test_custom_data_hook(backend):
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
 
-        def make_pde_rhs_numba(self, state):
+        def make_evolution_rate(self, state, backend):
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
 
@@ -187,7 +187,7 @@ def test_custom_data_hook(backend):
     assert info["solver"]["post_step_data"] == pytest.approx(value)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numpy", "numba", "torch"])
 def test_array_data_hook(backend):
     """Test a custom PDE keeping track of array data."""
 
@@ -201,7 +201,7 @@ def test_array_data_hook(backend):
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
 
-        def make_pde_rhs_numba(self, state):
+        def make_evolution_rate(self, state, backend):
             def pde_rhs(state_data, t):
                 return np.ones_like(state_data)
 
