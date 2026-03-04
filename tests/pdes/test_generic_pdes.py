@@ -4,7 +4,6 @@
 
 import platform
 
-import numba as nb
 import numpy as np
 import pytest
 
@@ -31,14 +30,18 @@ def test_pde_consistency(pde_class, dim, rng):
     assert isinstance(str(eq), str)
     assert isinstance(repr(eq), str)
 
-    # compare numba to numpy implementation
+    # get ground truth from numpy implementation
     grid = UnitGrid([4] * dim)
     state = ScalarField.random_uniform(grid, rng=rng)
     field = eq.evolution_rate(state)
     assert field.grid == grid
-    rhs = nb.njit(eq.make_pde_rhs_numba(state))
-    res = rhs(state.data, 0)
-    np.testing.assert_allclose(field.data, res)
+
+    # compare numba to numpy implementation
+    if module_available("numba"):
+        rhs = eq.make_pde_rhs(state, backend="numba")
+        res = rhs(state.data, 0)
+        # use reduced tolerance to support potential float32 devices
+        np.testing.assert_allclose(field.data, res, rtol=5e-6)
 
     # compare torch to numpy implementation
     if module_available("torch") and platform.system() != "Windows":

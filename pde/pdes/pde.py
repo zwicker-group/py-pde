@@ -7,10 +7,11 @@ from __future__ import annotations
 
 import numbers
 import re
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from ..backends import BackendBase, backends
 from ..fields import FieldCollection, VectorField
 from ..fields.datafield_base import DataFieldBase
 from ..grids.boundaries import set_default_bc
@@ -24,7 +25,6 @@ if TYPE_CHECKING:
     import sympy
     import torch
 
-    from ..backends.base import BackendBase
     from ..fields.base import FieldBase
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.expressions import ScalarExpression
@@ -272,7 +272,7 @@ class PDE(SDEBase):
         ops: dict[str, Callable],
         *,
         state: FieldBase,
-        backend: Literal["numpy", "numba", "torch"],
+        backend: BackendBase,
     ) -> None:
         """Adds (differential) operators to an expression.
 
@@ -286,8 +286,8 @@ class PDE(SDEBase):
                 this dictionary might be modified in place.
             state (:class:`~pde.fields.FieldBase`):
                 The field describing the state of the PDE
-            backend (str):
-                The backend for which the operators are prepared
+            backend (:class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
         """
         from sympy import Symbol
         from sympy.core.function import UndefinedFunction
@@ -318,7 +318,7 @@ class PDE(SDEBase):
             # Create the function evaluating the operator. Note that we use the `numba`
             # backend to create operators when `numpy` was selected since the `numpy`
             # backend itself currently does not implement any operators.
-            op_backend = "numba" if backend == "numpy" else backend
+            op_backend = "numba" if backend.implementation == "numpy" else backend
             try:
                 ops[func] = state.grid.make_operator(
                     func, bc=bc, backend=op_backend, native=True
@@ -333,7 +333,7 @@ class PDE(SDEBase):
                 )
                 raise
 
-            if backend != "torch":
+            if backend.implementation != "torch":
                 # `torch` backend does not support `bc_args`, yet. For all other
                 # backends, we add `bc_args` as an argument to the call of the operators
                 # to be able to pass additional information, like time
@@ -360,7 +360,7 @@ class PDE(SDEBase):
         ops: dict[str, Callable],
         state: FieldBase,
         *,
-        backend: Literal["numpy", "numba", "torch"],
+        backend: BackendBase,
     ):
         """Compile a function determining the right hand side for one variable.
 
@@ -372,16 +372,12 @@ class PDE(SDEBase):
                 this dictionary might be modified in place
             state (:class:`~pde.fields.FieldBase`):
                 The field describing the state of the PDE
-            backend (str):
-                The backend for which the data is prepared
+            backend (:class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
 
         Returns:
             callable: The function calculating the RHS
         """
-        from ..backends import backends
-
-        backend_obj = backends[backend]
-
         # modify a copy of the expression and the general operator array
         expr = self._rhs_expr[var].copy()
 
@@ -404,7 +400,7 @@ class PDE(SDEBase):
             signature += tuple(state.grid.axes)
             # inject the spatial coordinates into the expression for the rhs
             extra_args = tuple(
-                backend_obj.from_numpy(state.grid.cell_coords[..., i])
+                backend.from_numpy(state.grid.cell_coords[..., i])
                 for i in range(state.grid.num_axes)
             )
 
@@ -427,7 +423,7 @@ class PDE(SDEBase):
             backend=backend, single_arg=False, user_funcs=ops
         )
 
-        if backend in {"numpy", "numba"}:
+        if backend.implementation in {"numpy", "numba"}:
             # Even in the `numpy` backend, we need to prepare the bc_args to be
             # compatible with numba, since the standard operators in the `numpy`
             # backend are still compiled with numba by default.
@@ -439,7 +435,7 @@ class PDE(SDEBase):
                 bc_args["t"] = args[-1]  # pass time to differential operators
                 return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
 
-        elif backend == "torch":
+        elif backend.implementation == "torch":
             # move extra arguments to the torch device?
 
             def rhs_func(*args) -> torch.Tensor:  # type: ignore
@@ -452,11 +448,9 @@ class PDE(SDEBase):
             raise NotImplementedError(msg)
 
         # compile the function if necessary
-        return backend_obj.compile_function(rhs_func)
+        return backend.compile_function(rhs_func)
 
-    def _prepare_cache(
-        self, state: TField, *, backend: Literal["numpy", "numba", "torch"]
-    ) -> dict[str, Any]:
+    def _prepare_cache(self, state: TField, *, backend: BackendBase) -> dict[str, Any]:
         """Prepare the expression by setting internal variables in the cache.
 
         Note that the expensive calculations in this method are only carried out if the
@@ -465,17 +459,17 @@ class PDE(SDEBase):
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 The field describing the state of the PDE
-            backend (str):
-                The backend for which the data is prepared
+            backend (:class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
 
         Returns:
             dict: A dictionary with information that can be reused
         """
         # check the cache
-        cache = self._cache.get(backend, {})
+        cache = self._cache.get(backend.name, {})
         if state.attributes == cache.get("state_attributes", None):
             return cache  # this cache was already prepared
-        cache = self._cache[backend] = {}  # clear cache, if there was any
+        cache = self._cache[backend.name] = {}  # clear cache, if there was any
 
         # check whether PDE has variables with same names as grid axes
         name_overlap = set(self.rhs) & set(state.grid.axes)
@@ -596,7 +590,7 @@ class PDE(SDEBase):
             :class:`~pde.fields.FieldBase`:
             Field describing the evolution rate of the PDE
         """
-        cache = self._prepare_cache(state, backend="numpy")
+        cache = self._prepare_cache(state, backend=backends["numpy"])
 
         # create an empty copy of the current field
         result = state.copy()
@@ -651,7 +645,7 @@ class PDE(SDEBase):
 
         return post_step_hook_impl, 0  # hook function and initial value
 
-    def make_pde_rhs_numba_collection(
+    def _make_pde_rhs_numba_collection(
         self, state: FieldCollection, cache: dict[str, Any]
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create the compiled rhs if `state` is a field collection.
@@ -718,14 +712,16 @@ class PDE(SDEBase):
         # compile the recursive chain
         return chain()
 
-    def make_pde_rhs_numba(
-        self, state: TField, **kwargs
+    def _make_evolution_rate_numba(
+        self, state: TField, backend: BackendBase
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a numba-compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state defining the grid and data types
+            backend (:class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
             **kwargs:
                 Additional keyword arguments (currently unused)
 
@@ -734,7 +730,7 @@ class PDE(SDEBase):
             instance of :class:`~numpy.ndarray` of the state data and the time to
             obtain an instance of :class:`~numpy.ndarray` giving the evolution rate.
         """
-        cache = self._prepare_cache(state, backend="numba")
+        cache = self._prepare_cache(state, backend=backend)
 
         if isinstance(state, DataFieldBase):
             # state is a single field
@@ -742,19 +738,21 @@ class PDE(SDEBase):
 
         if isinstance(state, FieldCollection):
             # state is a collection of fields
-            return self.make_pde_rhs_numba_collection(state, cache)
+            return self._make_pde_rhs_numba_collection(state, cache)
 
         msg = f"Unsupported field {state.__class__.__name__}"
         raise TypeError(msg)
 
-    def make_pde_rhs_torch(
-        self, state: TField, **kwargs
+    def _make_evolution_rate_torch(
+        self, state: TField, backend: BackendBase
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a torch-compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state defining the grid and data types
+            backend (:class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
             **kwargs:
                 Additional keyword arguments (currently unused)
 
@@ -763,7 +761,7 @@ class PDE(SDEBase):
             instance of :class:`~numpy.ndarray` of the state data and the time to
             obtain an instance of :class:`~numpy.ndarray` giving the evolution rate.
         """
-        cache = self._prepare_cache(state, backend="torch")
+        cache = self._prepare_cache(state, backend=backend)
 
         if isinstance(state, DataFieldBase):
             # state is a single field
@@ -776,6 +774,29 @@ class PDE(SDEBase):
 
         msg = f"Unsupported field {state.__class__.__name__}"
         raise TypeError(msg)
+
+    def make_evolution_rate(
+        self, state: FieldCollection, backend: BackendBase
+    ) -> Callable[[Any, float], Any]:
+        """Create a compiled function evaluating the right hand side of the PDE.
+
+        Args:
+            state (:class:`~pde.fields.ScalarField`):
+                An example for the state defining the grid and data types
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called with an
+            instance of the state data and time to obtain the associated evolution rate.
+        """
+        backend = backends[backend]
+        if backend.implementation == "numba":
+            return self._make_evolution_rate_numba(state, backend=backend)
+        if backend.implementation == "torch":
+            return self._make_evolution_rate_torch(state, backend=backend)
+        msg = f"Backend {backend} is not implemented"
+        raise NotImplementedError(msg)
 
     def _jacobian_spectral(
         self,

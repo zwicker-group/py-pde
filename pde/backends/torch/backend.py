@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import numbers
+import warnings
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -41,6 +42,8 @@ if TYPE_CHECKING:
 
 class TorchBackend(NumpyBackend):
     """Defines :mod:`torch` backend."""
+
+    implementation = "torch"
 
     compile_options = {
         "fullgraph": True,
@@ -399,21 +402,39 @@ class TorchBackend(NumpyBackend):
         Returns:
             Function returning deterministic part of the right hand side of the PDE.
         """
+        # the following method is deprecated since 2026-03-02
         try:
             make_rhs = eq.make_pde_rhs_torch  # type: ignore
-        except AttributeError as err:
-            msg = (
-                "The right-hand side of the PDE is not implemented using the `torch` "
-                "backend. To add the implementation, provide the method "
-                "`make_pde_rhs_torch`, which should return a compilable function "
-                "calculating the evolution rate using a torch array as input."
+        except AttributeError:
+            # method is not implemented, which should be the default
+            rhs_native = None
+        else:
+            warnings.warn(
+                "`eq.make_pde_rhs_torch` method is deprecated. Implement "
+                "`eq.make_evolution_rate` instead.",
+                DeprecationWarning,
+                stacklevel=2,
             )
-            raise NotImplementedError(msg) from err
+            rhs_native = make_rhs(state)
+
+        if rhs_native is None:
+            try:
+                make_rhs = eq.make_evolution_rate
+            except AttributeError as err:
+                msg = (
+                    "The right-hand side of the PDE is not implemented using the "
+                    f"`{self.name}` backend. To add the implementation, provide the "
+                    "method `make_evolution_rate`, which should return a compilable "
+                    "function calculating the evolution rate."
+                )
+                raise NotImplementedError(msg) from err
+            else:
+                rhs_native = make_rhs(state, backend=self)
 
         # get the compiled right hand side
-        rhs_torch = self.compile_function(make_rhs(state))
+        rhs_torch = self.compile_function(rhs_native)
         if native:
-            return rhs_torch  # type: ignore
+            return rhs_torch
 
         def rhs(arr: NumericArray, t: float = 0) -> NumericArray:
             """Helper wrapping function working with torch tensors."""

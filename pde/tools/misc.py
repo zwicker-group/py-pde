@@ -309,7 +309,7 @@ def get_common_dtype(*args):
 
 
 def number_array(
-    data: ArrayLike, dtype: DTypeLike = None, copy: bool | None = None
+    data: ArrayLike, dtype: DTypeLike | None = None, copy: bool | None = None
 ) -> NumericArray:
     """Convert data into an array, assuming float numbers if no dtype is given.
 

@@ -231,7 +231,7 @@ def test_pde_user_funcs(rng):
     np.testing.assert_allclose(
         rhs.data, field.gradient("auto_periodic_neumann").data[0]
     )
-    f = eq.make_pde_rhs_numba(field)
+    f = eq.make_evolution_rate(field, backend="numba")
     np.testing.assert_allclose(
         f(field.data, 0), field.gradient("auto_periodic_neumann").data[0]
     )

@@ -69,7 +69,7 @@ class SphericalCoordinates(CoordinatesBase):
 
     def _volume_factor(self, points: FloatingArray) -> ArrayLike:
         r, θ = points[..., 0], points[..., 1]
-        return r**2 * np.sin(θ)  # type: ignore
+        return r**2 * np.sin(θ)
 
     def _cell_volume(self, c_low: FloatingArray, c_high: FloatingArray):
         r1, θ1, φ1 = c_low[..., 0], c_low[..., 1], c_low[..., 2]

@@ -246,7 +246,7 @@ class Cuboid:
 
 
 def asanyarray_flags(
-    data: NumericArray, dtype: DTypeLike = None, writeable: bool = True
+    data: NumericArray, dtype: DTypeLike | None = None, writeable: bool = True
 ):
     """Turns data into an array and sets the respective flags.
 

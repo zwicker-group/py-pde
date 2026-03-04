@@ -35,6 +35,7 @@ Inheritance structure of the classes:
 from pathlib import Path
 
 # load the registry, which manages all backends
+from .base import BackendBase
 from .registry import backends, load_default_config, registered_backends
 
 # register backends without loading them
@@ -53,4 +54,4 @@ backends.register_package(
     config=load_default_config(BACKENDS_FOLDER / "torch" / "config.py"),
 )
 
-__all__ = ["backends", "registered_backends"]
+__all__ = ["BackendBase", "backends", "registered_backends"]

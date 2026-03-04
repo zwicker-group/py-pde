@@ -22,6 +22,8 @@ from pde import (
     ScalarField,
     UnitGrid,
 )
+from pde.backends.base import BackendBase
+from pde.backends.torch import TorchBackend
 from pde.solvers import (
     AdamsBashforthSolver,
     EulerSolver,
@@ -104,7 +106,7 @@ def main(
     t_range: float = 100,
     size: int = 32,
     *,
-    backends: tuple[Literal["auto", "numba", "torch"]] = ("auto",),
+    backends: tuple[str | BackendBase] = ("auto",),
 ) -> None:
     """Main routine testing the performance.
 
@@ -130,7 +132,8 @@ def main(
     expected = get_ground_truth(equation, t_range, size)
 
     for backend in backends:
-        print(f"\nBACKEND={backend}:")
+        backend_name = backend.name if isinstance(backend, BackendBase) else backend
+        print(f"\nBACKEND={backend_name}:")
 
         # define all solvers to be tested
         solvers = {
@@ -177,7 +180,12 @@ def main(
 
 
 if __name__ == "__main__":
-    main(equation="cahn-hilliard", t_range=10, size=512, backends=["torch"])
+    main(
+        equation="cahn-hilliard",
+        t_range=10,
+        size=512,
+        backends=[TorchBackend(device="mps", name="torch-mps"), "torch"],
+    )
 
 
 # REFERENCE MEASUREMENTS

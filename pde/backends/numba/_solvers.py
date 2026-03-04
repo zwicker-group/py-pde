@@ -218,7 +218,7 @@ def _make_adaptive_stepper_general(
     signature_single_step = (nb.typeof(state.data), nb.double, nb.double)
     single_step_error = jit(signature_single_step)(single_step_error)
     post_step_hook = _make_post_step_hook(solver, state)
-    sync_errors = solver._backend_obj.make_mpi_synchronizer(operator="MAX")
+    sync_errors = solver.backend.make_mpi_synchronizer(operator="MAX")
 
     # obtain auxiliary functions
     signature = (nb.double, nb.double)

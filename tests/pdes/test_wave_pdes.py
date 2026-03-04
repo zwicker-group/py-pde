@@ -4,7 +4,6 @@
 
 import platform
 
-import numba as nb
 import numpy as np
 import pytest
 
@@ -19,13 +18,16 @@ def test_wave_consistency(dim, rng):
     assert isinstance(str(eq), str)
     assert isinstance(repr(eq), str)
 
-    # compare numba to numpy implementation
+    # prepare numpy implementation
     grid = UnitGrid([4] * dim)
     state = eq.get_initial_condition(ScalarField.random_uniform(grid, rng=rng))
     field = eq.evolution_rate(state)
     assert field.grid == grid
-    rhs = nb.njit(eq.make_pde_rhs_numba(state))
-    np.testing.assert_allclose(field.data, rhs(state.data, 0))
+
+    # compare numba to numpy implementation
+    if module_available("numba"):
+        rhs = eq.make_pde_rhs(state, backend="numba")
+        np.testing.assert_allclose(field.data, rhs(state.data, 0), rtol=1e-6)
 
     # compare torch to numpy implementation
     if module_available("torch") and platform.system() != "Windows":

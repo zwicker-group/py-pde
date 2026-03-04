@@ -28,12 +28,18 @@ class KuramotoSivashinskyPDE(PDEBase):
         state_grad_sq = state.gradient_squared(bc=self.bc)
         return -state_grad_sq / 2 - state_lap - state_lap2
 
-    def make_pde_rhs_numba(self, state):
-        """Numba-compiled implementation of the PDE."""
+    def make_evolution_rate(self, state, backend):
+        """Compilable implementation of the PDE."""
         gradient_squared = state.grid.make_operator(
-            "gradient_squared", bc=self.bc, backend="numba"
+            "gradient_squared",
+            bc=self.bc,
+            backend=backend,
+            native=True,
+            dtype=state.dtype,
         )
-        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
+        laplace = state.grid.make_operator(
+            "laplace", bc=self.bc, backend=backend, native=True, dtype=state.dtype
+        )
 
         def pde_rhs(data, t):
             return -0.5 * gradient_squared(data) - laplace(data + laplace(data))

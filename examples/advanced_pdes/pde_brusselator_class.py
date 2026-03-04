@@ -48,20 +48,21 @@ class BrusselatorPDE(PDEBase):
         rhs[1] = d1 * v.laplace(self.bc) + self.b * u - u**2 * v
         return rhs
 
-    def make_pde_rhs_numba(self, state):
-        """Numba-compiled implementation of the PDE."""
+    def make_evolution_rate(self, state, backend):
+        """Compilable implementation of the PDE."""
         d0, d1 = self.diffusivity
         a, b = self.a, self.b
-        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
+        laplace = state.grid.make_operator(
+            "laplace", bc=self.bc, backend=backend, native=True, dtype=state.dtype
+        )
 
         def pde_rhs(state_data, t):
             u = state_data[0]
             v = state_data[1]
 
-            rate = np.empty_like(state_data)
-            rate[0] = d0 * laplace(u) + a - (1 + b) * u + v * u**2
-            rate[1] = d1 * laplace(v) + b * u - v * u**2
-            return rate
+            rate_u = d0 * laplace(u) + a - (1 + b) * u + v * u**2
+            rate_v = d1 * laplace(v) + b * u - v * u**2
+            return np.stack([rate_u, rate_v])
 
         return pde_rhs
 

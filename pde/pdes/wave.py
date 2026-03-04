@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -17,10 +17,8 @@ from .base import PDEBase, expr_prod
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    import torch
-
+    from ..backends import BackendBase
     from ..grids.boundaries.axes import BoundariesData
-    from ..tools.typing import NumericArray
 
 
 class WavePDE(PDEBase):
@@ -109,62 +107,33 @@ class WavePDE(PDEBase):
         v_t = self.speed**2 * u.laplace(self.bc, args={"t": t})  # type: ignore
         return FieldCollection([u_t, v_t])
 
-    def make_pde_rhs_numba(
-        self, state: FieldCollection
-    ) -> Callable[[NumericArray, float], NumericArray]:
+    def make_evolution_rate(
+        self, state: FieldCollection, backend: BackendBase
+    ) -> Callable[[Any, float], Any]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
-            state (:class:`~pde.fields.FieldCollection`):
+            state (:class:`~pde.fields.ScalarField`):
                 An example for the state defining the grid and data types
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
 
         Returns:
             A function with signature `(state_data, t)`, which can be called with an
-            instance of :class:`~numpy.ndarray` of the state data and the time to
-            obtain an instance of :class:`~numpy.ndarray` giving the evolution rate.
+            instance of the state data and time to obtain the associated evolution rate.
         """
-        speed2 = self.speed**2
-        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
-
-        def pde_rhs(state_data: NumericArray, t: float = 0) -> NumericArray:
-            """Compiled helper function evaluating right hand side."""
-            rate = np.empty_like(state_data)
-            rate[0] = state_data[1]
-            rate[1][:] = laplace(state_data[0], args={"t": t})
-            rate[1] *= speed2
-            return rate
-
-        return pde_rhs
-
-    def make_pde_rhs_torch(
-        self, state: FieldCollection
-    ) -> Callable[[torch.Tensor, float], torch.Tensor]:
-        """Create a compiled function evaluating the right hand side of the PDE.
-
-        Args:
-            state (:class:`~pde.fields.FieldCollection`):
-                An example for the state defining the grid and data types
-
-        Returns:
-            A function with signature `(state_data, t)`, which can be called
-            with an instance of :class:`torch.Tensor` of the state data and
-            the time to obtain an instance of :class:`torch.Tensor` giving
-            the evolution rate.
-        """
-        import torch
-
         speed2 = self.speed**2
         laplace = state.grid.make_operator(
             operator="laplace",
             bc=self.bc,
-            backend="torch",
+            backend=backend,
             native=True,
             dtype=state.dtype,
         )
 
-        def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
-            """Compiled helper function evaluating right hand side."""
-            return torch.stack(
+        def pde_rhs(state_data, t=0):
+            """Evaluate right hand side of PDE."""
+            return np.stack(
                 (state_data[1], speed2 * laplace(state_data[0], args={"t": t}))
             )
 

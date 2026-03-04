@@ -157,6 +157,7 @@ class ExplicitMPISolver(EulerSolver):
                     dt,
                 )
 
+        self._select_backend(state)
         self.info["dt"] = dt
         self.info["dt_adaptive"] = self.adaptive
         self.info["steps"] = 0
@@ -170,10 +171,8 @@ class ExplicitMPISolver(EulerSolver):
 
         if self.adaptive:
             # create stepper with adaptive steps
-            adaptive_stepper: AdaptiveStepperType = (
-                self._backend_obj.make_inner_stepper(
-                    solver=self, stepper_style="adaptive", state=sub_state, dt=dt
-                )
+            adaptive_stepper: AdaptiveStepperType = self.backend.make_inner_stepper(
+                solver=self, stepper_style="adaptive", state=sub_state, dt=dt
             )
             self.info["post_step_data"] = self._post_step_data_init
 
@@ -219,7 +218,7 @@ class ExplicitMPISolver(EulerSolver):
 
         else:
             # create stepper with fixed steps
-            fixed_stepper: FixedStepperType = self._backend_obj.make_inner_stepper(
+            fixed_stepper: FixedStepperType = self.backend.make_inner_stepper(
                 solver=self, stepper_style="fixed", state=sub_state, dt=dt
             )
             self.info["post_step_data"] = self._post_step_data_init

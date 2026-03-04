@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, overload
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import DTypeLike
 
+    from ..backends import BackendBase
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import Number, NumberOrArray, NumericArray
     from .tensorial import Tensor2Field
@@ -293,7 +294,7 @@ class VectorField(DataFieldBase):
         return out
 
     def make_outer_prod_operator(
-        self, backend: Literal["numpy", "numba"] = "numba"
+        self, backend: str | BackendBase = "numba"
     ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
         """Return operator calculating the outer product of two vector fields.
 
