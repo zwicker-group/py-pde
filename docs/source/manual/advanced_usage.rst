@@ -291,7 +291,7 @@ also keep track of additional data via :code:`post_step_data`, which is a
 Low-level operators
 """""""""""""""""""
 This section explains how to use the low-level version of the field operators.
-This is necessary for the numba-accelerated implementations described above and
+This is necessary for the compiled implementations described above and
 it might be necessary to use parts of the `py-pde` package in other packages.
 
 
@@ -383,7 +383,7 @@ Note that the coordinates of the point need to be supplied as a
 :class:`numpy.ndarray` and that only the interpolation at single points is
 supported.
 However, iteration over multiple points can be fast when the loop is compiled
-with :mod:`numba`.
+by a backend.
 
 
 Inner products
@@ -409,8 +409,8 @@ Here, :code:`result` is the data of the scalar field resulting from the dot
 product. 
 
 
-Compile implementations of PDEs
-"""""""""""""""""""""""""""""""
+Compiled implementations of PDEs
+""""""""""""""""""""""""""""""""
 The compiled operators introduced in the previous section can be used to
 implement a compiled method for the evolution rate of PDEs.
 As an example, we now extend the class :class:`KuramotoSivashinskyPDE`
