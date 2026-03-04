@@ -62,7 +62,7 @@ class BrusselatorPDE(PDEBase):
 
             rate_u = d0 * laplace(u) + a - (1 + b) * u + v * u**2
             rate_v = d1 * laplace(v) + b * u - v * u**2
-            return np.stack([rate_u, rate_v])
+            return np.stack((rate_u, rate_v))
 
         return pde_rhs
 
