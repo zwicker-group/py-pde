@@ -75,7 +75,7 @@ class BipolarCoordinates(CoordinatesBase):
 
     def _volume_factor(self, points: FloatingArray) -> ArrayLike:
         σ, τ = points[..., 0], points[..., 1]
-        return self.scale_parameter**2 * (np.cosh(τ) - np.cos(σ)) ** -2  # type: ignore
+        return self.scale_parameter**2 * (np.cosh(τ) - np.cos(σ)) ** -2
 
     def _scale_factors(self, points: FloatingArray) -> FloatingArray:
         σ, τ = points[..., 0], points[..., 1]

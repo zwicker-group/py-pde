@@ -64,8 +64,7 @@ class SolverBase:
     """dict: dictionary of all inheriting classes"""
 
     _logger: logging.Logger
-    _backend_name: str
-    _backend_obj: BackendBase
+    _backend: str | BackendBase
 
     def __init__(
         self,
@@ -84,7 +83,7 @@ class SolverBase:
         self.info: dict[str, Any] = {"class": self.__class__.__name__}
         if self.pde:
             self.info["pde_class"] = self.pde.__class__.__name__
-        self.backend = backend
+        self._backend = backend
 
     def __init_subclass__(cls, **kwargs):
         """Initialize class-level attributes of subclasses."""
@@ -140,69 +139,23 @@ class SolverBase:
         return solver_class(pde, **kwargs)
 
     @property
-    def backend(self) -> str:
+    def backend_name(self) -> str:
         """str: The name of the backend used for this solver."""
-        return self._backend_name
+        if isinstance(self._backend, str):
+            return self._backend
+        return self._backend.name
 
-    @backend.setter
-    def backend(self, value: BackendBase | str) -> None:
-        """Sets a new backend for the solver.
+    @property
+    def backend(self) -> BackendBase:
+        """:class:`~pde.backends.base.BackendBase`: The backend for this solver."""
+        if isinstance(self._backend, str):
+            if self._backend == "auto":
+                msg = "Automatic backend selection did not happen, yet."
+                raise RuntimeError(msg)
+            from ..backends import backends
 
-        This setter tries to ensure consistency and make sure that backends are not
-        changed after the object has been loaded (i.e., after _backend_obj has been
-        accessed). The method also raises a warning when the backend is changed (except
-        if it was set to `auto` before). This allows solvers to react flexibly to
-        changes in the backend, e.g., demanded by the PDE implementation.
-
-        Args:
-            value:
-                The backend object or name
-        """
-        from ..backends import backends
-        from ..backends.base import BackendBase
-
-        # determine the name of the new backend
-        if value == "auto":
-            new_backend: str = self.pde.determine_auto_backend()
-        elif isinstance(value, str):
-            new_backend = value
-        elif isinstance(value, BackendBase):
-            new_backend = value.name
-        else:
-            raise TypeError
-
-        # check whether the new name contradicts the old backend name
-        if getattr(self, "_backend_name", new_backend) != new_backend:
-            self._logger.warning(
-                "Changing the backend of the solver from `%s` to `%s`",
-                self._backend_name,
-                new_backend,
-            )
-
-        # check whether the new backend contradicts the old backend object
-        if (
-            getattr(self, "_backend_obj", None) is not None
-            and self._backend_obj.name != new_backend
-        ):
-            msg = "Tried changing the loaded backend of the solver from `%s` to `%s`"
-            raise TypeError(msg, self._backend_obj.name, new_backend)
-
-        # set the new backend
-        self._backend_name = new_backend
-        self.info["backend"] = {"name": new_backend}
-        if isinstance(value, str):
-            # load the backend object lazily
-            if self._backend_name == "auto":
-                self._logger.warning(
-                    "Automatic backend has not been selected yet. Choosing `numpy` "
-                    "backend as a safe option."
-                )
-                self._backend_name = "numpy"  # conservative fall-back
-
-            self._backend_obj = backends[self._backend_name]
-        else:
-            # just set the backend object
-            self._backend_obj = value
+            self._backend = backends[self._backend]
+        return self._backend
 
     def _make_error_synchronizer(
         self, backend: str | BackendBase = "numpy", *, operator: int | str = "MAX"
@@ -218,8 +171,6 @@ class SolverBase:
         Returns:
             Function that can be used to synchronize errors across nodes
         """
-        from ..backends import backends
-
         # deprecated on 2025-12-07
         warnings.warn(
             "`_make_error_synchronizer` is deprecated. Use `make_mpi_synchronizer` "
@@ -228,7 +179,7 @@ class SolverBase:
             stacklevel=2,
         )
 
-        return backends[backend].make_mpi_synchronizer(operator=operator)
+        return self.backend.make_mpi_synchronizer(operator=operator)
 
     def _make_post_step_hook(self, state: TField) -> StepperHook:
         """Create a function that calls the post-step hook of the PDE.
@@ -247,17 +198,10 @@ class SolverBase:
         post_step_hook: StepperHook | None = None
 
         if self._use_post_step_hook:
-            if self._backend_name == "auto":
-                msg = (
-                    "Backend has not been chosen automatically, yet. Please specify a "
-                    "backend explicitly."
-                )
-
-                raise ValueError(msg)
             try:
                 # try to get hook function and initial data from PDE instance
                 post_step_hook, self._post_step_data_init = (
-                    self.pde.make_post_step_hook(state, backend=self._backend_obj)
+                    self.pde.make_post_step_hook(state, backend=self.backend)
                 )
                 self._logger.info("Created post-step hook from PDE")
 
@@ -323,6 +267,12 @@ class SolverBase:
 
         return fixed_stepper
 
+    def _select_backend(self, state: TField):
+        """Select backend automatically based on implemented PDE."""
+        if isinstance(self._backend, str):
+            self._backend = self.pde.determine_backend(state, self._backend)
+        self.info["backend"] = {"name": self.backend_name}
+
     def make_stepper(
         self, state: TField, dt: float | None = None
     ) -> Callable[[TField, float, float], float]:
@@ -353,7 +303,8 @@ class SolverBase:
         dt_float = float(dt)  # explicit casting to help type checking
 
         # create stepper with fixed steps
-        fixed_stepper: FixedStepperType = self._backend_obj.make_inner_stepper(
+        self._select_backend(state)
+        fixed_stepper: FixedStepperType = self.backend.make_inner_stepper(
             solver=self, stepper_style="fixed", state=state, dt=dt_float
         )
 
@@ -430,13 +381,13 @@ class AdaptiveSolverBase(SolverBase):
             msg = "Deterministic stepper does not support stochastic equations"
             raise RuntimeError(msg)
 
-        rhs_pde = self._backend_obj.make_pde_rhs(self.pde, state)
+        rhs_pde = self.backend.make_pde_rhs(self.pde, state)
 
         def single_step(state_data: NumericArray, t: float, dt: float) -> NumericArray:
             """Basic implementation of Euler scheme."""
             return state_data + dt * rhs_pde(state_data, t)
 
-        return self._backend_obj.compile_function(single_step)
+        return self.backend.compile_function(single_step)
 
     def _make_single_step_error_estimate(
         self, state: TField
@@ -492,7 +443,7 @@ class AdaptiveSolverBase(SolverBase):
         # obtain functions determining how the PDE is evolved
         single_step_error = self._make_single_step_error_estimate(state)
         post_step_hook = self._make_post_step_hook(state)
-        sync_errors = self._backend_obj.make_mpi_synchronizer(operator="MAX")
+        sync_errors = self.backend.make_mpi_synchronizer(operator="MAX")
 
         # obtain auxiliary functions
         if adjust_dt is None:
@@ -579,7 +530,8 @@ class AdaptiveSolverBase(SolverBase):
             dt_float = float(dt)  # explicit casting to help type checking
 
         # create stepper with fixed steps
-        adaptive_stepper: AdaptiveStepperType = self._backend_obj.make_inner_stepper(
+        self._select_backend(state)
+        adaptive_stepper: AdaptiveStepperType = self.backend.make_inner_stepper(
             solver=self, stepper_style="adaptive", state=state, dt=dt_float
         )
 

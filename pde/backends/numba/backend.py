@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import functools
+import warnings
 from typing import TYPE_CHECKING, Any, Literal
 
 import numba as nb
@@ -45,6 +46,8 @@ if TYPE_CHECKING:
 
 class NumbaBackend(NumpyBackend):
     """Defines :mod:`numba` backend."""
+
+    implementation = "numba"
 
     def compile_function(self, func: TFunc) -> TFunc:
         """General method that compiles a user function.
@@ -1236,17 +1239,31 @@ class NumbaBackend(NumpyBackend):
         Returns:
             Function returning deterministic part of the right hand side of the PDE
         """
+        # the following method is deprecated since 2026-03-02
         try:
             make_rhs = eq.make_pde_rhs_numba  # type: ignore
-        except AttributeError as err:
+        except AttributeError:
+            pass  # method is not implemented, which should be the default
+        else:
+            warnings.warn(
+                "`eq.make_pde_rhs_numba` method is deprecated. Implement "
+                "`eq.make_evolution_rate` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return self.compile_function(make_rhs(state))  # type: ignore
+
+        try:
+            make_rhs = eq.make_evolution_rate
+        except (AttributeError, NotImplementedError) as err:
             msg = (
-                "The right-hand side of the PDE is not implemented using the `numba` "
-                "backend. To add the implementation, provide the method "
-                "`make_pde_rhs_numba`, which should return a compilable function "
-                "calculating the evolution rate using a numpy array as input."
+                f"Evolution rate is not implemented for the `{self.name}` backend. To "
+                "add the implementation, provide the method `make_evolution_rate` "
+                "that returns a function calculating the evolution rate."
             )
             raise NotImplementedError(msg) from err
-        return self.compile_function(make_rhs(state))  # type: ignore
+
+        return self.compile_function(make_rhs(state, backend=self))
 
     def make_noise_realization(
         self, eq: PDEBase, state: TField
@@ -1461,7 +1478,7 @@ class NumbaBackend(NumpyBackend):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
-        assert solver.backend == self.name
+        assert solver.backend == self
 
         from ._solvers import make_adaptive_stepper, make_fixed_stepper
 

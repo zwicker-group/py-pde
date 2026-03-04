@@ -19,14 +19,13 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from ..backends import BackendBase, backends
 from ..fields import FieldCollection
 from ..fields.datafield_base import DataFieldBase
-from ..tools.misc import module_available
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ..backends.base import BackendBase
     from ..fields.base import FieldBase
     from ..solvers.base import SolverBase
     from ..solvers.controller import TRangeType
@@ -41,9 +40,9 @@ class PDEBase(metaclass=ABCMeta):
     """Base class for defining deterministic partial differential equations (PDEs)
 
     Custom PDEs can be implemented by subclassing :class:`PDEBase` to specify the
-    evolution rate. In the simple case of deterministic PDEs, the methods
-    :meth:`PDEBase.evolution_rate` and :meth:`PDEBase.make_pde_rhs_numba` need to be
-    overwritten for supporting the `numpy` and `numba` backend, respectively.
+    evolution rate. In the simplest case, only the :meth:`PDEBase.evolution_rate` needs
+    to be implemented to support the `numpy` backend. Other backends require overwriting
+    the :meth:`PDEBase.make_evolution_rate`.
     """
 
     diagnostics: dict[str, Any]
@@ -195,6 +194,7 @@ class PDEBase(metaclass=ABCMeta):
         self, state: FieldBase
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function for evaluating the right hand side."""
+        # deprecated on 2025-12-13
         warnings.warn(
             "Method `_make_pde_rhs_numba` is deprecated in favor of "
             "`make_pde_rhs_numba`",
@@ -320,17 +320,40 @@ class PDEBase(metaclass=ABCMeta):
 
         return rhs  # type: ignore
 
-    def determine_auto_backend(self) -> str:
+    def determine_backend(
+        self, state: TField, backend: str | BackendBase = "auto"
+    ) -> BackendBase:
         """Returns backend that will be chosen automatically for this PDE.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+            backend (str):
+                Information about which backend to choose. The special value `auto`
+                tries various backends and returns one for which the evolution rate is
+                implemented for this PDE.
 
         Returns:
             str: The backend used automatically
         """
-        if hasattr(self, "make_pde_rhs_numba") and module_available("numba"):
-            return "numba"
-        if hasattr(self, "make_pde_rhs_torch") and module_available("torch"):
-            return "torch"
-        return "numpy"
+        if isinstance(backend, BackendBase):
+            return backend  # backend has already been selected
+        if backend != "auto":
+            return backends[backend]  # load the respective backend
+
+        # try various backends and see whether they are implemented
+        for backend in ["numba", "torch", "numpy"]:
+            try:
+                self.make_pde_rhs(state, backend=backend)
+            except NotImplementedError as err:
+                self._logger.info("Using backend `%s` failed: %s", backend, str(err))
+            else:
+                break  # found a
+        else:
+            msg = "Could not select a suitable backend"
+            raise RuntimeError(msg)
+        return backends[backend]
 
     def make_pde_rhs(
         self,
@@ -344,20 +367,35 @@ class PDEBase(metaclass=ABCMeta):
                 An example for the state from which the grid and other information can
                 be extracted.
             backend (str):
-                Determines how the function is created. Accepted values are 'numpy' and
-                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
+                The backend that is used to create the function. The special value
+                `numpy` uses the method `evaluation_rate`. Other backends are only
+                available if `make_evolution_rate` is defined for the PDE. If this is
+                the case, the special value `auto` selects the `numba` backend,
+                otherwise it defaults to `numpy`.
 
         Returns:
             callable: Function determining the right hand side of the PDE
         """
-        from ..backends import backends
-
-        if backend == "auto":
-            # try using the numba backend, if it implemented
-            backend = self.determine_auto_backend()
+        # try using the numba backend, if it implemented
+        backend = self.determine_backend(state, backend)
 
         # get a function evaluating the rhs of the PDE
-        return backends[backend].make_pde_rhs(self, state)
+        return backend.make_pde_rhs(self, state)
+
+    def make_evolution_rate(self, state, backend: BackendBase) -> Callable:
+        """Return function evaluating right hand side of the PDE using given backend.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+            backend (str):
+                Determines the backend
+
+        Returns:
+            callable: Function determining the right hand side of the PDE
+        """
+        raise NotImplementedError
 
     def solve(
         self,
@@ -477,7 +515,14 @@ class PDEBase(metaclass=ABCMeta):
 
 
 class SDEBase(PDEBase):
-    """Base class for defining stochastic partial differential equations (SDEs)"""
+    """Base class for defining stochastic partial differential equations (SDEs)
+
+    Custom PDEs can be implemented by subclassing :class:`SDEBase` to specify the
+    evolution rate and an associated noise realization. To support the `numpy` backend,
+    overwrite :meth:`noise_realization` (together with :meth:`PDEBase.evolution_rate`
+    for the deterministic part). Other backends require overwriting
+    :meth:`make_noise_realization` (together with :meth:`PDEBase.make_evolution_rate`).
+    """
 
     def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator | None = None):
         """

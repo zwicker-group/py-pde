@@ -67,7 +67,7 @@ class ImplicitSolver(SolverBase):
         self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
 
-        rhs = self._backend_obj.make_pde_rhs(self.pde, state)
+        rhs = self.backend.make_pde_rhs(self.pde, state)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
 
@@ -123,7 +123,7 @@ class ImplicitSolver(SolverBase):
         self.info["scheme"] = "implicit-euler-maruyama"
         self.info["stochastic"] = True
 
-        rhs = self._backend_obj.make_pde_rhs(self.pde, state)
+        rhs = self.backend.make_pde_rhs(self.pde, state)
         rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2

@@ -1417,10 +1417,10 @@ class ConstBCBase(BCBase):
                 result = np.broadcast_to(value, self._shape_tensor)
             elif value.shape == self._shape_tensor + self._shape_boundary:
                 # inhomogeneous field with all tensor components
-                result = value
+                result = value  # type: ignore
             elif value.shape == self._shape_tensor:
                 # homogeneous field with all tensor components
-                result = value
+                result = value  # type: ignore
             else:
                 msg = (
                     f"Dimensions {value.shape} of the given value are incompatible "

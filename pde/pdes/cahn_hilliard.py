@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
@@ -15,10 +15,8 @@ from .base import PDEBase, expr_prod
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    import torch
-
+    from ..backends import BackendBase
     from ..grids.boundaries.axes import BoundariesData
-    from ..tools.typing import NumericArray
 
 
 class CahnHilliardPDE(PDEBase):
@@ -93,68 +91,39 @@ class CahnHilliardPDE(PDEBase):
         result = state**3 - state - self.interface_width * c_laplace
         return result.laplace(bc=self.bc_mu, args={"t": t})  # type: ignore
 
-    def make_pde_rhs_numba(
-        self, state: ScalarField
-    ) -> Callable[[NumericArray, float], NumericArray]:
+    def make_evolution_rate(
+        self, state: ScalarField, backend: BackendBase
+    ) -> Callable[[Any, float], Any]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 An example for the state defining the grid and data types
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
 
         Returns:
             A function with signature `(state_data, t)`, which can be called with an
-            instance of :class:`~numpy.ndarray` of the state data and the time to
-            obtain an instance of :class:`~numpy.ndarray` giving the evolution rate.
-        """
-        interface_width = self.interface_width
-        laplace_c = state.grid.make_operator("laplace", bc=self.bc_c, backend="numba")
-        laplace_mu = state.grid.make_operator("laplace", bc=self.bc_mu, backend="numba")
-
-        def pde_rhs(state_data: NumericArray, t: float = 0) -> NumericArray:
-            """Compiled helper function evaluating right hand side."""
-            mu = (
-                state_data**3
-                - state_data
-                - interface_width * laplace_c(state_data, args={"t": t})
-            )
-            return laplace_mu(mu, args={"t": t})
-
-        return pde_rhs
-
-    def make_pde_rhs_torch(
-        self, state: ScalarField
-    ) -> Callable[[torch.Tensor, float], torch.Tensor]:
-        """Create a compiled function evaluating the right hand side of the PDE.
-
-        Args:
-            state (:class:`~pde.fields.ScalarField`):
-                An example for the state defining the grid and data types
-
-        Returns:
-            A function with signature `(state_data, t)`, which can be called
-            with an instance of :class:`torch.Tensor` of the state data and
-            the time to obtain an instance of :class:`torch.Tensor` giving
-            the evolution rate.
+            instance of the state data and time to obtain the associated evolution rate.
         """
         interface_width = self.interface_width
         laplace_c = state.grid.make_operator(
             operator="laplace",
             bc=self.bc_c,
-            backend="torch",
+            backend=backend,
             native=True,
             dtype=state.dtype,
         )
         laplace_mu = state.grid.make_operator(
             operator="laplace",
             bc=self.bc_mu,
-            backend="torch",
+            backend=backend,
             native=True,
             dtype=state.dtype,
         )
 
-        def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
-            """Compiled helper function evaluating right hand side."""
+        def pde_rhs(state_data, t=0):
+            """Evaluate right hand side of PDE."""
             mu = (
                 state_data**3
                 - state_data

@@ -33,6 +33,8 @@ if TYPE_CHECKING:
 class NumpyBackend(BackendBase):
     """Defines :mod:`numpy` backend, from which all other backends inherit."""
 
+    implementation = "numpy"
+
     def compile_function(self, func: TFunc) -> TFunc:
         """General method that compiles a user function.
 
@@ -413,7 +415,7 @@ class NumpyBackend(BackendBase):
         """
         solver.info["dt_statistics"] = OnlineStatistics()
 
-        assert solver.backend == self.name
+        assert solver.backend == self
         if stepper_style == "fixed":
             return solver._make_fixed_stepper(state, dt)
         if stepper_style == "adaptive":

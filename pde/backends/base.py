@@ -52,6 +52,10 @@ TFunc = TypeVar("TFunc", bound=Callable)
 class BackendBase:
     """Basic backend from which all other backends inherit."""
 
+    implementation: str = "undefined"
+    """str: The name of the python module that is used to implement this backend. This
+    information can be used to distinguish the general implementation of backends."""
+
     config: Config
     """dict: configuration options of this backend.
 

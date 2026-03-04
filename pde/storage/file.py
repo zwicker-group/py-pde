@@ -222,7 +222,9 @@ class FileStorage(StorageBase):
                 # create new datasets
                 self._times = self._create_hdf_dataset("times")
                 self._data = self._create_hdf_dataset(
-                    "data", self.data_shape, dtype=self._dtype
+                    "data",
+                    self.data_shape,
+                    dtype=self._dtype,  # type: ignore
                 )
                 self._data_length = 0
 
@@ -242,7 +244,9 @@ class FileStorage(StorageBase):
             self._file = h5py.File(self.filename, "w")
             self._times = self._create_hdf_dataset("times")
             self._data = self._create_hdf_dataset(
-                "data", self.data_shape, dtype=self._dtype
+                "data",
+                self.data_shape,
+                dtype=self._dtype,  # type: ignore
             )
             if info:
                 self.info.update(info)

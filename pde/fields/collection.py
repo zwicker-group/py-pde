@@ -42,7 +42,7 @@ class FieldCollection(FieldBase):
         copy_fields: bool = False,
         label: str | None = None,
         labels: list[str | None] | _FieldLabels | None = None,
-        dtype: DTypeLike = None,
+        dtype: DTypeLike | None = None,
     ):
         """
         Args:
@@ -307,7 +307,7 @@ class FieldCollection(FieldBase):
         with_ghost_cells: bool = True,
         label: str | None = None,
         labels: list[str | None] | _FieldLabels | None = None,
-        dtype: DTypeLike = None,
+        dtype: DTypeLike | None = None,
     ) -> FieldCollection:
         """Create a field collection from classes and data.
 
@@ -406,7 +406,7 @@ class FieldCollection(FieldBase):
         consts: dict[str, NumberOrArray] | None = None,
         label: str | None = None,
         labels: Sequence[str] | None = None,
-        dtype: DTypeLike = None,
+        dtype: DTypeLike | None = None,
     ) -> FieldCollection:
         """Create a field collection on a grid from given expressions.
 
@@ -553,7 +553,7 @@ class FieldCollection(FieldBase):
         self: FieldCollection,
         *,
         label: str | None = None,
-        dtype: DTypeLike = None,
+        dtype: DTypeLike | None = None,
     ) -> FieldCollection:
         """Return a copy of the data, but not of the grid.
 

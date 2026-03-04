@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
@@ -16,10 +16,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     import numpy as np
-    import torch
 
+    from ..backends import BackendBase
     from ..grids.boundaries.axes import BoundariesData
-    from ..tools.typing import NumericArray
 
 
 class KuramotoSivashinskyPDE(SDEBase):
@@ -112,77 +111,46 @@ class KuramotoSivashinskyPDE(SDEBase):
         result.label = "evolution rate"
         return result  # type: ignore
 
-    def make_pde_rhs_numba(
-        self, state: ScalarField
-    ) -> Callable[[NumericArray, float], NumericArray]:
+    def make_evolution_rate(
+        self, state: ScalarField, backend: BackendBase
+    ) -> Callable[[Any, float], Any]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 An example for the state defining the grid and data types
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
 
         Returns:
-            A function with signature `(state_data, t)`, which can be called
-            with an instance of :class:`~numpy.ndarray` of the state data and
-            the time to obtain an instance of :class:`~numpy.ndarray` giving
-            the evolution rate.
-        """
-        nu_value = self.nu
-        laplace = state.grid.make_operator("laplace", bc=self.bc, backend="numba")
-        laplace2 = state.grid.make_operator("laplace", bc=self.bc_lap, backend="numba")
-        gradient_sq = state.grid.make_operator(
-            "gradient_squared", bc=self.bc, backend="numba"
-        )
-
-        def pde_rhs(state_data: NumericArray, t: float = 0) -> NumericArray:
-            """Compiled helper function evaluating right hand side."""
-            result = -laplace(state_data, args={"t": t})
-            result += nu_value * laplace2(result, args={"t": t})  # type: ignore
-            result -= 0.5 * gradient_sq(state_data, args={"t": t})  # type: ignore
-            return result
-
-        return pde_rhs
-
-    def make_pde_rhs_torch(
-        self, state: ScalarField
-    ) -> Callable[[torch.Tensor, float], torch.Tensor]:
-        """Create a compiled function evaluating the right hand side of the PDE.
-
-        Args:
-            state (:class:`~pde.fields.ScalarField`):
-                An example for the state defining the grid and data types
-
-        Returns:
-            A function with signature `(state_data, t)`, which can be called
-            with an instance of :class:`torch.Tensor` of the state data and
-            the time to obtain an instance of :class:`torch.Tensor` giving
-            the evolution rate.
+            A function with signature `(state_data, t)`, which can be called with an
+            instance of the state data and time to obtain the associated evolution rate.
         """
         nu_value = self.nu
         laplace = state.grid.make_operator(
             operator="laplace",
             bc=self.bc,
-            backend="torch",
+            backend=backend,
             native=True,
             dtype=state.dtype,
         )
         laplace2 = state.grid.make_operator(
             operator="laplace",
             bc=self.bc_lap,
-            backend="torch",
+            backend=backend,
             native=True,
             dtype=state.dtype,
         )
         gradient_sq = state.grid.make_operator(
             operator="gradient_squared",
             bc=self.bc,
-            backend="torch",
+            backend=backend,
             native=True,
             dtype=state.dtype,
         )
 
-        def pde_rhs(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
-            """Compiled helper function evaluating right hand side."""
+        def pde_rhs(state_data, t=0):
+            """Evaluate right hand side of PDE."""
             result = -laplace(state_data, args={"t": t})
             result += nu_value * laplace2(result, args={"t": t})
             result -= 0.5 * gradient_sq(state_data, args={"t": t})

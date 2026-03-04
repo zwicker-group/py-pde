@@ -409,8 +409,8 @@ Here, :code:`result` is the data of the scalar field resulting from the dot
 product. 
 
 
-Numba-accelerated PDEs
-""""""""""""""""""""""
+Compile implementations of PDEs
+"""""""""""""""""""""""""""""""
 The compiled operators introduced in the previous section can be used to
 implement a compiled method for the evolution rate of PDEs.
 As an example, we now extend the class :class:`KuramotoSivashinskyPDE`
@@ -419,21 +419,17 @@ introduced above:
 
 .. code-block:: python
 
-    from numba import jit
-
-
     class KuramotoSivashinskyPDE(PDEBase):
 
         def __init__(self, diffusivity=1, bc="auto_periodic_neumann", bc_laplace="auto_periodic_neumann"):
-            """ initialize the class with a diffusivity and boundary conditions
-            for the actual field and its second derivative """
+            """Initialize class with diffusivity and boundary conditions."""
             self.diffusivity = diffusivity
             self.bc = bc
             self.bc_laplace = bc_laplace
 
 
         def evolution_rate(self, state, t=0):
-            """ numpy implementation of the evolution equation """
+            """Evaluate right hand side of PDE."""
             state_lapacian = state.laplace(bc=self.bc)
             state_gradient = state.gradient(bc="auto_periodic_neumann")
             return (- state_lapacian.laplace(bc=self.bc_laplace)
@@ -441,20 +437,20 @@ introduced above:
                     - 0.5 * self.diffusivity * (state_gradient @ state_gradient))
 
 
-        def make_pde_rhs_numba(self, state):
-            """ the numba-accelerated evolution equation """
-            # make attributes locally available             
+        def make_evolution_rate(self, state, backend):
+            """Make compilable implementation of the evolution rate."""
+            # make attributes locally available
             diffusivity = self.diffusivity
 
-            # create operators
-            laplace_u = state.grid.make_operator("laplace", bc=self.bc)
-            gradient_u = state.grid.make_operator("gradient", bc=self.bc)
-            laplace2_u = state.grid.make_operator("laplace", bc=self.bc_laplace)
-            dot = VectorField(state.grid).make_dot_operator()
+            # create operators with correct attributes
+            args = {"backend": backend, "native": True, "dtype": state.dtype}
+            laplace_u = state.grid.make_operator("laplace", bc=self.bc, **args)
+            gradient_u = state.grid.make_operator("gradient", bc=self.bc, **args)
+            laplace2_u = state.grid.make_operator("laplace", bc=self.bc_laplace, **args)
+            dot = VectorField(state.grid).make_dot_operator(backend=backend)
 
-            @jit
             def pde_rhs(state_data, t=0):
-                """ compiled helper function evaluating right hand side """
+                """Evaluate right hand side of PDE."""
                 state_lapacian = laplace_u(state_data)
                 state_grad = gradient_u(state_data)
                 return (- laplace2_u(state_lapacian)
@@ -465,71 +461,23 @@ introduced above:
 
 
 To activate the compiled implementation of the evolution rate, we simply have
-to overwrite the :meth:`~pde.pdes.base.PDEBase.make_pde_rhs_numba` method.
+to overwrite the :meth:`~pde.pdes.base.PDEBase.make_evolution_rate` method.
 This method expects an example of the state class (e.g., an instance of
-:class:`~pde.fields.scalar.ScalarField`) and returns a function that calculates
-the evolution rate.
+:class:`~pde.fields.scalar.ScalarField`) and a backend.
+The method returns a function that calculates the evolution rate.
 The `state` argument is necessary to define the grid and the dimensionality of
 the data that the returned function is supposed to be handling.
 The implementation of the compiled function is split in several parts, where we 
 first copy the attributes that are required by the implementation.
-This is necessary, since :mod:`numba` freezes the values when compiling the
-function, so that in the example above the diffusivity cannot be altered without
-recompiling.
+This is necessary, since backends, such as those based on :mod:`numba` or :mod:`torch`,
+freeze the values when compiling the function, so that in the example above the
+diffusivity cannot be altered without recompiling.
 In the next step, we create all operators that we need subsequently.
 Here, we use the boundary conditions defined by the attributes, which
 requires two different laplace operators, since their boundary conditions might
 differ.
 In the last step, we define the actual implementation of the evolution rate as
-a local function that is compiled using the :code:`jit` decorator.
-Here, we use the implementation shipped with `py-pde`, which sets some default
-values.
-However, we could have also used the usual numba implementation.
-It is important that the implementation of the evolution rate only uses python
-constructs that numba can compile.
-
-One advantage of the numba compiled implementation is that we can now use loops,
-which will be much faster than their python equivalents.
-For instance, we could have written the dot product in the last line as an
-explicit loop:
-
-
-.. code-block:: python
-
-    [...]
-
-        def make_pde_rhs_numba(self, state):
-            """ the numba-accelerated evolution equation """
-            # make attributes locally available             
-            diffusivity = self.diffusivity
-
-            # create operators
-            laplace_u = state.grid.make_operator("laplace", bc=self.bc)
-            gradient_u = state.grid.make_operator("gradient", bc=self.bc)
-            laplace2_u = state.grid.make_operator("laplace", bc=self.bc_laplace)
-            dot = VectorField(state.grid).make_dot_operator()
-            dim = state.grid.dim
-
-            @jit
-            def pde_rhs(state_data, t=0):
-                """ compiled helper function evaluating right hand side """
-                state_lapacian = laplace_u(state_data)
-                state_grad = gradient_u(state_data)
-                result = - laplace2_u(state_lapacian) - state_lapacian
-
-                for i in range(state_data.size):
-                    for j in range(dim):
-                        result.flat[i] -= diffusivity / 2 * state_grad[j].flat[i]**2
-
-                return result
-
-            return pde_rhs
-
-Here, we extract the total number of elements in the state using its
-:attr:`size` attribute and we obtain the dimensionality of the space from the
-grid attribute :attr:`dim`.
-Note that we access numpy arrays using their :attr:`flat` attribute to provide
-an implementation that works for all dimensions.
+a local function, which is returned and can be compiled by the backend.
 
 
 .. _configuration:
