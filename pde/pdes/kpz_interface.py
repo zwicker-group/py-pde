@@ -121,19 +121,10 @@ class KPZInterfacePDE(SDEBase):
             instance of the state data and time to obtain the associated evolution rate.
         """
         nu_value, lambda_value = self.nu, self.lmbda
-        laplace = state.grid.make_operator(
-            operator="laplace",
-            bc=self.bc,
-            backend=backend,
-            native=True,
-            dtype=state.dtype,
-        )
+        args = {"backend": backend, "native": True, "dtype": state.dtype}
+        laplace = state.grid.make_operator(operator="laplace", bc=self.bc, **args)
         gradient_squared = state.grid.make_operator(
-            operator="gradient_squared",
-            bc=self.bc,
-            backend=backend,
-            native=True,
-            dtype=state.dtype,
+            operator="gradient_squared", bc=self.bc, **args
         )
 
         def pde_rhs(state_data, t=0):

@@ -2,7 +2,6 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import numba as nb
 import numpy as np
 import pytest
 
@@ -125,10 +124,9 @@ def test_pde_const_mpi_class(backend):
         def evolution_rate(self, state, t):
             return ScalarField(state.grid, state.grid.axes_coords[0])
 
-        def make_pde_rhs_numba(self, state):
+        def make_evolution_rate(self, state, backend):
             x = state.grid.axes_coords[0]
 
-            @nb.jit
             def pde_rhs(state_data, t):
                 return x
 

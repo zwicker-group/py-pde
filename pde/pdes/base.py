@@ -197,11 +197,11 @@ class PDEBase(metaclass=ABCMeta):
         # deprecated on 2025-12-13
         warnings.warn(
             "Method `_make_pde_rhs_numba` is deprecated in favor of "
-            "`make_pde_rhs_numba`",
+            "`make_evolution_rate`",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.make_pde_rhs_numba(state)  # type: ignore
+        return self.make_evolution_rate(state, backend=backends["numba"])  # type: ignore
 
     def check_rhs_consistency(
         self,
@@ -286,7 +286,7 @@ class PDEBase(metaclass=ABCMeta):
         # `cache_rhs` and `check_implementation`
         warnings.warn(
             "Method `_make_pde_rhs_numba_cached` is deprecated. Use the uncached "
-            "method `make_pde_rhs_numba` instead",
+            "method `make_evolution_rate` instead",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -304,12 +304,12 @@ class PDEBase(metaclass=ABCMeta):
                 # cache was not hit
                 self._logger.info("Write compiled rhs to cache")
                 self._cache["pde_rhs_numba_state"] = grid_state
-                self._cache["pde_rhs_numba"] = self.make_pde_rhs_numba(state)  # type: ignore
+                self._cache["pde_rhs_numba"] = self._make_pde_rhs_numba(state)  # type: ignore
             rhs = self._cache["pde_rhs_numba"]
 
         else:
             # caching was skipped
-            rhs = self.make_pde_rhs_numba(state)  # type: ignore
+            rhs = self._make_pde_rhs_numba(state)  # type: ignore
 
         if rhs is None:
             msg = "`make_pde_rhs_numba` returned None"
