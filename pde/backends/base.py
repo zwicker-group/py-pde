@@ -57,16 +57,11 @@ class BackendBase:
     information can be used to distinguish the general implementation of backends."""
 
     config: Config
-    """dict: configuration options of this backend.
-
-    Warning:
-        The configuration will only be set once the backend is added to the registry,
-        which allows the registry to read configuration options, e.g., from a file.
-    """
+    """dict: Configuration options of this backend."""
 
     _logger: logging.Logger  # logger instance to output information
     _operators: dict[type[GridBase], dict[str, OperatorInfo]]
-    """dict: all operators registered for this backend class.
+    """dict: All operators registered for this backend class.
 
     Operators are registered for each grid class individually. Note that operators are
     registered on the backend classes, so that we can use inheritance to find operators
