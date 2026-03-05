@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from ..fields.base import FieldBase
     from ..solvers.base import SolverBase
     from ..solvers.controller import TRangeType
-    from ..tools.typing import ArrayLike, NumericArray, StepperHook, TField
+    from ..tools.typing import ArrayLike, NumericArray, StepperHook, TArray, TField
     from ..trackers.base import TrackerCollectionDataType
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
@@ -201,7 +201,7 @@ class PDEBase(metaclass=ABCMeta):
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.make_evolution_rate(state, backend=backends["numba"])  # type: ignore
+        return self.make_evolution_rate(state, backend=backends["numba"])
 
     def check_rhs_consistency(
         self,
@@ -304,12 +304,12 @@ class PDEBase(metaclass=ABCMeta):
                 # cache was not hit
                 self._logger.info("Write compiled rhs to cache")
                 self._cache["pde_rhs_numba_state"] = grid_state
-                self._cache["pde_rhs_numba"] = self._make_pde_rhs_numba(state)  # type: ignore
+                self._cache["pde_rhs_numba"] = self._make_pde_rhs_numba(state)
             rhs = self._cache["pde_rhs_numba"]
 
         else:
             # caching was skipped
-            rhs = self._make_pde_rhs_numba(state)  # type: ignore
+            rhs = self._make_pde_rhs_numba(state)
 
         if rhs is None:
             msg = "`make_pde_rhs_numba` returned None"
@@ -360,7 +360,7 @@ class PDEBase(metaclass=ABCMeta):
         self,
         state: TField,
         backend: str | BackendBase = "auto",
-    ) -> Callable[[NumericArray, float], NumericArray]:
+    ) -> Callable[[TArray, float], TArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
         Args:
@@ -383,7 +383,9 @@ class PDEBase(metaclass=ABCMeta):
         # get a function evaluating the rhs of the PDE
         return backend.make_pde_rhs(self, state)
 
-    def make_evolution_rate(self, state, backend: BackendBase) -> Callable:
+    def make_evolution_rate(
+        self, state, backend: BackendBase
+    ) -> Callable[[TArray, float], TArray]:
         """Return function evaluating right hand side of the PDE using given backend.
 
         Args:

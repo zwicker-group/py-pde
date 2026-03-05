@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
     from ..backends import BackendBase
     from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import TArray
 
 
 class KPZInterfacePDE(SDEBase):
@@ -107,7 +108,7 @@ class KPZInterfacePDE(SDEBase):
 
     def make_evolution_rate(
         self, state: ScalarField, backend: BackendBase
-    ) -> Callable[[Any, float], Any]:
+    ) -> Callable[[TArray, float], TArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
