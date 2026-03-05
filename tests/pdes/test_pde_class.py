@@ -88,7 +88,10 @@ def test_pde_vector(rng):
     np.testing.assert_allclose(res_a.data, res_b.data)
 
 
-def test_pde_2scalar():
+@pytest.mark.parametrize(
+    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_pde_2scalar(backend):
     """Test PDE with two scalar fields."""
     eq = PDE({"u": "laplace(u) - u", "v": "- u * v"})
     assert not eq.explicit_time_dependence
@@ -97,14 +100,15 @@ def test_pde_2scalar():
     field = FieldCollection.scalar_random_uniform(2, grid)
 
     res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
-    res_b = eq.solve(field, t_range=1, dt=0.01, backend="numba", tracker=None)
+    res_b = eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
 
     res_a.assert_field_compatible(res_b)
     np.testing.assert_allclose(res_a.data, res_b.data)
 
 
 @pytest.mark.slow
-def test_pde_vector_scalar(rng):
+@pytest.mark.parametrize("backend", ["numba"], indirect=True)
+def test_pde_vector_scalar(backend, rng):
     """Test PDE with a vector and a scalar field."""
     eq = PDE({"u": "vector_laplace(u) - u + gradient(v)", "v": "- divergence(u)"})
     assert not eq.explicit_time_dependence
@@ -118,7 +122,7 @@ def test_pde_vector_scalar(rng):
     )
 
     res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
-    res_b = eq.solve(field, t_range=1, dt=0.01, backend="numba", tracker=None)
+    res_b = eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
 
     res_a.assert_field_compatible(res_b)
     np.testing.assert_allclose(res_a.data, res_b.data)
@@ -146,7 +150,8 @@ def test_compare_swift_hohenberg(grid, rng):
     np.testing.assert_allclose(res1.data, res2.data)
 
 
-def test_custom_operators(rng):
+@pytest.mark.parametrize("backend", ["numba"], indirect=True)
+def test_custom_operators(backend, rng):
     """Test using a custom operator."""
     grid = grids.UnitGrid([32])
     field = ScalarField.random_normal(grid, rng=rng)
@@ -155,24 +160,27 @@ def test_custom_operators(rng):
     with pytest.raises(NotImplementedError):
         eq.evolution_rate(field)
 
-    def make_op(state):
+    def make_op(*args, **kwargs):
         def op(arr, out):
             out[:] = arr[1:-1]  # copy valid part of the array
 
         return op
 
     # register the function with the numba backend
-    backends["numba"].register_operator(grids.UnitGrid, "undefined", make_op)
+    backend.register_operator(grids.UnitGrid, "undefined", make_op)
 
     eq._cache = {}  # reset cache to force recompilation
-    res = eq.evolution_rate(field)
+    rhs = eq.make_evolution_rate(field, backend=backend)
+    res = backend._apply_native(rhs, field.data, 0)  # last argument is time
     np.testing.assert_allclose(field.data, res.data)
 
     # reset original state
-    del backends["numba"]._operators[grids.UnitGrid]["undefined"]
+    del backend._operators[grids.UnitGrid]["undefined"]
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 def test_pde_noise(backend, rng):
     """Test noise operator on PDE class."""
     grid = grids.UnitGrid([128, 128])
@@ -222,22 +230,32 @@ def test_pde_spatial_args(backend):
         eq.make_pde_rhs(field, backend=backend)(field.data, 0)
 
 
-def test_pde_user_funcs(rng):
+@pytest.mark.parametrize(
+    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_pde_user_funcs(backend, rng):
     """Test user supplied functions."""
     # test a simple case
-    eq = PDE({"u": "get_x(gradient(u))"}, user_funcs={"get_x": lambda arr: arr[0]})
+    eq = PDE(
+        {"u": "get_x(gradient(u))"},
+        user_funcs={"get_x": lambda arr: arr[0]},
+        bc="auto_periodic_neumann",
+    )
     field = ScalarField.random_normal(grids.UnitGrid([32, 32]), rng=rng)
     rhs = eq.evolution_rate(field)
     np.testing.assert_allclose(
         rhs.data, field.gradient("auto_periodic_neumann").data[0]
     )
-    f = eq.make_evolution_rate(field, backend=backends["numba"])
+    rhs = eq.make_evolution_rate(field, backend=backend)
+    res = backend._apply_native(rhs, field.data, 0)  # last argument is time
+    # Use larger tolerance since torch backends might only support float32
     np.testing.assert_allclose(
-        f(field.data, 0), field.gradient("auto_periodic_neumann").data[0]
+        res.data, field.gradient("auto_periodic_neumann").data[0], rtol=2e-5
     )
 
 
-def test_pde_complex_serial(rng):
+@pytest.mark.parametrize("backend", ["numba"], indirect=True)
+def test_pde_complex_serial(backend, rng):
     """Test complex valued PDE."""
     eq = PDE({"p": "I * laplace(p)"})
     assert not eq.explicit_time_dependence
@@ -247,13 +265,16 @@ def test_pde_complex_serial(rng):
     assert not field.is_complex
     res1 = eq.solve(field, t_range=1, dt=0.1, backend="numpy", tracker=None)
     assert res1.is_complex
-    res2 = eq.solve(field, t_range=1, dt=0.1, backend="numba", tracker=None)
+    res2 = eq.solve(field, t_range=1, dt=0.1, backend=backend, tracker=None)
     assert res2.is_complex
 
     np.testing.assert_allclose(res1.data, res2.data)
 
 
-def test_pde_product_operators():
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_pde_product_operators(backend):
     """Test inner and outer products."""
     eq = PDE(
         {"p": "gradient(dot(p, p) + inner(p, p)) + tensor_divergence(outer(p, p))"}
@@ -261,7 +282,7 @@ def test_pde_product_operators():
     assert not eq.explicit_time_dependence
     assert not eq.complex_valued
     field = VectorField(grids.UnitGrid([4]), 1)
-    res = eq.solve(field, t_range=1, dt=0.1, backend="numpy", tracker=None)
+    res = eq.solve(field, t_range=1, dt=0.1, backend=backend, tracker=None)
     np.testing.assert_allclose(res.data, field.data)
 
 
@@ -306,8 +327,11 @@ def test_pde_consts():
         eq.evolution_rate(field)
 
 
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 @pytest.mark.parametrize("bc", ["auto_periodic_neumann", {"value": 1}])
-def test_pde_bcs(bc, rng):
+def test_pde_bcs(backend, bc, rng):
     """Test PDE with boundary conditions."""
     eq = PDE({"u": "laplace(u)"}, bc=bc)
     assert not eq.explicit_time_dependence
@@ -316,7 +340,7 @@ def test_pde_bcs(bc, rng):
     field = ScalarField.random_normal(grid, rng=rng)
 
     res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
-    res_b = eq.solve(field, t_range=1, dt=0.01, backend="numba", tracker=None)
+    res_b = eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
 
     res_a.assert_field_compatible(res_b)
     np.testing.assert_allclose(res_a.data, res_b.data)
@@ -349,7 +373,7 @@ def test_pde_bcs_error(backend, bc, rng):
         eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
 def test_pde_time_dependent_bcs(backend):
     """Test PDE with time-dependent BCs."""
     field = ScalarField(grids.UnitGrid([3]))
@@ -403,7 +427,7 @@ def test_anti_periodic_bcs():
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-cuda"], indirect=True
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_pde_heaviside(backend):
     """Test PDE with a heaviside right hand side."""
