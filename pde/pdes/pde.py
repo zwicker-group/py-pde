@@ -553,7 +553,7 @@ class PDE(SDEBase):
 
         # add extra information for field collection
         if isinstance(state, FieldCollection):
-            # isscalar be False even if start == stop (e.g. vector fields)
+            # isscalar needs to be False even if start == stop (e.g. vector fields)
             isscalar: tuple[bool, ...] = tuple(field.rank == 0 for field in state)
             starts: tuple[int, ...] = tuple(slc.start for slc in state._slices)
             stops: tuple[int, ...] = tuple(slc.stop for slc in state._slices)
@@ -647,13 +647,15 @@ class PDE(SDEBase):
         return post_step_hook_impl, 0  # hook function and initial value
 
     def _make_pde_rhs_numba_collection(
-        self, state: FieldCollection, cache: dict[str, Any]
+        self, state: FieldCollection, *, backend: BackendBase, cache: dict[str, Any]
     ) -> Callable[[TArray, float], TArray]:
         """Create the compiled rhs if `state` is a field collection.
 
         Args:
             state (:class:`~pde.fields.FieldCollection`):
                 An example for the state defining the grid and data types
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
             cache (dict):
                 Cached information that will be used in the function. The cache is
                 populated by :meth:`PDE._prepare_cache`.
@@ -713,6 +715,48 @@ class PDE(SDEBase):
         # compile the recursive chain
         return chain()  # type: ignore
 
+    def _make_pde_rhs_torch_collection(
+        self, state: FieldCollection, *, backend: BackendBase, cache: dict[str, Any]
+    ) -> Callable[[TArray, float], TArray]:
+        """Create the compiled rhs if `state` is a field collection.
+
+        Args:
+            state (:class:`~pde.fields.FieldCollection`):
+                An example for the state defining the grid and data types
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
+            cache (dict):
+                Cached information that will be used in the function. The cache is
+                populated by :meth:`PDE._prepare_cache`.
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called
+            with an instance of :class:`~numpy.ndarray` of the state data and
+            the time to obtain an instance of :class:`~numpy.ndarray` giving
+            the evolution rate.
+        """
+        import torch
+
+        num_fields = len(state)
+        data_shape = state.data.shape
+        dtype = backend.get_torch_dtype(state.dtype)  # type: ignore
+        rhs_list = tuple(cache["rhs_funcs"][i] for i in range(num_fields))
+
+        starts = tuple(slc.start for slc in state._slices)
+        stops = tuple(slc.stop for slc in state._slices)
+        get_data_tuple = cache["get_data_tuple"]
+
+        # this is the outermost function
+        def evolution_rate(state_data: TArray, t: float = 0) -> TArray:
+            data_tpl = get_data_tuple(state_data)
+            out = torch.empty(data_shape, dtype=dtype)
+            for i, rhs in enumerate(rhs_list):
+                out[starts[i] : stops[i]] = rhs(*data_tpl, t)
+            return out  # type: ignore
+
+        # compile the recursive chain
+        return evolution_rate
+
     def make_evolution_rate(
         self, state: FieldCollection, backend: BackendBase
     ) -> Callable[[TArray, float], TArray]:
@@ -737,7 +781,13 @@ class PDE(SDEBase):
         if isinstance(state, FieldCollection):
             # state is a collection of fields
             if backend.implementation == "numba":
-                return self._make_pde_rhs_numba_collection(state, cache)
+                return self._make_pde_rhs_numba_collection(
+                    state, backend=backend, cache=cache
+                )
+            if backend.implementation == "torch":
+                return self._make_pde_rhs_torch_collection(
+                    state, backend=backend, cache=cache
+                )
             raise NotImplementedError
 
         msg = f"Unsupported field {state.__class__.__name__}"
