@@ -33,6 +33,7 @@ if TYPE_CHECKING:
         NumberOrArray,
         NumericArray,
         StepperHook,
+        TArray,
         TField,
     )
 
@@ -557,7 +558,7 @@ class PDE(SDEBase):
             starts: tuple[int, ...] = tuple(slc.start for slc in state._slices)
             stops: tuple[int, ...] = tuple(slc.stop for slc in state._slices)
 
-            def get_data_tuple(state_data: NumericArray) -> tuple[NumericArray, ...]:
+            def get_data_tuple(state_data: TArray) -> tuple[TArray, ...]:
                 """Helper for turning state_data into a tuple of field data."""
                 return tuple(
                     (
@@ -647,7 +648,7 @@ class PDE(SDEBase):
 
     def _make_pde_rhs_numba_collection(
         self, state: FieldCollection, cache: dict[str, Any]
-    ) -> Callable[[NumericArray, float], NumericArray]:
+    ) -> Callable[[TArray, float], TArray]:
         """Create the compiled rhs if `state` is a field collection.
 
         Args:
@@ -675,8 +676,8 @@ class PDE(SDEBase):
 
         def chain(
             i: int = 0,
-            inner: Callable[[NumericArray, float, NumericArray], None] | None = None,
-        ) -> Callable[[NumericArray, float], NumericArray]:
+            inner: Callable[[TArray, float, TArray], None] | None = None,
+        ) -> Callable[[TArray, float], TArray]:
             """Recursive helper function for applying all rhs."""
             # run through all functions
             rhs = rhs_list[i]
@@ -684,13 +685,13 @@ class PDE(SDEBase):
             if inner is None:
                 # the innermost function does not need to call a child
                 @nb.jit
-                def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
+                def wrap(data_tpl: TArray, t: float, out: TArray) -> None:
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
             else:
                 # all other functions need to call one deeper in the chain
                 @nb.jit
-                def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
+                def wrap(data_tpl: TArray, t: float, out: TArray) -> None:
                     inner(data_tpl, t, out)
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
@@ -700,84 +701,21 @@ class PDE(SDEBase):
 
             # this is the outermost function
             @nb.jit
-            def evolution_rate(state_data: NumericArray, t: float = 0) -> NumericArray:
+            def evolution_rate(state_data: TArray, t: float = 0) -> TArray:
                 out = np.empty(data_shape)
                 with nb.objmode():
                     data_tpl = get_data_tuple(state_data)
                     wrap(data_tpl, t, out)
-                return out
+                return out  # type: ignore
 
             return evolution_rate  # type: ignore
 
         # compile the recursive chain
-        return chain()
-
-    def _make_evolution_rate_numba(
-        self, state: TField, backend: BackendBase
-    ) -> Callable[[NumericArray, float], NumericArray]:
-        """Create a numba-compiled function evaluating the right hand side of the PDE.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state defining the grid and data types
-            backend (:class:`~pde.backends.base.BackendBase`):
-                The backend used for numerical operations
-            **kwargs:
-                Additional keyword arguments (currently unused)
-
-        Returns:
-            A function with signature `(state_data, t)`, which can be called with an
-            instance of :class:`~numpy.ndarray` of the state data and the time to
-            obtain an instance of :class:`~numpy.ndarray` giving the evolution rate.
-        """
-        cache = self._prepare_cache(state, backend=backend)
-
-        if isinstance(state, DataFieldBase):
-            # state is a single field
-            return cache["rhs_funcs"][0]  # type: ignore
-
-        if isinstance(state, FieldCollection):
-            # state is a collection of fields
-            return self._make_pde_rhs_numba_collection(state, cache)
-
-        msg = f"Unsupported field {state.__class__.__name__}"
-        raise TypeError(msg)
-
-    def _make_evolution_rate_torch(
-        self, state: TField, backend: BackendBase
-    ) -> Callable[[NumericArray, float], NumericArray]:
-        """Create a torch-compiled function evaluating the right hand side of the PDE.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state defining the grid and data types
-            backend (:class:`~pde.backends.base.BackendBase`):
-                The backend used for numerical operations
-            **kwargs:
-                Additional keyword arguments (currently unused)
-
-        Returns:
-            A function with signature `(state_data, t)`, which can be called with an
-            instance of :class:`~numpy.ndarray` of the state data and the time to
-            obtain an instance of :class:`~numpy.ndarray` giving the evolution rate.
-        """
-        cache = self._prepare_cache(state, backend=backend)
-
-        if isinstance(state, DataFieldBase):
-            # state is a single field
-            return cache["rhs_funcs"][0]  # type: ignore
-
-        if isinstance(state, FieldCollection):
-            # state is a collection of fields
-            raise NotImplementedError
-            return self.make_pde_rhs_torch_collection(state, cache)
-
-        msg = f"Unsupported field {state.__class__.__name__}"
-        raise TypeError(msg)
+        return chain()  # type: ignore
 
     def make_evolution_rate(
         self, state: FieldCollection, backend: BackendBase
-    ) -> Callable[[Any, float], Any]:
+    ) -> Callable[[TArray, float], TArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
@@ -790,12 +728,20 @@ class PDE(SDEBase):
             A function with signature `(state_data, t)`, which can be called with an
             instance of the state data and time to obtain the associated evolution rate.
         """
-        if backend.implementation == "numba":
-            return self._make_evolution_rate_numba(state, backend=backend)
-        if backend.implementation == "torch":
-            return self._make_evolution_rate_torch(state, backend=backend)
-        msg = f"Backend {backend} is not implemented"
-        raise NotImplementedError(msg)
+        cache = self._prepare_cache(state, backend=backend)
+
+        if isinstance(state, DataFieldBase):
+            # state is a single field
+            return cache["rhs_funcs"][0]
+
+        if isinstance(state, FieldCollection):
+            # state is a collection of fields
+            if backend.implementation == "numba":
+                return self._make_pde_rhs_numba_collection(state, cache)
+            raise NotImplementedError
+
+        msg = f"Unsupported field {state.__class__.__name__}"
+        raise TypeError(msg)
 
     def _jacobian_spectral(
         self,

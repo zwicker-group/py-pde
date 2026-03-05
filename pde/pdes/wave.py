@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
     from ..backends import BackendBase
     from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import TArray
 
 
 class WavePDE(PDEBase):
@@ -109,7 +110,7 @@ class WavePDE(PDEBase):
 
     def make_evolution_rate(
         self, state: FieldCollection, backend: BackendBase
-    ) -> Callable[[Any, float], Any]:
+    ) -> Callable[[TArray, float], TArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
