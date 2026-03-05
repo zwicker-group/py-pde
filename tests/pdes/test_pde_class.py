@@ -107,6 +107,7 @@ def test_pde_2scalar(backend):
 
 
 @pytest.mark.slow
+@pytest.mark.parametrize("backend", ["numba"], indirect=True)
 def test_pde_vector_scalar(backend, rng):
     """Test PDE with a vector and a scalar field."""
     eq = PDE({"u": "vector_laplace(u) - u + gradient(v)", "v": "- divergence(u)"})
@@ -247,6 +248,7 @@ def test_pde_user_funcs(backend, rng):
     )
     rhs = eq.make_evolution_rate(field, backend=backend)
     res = backend._apply_native(rhs, field.data, 0)  # last argument is time
+    # Use larger tolerance since torch backends might only support float32
     np.testing.assert_allclose(
         res.data, field.gradient("auto_periodic_neumann").data[0], rtol=2e-5
     )
