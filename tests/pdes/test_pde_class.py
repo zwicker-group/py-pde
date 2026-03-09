@@ -72,14 +72,28 @@ def test_pde_scalar(rng):
     np.testing.assert_allclose(res_a.data, res_b.data)
 
 
-@pytest.mark.slow
+# TODO: add torch support "torch-cpu", "torch-mps", "torch-cuda"
+@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
+def test_pde_explicit_time(backend):
+    """Test PDE with an explicit time dependence in rhs."""
+    eq = PDE({"u": "t"})
+    assert eq.explicit_time_dependence
+    assert not eq.complex_valued
+    grid = grids.UnitGrid([8])
+    field = ScalarField(grid)
+
+    res = eq.solve(field, t_range=1, dt=0.005, backend=backend, tracker=None)
+
+    np.testing.assert_allclose(res.data, 0.5, atol=0.01)
+
+
 @pytest.mark.parametrize(
     "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
-def test_pde_vector(backend, rng):
+def test_pde_vector_laplace(backend, rng):
     """Test PDE with a single vector field."""
-    eq = PDE({"u": "vector_laplace(u) + exp(-t)"})
-    assert eq.explicit_time_dependence
+    eq = PDE({"u": "vector_laplace(u)"})
+    assert not eq.explicit_time_dependence
     assert not eq.complex_valued
     grid = grids.UnitGrid([8, 8])
     field = VectorField.random_normal(grid, rng=rng).smooth(1)
@@ -88,7 +102,27 @@ def test_pde_vector(backend, rng):
     res_b = eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
 
     res_a.assert_field_compatible(res_b)
-    np.testing.assert_allclose(res_a.data, res_b.data)
+    # reduced accuracy to allow float32 dtypes
+    np.testing.assert_allclose(res_a.data, res_b.data, rtol=1e-6)
+
+
+@pytest.mark.parametrize(
+    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_pde_vector_ops(backend, rng):
+    """Test PDE with a single vector field."""
+    eq = PDE({"u": "tensor_divergence(vector_gradient(u))"})
+    assert not eq.explicit_time_dependence
+    assert not eq.complex_valued
+    grid = grids.UnitGrid([8, 8])
+    field = VectorField.random_normal(grid, rng=rng).smooth(1)
+
+    res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
+    res_b = eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
+
+    res_a.assert_field_compatible(res_b)
+    # reduced accuracy to allow float32 dtypes
+    np.testing.assert_allclose(res_a.data, res_b.data, rtol=1e-6)
 
 
 @pytest.mark.parametrize(
