@@ -303,7 +303,7 @@ class CartesianVectorGradient(TorchDifferentialOperator):
         """
         super().__init__(grid, bcs, dtype=dtype)
         # define gradient operator that does not define the boundary conditions
-        self.grad = CartesianGradient(grid, bcs, dtype=dtype)
+        self.grad = CartesianGradient(grid, bcs=None, dtype=dtype)
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""

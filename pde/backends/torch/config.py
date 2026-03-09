@@ -30,7 +30,7 @@ DEFAULT_CONFIG: list[Parameter] = [
     ),
     Parameter(
         "compile",
-        False,
+        True,
         bool,
         "Enables compilation in the `torch` backend.",
     ),

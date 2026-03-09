@@ -247,7 +247,7 @@ class TorchBackend(NumpyBackend):
         """
         # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)
-        dtype = self.get_numpy_dtype(kwargs.pop("dtype", np.double))
+        dtype = self.get_numpy_dtype(dtype or np.double)
 
         # create an operator with or without BCs
         torch_operator = operator_info.factory(grid, bcs=None, dtype=dtype, **kwargs)
@@ -310,10 +310,7 @@ class TorchBackend(NumpyBackend):
         """
         # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)
-        if dtype is None:
-            dtype = self.get_numpy_dtype(np.double)
-        else:
-            dtype = self.get_numpy_dtype(dtype)
+        dtype = self.get_numpy_dtype(dtype or np.double)
         bcs = grid.get_boundary_conditions(bcs, rank=operator_info.rank_in)
 
         # create an operator with or without BCs

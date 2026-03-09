@@ -204,7 +204,7 @@ def test_custom_operator_torch(backend, rng):
         def forward(self, arr):
             return 2 * arr  # multiply array by a constant factor
 
-    # register the function with the numba backend
+    # register the function with the torch backend
     backend.register_operator(grids.UnitGrid, "undefined", MyOperator)
 
     eq._cache = {}  # reset cache to force recompilation

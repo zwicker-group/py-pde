@@ -319,7 +319,7 @@ class PDE(SDEBase):
             # Create the function evaluating the operator. Note that we use the `numba`
             # backend to create operators when `numpy` was selected since the `numpy`
             # backend itself currently does not implement any operators.
-            dtype = self._cache["dtype"]
+            dtype = self._cache[backend.name]["dtype"]
             op_backend = "numba" if backend.implementation == "numpy" else backend
             try:
                 ops[func] = state.grid.make_operator(
@@ -479,7 +479,7 @@ class PDE(SDEBase):
             dtype = np.ones((1,), dtype=state.dtype).astype(complex).dtype
         else:
             dtype = state.dtype
-        self._cache["dtype"] = dtype
+        cache["dtype"] = dtype
 
         # check whether PDE has variables with same names as grid axes
         name_overlap = set(self.rhs) & set(state.grid.axes)

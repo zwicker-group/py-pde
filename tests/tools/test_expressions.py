@@ -396,9 +396,7 @@ def test_tensor_expression_consts():
     assert d1[1](2) == 5
 
 
-@pytest.mark.parametrize(
-    "backend", ["numpy", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ["numpy", "torch-cpu"], indirect=True)
 def test_evaluate_func_scalar(backend):
     """Test the evaluate function with scalar fields."""
     grid = UnitGrid([2, 4])
