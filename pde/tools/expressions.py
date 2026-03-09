@@ -869,6 +869,7 @@ def evaluate(
     bc_ops: dict[str, BoundariesData] | None = None,
     user_funcs: dict[str, Callable] | None = None,
     consts: dict[str, NumberOrArray] | None = None,
+    backend: str | BackendBase = "numpy",
     label: str | None = None,
 ) -> DataFieldBase:
     """Evaluate an expression involving fields.
@@ -907,6 +908,8 @@ def evaluate(
             A dictionary with user defined constants that can be used in the expression.
             These can be either scalar numbers or fields defined on the same grid as the
             actual simulation.
+        backend (str):
+            The backend used to evaluate the expression
         label (str):
             Name of the field that is returned.
 
@@ -916,7 +919,11 @@ def evaluate(
     """
     from sympy.core.function import AppliedUndef
 
+    from ..backends import backends
     from ..fields import VectorField
+
+    # load the backend object
+    backend = backends[backend]
 
     # validate input
     if consts is None:
@@ -981,11 +988,11 @@ def evaluate(
         if func == "dot" or func == "inner":
             # add dot product between two vector fields. This can for instance
             # appear when two gradients of scalar fields need to be multiplied
-            ops[func] = VectorField(grid).make_dot_operator(backend="numpy")
+            ops[func] = VectorField(grid).make_dot_operator(backend=backend)
 
         elif func == "outer":
             # generate an operator that calculates an outer product
-            ops[func] = VectorField(grid).make_outer_prod_operator(backend="numpy")
+            ops[func] = VectorField(grid).make_outer_prod_operator(backend=backend)
 
         else:
             # determine boundary conditions for this operator and variable
@@ -1003,8 +1010,9 @@ def evaluate(
             _base_logger.info("Using BC `%s` for operator `%s` in expression", bc, func)
 
             # create the function evaluating the operator
+            op_backend = "numba" if backend.implementation == "numpy" else backend
             try:
-                ops[func] = grid.make_operator(func, bc=bc, backend="numba")
+                ops[func] = grid.make_operator(func, bc=bc, backend=op_backend)
             except BCDataError:
                 # wrong data was supplied for the boundary condition
                 raise
@@ -1030,7 +1038,9 @@ def evaluate(
         # extend the signature
         signature += tuple(grid.axes)
         # inject the spatial coordinates into the expression for the rhs
-        extra_args = tuple(grid.cell_coords[..., i] for i in range(grid.num_axes))
+        extra_args = tuple(
+            backend.from_numpy(grid.cell_coords[..., i]) for i in range(grid.num_axes)
+        )
 
     else:
         # expression only depends on the actual variables
@@ -1047,13 +1057,14 @@ def evaluate(
     _base_logger.info("Expression has signature %s", signature)
 
     # extract input field data and calculate result
-    field_data = [field.data for field in fields_values]
+    field_data = [backend.from_numpy(field.data) for field in fields_values]
 
     # calculate the result of the expression
-    func = expr.get_function(single_arg=False, user_funcs=ops)
+    func = expr.get_function(single_arg=False, user_funcs=ops, backend=backend)
     result_data = func(*field_data, None, {}, *extra_args)
 
     # turn result into a proper field
+    result_data = backend.to_numpy(result_data)
     if np.isscalar(result_data):
         result_data = np.broadcast_to(result_data, grid.shape)
     elif TYPE_CHECKING:

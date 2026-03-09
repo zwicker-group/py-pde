@@ -3,12 +3,9 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import Any, Protocol
-
 import numpy as np
 import torch
 from numpy.typing import DTypeLike
-from torch import Tensor
 
 AnyDType = DTypeLike | torch.dtype
 
@@ -30,18 +27,6 @@ NUMPY_TO_TORCH_DTYPE: dict[DTypeLike, torch.dtype] = {
 TORCH_TO_NUMPY_DTYPE = {v: np.dtype(k) for k, v in NUMPY_TO_TORCH_DTYPE.items()}
 # add the proper numpy dtype as an alternative
 NUMPY_TO_TORCH_DTYPE |= {np.dtype(k): v for k, v in NUMPY_TO_TORCH_DTYPE.items()}
-
-
-class TorchDifferentialOperatorType(Protocol):
-    """An operator that acts on an array."""
-
-    def __call__(
-        self,
-        arr: Tensor,
-        out: Tensor | None = None,
-        args: dict[str, Any] | None = None,
-    ) -> Tensor:
-        """Evaluate the operator."""
 
 
 class TorchOperatorBase(torch.nn.Module):
