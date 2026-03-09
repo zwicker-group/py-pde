@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     )
     from ..base import TFunc
     from ..numpy.backend import OperatorInfo
-    from .utils import TorchDifferentialOperatorType
+    from .operators.common import TorchDifferentialOperator
 
 
 class TorchBackend(NumpyBackend):
@@ -162,6 +162,8 @@ class TorchBackend(NumpyBackend):
             :class:`torch.dtype`:
                 A numpy dtype that is compatible with the torch backend
         """
+        # convert numpy dtype to torch dtype to support cases where the torch device
+        # only supports narrower types
         return TORCH_TO_NUMPY_DTYPE[self.get_torch_dtype(dtype)]
 
     def from_numpy(self, value: Any) -> Any:
@@ -201,14 +203,15 @@ class TorchBackend(NumpyBackend):
         opts = self.compile_options | compile_options
         return torch.compile(func, **opts)  # type: ignore
 
-    def make_operator_no_bc(  # type: ignore
+    def make_operator_no_bc(
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
         *,
+        dtype: DTypeLike | None = None,
         native: bool = False,
         **kwargs,
-    ) -> TorchDifferentialOperatorType:
+    ) -> TorchDifferentialOperator:
         """Return a compiled function applying an operator without boundary conditions.
 
         A function that takes the discretized full data as an input and an array of
@@ -228,6 +231,8 @@ class TorchBackend(NumpyBackend):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            dtype (numpy dtype):
+                The data type of the field.
             native (bool):
                 If True, the returned functions expects the native data representation
                 of the backend. Otherwise, the input and output are expected to be
@@ -262,15 +267,16 @@ class TorchBackend(NumpyBackend):
 
         return operator_no_bc  # type: ignore
 
-    def make_operator(  # type: ignore
+    def make_operator(
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
         *,
         bcs: BoundariesBase,
+        dtype: DTypeLike | None = None,
         native: bool = False,
         **kwargs,
-    ) -> TorchDifferentialOperatorType:
+    ) -> TorchDifferentialOperator:
         """Return a torch function applying an operator with boundary conditions.
 
         Args:
@@ -282,6 +288,8 @@ class TorchBackend(NumpyBackend):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 The boundary conditions used before the operator is applied
+            dtype (numpy dtype):
+                The data type of the field.
             native (bool):
                 If True, the returned functions expects the native data representation
                 of the backend. Otherwise, the input and output are expected to be
@@ -302,7 +310,10 @@ class TorchBackend(NumpyBackend):
         """
         # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)
-        dtype = self.get_numpy_dtype(kwargs.pop("dtype", np.double))
+        if dtype is None:
+            dtype = self.get_numpy_dtype(np.double)
+        else:
+            dtype = self.get_numpy_dtype(dtype)
         bcs = grid.get_boundary_conditions(bcs, rank=operator_info.rank_in)
 
         # create an operator with or without BCs

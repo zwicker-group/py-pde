@@ -17,6 +17,8 @@ from ..base import BackendBase, OperatorInfo, TFunc
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from numpy.typing import DTypeLike
+
     from ...grids import BoundariesBase, GridBase
     from ...pdes import PDEBase
     from ...tools.expressions import ExpressionBase
@@ -141,6 +143,7 @@ class NumpyBackend(BackendBase):
         operator: str | OperatorInfo,
         *,
         bcs: BoundariesBase,
+        dtype: DTypeLike | None = None,
         native: bool = False,
         **kwargs,
     ) -> OperatorType:
@@ -155,6 +158,8 @@ class NumpyBackend(BackendBase):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 The boundary conditions used before the operator is applied
+            dtype (numpy dtype):
+                The data type of the field.
             native (bool):
                 If True, the returned functions expects the native data representation
                 of the backend. Otherwise, the input and output are expected to be

@@ -73,7 +73,10 @@ def test_pde_scalar(rng):
 
 
 @pytest.mark.slow
-def test_pde_vector(rng):
+@pytest.mark.parametrize(
+    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_pde_vector(backend, rng):
     """Test PDE with a single vector field."""
     eq = PDE({"u": "vector_laplace(u) + exp(-t)"})
     assert eq.explicit_time_dependence
@@ -82,7 +85,7 @@ def test_pde_vector(rng):
     field = VectorField.random_normal(grid, rng=rng).smooth(1)
 
     res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
-    res_b = eq.solve(field, t_range=1, dt=0.01, backend="numba", tracker=None)
+    res_b = eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
 
     res_a.assert_field_compatible(res_b)
     np.testing.assert_allclose(res_a.data, res_b.data)
@@ -107,7 +110,9 @@ def test_pde_2scalar(backend):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("backend", ["numba"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 def test_pde_vector_scalar(backend, rng):
     """Test PDE with a vector and a scalar field."""
     eq = PDE({"u": "vector_laplace(u) - u + gradient(v)", "v": "- divergence(u)"})
@@ -150,9 +155,9 @@ def test_compare_swift_hohenberg(grid, rng):
     np.testing.assert_allclose(res1.data, res2.data)
 
 
-@pytest.mark.parametrize("backend", ["numba"], indirect=True)
-def test_custom_operators(backend, rng):
-    """Test using a custom operator."""
+def test_custom_operator_numba(rng):
+    """Test using a custom operator using the numba backend."""
+    backend = backends["numba"]
     grid = grids.UnitGrid([32])
     field = ScalarField.random_normal(grid, rng=rng)
     eq = PDE({"u": "undefined(u)"})
@@ -162,7 +167,7 @@ def test_custom_operators(backend, rng):
 
     def make_op(*args, **kwargs):
         def op(arr, out):
-            out[:] = arr[1:-1]  # copy valid part of the array
+            out[:] = 2 * arr[1:-1]  # copy valid part of the array
 
         return op
 
@@ -172,7 +177,40 @@ def test_custom_operators(backend, rng):
     eq._cache = {}  # reset cache to force recompilation
     rhs = eq.make_evolution_rate(field, backend=backend)
     res = backend._apply_native(rhs, field.data, 0)  # last argument is time
-    np.testing.assert_allclose(field.data, res.data)
+    np.testing.assert_allclose(2 * field.data, res.data)
+
+    # reset original state
+    del backend._operators[grids.UnitGrid]["undefined"]
+
+
+@pytest.mark.parametrize(
+    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_custom_operator_torch(backend, rng):
+    """Test using a custom operator using the torch backend."""
+    from pde.backends.torch.utils import TorchOperatorBase
+
+    grid = grids.UnitGrid([32])
+    field = ScalarField.random_normal(grid, rng=rng)
+    eq = PDE({"u": "undefined(u)"})
+
+    with pytest.raises(NotImplementedError):
+        eq.evolution_rate(field)
+
+    class MyOperator(TorchOperatorBase):
+        def __init__(self, grid, bcs, *, dtype, **kwargs):
+            super().__init__(dtype=dtype)
+
+        def forward(self, arr):
+            return 2 * arr  # multiply array by a constant factor
+
+    # register the function with the numba backend
+    backend.register_operator(grids.UnitGrid, "undefined", MyOperator)
+
+    eq._cache = {}  # reset cache to force recompilation
+    rhs = eq.make_evolution_rate(field, backend=backend)
+    res = backend._apply_native(rhs, field.data, 0)  # last argument is time
+    np.testing.assert_allclose(2 * field.data, res.data)
 
     # reset original state
     del backend._operators[grids.UnitGrid]["undefined"]
@@ -254,7 +292,7 @@ def test_pde_user_funcs(backend, rng):
     )
 
 
-@pytest.mark.parametrize("backend", ["numba"], indirect=True)
+@pytest.mark.parametrize("backend", ["numba", "torch-cpu"], indirect=True)
 def test_pde_complex_serial(backend, rng):
     """Test complex valued PDE."""
     eq = PDE({"p": "I * laplace(p)"})

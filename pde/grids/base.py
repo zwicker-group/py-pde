@@ -35,7 +35,7 @@ from .coordinates import CoordinatesBase, DimensionError
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
 
-    from numpy.typing import ArrayLike, NDArray
+    from numpy.typing import ArrayLike, DTypeLike, NDArray
 
     from ..backends.base import BackendBase, OperatorInfo
     from ..tools.typing import (
@@ -1145,6 +1145,7 @@ class GridBase(metaclass=ABCMeta):
         operator: str | OperatorInfo,
         *,
         backend: str | BackendBase = "default",
+        dtype: DTypeLike | None = None,
         native: bool = False,
         **kwargs,
     ) -> OperatorImplType:
@@ -1167,6 +1168,8 @@ class GridBase(metaclass=ABCMeta):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             backend (str):
                 The backend to use for making the operator
+            dtype (numpy dtype):
+                The data type of the field.
             native (bool):
                 If True, the returned functions expects the native data representation
                 of the backend. Otherwise, the input and output are expected to be
@@ -1183,7 +1186,7 @@ class GridBase(metaclass=ABCMeta):
 
         # determine the operator for the chosen backend
         return backends[backend].make_operator_no_bc(
-            self, operator=operator, native=native, **kwargs
+            self, operator=operator, dtype=dtype, native=native, **kwargs
         )
 
     @fill_in_docstring
@@ -1193,6 +1196,7 @@ class GridBase(metaclass=ABCMeta):
         bc: BoundariesData,
         *,
         backend: str | BackendBase = "default",
+        dtype: DTypeLike | None = None,
         native: bool = False,
         **kwargs,
     ) -> OperatorType:
@@ -1208,6 +1212,8 @@ class GridBase(metaclass=ABCMeta):
                 {ARG_BOUNDARIES}
             backend (str):
                 The backend to use for making the operator
+            dtype (numpy dtype):
+                The data type of the field.
             native (bool):
                 If True, the returned functions expects the native data representation
                 of the backend. Otherwise, the input and output are expected to be
@@ -1250,7 +1256,9 @@ class GridBase(metaclass=ABCMeta):
 
         # set the boundary conditions before applying this operator
         bcs = self.get_boundary_conditions(bc, rank=operator_info.rank_in)
-        return backend_impl.make_operator(self, operator_info, bcs=bcs, native=native)
+        return backend_impl.make_operator(
+            self, operator_info, bcs=bcs, dtype=dtype, native=native, **kwargs
+        )
 
     def slice(self, indices: Sequence[int]) -> GridBase:
         """Return a subgrid of only the specified axes.

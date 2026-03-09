@@ -396,69 +396,80 @@ def test_tensor_expression_consts():
     assert d1[1](2) == 5
 
 
-def test_evaluate_func_scalar():
+@pytest.mark.parametrize(
+    "backend", ["numpy", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_evaluate_func_scalar(backend):
     """Test the evaluate function with scalar fields."""
     grid = UnitGrid([2, 4])
     field = ScalarField.from_expression(grid, "x")
 
-    res1 = evaluate("laplace(a)", {"a": field})
+    res1 = evaluate("laplace(a)", {"a": field}, backend=backend)
     res2 = field.laplace("auto_periodic_neumann")
     np.testing.assert_almost_equal(res1.data, res2.data)
 
-    res = evaluate("a - x", {"a": field})
+    res = evaluate("a - x", {"a": field}, backend=backend)
     np.testing.assert_almost_equal(res.data, 0)
 
     field_c = ScalarField.from_expression(grid, "1 + 1j")
-    res = evaluate("c", {"c": field_c})
+    res = evaluate("c", {"c": field_c}, backend=backend)
     assert res.dtype == "complex"
     np.testing.assert_almost_equal(res.data, field_c.data)
 
-    res = evaluate("abs(a)**2", {"a": field_c})
+    res = evaluate("abs(a)**2", {"a": field_c}, backend=backend)
     assert res.dtype == "float"
     np.testing.assert_allclose(res.data, 2)
 
     # edge case
-    res = evaluate("sin", {"a": field_c}, consts={"sin": 3.14})
+    res = evaluate("sin", {"a": field_c}, consts={"sin": 3.14}, backend=backend)
     assert res.dtype == "float"
     np.testing.assert_allclose(res.data, 3.14)
 
 
-def test_evaluate_func_vector():
+@pytest.mark.parametrize(
+    "backend", ["numpy", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_evaluate_func_vector(backend):
     """Test the evaluate function with vector fields."""
     grid = UnitGrid([3])
     field = ScalarField.from_expression(grid, "x")
     vec = VectorField.from_expression(grid, ["x"])
 
-    res = evaluate("inner(v, v)", {"v": vec})
+    res = evaluate("inner(v, v)", {"v": vec}, backend=backend)
     assert isinstance(res, ScalarField)
     np.testing.assert_almost_equal(res.data, grid.axes_coords[0] ** 2)
 
-    res = evaluate("outer(v, v)", {"v": vec})
+    res = evaluate("outer(v, v)", {"v": vec}, backend=backend)
     assert isinstance(res, Tensor2Field)
     np.testing.assert_almost_equal(res.data, [[grid.axes_coords[0] ** 2]])
 
-    assert isinstance(evaluate("gradient(a)", {"a": field}), VectorField)
+    assert isinstance(
+        evaluate("gradient(a)", {"a": field}, backend=backend), VectorField
+    )
 
 
-def test_evaluate_func_invalid():
+@pytest.mark.parametrize(
+    "backend", ["numpy", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_evaluate_func_invalid(backend):
     """Test the evaluate function with invalid data."""
     field = ScalarField.from_expression(UnitGrid([3]), "x")
 
     with pytest.raises(ValueError):
-        evaluate("x", {})
+        evaluate("x", {}, backend=backend)
 
     with pytest.raises(ValueError):
-        evaluate("x", {"x": field})
+        evaluate("x", {"x": field}, backend=backend)
 
     field2 = ScalarField.from_expression(UnitGrid([4]), "x")
     with pytest.raises(ValueError):
-        evaluate("a + b", {"a": field, "b": field2})
+        evaluate("a + b", {"a": field, "b": field2}, backend=backend)
 
     with pytest.raises(BCDataError):
-        evaluate("laplace(a)", {"a": field}, bc=Ellipsis)
+        evaluate("laplace(a)", {"a": field}, bc=Ellipsis, backend=backend)
 
     with pytest.raises(RuntimeError):
-        evaluate("a + b", {"a": field})
+        evaluate("a + b", {"a": field}, backend=backend)
 
 
 def test_evaluate_func_bcs_warning(caplog):
@@ -474,19 +485,22 @@ def test_evaluate_func_bcs_warning(caplog):
     assert "Unused" in caplog.text
 
 
-def test_evaluate_func_collection():
+@pytest.mark.parametrize(
+    "backend", ["numpy", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_evaluate_func_collection(backend):
     """Test the evaluate function with a field collection."""
     grid = UnitGrid([3])
     field = ScalarField.from_expression(grid, "x")
     vec = VectorField.from_expression(grid, ["x"])
     col = FieldCollection({"v": vec, "a": field})
 
-    res = evaluate("inner(v, v)", col)
+    res = evaluate("inner(v, v)", col, backend=backend)
     assert isinstance(res, ScalarField)
     np.testing.assert_almost_equal(res.data, grid.axes_coords[0] ** 2)
 
-    assert isinstance(evaluate("gradient(a)", col), VectorField)
-    assert isinstance(evaluate("a * v", col), VectorField)
+    assert isinstance(evaluate("gradient(a)", col, backend=backend), VectorField)
+    assert isinstance(evaluate("a * v", col, backend=backend), VectorField)
 
     col.labels = ["a", "a"]
     with pytest.raises(RuntimeError):

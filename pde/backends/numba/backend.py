@@ -28,6 +28,8 @@ from .overloads import OnlineStatistics
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
+    from numpy.typing import DTypeLike
+
     from ...grids.boundaries.axis import BoundaryAxisBase
     from ...pdes import PDEBase
     from ...tools.expressions import ExpressionBase
@@ -474,6 +476,7 @@ class NumbaBackend(NumpyBackend):
         operator: str | OperatorInfo,
         *,
         bcs: BoundariesBase,
+        dtype: DTypeLike | None = None,
         native: bool = False,
         **kwargs,
     ) -> OperatorType:
@@ -488,6 +491,8 @@ class NumbaBackend(NumpyBackend):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 The boundary conditions used before the operator is applied
+            dtype (numpy dtype):
+                The data type of the field.
             native (bool):
                 This flag has no effect for the `numba` backend.
             **kwargs:

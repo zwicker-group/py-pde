@@ -869,6 +869,7 @@ def evaluate(
     bc_ops: dict[str, BoundariesData] | None = None,
     user_funcs: dict[str, Callable] | None = None,
     consts: dict[str, NumberOrArray] | None = None,
+    backend: str | BackendBase = "numpy",
     label: str | None = None,
 ) -> DataFieldBase:
     """Evaluate an expression involving fields.
@@ -907,6 +908,8 @@ def evaluate(
             A dictionary with user defined constants that can be used in the expression.
             These can be either scalar numbers or fields defined on the same grid as the
             actual simulation.
+        backend (str):
+            The backend used to evaluate the expression
         label (str):
             Name of the field that is returned.
 
@@ -1050,7 +1053,7 @@ def evaluate(
     field_data = [field.data for field in fields_values]
 
     # calculate the result of the expression
-    func = expr.get_function(single_arg=False, user_funcs=ops)
+    func = expr.get_function(single_arg=False, user_funcs=ops, backend=backend)
     result_data = func(*field_data, None, {}, *extra_args)
 
     # turn result into a proper field

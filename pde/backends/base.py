@@ -27,6 +27,8 @@ from ..tools.typing import (
 )
 
 if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
     from ..fields import DataFieldBase
     from ..grids import BoundariesBase, GridBase
     from ..pdes.base import PDEBase
@@ -338,6 +340,7 @@ class BackendBase:
         grid: GridBase,
         operator: str | OperatorInfo,
         *,
+        dtype: DTypeLike | None = None,
         native: bool = False,
         **kwargs,
     ) -> OperatorImplType:
@@ -360,6 +363,8 @@ class BackendBase:
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            dtype (numpy dtype):
+                The data type of the field.
             native (bool):
                 If True, the returned functions expects the native data representation
                 of the backend. Otherwise, the input and output are expected to be
@@ -382,6 +387,7 @@ class BackendBase:
         operator: str | OperatorInfo,
         *,
         bcs: BoundariesBase,
+        dtype: DTypeLike | None = None,
         native: bool = False,
         **kwargs,
     ) -> OperatorType:
@@ -396,6 +402,8 @@ class BackendBase:
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
                 The boundary conditions used before the operator is applied
+            dtype (numpy dtype):
+                The data type of the field.
             native (bool):
                 If True, the returned functions expects the native data representation
                 of the backend. Otherwise, the input and output are expected to be

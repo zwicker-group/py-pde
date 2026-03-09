@@ -302,12 +302,16 @@ class CartesianVectorGradient(TorchDifferentialOperator):
                 The data type of the field
         """
         super().__init__(grid, bcs, dtype=dtype)
+        # define gradient operator that does not define the boundary conditions
         self.grad = CartesianGradient(grid, bcs, dtype=dtype)
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
+        # apply boundary conditions and get full data array
+        data_full = self.get_full_data(arr, args=args)
+        # apply differential operators for all dimensions
         return torch.stack(
-            tuple(self.grad(arr[i], args=args) for i in range(self.grid.num_axes))
+            tuple(self.grad(data_full[i], args=args) for i in range(self.grid.num_axes))
         )
 
 
@@ -336,12 +340,16 @@ class CartesianVectorLaplacian(TorchDifferentialOperator):
                 The data type of the field
         """
         super().__init__(grid, bcs, dtype=dtype)
-        self.lap = CartesianLaplacian(grid, bcs, dtype=dtype)
+        # define Laplace operator that does not define the boundary conditions
+        self.lap = CartesianLaplacian(grid, bcs=None, dtype=dtype)
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
+        # apply boundary conditions and get full data array
+        data_full = self.get_full_data(arr, args=args)
+        # apply differential operators for all dimensions
         return torch.stack(
-            tuple(self.lap(arr[i], args=args) for i in range(self.grid.num_axes))
+            tuple(self.lap(data_full[i], args=args) for i in range(self.grid.num_axes))
         )
 
 
@@ -372,12 +380,16 @@ class CartesianTensorDivergence(TorchDifferentialOperator):
                 The data type of the field
         """
         super().__init__(grid, bcs, dtype=dtype)
-        self.div = CartesianDivergence(grid, bcs, dtype=dtype)
+        # define divergence operator that does not define the boundary conditions
+        self.div = CartesianDivergence(grid, bcs=None, dtype=dtype)
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
+        # apply boundary conditions and get full data array
+        data_full = self.get_full_data(arr, args=args)
+        # apply differential operators for all dimensions
         return torch.stack(
-            tuple(self.div(arr[i], args=args) for i in range(self.grid.num_axes))
+            tuple(self.div(data_full[i], args=args) for i in range(self.grid.num_axes))
         )
 
 
