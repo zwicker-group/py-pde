@@ -72,8 +72,9 @@ def test_pde_scalar(rng):
     np.testing.assert_allclose(res_a.data, res_b.data)
 
 
-# TODO: add torch support "torch-cpu", "torch-mps", "torch-cuda"
-@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 def test_pde_explicit_time(backend):
     """Test PDE with an explicit time dependence in rhs."""
     eq = PDE({"u": "t"})
