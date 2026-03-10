@@ -187,7 +187,7 @@ class Controller:
         if dt is None:
             # use self.solver.info['dt'] if it is present
             dt = self.diagnostics["solver"].get("dt")
-        # add some tolerance to account for inaccurate float point math
+        # add absolute tolerance for time to account for inaccurate float point math
         if dt is None:  # self.solver.info['dt'] might be None
             atol = 1e-12
         else:
@@ -197,18 +197,20 @@ class Controller:
         t = t_start
         _logger.debug("Start simulation at t=%g", t)
         try:
-            while t < t_end:
+            while t < t_end - atol:
                 # determine next time point with an action
                 t_next_action = self.trackers.handle(state, t, atol=atol)
                 t_next_action = max(t_next_action, t + atol)
                 t_break = min(t_next_action, t_end)
 
+                # track runtime of trackers and solver
                 prof_start_solve = get_time()
                 profiler["tracker"] += prof_start_solve - prof_start_tracker
 
                 # advance the system to the new time point
                 t = stepper(state, t, t_break)
 
+                # track runtime of trackers and solver
                 prof_start_tracker = get_time()
                 profiler["solver"] += prof_start_tracker - prof_start_solve
 
