@@ -367,7 +367,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
         Args:
             backend (str):
-                The backend (e.g., `numba` or `numpy`) for constructing the operator
+                The backend (e.g., `numba` or `numpy`) for constructing the function
             single_arg (bool):
                 Determines whether the returned function accepts all variables in a
                 single argument as an array or whether all variables need to be
@@ -1028,7 +1028,9 @@ def evaluate(
     if bcs_left:
         _base_logger.warning("Unused BCs: %s", sorted(bcs_left))
 
-    # obtain the function to calculate the right hand side
+    # Obtain the function to calculate the right hand side. Note that the "none" is
+    # necessary since we defined our signature consistent with that of operators, where
+    # the None indicates that we do not supply an output array to store results.
     signature = (*tuple(fields_keys), "none", "bc_args")
 
     # check whether this function depends on additional input

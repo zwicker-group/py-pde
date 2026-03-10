@@ -350,7 +350,9 @@ class PDE(SDEBase):
                             and expr.args[-1].name == "bc_args"
                         )
                     ),
-                    # otherwise, add None and bc_args as arguments
+                    # Otherwise, add None and bc_args as arguments. The `None` indicates
+                    # that we do not supply an output array, but expect the operator to
+                    # construct this itself.
                     lambda expr: expr.func(
                         *expr.args, Symbol("none"), Symbol("bc_args")
                     ),
@@ -386,14 +388,13 @@ class PDE(SDEBase):
         # obtain all (differential) operators for this variable
         self._add_operators_to_expr(var, expr, ops=ops, state=state, backend=backend)
 
-        # Define the signature of the function to calculate the right hand side. Here
-        # we `variables` denotes all fields the PDE evolves, i.e., the dynamical degrees
-        # of freedom, `t` is the `time`, and `bc_args` are additional arguments that are
-        # simply forwarded to the function setting the boundary conditions.
+        # Define the signature of the function to calculate the right hand side. Here,
+        # `variables` denotes all fields the PDE evolves, i.e., the dynamical degrees of
+        # freedom, `t` is the `time`, and `bc_args` are additional arguments that are
+        # simply forwarded to the function setting the boundary conditions. The `none`
+        # is added for consistency with the signature expected by operators, where it
+        # indicates that we do not supply an array to store the output.
         signature = (*self.variables, "t", "none", "bc_args")
-        # FIXME: it is currently not document why the "none" is necessary. We should
-        # either remove it from the call signature or clearly document why it is
-        # necessary.
 
         # We optionally, add explicit variables to denote the grid cell positions if
         # they are used in the expression
@@ -435,6 +436,9 @@ class PDE(SDEBase):
                 """Wrapper that inserts the extra arguments and initialized bc_args."""
                 bc_args = NumbaDict()  # args for differential operators
                 bc_args["t"] = args[-1]  # pass time to differential operators
+                # Here, the `None` is required by the signature we choose. It
+                # essentially indicates that we do not supply an output array,
+                # consistent with the definition of operators.
                 return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
 
         elif backend.implementation == "torch":
@@ -443,6 +447,9 @@ class PDE(SDEBase):
             def rhs_func(*args) -> torch.Tensor:  # type: ignore
                 """Wrapper that inserts the extra arguments and initialized bc_args."""
                 bc_args = {"t": args[-1]}
+                # Here, the `None` is required by the signature we choose. It
+                # essentially indicates that we do not supply an output array,
+                # consistent with the definition of operators.
                 return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
 
         else:
@@ -781,6 +788,8 @@ class PDE(SDEBase):
             A function with signature `(state_data, t)`, which can be called with an
             instance of the state data and time to obtain the associated evolution rate.
         """
+        # load backend and initialize cache
+        backend = backends[backend]
         cache = self._prepare_cache(state, backend=backend)
 
         if isinstance(state, DataFieldBase):
