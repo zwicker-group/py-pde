@@ -342,9 +342,9 @@ class PDEBase(metaclass=ABCMeta):
         if backend != "auto":
             return backends[backend]  # load the respective backend
 
-        # try various backends and see whether they are implemented
+        # choose backend automatically by trial and error to see which one works
         for backend in ["numba", "torch", "numpy"]:
-            # TODO: Could first add a check whether module is available
+            # TODO: Could first add a check whether module is available; Issue #762
             try:
                 self.make_pde_rhs(state, backend=backend)
             except (NotImplementedError, ModuleNotFoundError) as err:
@@ -377,7 +377,7 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             callable: Function determining the right hand side of the PDE
         """
-        # try using the numba backend, if it implemented
+        # determine a suitable backend for the implementation
         backend = self.determine_backend(state, backend)
 
         # get a function evaluating the rhs of the PDE
