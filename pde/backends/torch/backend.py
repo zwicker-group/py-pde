@@ -46,8 +46,8 @@ class TorchBackend(NumpyBackend):
     implementation = "torch"
 
     compile_options = {
-        "fullgraph": True,
-        "dynamic": False,
+        "fullgraph": True,  # force compilation of entire graph (no graph breaks)
+        "dynamic": False,  # compiled functions do not support changing shapes
         "options": {"epilogue_fusion": True, "max_autotune": True},
     }
     """dict: defines options that affect compilation by torch"""
@@ -447,7 +447,8 @@ class TorchBackend(NumpyBackend):
         def rhs(arr: NumericArray, t: float = 0) -> NumericArray:
             """Helper wrapping function working with torch tensors."""
             arr_torch = self.from_numpy(arr)
-            res_torch = rhs_torch(arr_torch, t)
+            t_torch = torch.tensor(t)
+            res_torch = rhs_torch(arr_torch, t_torch)
             return self.to_numpy(res_torch)  # type: ignore
 
         return rhs  # type: ignore
