@@ -308,6 +308,8 @@ def make_laplace(
             value is controlled by the configuration.
         **kwargs:
             Specifies extra arguments influencing how the operator is created. Note that
+            some laplace operators support the `corner_weight` argument, which allows
+            setting weighting factors for corner points of the stencil.
 
     Returns:
         A function that can be applied to an array of values

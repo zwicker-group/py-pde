@@ -19,6 +19,40 @@ from pde.tools.misc import estimate_computation_speed
 config["backend.numba.multithreading"] = "never"
 
 
+try:
+    import jax
+except ImportError:
+    print("Skip `jax` implementation since module is not available")
+else:
+    import jax.numpy as jnp
+
+    def jax_2d_periodic(shape, periodic, dx=1):
+        """Make jax-compiled laplace operator."""
+
+        @jax.jit
+        def laplace(arr_input):
+            arr = jnp.asarray(arr_input, dtype=jnp.float32)
+
+            # set boundary conditions
+            if periodic:
+                arr = arr.at[0, :].set(arr[-2, :])
+                arr = arr.at[-1, :].set(arr[1, :])
+                arr = arr.at[:, 0].set(arr[:, -2])
+                arr = arr.at[:, -1].set(arr[:, 1])
+            else:
+                arr = arr.at[0, :].set(arr[1, :])
+                arr = arr.at[-1, :].set(arr[-2, :])
+                arr = arr.at[:, 0].set(arr[:, 1])
+                arr = arr.at[:, -1].set(arr[:, -2])
+
+            # apply discretized Laplace operator
+            darr_dx = arr[0:-2, 1:-1] + arr[2:, 1:-1] - 2 * arr[1:-1, 1:-1]
+            darr_dy = arr[1:-1, 0:-2] + arr[1:-1, 2:] - 2 * arr[1:-1, 1:-1]
+            return (darr_dx + darr_dy) / dx**2
+
+        return laplace
+
+
 def torch_2d_periodic(field, periodic, dx=1):
     """Make torch-compiled Laplace operator."""
     import torch
@@ -214,7 +248,16 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
     bcs = grid.get_boundary_conditions("auto_periodic_neumann", rank=0)
     expected = field.laplace("auto_periodic_neumann")
 
-    for method in ["TORCH", "CUSTOM", "OPTIMIZED", "9POINT", "torch", "numba", "scipy"]:
+    for method in [
+        "JAX",
+        "TORCH",
+        "CUSTOM",
+        "OPTIMIZED",
+        "9POINT",
+        "torch",
+        "numba",
+        "scipy",
+    ]:
         if method == "CUSTOM":
             laplace = numba_laplace_2d(shape, periodic=periodic)
         elif method == "OPTIMIZED":
@@ -223,6 +266,8 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
             laplace = grid.make_operator(
                 "laplace", bc=bcs, corner_weight=1 / 3, backend="numba"
             )
+        elif method == "JAX":
+            laplace = jax_2d_periodic(shape, periodic=periodic)
         elif method == "TORCH":
             laplace, field_data = torch_2d_periodic(field.data, periodic=periodic)
         elif method in {"numba", "torch", "scipy"}:
@@ -232,7 +277,12 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
             raise ValueError(msg)
 
         # call once to pre-compile and test result
-        if method == "TORCH":
+        if method == "JAX":
+            with np.errstate(over="ignore"):  # jax/torch converts data to float32
+                result = laplace(field._data_full)
+                np.testing.assert_allclose(result, expected.data, atol=1e-5, rtol=1e-5)
+                speed = estimate_computation_speed(laplace, field._data_full)
+        elif method == "TORCH":
             result = laplace(field_data)
             np.testing.assert_allclose(result, expected.data, rtol=1e-5, atol=1e-6)
             speed = estimate_computation_speed(laplace, field_data)
@@ -317,4 +367,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    test_cartesian((1024, 1024), periodic=True)
+    # main()

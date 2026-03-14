@@ -35,6 +35,7 @@ jobs:
     - name: Generate serial coverage report
       env:
         NUMBA_DISABLE_JIT: 1
+        JAX_DISABLE_JIT: 1
         MPLBACKEND: agg
         PYPDE_TESTRUN: 1
       run: |
@@ -49,6 +50,7 @@ jobs:
     - name: Generate parallel coverage report
       env:
         NUMBA_DISABLE_JIT: 1
+        JAX_DISABLE_JIT: 1
         MPLBACKEND: agg
         PYPDE_TESTRUN: 1
       run: |
