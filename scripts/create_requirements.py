@@ -134,6 +134,12 @@ REQUIREMENTS = [
         groups={"full"},
     ),
     Requirement(
+        name="jax",
+        version_min="0.7",
+        usage="Using `jax` as a backend",
+        groups={"full", "docs"},
+    ),
+    Requirement(
         name="torch",
         version_min="2.9",
         usage="Using `torch` as a backend",

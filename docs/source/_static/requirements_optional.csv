@@ -2,6 +2,7 @@ Package,Minimal version,Usage
 ffmpeg-python,0.2,Reading and writing videos
 h5py,2.10,Storing data in the hierarchical file format
 ipywidgets,8,Jupyter notebook support
+jax,0.7,Using `jax` as a backend
 mpi4py,3,Parallel processing using MPI
 napari,0.4.8,Displaying images interactively
 numba-mpi,0.22,Parallel processing using MPI+numba
