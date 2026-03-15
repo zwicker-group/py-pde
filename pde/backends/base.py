@@ -11,7 +11,9 @@ from collections import defaultdict
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
+from ..solvers import AdaptiveSolverBase, SolverBase
 from ..tools.config import Config, Parameter
+from ..tools.math import OnlineStatistics
 from ..tools.typing import (
     DataSetter,
     FloatingArray,
@@ -551,19 +553,27 @@ class BackendBase:
             solver (:class:`~pde.solvers.base.SolverBase`):
                 The solver instance, which determines how the stepper is constructed
             stepper_style (str):
-                Determines how the stepper is expected to work
+                The style of the stepper, either "fixed" or "adaptive"
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
-                The time step for the stepper
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
-        msg = f"Steppers are not defined for backend {self.name}"
+        solver.info["dt_statistics"] = OnlineStatistics()
+
+        assert solver.backend == self
+        if stepper_style == "fixed":
+            return solver._make_fixed_stepper(state, dt)
+        if stepper_style == "adaptive":
+            assert isinstance(solver, AdaptiveSolverBase)
+            return solver._make_adaptive_stepper(state)
+        msg = f"Backend cannot handle stepper style `{stepper_style}`"
         raise NotImplementedError(msg)
 
     def make_expression_function(

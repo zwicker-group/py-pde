@@ -5,13 +5,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from ...fields import DataFieldBase, VectorField
-from ...solvers import AdaptiveSolverBase, SolverBase
-from ...tools.math import OnlineStatistics
 from ..base import BackendBase, OperatorInfo, TFunc
 
 if TYPE_CHECKING:
@@ -391,42 +389,6 @@ class NumpyBackend(BackendBase):
             return noise_realization
 
         msg = f"Noise realization is not implemented for {eq}"
-        raise NotImplementedError(msg)
-
-    def make_inner_stepper(
-        self,
-        solver: SolverBase,
-        stepper_style: Literal["fixed", "adaptive"],
-        state: TField,
-        dt: float,
-    ) -> Callable:
-        """Return a stepper function using an explicit scheme.
-
-        Args:
-            solver (:class:`~pde.solvers.base.SolverBase`):
-                The solver instance, which determines how the stepper is constructed
-            stepper_style (str):
-                The style of the stepper, either "fixed" or "adaptive"
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-            dt (float):
-                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
-
-        Returns:
-            Function that can be called to advance the `state` from time `t_start` to
-            time `t_end`. The function call signature is `(state: numpy.ndarray,
-            t_start: float, t_end: float)`
-        """
-        solver.info["dt_statistics"] = OnlineStatistics()
-
-        assert solver.backend == self
-        if stepper_style == "fixed":
-            return solver._make_fixed_stepper(state, dt)
-        if stepper_style == "adaptive":
-            assert isinstance(solver, AdaptiveSolverBase)
-            return solver._make_adaptive_stepper(state)
-        msg = f"Numpy backend cannot handle stepper style {stepper_style}"
         raise NotImplementedError(msg)
 
     def make_expression_function(
