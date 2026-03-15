@@ -693,6 +693,108 @@ class SDEBase(PDEBase):
 
         return noise_realization
 
+    def _make_noise_realization_numpy(
+        self, state: TField
+    ) -> Callable[[NumericArray, float], NumericArray | None]:
+        """Return a function for determining one realization of the noise term.
+
+        This helper implements the noise realization using vectorized numpy operations
+        and is used by :meth:`make_noise_realization_jax` and
+        :meth:`make_noise_realization_torch`.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+
+        Returns:
+            callable: Function calculating the noise realization
+        """
+        if getattr(self, "noise", None) is None or not self.is_sde:
+
+            def noise_realization(
+                state_data: NumericArray, t: float
+            ) -> NumericArray | None:
+                """Helper function returning a noise realization."""
+                return None
+
+            return noise_realization
+
+        data_shape: tuple[int, ...] = state.data.shape
+        noise_var: float
+
+        if state.dtype != float:
+            msg = "Noise is only supported for float types"
+            raise TypeError(msg)
+
+        if isinstance(state, FieldCollection):
+            # different noise strengths, assuming one for each field
+            noises_var: NumericArray = np.empty(data_shape[0])
+            for n, noise_var in enumerate(np.broadcast_to(self.noise, len(state))):
+                noises_var[state._slices[n]] = noise_var
+
+            cell_volumes_flat = state.grid.cell_volumes.ravel()
+
+            def noise_realization(
+                state_data: NumericArray, t: float
+            ) -> NumericArray | None:
+                """Helper function returning a noise realization."""
+                out = np.empty(data_shape)
+                for n in range(len(state_data)):
+                    if noises_var[n] == 0:
+                        out[n].fill(0)
+                    else:
+                        scales = np.sqrt(noises_var[n] / cell_volumes_flat)
+                        out[n] = (
+                            scales * np.random.randn(state_data[n].size)  # noqa: NPY002
+                        ).reshape(state_data[n].shape)
+                return out
+
+        else:
+            # a single noise value is given for all fields
+            noise_var = float(self.noise)
+            cell_volumes = state.grid.cell_volumes
+
+            scales = np.sqrt(noise_var / cell_volumes)
+
+            def noise_realization(
+                state_data: NumericArray, t: float
+            ) -> NumericArray | None:
+                """Helper function returning a noise realization."""
+                return scales * np.random.randn(*state_data.shape)  # noqa: NPY002
+
+        return noise_realization
+
+    def make_noise_realization_jax(
+        self, state: TField
+    ) -> Callable[[NumericArray, float], NumericArray | None]:
+        """Return a function for determining one realization of the noise term.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+
+        Returns:
+            callable: Function calculating the noise realization
+        """
+        return self._make_noise_realization_numpy(state)
+
+    def make_noise_realization_torch(
+        self, state: TField
+    ) -> Callable[[NumericArray, float], NumericArray | None]:
+        """Return a function for determining one realization of the noise term.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+
+        Returns:
+            callable: Function calculating the noise realization
+        """
+        return self._make_noise_realization_numpy(state)
+
     def make_noise_realization(
         self, state: TField, backend: str | BackendBase = "auto"
     ) -> Callable[[NumericArray, float], NumericArray | None]:
