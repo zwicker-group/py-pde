@@ -530,30 +530,6 @@ class JaxBackend(BackendBase):
 
         return apply_op  # type: ignore
 
-    def make_noise_realization(
-        self, eq: PDEBase, state: TField
-    ) -> Callable[[NumericArray, float], NumericArray | None]:
-        """Return a function for evaluating the noise term of the PDE.
-
-        Args:
-            eq (:class:`~pde.pdes.base.PDEBase`):
-                The object describing the differential equation
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-
-        Returns:
-            Function calculating noise
-        """
-        if hasattr(eq, "make_noise_realization_jax"):
-            return eq.make_noise_realization_jax(state)  # type: ignore
-
-        msg = (
-            "Noise needs to be implemented by defining the "
-            "`make_noise_realization_jax` method for the PDE class."
-        )
-        raise NotImplementedError(msg)
-
     def make_pde_rhs(
         self, eq: PDEBase, state: TField, *, native: bool = False
     ) -> Callable[[TArray, float], TArray]:

@@ -699,8 +699,7 @@ class SDEBase(PDEBase):
         """Return a function for determining one realization of the noise term.
 
         This helper implements the noise realization using vectorized numpy operations
-        and is used by :meth:`make_noise_realization_jax` and
-        :meth:`make_noise_realization_torch`.
+        and is used by :meth:`make_noise_realization` for non-numba backends.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -765,38 +764,8 @@ class SDEBase(PDEBase):
 
         return noise_realization
 
-    def make_noise_realization_jax(
-        self, state: TField
-    ) -> Callable[[NumericArray, float], NumericArray | None]:
-        """Return a function for determining one realization of the noise term.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted.
-
-        Returns:
-            callable: Function calculating the noise realization
-        """
-        return self._make_noise_realization_numpy(state)
-
-    def make_noise_realization_torch(
-        self, state: TField
-    ) -> Callable[[NumericArray, float], NumericArray | None]:
-        """Return a function for determining one realization of the noise term.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted.
-
-        Returns:
-            callable: Function calculating the noise realization
-        """
-        return self._make_noise_realization_numpy(state)
-
     def make_noise_realization(
-        self, state: TField, backend: str | BackendBase = "auto"
+        self, state: TField, backend: BackendBase
     ) -> Callable[[NumericArray, float], NumericArray | None]:
         """Return a function for determining one realization of the noise term.
 
@@ -804,22 +773,19 @@ class SDEBase(PDEBase):
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted.
-            backend (str):
-                Determines how the function is created. Accepted values are 'numpy' and
-                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
+            backend (:class:`~pde.backends.base.BackendBase`):
+                The backend used to build the function.
 
         Returns:
             callable: Function calculating the noise realization
         """
-        from ..backends import backends
+        from ..backends.numba.backend import NumbaBackend
 
-        if backend == "auto":
-            if hasattr(self, "make_noise_realization_numba"):
-                backend = "numba"
-            else:
-                backend = "numpy"
+        if isinstance(backend, NumbaBackend):
+            noise_realization = self.make_noise_realization_numba(state)
+            return backend.compile_function(noise_realization)  # type: ignore
 
-        return backends[backend].make_noise_realization(self, state)
+        return self._make_noise_realization_numpy(state)
 
 
 def expr_prod(factor: float, expression: str) -> str:
