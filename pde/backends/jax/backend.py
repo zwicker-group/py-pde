@@ -13,6 +13,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+from ...fields import VectorField
 from ...grids import GridBase
 from ...grids.boundaries.axes import BoundariesList
 from ...tools.cache import cached_method
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
     from ...grids import GridBase
     from ...grids.boundaries.axes import BoundariesBase
     from ...grids.boundaries.local import BCBase
+    from ...fields import DataFieldBase
     from ...pdes import PDEBase
     from ...solvers.base import SolverBase
     from ...tools.config import Config
@@ -530,6 +532,94 @@ class JaxBackend(NumpyBackend):
             return out
 
         return apply_op  # type: ignore
+
+    def make_inner_prod_operator(
+        self, field: DataFieldBase, *, conjugate: bool = True
+    ) -> Callable[[TArray, TArray, TArray | None], TArray]:
+        """Return operator calculating the dot product between two fields.
+
+        This supports both products between two vectors as well as products
+        between a vector and a tensor.
+
+        Args:
+            field (:class:`~pde.fields.datafield_base.DataFieldBase`):
+                Field for which the inner product is defined
+            conjugate (bool):
+                Whether to use the complex conjugate for the second operand
+
+        Returns:
+            function that takes two instance of :class:`~numpy.ndarray`, which contain
+            the discretized data of the two operands. An optional third argument can
+            specify the output array to which the result is written.
+        """
+        num_axes = field.grid.num_axes
+
+        def dot(
+            a: jax.Array, b: jax.Array, out: jax.Array | None = None
+        ) -> jax.Array:
+            """Jax implementation to calculate dot product between two fields."""
+            rank_a = a.ndim - num_axes
+            rank_b = b.ndim - num_axes
+            if rank_a < 1 or rank_b < 1:
+                msg = "Fields in dot product must have rank >= 1"
+                raise TypeError(msg)
+            if a.shape[rank_a:] != b.shape[rank_b:]:
+                msg = "Shapes of fields are not compatible for dot product"
+                raise ValueError(msg)
+            if out is not None:
+                msg = "jax implementation of inner product does not allow `out` arg."
+                raise TypeError(msg)
+
+            if conjugate:
+                b = b.conj()
+
+            if rank_a == 1 and rank_b == 1:  # result is scalar field
+                return jnp.einsum("i...,i...->...", a, b)
+
+            if rank_a == 2 and rank_b == 1:  # result is vector field
+                return jnp.einsum("ij...,j...->i...", a, b)
+
+            if rank_a == 1 and rank_b == 2:  # result is vector field
+                return jnp.einsum("i...,ij...->j...", a, b)
+
+            if rank_a == 2 and rank_b == 2:  # result is tensor-2 field
+                return jnp.einsum("ij...,jk...->ik...", a, b)
+
+            msg = f"Unsupported shapes ({a.shape}, {b.shape})"
+            raise TypeError(msg)
+
+        return dot  # type: ignore
+
+    def make_outer_prod_operator(
+        self, field: DataFieldBase
+    ) -> Callable[[TArray, TArray, TArray | None], TArray]:
+        """Return operator calculating the outer product between two fields.
+
+        This typically only supports products between two vector fields.
+
+        Args:
+            field (:class:`~pde.fields.datafield_base.DataFieldBase`):
+                Field for which the outer product is defined
+
+        Returns:
+            function that takes two instance of :class:`~numpy.ndarray`, which contain
+            the discretized data of the two operands. An optional third argument can
+            specify the output array to which the result is written.
+        """
+        if not isinstance(field, VectorField):
+            msg = "Can only define outer product between vector fields"
+            raise TypeError(msg)
+
+        def outer(
+            a: jax.Array, b: jax.Array, out: jax.Array | None = None
+        ) -> jax.Array:
+            """Calculate the outer product using jax."""
+            if out is not None:
+                msg = "jax implementation of outer product does not allow `out` arg."
+                raise TypeError(msg)
+            return jnp.einsum("i...,j...->ij...", a, b)  # type: ignore
+
+        return outer  # type: ignore
 
     def make_pde_rhs(
         self, eq: PDEBase, state: TField, *, native: bool = False

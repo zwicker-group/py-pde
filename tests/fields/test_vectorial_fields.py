@@ -69,6 +69,12 @@ def test_vectors_basic():
             assert s.grid is grid
             np.testing.assert_allclose(s.data, np.full(grid.shape, 4))
 
+    if module_available("jax"):
+        dot_op = v1.make_dot_operator("jax")
+        np.testing.assert_allclose(
+            np.array(dot_op(v1.data, v2.data)), np.full(grid.shape, 4)
+        )
+
     # test options for plotting images
     v1.plot(method="streamplot", transpose=True)
     v1.plot_components()
@@ -165,6 +171,11 @@ def test_outer_product():
         np.testing.assert_equal(tf.data, res)
         outer(vf.data, vf.data, out=tf.data)
         np.testing.assert_equal(tf.data, res)
+
+    if module_available("jax"):
+        outer = vf.make_outer_prod_operator("jax")
+        res = np.array([1, 2, 2, 4]).reshape(2, 2, 1, 1)
+        np.testing.assert_equal(np.array(outer(vf.data, vf.data)), res)
 
 
 def test_from_expressions():
