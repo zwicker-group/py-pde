@@ -53,7 +53,16 @@ class EulerSolver(AdaptiveSolverBase):
             # handle stochastic version of the pde
             self.info["scheme"] = "euler-maruyama"
             rhs_pde = self.backend.make_pde_rhs(self.pde, state)
+
+            # get the function that calculates the noise
+            if not hasattr(self.pde, "make_noise_realization"):
+                msg = (
+                    f"{self.pde.__class__.__name__} does not implement "
+                    "`make_noise_realization`, which is required to support noisy PDEs."
+                )
+                raise NotImplementedError(msg)
             rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
+            rhs_noise = self.backend.compile_function(rhs_noise)
 
             def stepper(state_data: NumericArray, t: float) -> None:
                 """Perform a single Euler-Maruyama step."""

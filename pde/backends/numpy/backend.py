@@ -356,41 +356,6 @@ class NumpyBackend(BackendBase):
 
         return pde_rhs
 
-    def make_noise_realization(
-        self, eq: PDEBase, state: TField
-    ) -> Callable[[NumericArray, float], NumericArray | None]:
-        """Return a function for evaluating the noise term of the PDE.
-
-        Args:
-            eq (:class:`~pde.pdes.base.PDEBase`):
-                The object describing the differential equation
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-
-        Returns:
-            Function calculating noise
-        """
-        if hasattr(eq, "make_noise_realization_numpy"):
-            return eq.make_noise_realization_numpy(state)  # type:ignore
-
-        if hasattr(eq, "noise_realization"):
-            fields = state.copy()
-
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                fields.data = state_data
-                noise = eq.noise_realization(fields, t)
-                if noise is None:
-                    return None
-                return noise.data  # type: ignore
-
-            return noise_realization
-
-        msg = f"Noise realization is not implemented for {eq}"
-        raise NotImplementedError(msg)
-
     def make_expression_function(
         self,
         expression: ExpressionBase,

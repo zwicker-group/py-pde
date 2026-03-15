@@ -123,8 +123,17 @@ class ImplicitSolver(SolverBase):
         self.info["scheme"] = "implicit-euler-maruyama"
         self.info["stochastic"] = True
 
+        # get the function that calculates the noise
         rhs = self.backend.make_pde_rhs(self.pde, state)
+        if not hasattr(self.pde, "make_noise_realization"):
+            msg = (
+                f"{self.pde.__class__.__name__} does not implement "
+                "`make_noise_realization`, which is required to support noisy PDEs."
+            )
+            raise NotImplementedError(msg)
         rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
+        rhs_noise = self.backend.compile_function(rhs_noise)
+
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
 
