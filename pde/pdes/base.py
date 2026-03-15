@@ -645,8 +645,8 @@ class SDEBase(PDEBase):
         for n, var in enumerate(noise_vars_field):
             noise_var[state._slices[n]] = var
 
-        if backend.implementation == "numba":
-            # numba needs special implementation since it cannot iterate over functions
+        if backend.implementation in {"jax", "numba", "numpy"}:
+            # determine noise realization for slices with non-zero variance
             def noise_realization(
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
@@ -660,8 +660,9 @@ class SDEBase(PDEBase):
                         out[n] = scale * np.random.randn(*state_data[n].shape)  # noqa: NPY002
                 return out
 
-        elif backend.implementation in {"torch", "jax"}:
-            # build a function for each field
+        else:
+            # Determine noise realization for all slices. This implementation is mainly
+            # for `torch`, which does not support the `if` construct above.
             def noise_realization(
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
