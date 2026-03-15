@@ -173,7 +173,7 @@ def test_examples_vector_polar(backend):
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
     # vector gradient
-    res = vf.gradient({"r-": {"derivative": 0}, "r+": {"value": [1, 1]}})
+    res = vf.gradient({"r-": {"derivative": 0}, "r+": {"value": [1, 1]}}, backend=backend)
     expr = [["3 * r**2", "-r"], ["2 * r", "r**2"]]
     expect = Tensor2Field.from_expression(grid, expr)
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
