@@ -501,24 +501,6 @@ class BackendBase:
         msg = f"Interpolator not defined for backend {self.name}"
         raise NotImplementedError(msg)
 
-    def make_noise_realization(
-        self, eq: PDEBase, state: TField
-    ) -> Callable[[NumericArray, float], NumericArray | None]:
-        """Return a function for evaluating the noise term of the PDE.
-
-        Args:
-            eq (:class:`~pde.pdes.base.PDEBase`):
-                The PDE instance describing the evolution equation
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-
-        Returns:
-            Function calculating noise
-        """
-        msg = f"Noise terms not defined for backend {self.name}"
-        raise NotImplementedError(msg)
-
     def make_pde_rhs(
         self, eq: PDEBase, state: TField, *, native: bool = False
     ) -> Callable[[TArray, float], TArray]:

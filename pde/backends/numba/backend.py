@@ -1270,31 +1270,6 @@ class NumbaBackend(NumpyBackend):
 
         return self.compile_function(make_rhs(state, backend=self))
 
-    def make_noise_realization(
-        self, eq: PDEBase, state: TField
-    ) -> Callable[[NumericArray, float], NumericArray | None]:
-        """Return a function for evaluating the noise term of the PDE.
-
-        Args:
-            eq (:class:`~pde.pdes.base.PDEBase`):
-                The object describing the differential equation
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-
-        Returns:
-            Function calculating noise
-        """
-        if hasattr(eq, "make_noise_realization_numba"):
-            noise_realization = eq.make_noise_realization_numba(state)
-            return self.compile_function(noise_realization)  # type: ignore
-
-        msg = (
-            "Noise needs to be implemented by defining the "
-            "`make_noise_realization_numba` method for the PDE class."
-        )
-        raise NotImplementedError(msg)
-
     def make_expression_function(
         self,
         expression: ExpressionBase,
