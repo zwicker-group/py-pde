@@ -58,6 +58,22 @@ def test_get_arr_1d():
     np.testing.assert_equal(arr_1d, a[1, 1, :])
 
 
+def test_match_data_shape():
+    """Test `_match_data_shape` method."""
+    grid = UnitGrid([3, 3])
+    bc = BCBase.from_data(grid, 0, upper=False, rank=1, data="value")
+    assert bc._match_data_shape(1).shape == (1, 1)
+    assert bc._match_data_shape([1]).shape == (1, 1)
+    assert bc._match_data_shape([[1]]).shape == (1, 1)
+    assert bc._match_data_shape([1, 2]).shape == (2, 1)  # interpret as vector
+    assert bc._match_data_shape([1, 2, 3]).shape == (1, 3)  # interpret as spatial
+    assert bc._match_data_shape(np.ones((2, 3))).shape == (2, 3)  # interpret fully
+    with pytest.raises(RuntimeError):
+        bc._match_data_shape([[1, 2]])  # wrong spatial axis
+    with pytest.raises(RuntimeError):
+        bc._match_data_shape([[1], [2], [3]])  # wrong vector dim
+
+
 def test_individual_boundaries():
     """Test setting individual boundaries."""
     g = UnitGrid([2])

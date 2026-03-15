@@ -237,6 +237,7 @@ napoleon_custom_sections = None
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     "h5py": ("https://docs.h5py.org/en/latest", None),
+    "jax": ("https://docs.jax.dev/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable", None),
     "modelrunner": ("https://py-modelrunner.readthedocs.io/en/latest", None),
     "napari": ("https://napari.org/", None),

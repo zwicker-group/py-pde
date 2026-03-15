@@ -27,10 +27,10 @@ if TYPE_CHECKING:
 
     import jax
 
-    from ..typing import JaxOperatorImplType
+    from ....tools.typing import OperatorImplType
 
 
-def _make_laplace_jax_1d(grid: CartesianGrid) -> JaxOperatorImplType:
+def _make_laplace_jax_1d(grid: CartesianGrid) -> OperatorImplType:
     """Make a 1d Laplace operator using jax compilation.
 
     Args:
@@ -49,7 +49,7 @@ def _make_laplace_jax_1d(grid: CartesianGrid) -> JaxOperatorImplType:
     return laplace
 
 
-def _make_laplace_jax_2d(grid: CartesianGrid) -> JaxOperatorImplType:
+def _make_laplace_jax_2d(grid: CartesianGrid) -> OperatorImplType:
     """Make a 2d Laplace operator using jax compilation.
 
     Args:
@@ -70,7 +70,7 @@ def _make_laplace_jax_2d(grid: CartesianGrid) -> JaxOperatorImplType:
     return laplace
 
 
-def _make_laplace_jax_3d(grid: CartesianGrid) -> JaxOperatorImplType:
+def _make_laplace_jax_3d(grid: CartesianGrid) -> OperatorImplType:
     """Make a 3d Laplace operator using jax compilation.
 
     Args:
@@ -93,7 +93,7 @@ def _make_laplace_jax_3d(grid: CartesianGrid) -> JaxOperatorImplType:
 
 
 @jax_backend.register_operator(CartesianGrid, "laplace", rank_in=0, rank_out=0)
-def make_laplace(grid: CartesianGrid, **kwargs) -> JaxOperatorImplType:
+def make_laplace(grid: CartesianGrid, **kwargs) -> OperatorImplType:
     """Make a Laplace operator on a Cartesian grid.
 
     Args:
@@ -120,7 +120,7 @@ def make_laplace(grid: CartesianGrid, **kwargs) -> JaxOperatorImplType:
 
 def _make_gradient_jax_1d(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a 1d gradient operator using jax compilation.
 
     Args:
@@ -154,7 +154,7 @@ def _make_gradient_jax_1d(
 
 def _make_gradient_jax_2d(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a 2d gradient operator using jax compilation.
 
     Args:
@@ -193,7 +193,7 @@ def _make_gradient_jax_2d(
 
 def _make_gradient_jax_3d(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a 3d gradient operator using jax compilation.
 
     Args:
@@ -238,7 +238,7 @@ def make_gradient(
     grid: CartesianGrid,
     *,
     method: Literal["central", "forward", "backward"] = "central",
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a gradient operator on a Cartesian grid.
 
     Args:
@@ -265,7 +265,7 @@ def make_gradient(
 
 def _make_gradient_squared_jax_1d(
     grid: CartesianGrid, central: bool = True
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a 1d squared gradient operator using jax compilation.
 
     Args:
@@ -303,7 +303,7 @@ def _make_gradient_squared_jax_1d(
 
 def _make_gradient_squared_jax_2d(
     grid: CartesianGrid, central: bool = True
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a 2d squared gradient operator using jax compilation.
 
     Args:
@@ -349,7 +349,7 @@ def _make_gradient_squared_jax_2d(
 
 def _make_gradient_squared_jax_3d(
     grid: CartesianGrid, central: bool = True
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a 3d squared gradient operator using jax compilation.
 
     Args:
@@ -401,7 +401,7 @@ def _make_gradient_squared_jax_3d(
 @jax_backend.register_operator(CartesianGrid, "gradient_squared", rank_in=0, rank_out=0)
 def make_gradient_squared(
     grid: CartesianGrid, *, central: bool = True
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a gradient operator on a Cartesian grid.
 
     Args:
@@ -430,7 +430,7 @@ def make_gradient_squared(
 
 def _make_divergence_jax_1d(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a 1d divergence operator using jax compilation.
 
     Args:
@@ -463,7 +463,7 @@ def _make_divergence_jax_1d(
 
 def _make_divergence_jax_2d(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a 2d divergence operator using jax compilation.
 
     Args:
@@ -502,7 +502,7 @@ def _make_divergence_jax_2d(
 
 def _make_divergence_jax_3d(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a 3d divergence operator using jax compilation.
 
     Args:
@@ -547,7 +547,7 @@ def make_divergence(
     grid: CartesianGrid,
     *,
     method: Literal["central", "forward", "backward"] = "central",
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a divergence operator on a Cartesian grid.
 
     Args:
@@ -574,7 +574,7 @@ def make_divergence(
 
 def _vectorize_operator(
     make_operator: Callable, grid: CartesianGrid, **kwargs
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Apply an operator to on all dimensions of a vector.
 
     Args:
@@ -603,7 +603,7 @@ def make_vector_gradient(
     grid: CartesianGrid,
     *,
     method: Literal["central", "forward", "backward"] = "central",
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a vector gradient operator on a Cartesian grid.
 
     Args:
@@ -620,7 +620,7 @@ def make_vector_gradient(
 
 
 @jax_backend.register_operator(CartesianGrid, "vector_laplace", rank_in=1, rank_out=1)
-def make_vector_laplace(grid: CartesianGrid) -> JaxOperatorImplType:
+def make_vector_laplace(grid: CartesianGrid) -> OperatorImplType:
     """Make a vector Laplacian on a Cartesian grid.
 
     Args:
@@ -640,7 +640,7 @@ def make_tensor_divergence(
     grid: CartesianGrid,
     *,
     method: Literal["central", "forward", "backward"] = "central",
-) -> JaxOperatorImplType:
+) -> OperatorImplType:
     """Make a tensor divergence operator on a Cartesian grid.
 
     Args:

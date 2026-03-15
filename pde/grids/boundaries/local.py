@@ -74,10 +74,7 @@ from ..base import GridBase, PeriodicityError
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ...tools.typing import (
-        NumberOrArray,
-        NumericArray,
-    )
+    from ...tools.typing import NumberOrArray, NumericArray
     from .._mesh import GridMesh
 
 _logger = logging.getLogger(__name__)
@@ -231,6 +228,27 @@ class BCBase(metaclass=ABCMeta):
         if self.upper:
             return self.grid.axes_bounds[self.axis][1]
         return self.grid.axes_bounds[self.axis][0]
+
+    def _match_data_shape(self, arr: NumberOrArray) -> NumericArray:
+        """Adds axis to a numpy array to be compatible with shape boundary."""
+        arr = np.asanyarray(arr)
+        if arr.shape == self._shape_tensor + self._shape_boundary:
+            # array has correct shape
+            return arr
+        if arr.shape == self._shape_tensor:
+            # array only provides the local shape tensor -> add spatial dimensions
+            boundary_num_axes = self.grid.num_axes - 1
+            return arr[(...,) + (None,) * boundary_num_axes]
+        if arr.shape == self._shape_boundary:
+            # array only provides spatial information -> add tensor dimensions
+            tensor_rank = len(self._shape_tensor)
+            return arr[(None,) * tensor_rank + (...,)]
+        if arr.size == 1:
+            tensor_rank = len(self._shape_tensor)
+            boundary_num_axes = self.grid.num_axes - 1
+            return arr.reshape((1,) * (tensor_rank + boundary_num_axes))
+        msg = f"Cannot interpret data shape `{arr.shape}` for boundary"
+        raise RuntimeError(msg)
 
     def _field_repr(self, field_name: str) -> str:
         """Return representation of the field to which the condition is applied.

@@ -50,6 +50,13 @@ def test_pde_consistency(pde_class, dim, rng):
         # use reduced tolerance to support potential float32 devices
         np.testing.assert_allclose(field.data, res, rtol=5e-6)
 
+    # compare jax to numpy implementation
+    if module_available("jax"):
+        rhs = eq.make_pde_rhs(state, backend="jax")
+        res = rhs(state.data, 0)
+        # use reduced tolerance to support potential float32 devices
+        np.testing.assert_allclose(field.data, res, rtol=5e-6)
+
     # compare to generic implementation
     assert isinstance(eq.expression, str)
     eq2 = pdes.PDE({"c": eq.expression})

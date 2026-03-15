@@ -7,29 +7,35 @@ from __future__ import annotations
 
 import numbers
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 
+from ...grids import GridBase
 from ...tools.cache import cached_method
-from ..numpy.backend import NumpyBackend
+from ..base import TFunc
+from ..numpy import NumpyBackend
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from numpy.typing import DTypeLike
 
     from ...grids import GridBase
     from ...grids.boundaries.axes import BoundariesBase
     from ...grids.boundaries.local import BCBase
+    from ...pdes import PDEBase
+    from ...solvers.base import SolverBase
     from ...tools.config import Config
-    from ...tools.typing import (
-        NumericArray,
-        OperatorInfo,
-        OperatorType,
-    )
+    from ...tools.typing import NumericArray, OperatorInfo, OperatorType, TArray, TField
     from ..base import TFunc
-    from .typing import JaxDataSetter, JaxGhostCellSetter, JaxOperatorImplType
+    from .typing import (
+        JaxDataSetter,
+        JaxGhostCellSetter,
+        OperatorImplType,
+    )
 
 
 class JaxBackend(NumpyBackend):
@@ -157,9 +163,10 @@ class JaxBackend(NumpyBackend):
             func (callable):
                 The function that needs to be compiled for this backend
         """
-        if self.config["compile"]:
-            return jax.jit(func)  # type: ignore
-        return func
+        if not self.config["compile"]:
+            return func
+
+        return jax.jit(func)  # type: ignore
 
     def _make_local_ghost_cell_setter(self, bc: BCBase) -> JaxGhostCellSetter:
         """Return function that sets the ghost cells for a particular side of an axis.
@@ -178,16 +185,30 @@ class JaxBackend(NumpyBackend):
 
         normal = bc.normal
         axis = bc.axis
+        rank = bc.rank
 
         # get information of the virtual points (ghost cells)
         vp_idx = bc.grid.shape[bc.axis] + 1 if bc.upper else 0
         np_idx = bc._get_value_cell_index(with_ghost_cells=False)
         vp_value = make_virtual_point_evaluator(bc, backend=self)
 
+        # determine shape of data arrays
+        data_full_shape = (bc.grid.dim,) * rank + bc.grid._shape_full
+        if normal:
+            # this has not been tested
+            value_shape = (bc.grid.dim,) * max(rank - 1, 0) + tuple(
+                bc.grid.shape[i] for i in range(bc.grid.num_axes) if i != axis
+            )
+        else:
+            value_shape = (bc.grid.dim,) * rank + tuple(
+                bc.grid.shape[i] for i in range(bc.grid.num_axes) if i != axis
+            )
+
         if bc.grid.num_axes == 1:  # 1d grid
 
             def ghost_cell_setter(data_full: jax.Array, args=None) -> jax.Array:
                 """Helper function setting the conditions on all axes."""
+                assert data_full.shape == data_full_shape
                 data_valid = data_full[..., 1:-1]
                 val = vp_value(data_valid, (np_idx,), args=args)
                 if normal:
@@ -195,98 +216,78 @@ class JaxBackend(NumpyBackend):
                 return data_full.at[..., vp_idx].set(val)
 
         elif bc.grid.num_axes == 2:  # 2d grid
-            # TODO: We might need to get rid of the loops in setting the boundaries
-            if bc.axis == 0:
-                num_y = bc.grid.shape[1]
+            if axis == 0:
 
                 def ghost_cell_setter(data_full: jax.Array, args=None) -> jax.Array:
                     """Helper function setting the conditions on all axes."""
+                    assert data_full.shape == data_full_shape
                     data_valid = data_full[..., 1:-1, 1:-1]
-                    for j in range(num_y):
-                        val = vp_value(data_valid, (np_idx, j), args=args)
-                        if normal:
-                            data_full = data_full.at[..., axis, vp_idx, j + 1].set(val)
-                        else:
-                            data_full = data_full.at[..., vp_idx, j + 1].set(val)
-                    return data_full
+                    val = vp_value(data_valid, (np_idx, slice(None)), args=args)
+                    assert val.shape == value_shape
+                    if normal:
+                        return data_full.at[..., axis, vp_idx, 1:-1].set(val)
+                    return data_full.at[..., vp_idx, 1:-1].set(val)
 
-            elif bc.axis == 1:
-                num_x = bc.grid.shape[0]
+            elif axis == 1:
 
                 def ghost_cell_setter(data_full: jax.Array, args=None) -> jax.Array:
                     """Helper function setting the conditions on all axes."""
+                    assert data_full.shape == data_full_shape
                     data_valid = data_full[..., 1:-1, 1:-1]
-                    for i in range(num_x):
-                        val = vp_value(data_valid, (i, np_idx), args=args)
-                        if normal:
-                            data_full = data_full.at[..., axis, i + 1, vp_idx].set(val)
-                        else:
-                            data_full = data_full.at[..., i + 1, vp_idx].set(val)
-                    return data_full
+                    val = vp_value(data_valid, (slice(None), np_idx), args=args)
+                    assert val.shape == value_shape
+                    if normal:
+                        return data_full.at[..., axis, 1:-1, vp_idx].set(val)
+                    return data_full.at[..., 1:-1, vp_idx].set(val)
 
         elif bc.grid.num_axes == 3:  # 3d grid
-            if bc.axis == 0:
-                num_y, num_z = bc.grid.shape[1:]
+            if axis == 0:
 
                 def ghost_cell_setter(data_full: jax.Array, args=None) -> jax.Array:
                     """Helper function setting the conditions on all axes."""
+                    assert data_full.shape == data_full_shape
                     data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
-                    for j in range(num_y):
-                        for k in range(num_z):
-                            val = vp_value(data_valid, (np_idx, j, k), args=args)
-                            if normal:
-                                data_full = data_full.at[
-                                    ..., axis, vp_idx, j + 1, k + 1
-                                ].set(val)
-                            else:
-                                data_full = data_full.at[..., vp_idx, j + 1, k + 1].set(
-                                    val
-                                )
-                    return data_full
+                    val = vp_value(
+                        data_valid, (np_idx, slice(None), slice(None)), args=args
+                    )
+                    assert val.shape == value_shape
+                    if normal:
+                        return data_full.at[..., axis, vp_idx, 1:-1, 1:-1].set(val)
+                    return data_full.at[..., vp_idx, 1:-1, 1:-1].set(val)
 
-            elif bc.axis == 1:
-                num_x, num_z = bc.grid.shape[0], bc.grid.shape[2]
+            elif axis == 1:
 
                 def ghost_cell_setter(data_full: jax.Array, args=None) -> jax.Array:
                     """Helper function setting the conditions on all axes."""
+                    assert data_full.shape == data_full_shape
                     data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
-                    for i in range(num_x):
-                        for k in range(num_z):
-                            val = vp_value(data_valid, (i, np_idx, k), args=args)
-                            if normal:
-                                data_full = data_full.at[
-                                    ..., axis, i + 1, vp_idx, k + 1
-                                ].set(val)
-                            else:
-                                data_full = data_full.at[..., i + 1, vp_idx, k + 1].set(
-                                    val
-                                )
-                    return data_full
+                    val = vp_value(
+                        data_valid, (slice(None), np_idx, slice(None)), args=args
+                    )
+                    assert val.shape == value_shape
+                    if normal:
+                        return data_full.at[..., axis, 1:-1, vp_idx, 1:-1].set(val)
+                    return data_full.at[..., 1:-1, vp_idx, 1:-1].set(val)
 
-            elif bc.axis == 2:
-                num_x, num_y = bc.grid.shape[:2]
+            elif axis == 2:
 
                 def ghost_cell_setter(data_full: jax.Array, args=None) -> jax.Array:
                     """Helper function setting the conditions on all axes."""
+                    assert data_full.shape == data_full_shape
                     data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
-                    for i in range(num_x):
-                        for j in range(num_y):
-                            val = vp_value(data_valid, (i, j, np_idx), args=args)
-                            if normal:
-                                data_full = data_full.at[
-                                    ..., axis, i + 1, j + 1, vp_idx
-                                ].set(val)
-                            else:
-                                data_full = data_full.at[..., i + 1, j + 1, vp_idx].set(
-                                    val
-                                )
-                    return data_full
+                    val = vp_value(
+                        data_valid, (slice(None), slice(None), np_idx), args=args
+                    )
+                    assert val.shape == value_shape
+                    if normal:
+                        return data_full.at[..., axis, 1:-1, 1:-1, vp_idx].set(val)
+                    return data_full.at[..., 1:-1, 1:-1, vp_idx].set(val)
 
         else:
             msg = "Too many axes"
             raise NotImplementedError(msg)
 
-        return ghost_cell_setter  # type: ignore
+        return ghost_cell_setter
 
     def make_data_setter(  # type: ignore
         self, grid: GridBase, rank: int, bcs: BoundariesBase | None = None
@@ -310,6 +311,7 @@ class JaxBackend(NumpyBackend):
                 given, a third argument is allowed, which sets arguments for the BCs.
         """
         num_axes = grid.num_axes
+        shape_in_valid = (grid.dim,) * rank + grid.shape
         shape_in_full = (grid.dim,) * rank + grid._shape_full
 
         def get_full_data(data_valid: jax.Array, args=None) -> jax.Array:
@@ -323,6 +325,7 @@ class JaxBackend(NumpyBackend):
                 args:
                     Additional arguments (not used in this function)
             """
+            assert data_valid.shape == shape_in_valid
             data_full = jnp.empty(shape_in_full, dtype=data_valid.dtype)
             if num_axes == 1:
                 return data_full.at[..., 1:-1].set(data_valid)
@@ -334,10 +337,10 @@ class JaxBackend(NumpyBackend):
 
         if bcs is None:
             # just set the valid elements and leave ghost cells with arbitrary values
-            return get_full_data  # type: ignore[return-value]
+            return get_full_data
 
         # get the boundary conditions object
-        bcs = grid.get_boundary_conditions(bcs)
+        bcs = grid.get_boundary_conditions(bcs, rank=rank)
 
         # set the valid elements and the ghost cells according to boundary condition
         ghost_cell_setters = [
@@ -360,11 +363,12 @@ class JaxBackend(NumpyBackend):
             data_full = get_full_data(data_valid)
             for setter in ghost_cell_setters:
                 data_full = setter(data_full, args=args)
+            assert data_full.shape == shape_in_full
             return data_full
 
         return get_full_with_bcs
 
-    def make_operator_no_bc(  # type: ignore
+    def make_operator_no_bc(
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
@@ -372,7 +376,7 @@ class JaxBackend(NumpyBackend):
         dtype: DTypeLike | None = None,
         native: bool = False,
         **kwargs,
-    ) -> JaxOperatorImplType:
+    ) -> OperatorImplType:
         """Return a compiled function applying an operator without boundary conditions.
 
         A function that takes the discretized full data as an input and an array of
@@ -417,14 +421,14 @@ class JaxBackend(NumpyBackend):
         jax_operator_jitted = self.compile_function(jax_operator)
 
         if native:
-            return jax_operator_jitted  # type: ignore
+            return jax_operator_jitted
 
         def operator_no_bc(arr: NumericArray, out: NumericArray) -> None:
             arr_jax = self.from_numpy(arr)
             out_jax = jax_operator_jitted(arr_jax)  # type: ignore
             out[...] = self.to_numpy(out_jax)
 
-        return operator_no_bc  # type: ignore
+        return operator_no_bc
 
     @cached_method()
     def make_operator(
@@ -481,12 +485,15 @@ class JaxBackend(NumpyBackend):
 
         # set the valid data
         get_full_with_bcs = self.make_data_setter(
-            grid=grid, rank=operator_info.rank_out, bcs=bcs
+            grid=grid, rank=operator_info.rank_in, bcs=bcs
         )
 
         @self.compile_function
-        def apply_op_jax(arr: jax.Array, args=None) -> jax.Array:
+        def apply_op_jax(arr: jax.Array, out=None, args=None) -> jax.Array:
             """Set boundary conditions and apply operator."""
+            if out is not None:
+                msg = "`jax` arrays are immutable and cannot use `out`"
+                raise RuntimeError(msg)
             # set boundary conditions
             arr_full = get_full_with_bcs(arr, args=args)
             # apply operator
@@ -527,3 +534,76 @@ class JaxBackend(NumpyBackend):
             return out
 
         return apply_op  # type: ignore
+
+    def make_pde_rhs(
+        self, eq: PDEBase, state: TField, *, native: bool = False
+    ) -> Callable[[TArray, float], TArray]:
+        """Return a function for evaluating the right hand side of the PDE.
+
+        Args:
+            eq (:class:`~pde.pdes.base.PDEBase`):
+                The object describing the differential equation
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which information can be extracted
+            native (bool):
+                If True, the returned functions expects the native data representation
+                of the backend. Otherwise, the input and output are expected to be
+                :class:`~numpy.ndarray`.
+
+        Returns:
+            Function returning deterministic part of the right hand side of the PDE.
+        """
+        try:
+            make_rhs = eq.make_evolution_rate
+        except AttributeError as err:
+            msg = (
+                "The right-hand side of the PDE is not implemented using the "
+                f"`{self.name}` backend. To add the implementation, provide the "
+                "method `make_evolution_rate`, which should return a compilable "
+                "function calculating the evolution rate."
+            )
+            raise NotImplementedError(msg) from err
+        else:
+            rhs_native = make_rhs(state, backend=self)
+
+        # get the compiled right hand side
+        rhs_jax = self.compile_function(rhs_native)
+        if native:
+            return rhs_jax
+
+        def rhs(arr: NumericArray, t: float = 0) -> NumericArray:
+            """Helper wrapping function working with jax arrays."""
+            arr_jax = self.from_numpy(arr)
+            res_jax = rhs_jax(arr_jax, t)
+            return self.to_numpy(res_jax)  # type: ignore
+
+        return rhs  # type: ignore
+
+    def make_inner_stepper(
+        self,
+        solver: SolverBase,
+        stepper_style: Literal["fixed", "adaptive"],
+        state: TField,
+        dt: float,
+    ) -> Callable:
+        """Return a stepper function using an explicit scheme.
+
+        Args:
+            solver (:class:`~pde.solvers.base.SolverBase`):
+                The solver instance, which determines how the stepper is constructed
+            stepper_style (str):
+                The style of the stepper, either "fixed" or "adaptive"
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        solver.info["backend"]["device"] = self.device.device_kind
+        solver.info["backend"]["compile"] = self.config["compile"]
+        return super().make_inner_stepper(solver, stepper_style, state, dt)

@@ -30,7 +30,7 @@ DEFAULT_CONFIG: list[Parameter] = [
     ),
     Parameter(
         "compile",
-        True,
+        False,
         bool,
         "Enables compilation in the `jax` backend.",
     ),

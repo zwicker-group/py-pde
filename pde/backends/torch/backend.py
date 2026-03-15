@@ -14,7 +14,6 @@ import numpy as np
 import torch
 
 from ...grids import GridBase
-from ...tools.cache import cached_method
 from ..base import OperatorInfo, TFunc
 from ..numpy import NumpyBackend
 from .utils import NUMPY_TO_TORCH_DTYPE, TORCH_TO_NUMPY_DTYPE
@@ -268,7 +267,6 @@ class TorchBackend(NumpyBackend):
 
         return operator_no_bc  # type: ignore
 
-    @cached_method()
     def make_operator(
         self,
         grid: GridBase,

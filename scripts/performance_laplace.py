@@ -255,6 +255,7 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
         "OPTIMIZED",
         "9POINT",
         "torch",
+        "jax",
         "numba",
         "scipy",
     ]:
@@ -270,7 +271,7 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
             laplace = jax_2d_periodic(shape, periodic=periodic)
         elif method == "TORCH":
             laplace, field_data = torch_2d_periodic(field.data, periodic=periodic)
-        elif method in {"numba", "torch", "scipy"}:
+        elif method in {"numba", "jax", "torch", "scipy"}:
             laplace = grid.make_operator("laplace", bc=bcs, backend=method)
         else:
             msg = f"Unknown method `{method}`"
@@ -292,7 +293,8 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
             speed = estimate_computation_speed(laplace, field._data_full)
         else:
             if method != "9POINT":
-                np.testing.assert_allclose(laplace(field.data), expected.data)
+                result = laplace(field.data)
+                np.testing.assert_allclose(result, expected.data, rtol=1e-5, atol=1e-6)
             speed = estimate_computation_speed(laplace, field.data)
         print(f"{method:>9s}: {int(speed):>9d}")
     print()
