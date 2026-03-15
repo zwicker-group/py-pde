@@ -521,10 +521,9 @@ class SDEBase(PDEBase):
     """Base class for defining stochastic partial differential equations (SDEs)
 
     Custom PDEs can be implemented by subclassing :class:`SDEBase` to specify the
-    evolution rate and an associated noise realization. To support the `numpy` backend,
-    overwrite :meth:`noise_realization` (together with :meth:`PDEBase.evolution_rate`
-    for the deterministic part). Other backends require overwriting
-    :meth:`make_noise_realization` (together with :meth:`PDEBase.make_evolution_rate`).
+    evolution rate and an associated noise realization. Overwrite
+    :meth:`make_noise_realization` (together with :meth:`PDEBase.make_evolution_rate`)
+    to support all backends.
     """
 
     def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator | None = None):
@@ -544,11 +543,9 @@ class SDEBase(PDEBase):
                 simulation results.
 
         Note:
-            If more complicated noise structures are required, the methods
-            :meth:`SDEBase.noise_realization` and
-            :meth:`SDEBase.make_noise_realization_numba` need to be overwritten for the
-            `numpy` and `numba` backend, respectively. Alternatively, one can generally
-            overwrite :meth:`SDEBase.make_noise_realization` for a general backend.
+            If more complicated noise structures are required, overwrite
+            :meth:`SDEBase.make_noise_realization` to provide a custom noise realization
+            for all backends.
         """
         super().__init__(rng=rng)
         self.noise = np.asanyarray(noise)
@@ -629,6 +626,11 @@ class SDEBase(PDEBase):
     ) -> Callable[[NumericArray, float], NumericArray | None]:
         """Return a function for determining one realization of the noise term.
 
+        .. deprecated::
+            This method is no longer called by :meth:`make_noise_realization`. Override
+            :meth:`make_noise_realization` directly to provide custom noise
+            realizations for all backends.
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
@@ -698,8 +700,9 @@ class SDEBase(PDEBase):
     ) -> Callable[[NumericArray, float], NumericArray | None]:
         """Return a function for determining one realization of the noise term.
 
-        This helper implements the noise realization using vectorized numpy operations
-        and is used by :meth:`make_noise_realization` for non-numba backends.
+        This helper implements the noise realization using operations compatible with
+        both numpy and numba, and is used by :meth:`make_noise_realization` for all
+        backends.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -752,15 +755,16 @@ class SDEBase(PDEBase):
         else:
             # a single noise value is given for all fields
             noise_var = float(self.noise)
-            cell_volumes = state.grid.cell_volumes
-
-            scales = np.sqrt(noise_var / cell_volumes)
+            flat_size = state.data.size
+            scales_flat = np.sqrt(noise_var / state.grid.cell_volumes.ravel())
 
             def noise_realization(
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
                 """Helper function returning a noise realization."""
-                return scales * np.random.randn(*state_data.shape)  # noqa: NPY002
+                return (  # noqa: NPY002
+                    scales_flat * np.random.randn(flat_size)
+                ).reshape(data_shape)
 
         return noise_realization
 
@@ -779,13 +783,7 @@ class SDEBase(PDEBase):
         Returns:
             callable: Function calculating the noise realization
         """
-        from ..backends.numba.backend import NumbaBackend
-
-        if isinstance(backend, NumbaBackend):
-            noise_realization = self.make_noise_realization_numba(state)
-            return backend.compile_function(noise_realization)  # type: ignore
-
-        return self._make_noise_realization_numpy(state)
+        return backend.compile_function(self._make_noise_realization_numpy(state))  # type: ignore
 
 
 def expr_prod(factor: float, expression: str) -> str:

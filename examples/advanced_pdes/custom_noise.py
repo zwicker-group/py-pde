@@ -11,22 +11,21 @@ from pde import DiffusionPDE, ScalarField, UnitGrid
 
 
 class DiffusionCustomNoisePDE(DiffusionPDE):
-    """Diffusion PDE with custom noise implementations."""
+    """Diffusion PDE with custom noise implementation."""
 
-    def noise_realization(self, state, t):
-        """Numpy implementation of spatially-dependent noise."""
-        noise_field = ScalarField.random_uniform(state.grid, -self.noise, self.noise)
-        return state.grid.cell_coords[..., 0] * noise_field
-
-    def make_noise_realization_numba(self, state):
-        """Numba implementation of spatially-dependent noise."""
+    def make_noise_realization(self, state, backend):
+        """Spatially-dependent noise scaled by the x-coordinate."""
         noise = float(self.noise)
-        x_values = state.grid.cell_coords[..., 0]
+        x_values_flat = state.grid.cell_coords[..., 0].ravel()
+        flat_size = state.data.size
+        data_shape = state.data.shape
 
         def noise_realization(state_data, t):
-            return x_values * np.random.uniform(-noise, noise, size=state_data.shape)  # noqa: NPY002
+            return (  # noqa: NPY002
+                x_values_flat * np.random.uniform(-noise, noise, flat_size)
+            ).reshape(data_shape)
 
-        return noise_realization
+        return backend.compile_function(noise_realization)
 
 
 eq = DiffusionCustomNoisePDE(diffusivity=0.1, noise=0.1)  # define the pde
