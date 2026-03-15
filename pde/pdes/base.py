@@ -621,150 +621,57 @@ class SDEBase(PDEBase):
             result.label = label
         return result
 
-    def make_noise_realization_numba(
-        self, state: TField
+    def _make_noise_realization_collection(
+        self, state: FieldCollection, backend: BackendBase
     ) -> Callable[[NumericArray, float], NumericArray | None]:
-        """Return a function for determining one realization of the noise term.
-
-        .. deprecated::
-            This method is no longer called by :meth:`make_noise_realization`. Override
-            :meth:`make_noise_realization` directly to provide custom noise
-            realizations for all backends.
+        """Return a function for determining the noise for a field collection.
 
         Args:
-            state (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.collections.FieldCollection`):
                 An example for the state from which the grid and other information can
                 be extracted.
+            backend (:class:`~pde.backends.base.BackendBase`):
+                The backend used to build the function.
 
         Returns:
             callable: Function calculating the noise realization
         """
-        from ..backends.numba.grids import make_cell_volume_getter
-
-        if getattr(self, "noise", None) is None or not self.is_sde:
-
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-                return None
-
-            return noise_realization
-
         data_shape: tuple[int, ...] = state.data.shape
-        noise_var: float
-        cell_volume = make_cell_volume_getter(state.grid, flat_index=True)
+        cell_volumes = state.grid.cell_volumes
 
-        if state.dtype != float:
-            msg = "Noise is only supported for float types"
-            raise TypeError(msg)
+        # determine the noise variance of each individual spatial slice
+        noise_vars_field = np.broadcast_to(self.noise, len(state))
+        noise_var: NumericArray = np.empty(data_shape[0])
+        for n, var in enumerate(noise_vars_field):
+            noise_var[state._slices[n]] = var
 
-        if isinstance(state, FieldCollection):
-            # different noise strengths, assuming one for each field
-            noises_var: NumericArray = np.empty(data_shape[0])
-            for n, noise_var in enumerate(np.broadcast_to(self.noise, len(state))):
-                noises_var[state._slices[n]] = noise_var
-
+        if backend.implementation == "numba":
+            # numba needs special implementation since it cannot iterate over functions
             def noise_realization(
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
                 """Helper function returning a noise realization."""
                 out = np.empty(data_shape)
                 for n in range(len(state_data)):
-                    if noises_var[n] == 0:
+                    if noise_var[n] == 0:
                         out[n].fill(0)
                     else:
-                        for i in range(state_data[n].size):
-                            scale = noises_var[n] / cell_volume(i)
-                            out[n].flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
+                        scale = np.sqrt(noise_var[n] / cell_volumes)
+                        out[n] = scale * np.random.randn(*state_data[n].shape)  # noqa: NPY002
                 return out
 
-        else:
-            # a single noise value is given for all fields
-            noise_var = float(self.noise)
-
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-                out = np.empty(state_data.shape)
-                for i in range(state_data.size):
-                    scale = noise_var / cell_volume(i)
-                    out.flat[i] = np.sqrt(scale) * np.random.randn()  # noqa: NPY002
-                return out
-
-        return noise_realization
-
-    def _make_noise_realization_numpy(
-        self, state: TField
-    ) -> Callable[[NumericArray, float], NumericArray | None]:
-        """Return a function for determining one realization of the noise term.
-
-        This helper implements the noise realization using operations compatible with
-        both numpy and numba, and is used by :meth:`make_noise_realization` for all
-        backends.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted.
-
-        Returns:
-            callable: Function calculating the noise realization
-        """
-        if getattr(self, "noise", None) is None or not self.is_sde:
-
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-                return None
-
-            return noise_realization
-
-        data_shape: tuple[int, ...] = state.data.shape
-        noise_var: float
-
-        if state.dtype != float:
-            msg = "Noise is only supported for float types"
-            raise TypeError(msg)
-
-        if isinstance(state, FieldCollection):
-            # different noise strengths, assuming one for each field
-            noises_var: NumericArray = np.empty(data_shape[0])
-            for n, noise_var in enumerate(np.broadcast_to(self.noise, len(state))):
-                noises_var[state._slices[n]] = noise_var
-
-            cell_volumes_flat = state.grid.cell_volumes.ravel()
-
+        elif backend.implementation in {"torch", "jax"}:
+            # build a function for each field
             def noise_realization(
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
                 """Helper function returning a noise realization."""
                 out = np.empty(data_shape)
                 for n in range(len(state_data)):
-                    if noises_var[n] == 0:
-                        out[n].fill(0)
-                    else:
-                        scales = np.sqrt(noises_var[n] / cell_volumes_flat)
-                        out[n] = (
-                            scales * np.random.randn(state_data[n].size)  # noqa: NPY002
-                        ).reshape(state_data[n].shape)
+                    # Note that this evaluates the noise even if the variance is zero
+                    scale = np.sqrt(noise_var[n] / cell_volumes)
+                    out[n] = scale * np.random.randn(*state_data[n].shape)  # noqa: NPY002
                 return out
-
-        else:
-            # a single noise value is given for all fields
-            noise_var = float(self.noise)
-            flat_size = state.data.size
-            scales_flat = np.sqrt(noise_var / state.grid.cell_volumes.ravel())
-
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-                return (  # noqa: NPY002
-                    scales_flat * np.random.randn(flat_size)
-                ).reshape(data_shape)
 
         return noise_realization
 
@@ -783,7 +690,38 @@ class SDEBase(PDEBase):
         Returns:
             callable: Function calculating the noise realization
         """
-        return backend.compile_function(self._make_noise_realization_numpy(state))  # type: ignore
+        if getattr(self, "noise", None) is None or not self.is_sde:
+
+            def noise_realization(
+                state_data: NumericArray, t: float
+            ) -> NumericArray | None:
+                """Helper function returning a noise realization."""
+                return None
+
+            return noise_realization
+
+        if state.dtype != float:
+            msg = "Noise is only supported for float types"
+            raise TypeError(msg)
+
+        if isinstance(state, DataFieldBase):
+            # standard case of just one field
+
+            data_shape: tuple[int, ...] = state.data.shape
+            scale = np.sqrt(float(self.noise) / state.grid.cell_volumes)
+
+            def noise_realization(
+                state_data: NumericArray, t: float
+            ) -> NumericArray | None:
+                """Helper function returning a noise realization."""
+                return scale * np.random.randn(*data_shape)  # noqa: NPY002
+
+            return noise_realization
+
+        # Deal with the more complicated case of collections next, where we assume
+        # different noise strengths for each field
+        assert isinstance(state, FieldCollection)
+        return self._make_noise_realization_collection(state, backend)
 
 
 def expr_prod(factor: float, expression: str) -> str:

@@ -81,7 +81,11 @@ def test_diffusion_time_dependent_bcs(backend):
     np.testing.assert_allclose(storage[-1].data, 1, rtol=1e-3)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize(
+    "backend",
+    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
+)
 def test_diffusion_sde(backend, rng):
     """Test scaling of noise using a stochastic diffusion equation."""
     # we disable diffusivity to have a simple analytical solution

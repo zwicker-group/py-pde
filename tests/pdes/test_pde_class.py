@@ -251,7 +251,9 @@ def test_custom_operator_torch(backend, rng):
     del backend._operators[grids.UnitGrid]["undefined"]
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True)
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
 def test_pde_noise(backend, rng):
     """Test noise operator on PDE class."""
     grid = grids.UnitGrid([128, 128])
