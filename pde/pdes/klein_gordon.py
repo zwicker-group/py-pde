@@ -55,7 +55,7 @@ class KleinGordonPDE(PDEBase):
         *,
         bc: BoundariesData | None = None,
     ):
-        """
+        r"""
         Args:
             speed (float):
                 The speed :math:`c` of the wave
@@ -123,7 +123,7 @@ class KleinGordonPDE(PDEBase):
             raise ValueError(msg)
         u, v = state
         u_t = v.copy()
-        v_t = self.speed**2 * u.laplace(self.bc, args={"t": t}) - self.mass**2 * u
+        v_t = self.speed**2 * u.laplace(self.bc, args={"t": t}) - self.mass**2 * u  # type: ignore
         return FieldCollection([u_t, v_t])
 
     def make_evolution_rate(
