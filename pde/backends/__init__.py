@@ -13,6 +13,7 @@ by their identifier, so users do not usually need to construct backend classes.
    :nosignatures:
 
    ~registry.BackendRegistry
+   ~jax.backend.JaxBackend
    ~numba.backend.NumbaBackend
    ~numba_mpi.backend.NumbaMPIBackend
    ~numpy.backend.NumpyBackend
@@ -22,6 +23,7 @@ by their identifier, so users do not usually need to construct backend classes.
 Inheritance structure of the classes:
 
 .. inheritance-diagram::
+         jax.backend.JaxBackend
          numba.backend.NumbaBackend
          numba_mpi.backend.NumbaMPIBackend
          numpy.backend.NumpyBackend
@@ -48,6 +50,11 @@ backends.register_package(
 )
 backends.register_package("numba_mpi", "pde.backends.numba_mpi")
 backends.register_package("scipy", "pde.backends.scipy")
+backends.register_package(
+    "jax",
+    "pde.backends.jax",
+    config=load_default_config(BACKENDS_FOLDER / "jax" / "config.py"),
+)
 backends.register_package(
     "torch",
     "pde.backends.torch",

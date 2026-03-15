@@ -1,6 +1,7 @@
 -r ../requirements.txt
 ffmpeg-python>=0.2
 h5py>=2.10
+jax>=0.7
 mpi4py>=3
 numba-mpi>=0.22
 pandas>=2

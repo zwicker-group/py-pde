@@ -3,6 +3,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from collections.abc import Callable
+
 import numpy as np
 import torch
 from numpy.typing import DTypeLike
@@ -60,3 +62,50 @@ class TorchOperatorBase(torch.nn.Module):
             raise TypeError
 
         self.register_buffer(name, tensor)
+
+
+def torch_heaviside(x1: torch.Tensor, x2: torch.Tensor | None = None) -> torch.Tensor:
+    """Return the Heaviside step function using torch.
+
+    This wraps :func:`torch.heaviside` and ensures that scalar fallback values are
+    converted to tensors with a dtype compatible with `x1`.
+
+    Args:
+        x1 (:class:`torch.Tensor`):
+            Input values at which the Heaviside function is evaluated.
+        x2 (:class:`torch.Tensor`, optional):
+            Value used where `x1 == 0`. If omitted, `0.5` is used.
+
+    Returns:
+        :class:`torch.Tensor`:
+            Tensor containing the Heaviside values of `x1`.
+    """
+    x1_t = torch.tensor(x1)
+    if x2 is None:
+        return torch.heaviside(x1_t, torch.tensor(0.5, dtype=x1_t.dtype))
+    return torch.heaviside(x1_t, torch.tensor(x2, dtype=x1_t.dtype))
+
+
+def torch_hypot(x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+    """Return the Euclidean norm ``sqrt(x1**2 + x2**2)`` using torch.
+
+    This wraps :func:`torch.hypot` and ensures that both inputs are converted to
+    tensors before evaluation.
+
+    Args:
+        x1 (:class:`torch.Tensor`):
+            First input values.
+        x2 (:class:`torch.Tensor`):
+            Second input values.
+
+    Returns:
+        :class:`torch.Tensor`:
+            Tensor containing the element-wise hypotenuse of `x1` and `x2`.
+    """
+    return torch.hypot(torch.tensor(x1), torch.tensor(x2))
+
+
+SPECIAL_FUNCTIONS_TORCH: dict[str, Callable] = {
+    "Heaviside": torch_heaviside,
+    "hypot": torch_hypot,
+}

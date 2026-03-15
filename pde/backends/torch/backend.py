@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 import torch
 
+from ...fields import VectorField
 from ...grids import GridBase
 from ..base import OperatorInfo, TFunc
 from ..numpy import NumpyBackend
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import DTypeLike
 
+    from ...fields import DataFieldBase
     from ...grids import GridBase
     from ...grids.boundaries.axes import BoundariesBase
     from ...pdes import PDEBase
@@ -172,13 +174,15 @@ class TorchBackend(NumpyBackend):
         This method also ensures that the value is copied to the selected device.
         """
         if isinstance(value, torch.Tensor):
-            return value.to(self.device)
-        if isinstance(value, np.ndarray):
-            arr_torch = torch.from_numpy(value)
-            return arr_torch.to(self.device, dtype=self.get_torch_dtype(value.dtype))
-        if isinstance(value, numbers.Number):
-            return value
-        msg = f"Unsupported type `{value.__type__}"
+            return value.to(self.device)  # move tensor to device
+
+        if isinstance(value, (np.ndarray, numbers.Number)):
+            value_arr = np.asarray(value)  # convert numbers to arrays for torch
+            arr_torch = torch.from_numpy(value_arr)  # convert to torch.Tensor
+            dtype = self.get_torch_dtype(value_arr.dtype)
+            return arr_torch.to(self.device, dtype=dtype)  # move tensor to device
+
+        msg = f"Unsupported type `{type(value).__name__}"
         raise TypeError(msg)
 
     def to_numpy(self, value: Any) -> Any:
@@ -392,6 +396,94 @@ class TorchBackend(NumpyBackend):
 
         return integrate_global
 
+    def make_inner_prod_operator(
+        self, field: DataFieldBase, *, conjugate: bool = True
+    ) -> Callable[[TArray, TArray, TArray | None], TArray]:
+        """Return operator calculating the dot product between two fields.
+
+        This supports both products between two vectors as well as products
+        between a vector and a tensor.
+
+        Args:
+            field (:class:`~pde.fields.datafield_base.DataFieldBase`):
+                Field for which the inner product is defined
+            conjugate (bool):
+                Whether to use the complex conjugate for the second operand
+
+        Returns:
+            function that takes two instance of :class:`~numpy.ndarray`, which contain
+            the discretized data of the two operands. An optional third argument can
+            specify the output array to which the result is written.
+        """
+        num_axes = field.grid.num_axes
+
+        def dot(
+            a: torch.Tensor, b: torch.Tensor, out: torch.Tensor | None = None
+        ) -> torch.Tensor:
+            """Numpy implementation to calculate dot product between two fields."""
+            rank_a = a.ndim - num_axes
+            rank_b = b.ndim - num_axes
+            if rank_a < 1 or rank_b < 1:
+                msg = "Fields in dot product must have rank >= 1"
+                raise TypeError(msg)
+            if a.shape[rank_a:] != b.shape[rank_b:]:
+                msg = "Shapes of fields are not compatible for dot product"
+                raise ValueError(msg)
+            if out is not None:
+                msg = "torch implementation of inner product does not allow `out` arg."
+                raise TypeError(msg)
+
+            if conjugate:
+                b = b.conj()
+
+            if rank_a == 1 and rank_b == 1:  # result is scalar field
+                return torch.einsum("i...,i...->...", a, b)
+
+            if rank_a == 2 and rank_b == 1:  # result is vector field
+                return torch.einsum("ij...,j...->i...", a, b)
+
+            if rank_a == 1 and rank_b == 2:  # result is vector field
+                return torch.einsum("i...,ij...->j...", a, b)
+
+            if rank_a == 2 and rank_b == 2:  # result is tensor-2 field
+                return torch.einsum("ij...,jk...->ik...", a, b)
+
+            msg = f"Unsupported shapes ({a.shape}, {b.shape})"
+            raise TypeError(msg)
+
+        return dot  # type: ignore
+
+    def make_outer_prod_operator(
+        self, field: DataFieldBase
+    ) -> Callable[[TArray, TArray, TArray | None], TArray]:
+        """Return operator calculating the outer product between two fields.
+
+        This supports typically only supports products between two vector fields.
+
+        Args:
+            field (:class:`~pde.fields.datafield_base.DataFieldBase`):
+                Field for which the outer product is defined
+
+        Returns:
+            function that takes two instance of :class:`~numpy.ndarray`, which contain
+            the discretized data of the two operands. An optional third argument can
+            specify the output array to which the result is written.
+        """
+        if not isinstance(field, VectorField):
+            msg = "Can only define outer product between vector fields"
+            raise TypeError(msg)
+
+        def outer(
+            a: NumericArray, b: NumericArray, out: NumericArray | None = None
+        ) -> NumericArray:
+            """Calculate the outer product using numpy."""
+            if out is not None:
+                msg = "torch implementation of inner product does not allow `out` arg."
+                raise TypeError(msg)
+            return torch.einsum("i...,j...->ij...", a, b)  # type: ignore
+
+        return outer  # type: ignore
+
     def make_pde_rhs(
         self, eq: PDEBase, state: TField, *, native: bool = False
     ) -> Callable[[TArray, float], TArray]:
@@ -447,7 +539,9 @@ class TorchBackend(NumpyBackend):
         def rhs(arr: NumericArray, t: float = 0) -> NumericArray:
             """Helper wrapping function working with torch tensors."""
             arr_torch = self.from_numpy(arr)
-            t_torch = torch.tensor(t)
+            # We wrap the scalar time into a tensor, so torch correctly identifies it as
+            # a value that is modified each time we call the function.
+            t_torch = self.from_numpy(t)
             res_torch = rhs_torch(arr_torch, t_torch)
             return self.to_numpy(res_torch)  # type: ignore
 
@@ -507,13 +601,13 @@ class TorchBackend(NumpyBackend):
         import sympy
         from sympy.printing.pycode import PythonCodePrinter
 
-        from ...tools.expressions import SPECIAL_FUNCTIONS
+        from .utils import SPECIAL_FUNCTIONS_TORCH
 
         # collect all the user functions
         user_functions = expression.user_funcs.copy()
         if user_funcs is not None:
             user_functions.update(user_funcs)
-        user_functions.update(SPECIAL_FUNCTIONS)
+        user_functions.update(SPECIAL_FUNCTIONS_TORCH)
 
         user_functions = {
             k: self.compile_function(v) for k, v in user_functions.items()

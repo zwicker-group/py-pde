@@ -18,12 +18,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, TypeVar
 
 import numpy as np
 from numpy.typing import ArrayLike  # noqa: F401
 
 if TYPE_CHECKING:
+    from jax import Array
     from torch import Tensor
 
     from ..fields import DataFieldBase, FieldCollection
@@ -42,7 +44,8 @@ FloatOrArray = float | np.ndarray[Any, np.dtype[np.floating]]
 
 # generic array types that work for various fields or arrays
 TField = TypeVar("TField", "FieldCollection", "DataFieldBase")
-TArray = TypeVar("TArray", NumericArray, "Tensor")
+# the generic array type also supports torch.Tensor and jax.Array
+TArray = TypeVar("TArray", NumericArray, "Tensor", "Array")
 
 
 class OperatorInfo(NamedTuple):
@@ -54,16 +57,8 @@ class OperatorInfo(NamedTuple):
     name: str = ""  # attach a unique name to help caching
 
 
-class OperatorImplType(Protocol):
-    """An operator that acts on an array."""
-
-    def __call__(self, arr: TArray, out: TArray) -> None:
-        """Evaluate the operator.
-
-        Args:
-            arr: Input array
-            out: Output array
-        """
+# operators act on an array and either return result or write it into supplied array
+OperatorImplType = Callable[[TArray], TArray] | Callable[[TArray, TArray], None]
 
 
 class OperatorFactory(Protocol):

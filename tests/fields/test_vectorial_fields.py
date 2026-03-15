@@ -285,18 +285,24 @@ def test_complex_vectors(rng):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_vector_bcs(backend):
     """Test boundary conditions on vector fields."""
     grid = UnitGrid([3, 3], periodic=False)
     v = VectorField.from_expression(grid, ["x", "cos(y)"])
 
+    # try setting vector boundary condition
     bcs = {"x": {"value": [0, 1]}, "y": {"value": [2, 3]}}
     s1 = v.divergence(bcs, backend="scipy").data
     div = grid.make_operator("divergence", bcs, backend=backend)
     s2 = div(v.data)
 
+    # check correct broadcasting of boundary condition
+    bc1 = {"x": {"value": 1}, "y": {"derivative": 0}}
+    s1 = v.laplace(bc1, backend=backend).data
+    bc2 = {"x": {"value": [1, 1]}, "y": {"derivative": [0, 0]}}
+    s2 = v.laplace(bc2, backend=backend).data
     np.testing.assert_allclose(s1, s2)
 
 

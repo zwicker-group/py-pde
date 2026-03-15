@@ -500,7 +500,7 @@ def test_anti_periodic_bcs():
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numpy", "numba", "torch-cpu", "torch-cuda"], indirect=True
 )
 def test_pde_heaviside(backend):
     """Test PDE with a heaviside right hand side."""

@@ -214,7 +214,7 @@ class NumpyBackend(BackendBase):
             bcs.set_ghost_cells(arr_full, args=args)
 
             # apply operator
-            operator_raw(arr_full, out)
+            operator_raw(arr_full, out)  # type: ignore
 
             # return valid part of the output
             return out

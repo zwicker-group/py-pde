@@ -80,6 +80,12 @@ def backend(request):
             pytest.skip("`numba` is not available")
         backend = backends["numba"]
 
+    elif request.param == "jax":
+        # a jax backend
+        if not module_available("jax"):
+            pytest.skip("`jax` is not available")
+        backend = backends["jax"]
+
     elif request.param.startswith("torch"):
         # a torch backend, which might possible include a device
         if not module_available("torch"):

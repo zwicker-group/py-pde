@@ -1012,7 +1012,9 @@ def evaluate(
             # create the function evaluating the operator
             op_backend = "numba" if backend.implementation == "numpy" else backend
             try:
-                ops[func] = grid.make_operator(func, bc=bc, backend=op_backend)
+                ops[func] = grid.make_operator(
+                    func, bc=bc, native=True, backend=op_backend
+                )
             except BCDataError:
                 # wrong data was supplied for the boundary condition
                 raise
@@ -1067,10 +1069,8 @@ def evaluate(
 
     # turn result into a proper field
     result_data = backend.to_numpy(result_data)
-    if np.isscalar(result_data):
+    if np.isscalar(result_data) or result_data.shape == ():
         result_data = np.broadcast_to(result_data, grid.shape)
-    elif TYPE_CHECKING:
-        result_data = np.asanyarray(result_data)
     result_rank = result_data.ndim - grid.num_axes
     result_cls = DataFieldBase.get_class_by_rank(result_rank)
     return result_cls(grid, result_data, label=label)

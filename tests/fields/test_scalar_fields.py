@@ -105,7 +105,7 @@ def test_scalars(rng):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_laplacian(backend, rng):
     """Test the Laplace operator."""
