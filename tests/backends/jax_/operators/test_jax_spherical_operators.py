@@ -178,7 +178,93 @@ def test_examples_scalar_sph(backend):
 
 
 @pytest.mark.parametrize("backend", ["jax"], indirect=True)
-def test_tensor_double_divergence_sph(backend):
+def test_examples_vector_sph_div(backend):
+    """Compare derivatives of vector fields for spherical grids."""
+    grid = SphericalSymGrid(1, 32)
+    vf = VectorField.from_expression(grid, ["r**3", 0, "r**2"])
+    res = vf.divergence({"r-": {"derivative": 0}, "r+": {"value": 1}}, backend=backend)
+    expect = ScalarField.from_expression(grid, "5 * r**2")
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+
+@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("method", ["central", "forward", "backward"])
+def test_examples_vector_sph_grad(backend, method):
+    """Compare derivatives of vector fields for spherical grids."""
+    grid = SphericalSymGrid(1, 32)
+    vf = VectorField.from_expression(grid, ["r**3", 0, 0])
+    res = vf.gradient(
+        {"r-": {"derivative": 0}, "r+": {"value": [1, 1, 1]}},
+        method=method,
+        backend=backend,
+    )
+    expr = [["3 * r**2", 0, 0], [0, "r**2", 0], [0, 0, "r**2"]]
+    expect = Tensor2Field.from_expression(grid, expr)
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+
+@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("conservative", [True, False])
+def test_examples_tensor_sph(backend, conservative):
+    """Compare derivatives of tensorial fields for spherical grids."""
+    # test explicit expression for which we know the results
+    grid = SphericalSymGrid(1, 32)
+    expressions = [["r**4", 0, 0], [0, "r**3", 0], [0, 0, "r**3"]]
+    tf = Tensor2Field.from_expression(grid, expressions)
+
+    # tensor divergence
+    bc = {"r-": {"derivative": 0}, "r+": {"normal_derivative": [4, 3, 3]}}
+    res = tf.divergence(bc, conservative=conservative, backend=backend)
+    expect = VectorField.from_expression(grid, ["2 * r**2 * (3 * r - 1)", 0, 0])
+    if conservative:
+        np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+    else:
+        np.testing.assert_allclose(
+            res.data[:, 1:-1], expect.data[:, 1:-1], rtol=0.1, atol=0.1
+        )
+
+    # test an edge case
+    grid = SphericalSymGrid([0, 10], 50)
+    tensor = Tensor2Field(grid)
+    tensor[0, 0] = ScalarField.from_expression(grid, "tanh(r - 5)")
+    tensor[1, 1] = tensor[0, 0]
+    tensor[2, 2] = tensor[0, 0]
+
+    bc = {
+        "r-": {"value": [[-1, 0, 0], [0, -1, 0], [0, 0, -1]]},
+        "r+": {"derivative": 0},
+    }
+    div = tensor.divergence(bc=bc, conservative=conservative, backend=backend)
+
+    expected = ScalarField.from_expression(grid, "cosh(5 - r)**-2")
+    np.testing.assert_allclose(div[0].data, expected.data, atol=0.1)
+    np.testing.assert_allclose(div[1].data, 0, atol=0.1)
+    np.testing.assert_allclose(div[2].data, 0, atol=0.1)
+
+
+@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+def test_tensor_sph_symmetry(backend):
+    """Test treatment of symmetric tensor field."""
+    grid = SphericalSymGrid(1, 16)
+    vf = VectorField.from_expression(grid, ["r**2", 0, 0])
+    vf_grad = vf.gradient(
+        {"r-": "derivative", "r+": {"derivative": 2}}, backend=backend
+    )
+    strain = vf_grad + vf_grad.transpose()
+
+    expect = ScalarField.from_expression(grid, "2*r").data
+    np.testing.assert_allclose(strain.data[0, 0], 2 * expect)
+    np.testing.assert_allclose(strain.data[1, 1], expect)
+    np.testing.assert_allclose(strain.data[2, 2], expect)
+
+    bcs = {"r-": {"value": 0}, "r+": {"normal_derivative": [4, 0, 0]}}
+    strain_div = strain.divergence(bcs, backend=backend)
+    np.testing.assert_allclose(strain_div.data[0], 8)
+    np.testing.assert_allclose(strain_div.data[1:], 0)
+
+
+@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+def test_tensor_div_div_analytical(backend):
     """Test double divergence of a tensor field against analytical expression."""
     grid = SphericalSymGrid([0.5, 1], 12)
     tf = Tensor2Field.from_expression(
@@ -187,3 +273,28 @@ def test_tensor_double_divergence_sph(backend):
     res = tf.apply_operator("tensor_double_divergence", bc="curvature", backend=backend)
     expect = ScalarField.from_expression(grid, "2 * r * (15 * r - 4)")
     np.testing.assert_allclose(res.data[1:-1], expect.data[1:-1], rtol=0.01)
+
+
+@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("conservative", [True, False])
+def test_tensor_div_div(backend, conservative):
+    """Test double divergence of a tensor field by comparison with two divergences."""
+    grid = SphericalSymGrid([0, 1], 64)
+    expr = "r * tanh((0.5 - r) * 10)"
+    bc = "auto_periodic_neumann"
+
+    # test radial part
+    tf = Tensor2Field.from_expression(grid, [[expr, 0, 0], [0, 0, 0], [0, 0, 0]])
+    res = tf.apply_operator(
+        "tensor_double_divergence", bc=bc, conservative=conservative, backend=backend
+    )
+    est = tf.divergence(bc, backend=backend).divergence(bc, backend=backend)
+    np.testing.assert_allclose(res.data[2:-2], est.data[2:-2], rtol=0.02, atol=1)
+
+    # test angular part
+    tf = Tensor2Field.from_expression(grid, [[0, 0, 0], [0, expr, 0], [0, 0, expr]])
+    res = tf.apply_operator(
+        "tensor_double_divergence", bc=bc, conservative=conservative, backend=backend
+    )
+    est = tf.divergence(bc, backend=backend).divergence(bc, backend=backend)
+    np.testing.assert_allclose(res.data[2:-2], est.data[2:-2], rtol=0.02, atol=1)

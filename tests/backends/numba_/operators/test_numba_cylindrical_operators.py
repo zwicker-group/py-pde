@@ -97,7 +97,7 @@ def test_findiff_cyl():
     np.testing.assert_allclose(lap.data, [[8, 8], [y1, y1], [y2, y2]])
 
 
-def test_grid_laplace():
+def test_grid_laplace_cyl():
     """Test the cylindrical implementation of the laplace operator."""
     grid_cyl = CylindricalSymGrid(7, (0, 4), (4, 4))
     grid_cart = CartesianGrid([[-5, 5], [-5, 5], [0, 4]], [10, 10, 4])

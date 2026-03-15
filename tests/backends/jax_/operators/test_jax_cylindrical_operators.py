@@ -57,6 +57,19 @@ def test_divergence_field_cyl(backend):
 
 
 @pytest.mark.parametrize("backend", ["jax"], indirect=True)
+def test_vector_gradient_divergence_field_cyl(backend):
+    """Test the divergence operator."""
+    grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [8, 16], periodic_z=True)
+    r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
+    data = [np.cos(r) + np.sin(z) ** 2, np.cos(r) ** 2 + np.sin(z), np.zeros_like(r)]
+    v = VectorField(grid, data=data)
+    t = v.gradient(bc="auto_periodic_neumann", backend=backend)
+    assert t.data.shape == (3, 3, 8, 16)
+    v = t.divergence(bc="auto_periodic_neumann", backend=backend)
+    assert v.data.shape == (3, 8, 16)
+
+
+@pytest.mark.parametrize("backend", ["jax"], indirect=True)
 def test_findiff_cyl(backend):
     """Test operator for a simple cylindrical grid."""
     grid = CylindricalSymGrid(1.5, [0, 1], (3, 2), periodic_z=True)

@@ -98,7 +98,7 @@ def test_small_annulus_sph(op_name, field, rng):
     assert np.linalg.norm(res[0].data - res[2].data) > 1e-3
 
 
-def test_grid_laplace():
+def test_grid_laplace_sph():
     """Test the polar implementation of the laplace operator."""
     grid_sph = SphericalSymGrid(9, 11)
     grid_cart = CartesianGrid([[-5, 5], [-5, 5], [-5, 5]], [12, 10, 11])
@@ -117,7 +117,7 @@ def test_grid_laplace():
 
 
 @pytest.mark.parametrize("r_inner", [0, 1])
-def test_gradient_squared(r_inner, rng):
+def test_gradient_squared_sph(r_inner, rng):
     """Compare gradient squared operator."""
     grid = SphericalSymGrid((r_inner, 5), 64)
     field = ScalarField.random_harmonic(grid, modes=1, rng=rng)
