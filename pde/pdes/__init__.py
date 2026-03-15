@@ -19,6 +19,7 @@ deal with raw data for faster simulations.
    ~allen_cahn.AllenCahnPDE
    ~cahn_hilliard.CahnHilliardPDE
    ~diffusion.DiffusionPDE
+   ~klein_gordon.KleinGordonPDE
    ~kpz_interface.KPZInterfacePDE
    ~kuramoto_sivashinsky.KuramotoSivashinskyPDE
    ~swift_hohenberg.SwiftHohenbergPDE
@@ -39,6 +40,7 @@ Additionally, we offer two solvers for typical elliptical PDEs:
       allen_cahn.AllenCahnPDE
       cahn_hilliard.CahnHilliardPDE
       diffusion.DiffusionPDE
+      klein_gordon.KleinGordonPDE
       kpz_interface.KPZInterfacePDE
       kuramoto_sivashinsky.KuramotoSivashinskyPDE
       swift_hohenberg.SwiftHohenbergPDE
@@ -52,6 +54,7 @@ from .allen_cahn import AllenCahnPDE  # noqa: F401
 from .base import PDEBase, SDEBase  # noqa: F401
 from .cahn_hilliard import CahnHilliardPDE  # noqa: F401
 from .diffusion import DiffusionPDE  # noqa: F401
+from .klein_gordon import KleinGordonPDE  # noqa: F401
 from .kpz_interface import KPZInterfacePDE  # noqa: F401
 from .kuramoto_sivashinsky import KuramotoSivashinskyPDE  # noqa: F401
 from .laplace import (
