@@ -62,7 +62,7 @@ class JaxGhostCellSetter(Protocol):
 
 
 class JaxVirtualPointEvaluator(Protocol):
-    def __call__(self, arr: Array, idx: tuple[int, ...], args=None) -> Array:
+    def __call__(self, arr: Array, idx: tuple[int | slice, ...], args=None) -> Array:
         """Evaluate the virtual point at the given position.
 
         Args:

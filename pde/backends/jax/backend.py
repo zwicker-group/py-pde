@@ -14,6 +14,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from ...grids import GridBase
+from ...grids.boundaries.axes import BoundariesList
 from ...tools.cache import cached_method
 from ..base import TFunc
 from ..numpy import NumpyBackend
@@ -29,13 +30,16 @@ if TYPE_CHECKING:
     from ...pdes import PDEBase
     from ...solvers.base import SolverBase
     from ...tools.config import Config
-    from ...tools.typing import NumericArray, OperatorInfo, OperatorType, TArray, TField
-    from ..base import TFunc
-    from .typing import (
-        JaxDataSetter,
-        JaxGhostCellSetter,
+    from ...tools.typing import (
+        NumericArray,
         OperatorImplType,
+        OperatorInfo,
+        OperatorType,
+        TArray,
+        TField,
     )
+    from ..base import TFunc
+    from .typing import JaxDataSetter, JaxGhostCellSetter
 
 
 class JaxBackend(NumpyBackend):
@@ -43,7 +47,7 @@ class JaxBackend(NumpyBackend):
 
     implementation = "jax"
 
-    _dtype_cache: dict[str, dict[DTypeLike, np.dtype]] = defaultdict(dict)
+    _dtype_cache: dict[str, dict[DTypeLike, DTypeLike]] = defaultdict(dict)
     """dict: contains information about the dtypes available for the current device"""
     _emitted_downcast_warning: bool = False
     """bool: global flag to track whether we already warned about downcasting"""
@@ -94,7 +98,7 @@ class JaxBackend(NumpyBackend):
         else:
             self._device = jax.devices(device)[0]
 
-    def get_jax_dtype(self, dtype: DTypeLike) -> np.dtype:
+    def get_jax_dtype(self, dtype: DTypeLike) -> DTypeLike:
         """Convert numpy dtype to jax-compatible dtype.
 
         Args:
@@ -107,7 +111,7 @@ class JaxBackend(NumpyBackend):
         """
         # load the dtype cache of the current device
         type_cache = self._dtype_cache[self.device.device_kind]
-        np_dtype: np.dtype = np.dtype(dtype)
+        np_dtype: DTypeLike = np.dtype(dtype)
         try:
             # try returning type from cache
             return type_cache[np_dtype]
@@ -116,7 +120,7 @@ class JaxBackend(NumpyBackend):
 
         try:
             # Try to create a tensor of this dtype on the device
-            jnp.empty(1, dtype=np_dtype, device=self.device)
+            jnp.empty(1, dtype=np_dtype, device=self.device)  # type: ignore
         except TypeError:
             # dtype is not supported, so we see whether we need to use downcasting
             if self.config["dtype_downcasting"] and np_dtype == np.float64:
@@ -126,7 +130,7 @@ class JaxBackend(NumpyBackend):
                         self.device.type,
                     )
                     self._emitted_downcast_warning = True
-                jax_dtype: np.dtype = np.float32
+                jax_dtype: DTypeLike = np.float32
             else:
                 raise
         else:
@@ -146,7 +150,7 @@ class JaxBackend(NumpyBackend):
         if isinstance(value, np.ndarray):
             dtype = self.get_jax_dtype(value.dtype)
             with np.errstate(under="ignore", over="ignore"):
-                return jax.numpy.asarray(value, dtype=dtype, device=self.device)
+                return jax.numpy.asarray(value, dtype=dtype, device=self.device)  # type: ignore
         msg = f"Unsupported type `{value.__type__}"
         raise TypeError(msg)
 
@@ -342,6 +346,9 @@ class JaxBackend(NumpyBackend):
         # get the boundary conditions object
         bcs = grid.get_boundary_conditions(bcs, rank=rank)
 
+        if not isinstance(bcs, BoundariesList):
+            raise NotImplementedError
+
         # set the valid elements and the ghost cells according to boundary condition
         ghost_cell_setters = [
             self._make_local_ghost_cell_setter(bc_local)
@@ -489,7 +496,11 @@ class JaxBackend(NumpyBackend):
         )
 
         @self.compile_function
-        def apply_op_jax(arr: jax.Array, out=None, args=None) -> jax.Array:
+        def apply_op_jax(
+            arr: jax.Array,
+            out: jax.Array | None = None,
+            args: dict[str, Any] | None = None,
+        ) -> jax.Array:
             """Set boundary conditions and apply operator."""
             if out is not None:
                 msg = "`jax` arrays are immutable and cannot use `out`"
@@ -497,10 +508,10 @@ class JaxBackend(NumpyBackend):
             # set boundary conditions
             arr_full = get_full_with_bcs(arr, args=args)
             # apply operator
-            return operator_raw(arr_full)
+            return operator_raw(arr_full)  # type: ignore
 
         if native:
-            return apply_op_jax
+            return apply_op_jax  # type: ignore
 
         # calculate shapes of the full data
         shape_in_valid = (grid.dim,) * operator_info.rank_in + grid.shape

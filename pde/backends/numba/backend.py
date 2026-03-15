@@ -548,7 +548,7 @@ class NumbaBackend(NumpyBackend):
             bcs.set_ghost_cells(arr_full, args=args)
 
             # apply operator
-            operator_raw(arr_full, out)
+            operator_raw(arr_full, out)  # type: ignore
 
             # return valid part of the output
             return out
@@ -580,7 +580,7 @@ class NumbaBackend(NumpyBackend):
                     set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
 
                     # apply operator
-                    operator_raw(arr_full, out)
+                    operator_raw(arr_full, out)  # type: ignore
 
                     # return valid part of the output
                     return out
@@ -604,7 +604,7 @@ class NumbaBackend(NumpyBackend):
                     set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
 
                     # apply operator
-                    operator_raw(arr_full, out)
+                    operator_raw(arr_full, out)  # type: ignore
 
                     # return valid part of the output
                     return out

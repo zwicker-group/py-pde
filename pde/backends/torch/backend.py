@@ -447,8 +447,10 @@ class TorchBackend(NumpyBackend):
         def rhs(arr: NumericArray, t: float = 0) -> NumericArray:
             """Helper wrapping function working with torch tensors."""
             arr_torch = self.from_numpy(arr)
+            # We wrap the scalar time into a tensor, so torch correctly identifies it as
+            # a value that is modified each time we call the function.
             t_torch = torch.tensor(t)
-            res_torch = rhs_torch(arr_torch, t_torch)
+            res_torch = rhs_torch(arr_torch, t_torch)  # type: ignore
             return self.to_numpy(res_torch)  # type: ignore
 
         return rhs  # type: ignore

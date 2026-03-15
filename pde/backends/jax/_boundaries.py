@@ -276,6 +276,6 @@ def _make_const2ndorder_virtual_point_evaluator(
         """Evaluate the virtual point at `idx`"""
         val1 = extract_one_coordinate(arr, num_axes, axis=axis, index=i1, normal=normal)
         val2 = extract_one_coordinate(arr, num_axes, axis=axis, index=i2, normal=normal)
-        return value + f1 * val1 + f2 * val2
+        return value + f1 * val1 + f2 * val2  # type: ignore
 
     return virtual_point  # type: ignore
