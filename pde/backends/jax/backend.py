@@ -16,8 +16,7 @@ import numpy as np
 from ...grids import GridBase
 from ...grids.boundaries.axes import BoundariesList
 from ...tools.cache import cached_method
-from ..base import TFunc
-from ..numpy import NumpyBackend
+from ..base import BackendBase, TFunc
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -42,7 +41,7 @@ if TYPE_CHECKING:
     from .typing import JaxDataSetter, JaxGhostCellSetter
 
 
-class JaxBackend(NumpyBackend):
+class JaxBackend(BackendBase):
     """Defines :mod:`jax` backend."""
 
     implementation = "jax"

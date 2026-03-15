@@ -717,8 +717,7 @@ class SDEBase(PDEBase):
             else:
                 backend = "numpy"
 
-        backend_obj = backends[backend]
-        return backend_obj.make_noise_realization(self, state)
+        return backends[backend].make_noise_realization(self, state)
 
 
 def expr_prod(factor: float, expression: str) -> str:

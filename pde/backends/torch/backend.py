@@ -15,8 +15,7 @@ import torch
 
 from ...fields import VectorField
 from ...grids import GridBase
-from ..base import OperatorInfo, TFunc
-from ..numpy import NumpyBackend
+from ..base import BackendBase, OperatorInfo, TFunc
 from .utils import NUMPY_TO_TORCH_DTYPE, TORCH_TO_NUMPY_DTYPE
 
 if TYPE_CHECKING:
@@ -42,7 +41,7 @@ if TYPE_CHECKING:
     from .operators.common import TorchDifferentialOperator
 
 
-class TorchBackend(NumpyBackend):
+class TorchBackend(BackendBase):
     """Defines :mod:`torch` backend."""
 
     implementation = "torch"
