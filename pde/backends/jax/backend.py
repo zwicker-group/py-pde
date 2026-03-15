@@ -118,23 +118,8 @@ class JaxBackend(NumpyBackend):
         except KeyError:
             pass
 
-        try:
-            # Try to create a tensor of this dtype on the device
-            jnp.empty(1, dtype=np_dtype, device=self.device)  # type: ignore
-        except TypeError:
-            # dtype is not supported, so we see whether we need to use downcasting
-            if self.config["dtype_downcasting"] and np_dtype == np.float64:
-                if not self._emitted_downcast_warning:
-                    self._logger.warning(
-                        " %s device doesn't support float64, so we use float32 instead",
-                        self.device.type,
-                    )
-                    self._emitted_downcast_warning = True
-                jax_dtype: DTypeLike = np.float32
-            else:
-                raise
-        else:
-            jax_dtype = np_dtype
+        # determine jax_dtype
+        jax_dtype = jax.dtypes.canonicalize_dtype(np_dtype)
 
         # store dtype in cache
         type_cache[np_dtype] = jax_dtype
@@ -151,7 +136,7 @@ class JaxBackend(NumpyBackend):
             dtype = self.get_jax_dtype(value.dtype)
             with np.errstate(under="ignore", over="ignore"):
                 return jax.numpy.asarray(value, dtype=dtype, device=self.device)  # type: ignore
-        msg = f"Unsupported type `{value.__type__}"
+        msg = f"Unsupported type `{type(value).__name__}"
         raise TypeError(msg)
 
     def to_numpy(self, value: Any) -> Any:
@@ -478,9 +463,9 @@ class JaxBackend(NumpyBackend):
 
         The function also accepts an optional parameter `args`, which is forwarded to
         `set_ghost_cells`. This allows setting boundary conditions based on external
-        parameters, like time. Note that since the returned operator will always be
-        compiled by Numba, the arguments need to be compatible with Numba. The
-        following example shows how to pass the current time `t`:
+        parameters, like time. When this backend is used together with JAX'
+        just-in-time compilation (e.g. via :func:`jax.jit`), the values passed
+        through `args` need to be compatible with JAX's JIT tracing rules.
 
         Returns:
             callable: the function that applies the operator. This function has the

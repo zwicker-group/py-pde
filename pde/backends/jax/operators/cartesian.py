@@ -147,7 +147,8 @@ def _make_gradient_jax_1d(
             return (arr[2:] - arr[1:-1]) / dx  # type: ignore
         if method == "backward":
             return (arr[1:-1] - arr[:-2]) / dx  # type: ignore
-        return None
+        # this cannot be reached because we validated the method before
+        assert False  # noqa: B011, PT015
 
     return gradient
 
@@ -456,7 +457,8 @@ def _make_divergence_jax_1d(
             return (arr[0, 2:] - arr[0, 1:-1]) / dx  # type: ignore
         if method == "backward":
             return (arr[0, 1:-1] - arr[0, :-2]) / dx  # type: ignore
-        return None
+        # this cannot be reached because we validated the method before
+        assert False  # noqa: B011, PT015
 
     return divergence
 

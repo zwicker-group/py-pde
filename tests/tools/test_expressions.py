@@ -327,17 +327,19 @@ def test_expression_heaviside(backend, expression, value):
     """Test special cases of expressions."""
     expr = ScalarExpression(expression)
     assert not expr.constant
-    assert expr(-1) == 0
-    assert expr(0) == value
-    assert expr(1) == 1
-    np.testing.assert_allclose(expr(np.array([-1, 0, 1])), np.array([0, value, 1]))
+    assert expr(-1.0) == 0
+    assert expr(0.0) == value
+    assert expr(1.0) == 1
+    np.testing.assert_allclose(
+        expr(np.array([-1.0, 0.0, 1.0])), np.array([0, value, 1])
+    )
 
     f = expr.get_function(backend)
     # we need to test different dtype, because torch handles then only in some cases
     assert f(-1.0) == 0
     assert f(0.0) == value
     assert f(1.0) == 1
-    np.testing.assert_allclose(f(np.array([-1, 0, 1])), np.array([0, value, 1]))
+    np.testing.assert_allclose(f(np.array([-1.0, 0.0, 1.0])), np.array([0, value, 1]))
 
 
 @pytest.mark.parametrize(
