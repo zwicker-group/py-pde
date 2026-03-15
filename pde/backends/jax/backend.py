@@ -25,10 +25,10 @@ if TYPE_CHECKING:
 
     from numpy.typing import DTypeLike
 
+    from ...fields import DataFieldBase
     from ...grids import GridBase
     from ...grids.boundaries.axes import BoundariesBase
     from ...grids.boundaries.local import BCBase
-    from ...fields import DataFieldBase
     from ...pdes import PDEBase
     from ...solvers.base import SolverBase
     from ...tools.config import Config
@@ -554,9 +554,7 @@ class JaxBackend(NumpyBackend):
         """
         num_axes = field.grid.num_axes
 
-        def dot(
-            a: jax.Array, b: jax.Array, out: jax.Array | None = None
-        ) -> jax.Array:
+        def dot(a: jax.Array, b: jax.Array, out: jax.Array | None = None) -> jax.Array:
             """Jax implementation to calculate dot product between two fields."""
             rank_a = a.ndim - num_axes
             rank_b = b.ndim - num_axes
@@ -617,7 +615,7 @@ class JaxBackend(NumpyBackend):
             if out is not None:
                 msg = "jax implementation of outer product does not allow `out` arg."
                 raise TypeError(msg)
-            return jnp.einsum("i...,j...->ij...", a, b)  # type: ignore
+            return jnp.einsum("i...,j...->ij...", a, b)
 
         return outer  # type: ignore
 
