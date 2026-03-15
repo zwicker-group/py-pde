@@ -267,6 +267,46 @@ class SolverBase:
 
         return fixed_stepper
 
+    def _make_noise_realization(
+        self, state: TField
+    ) -> Callable[[NumericArray, float], NumericArray | None]:
+        """Return a function for determining one realization of the noise term.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+
+        Returns:
+            callable: Function calculating the noise realization
+        """
+        if self.backend.implementation == "numpy" and hasattr(
+            self.pde, "noise_realization"
+        ):
+            # special case where we use the direct implementation for numpy backend
+            fields = state.copy()
+
+            def noise_realization(
+                state_data: NumericArray, t: float
+            ) -> NumericArray | None:
+                fields.data = state_data
+                noise = self.pde.noise_realization(fields, t)
+                if noise is None:
+                    return None
+                return noise.data  # type: ignore
+
+            return noise_realization
+
+        # For all other backends, we rely on the `make_noise_realization` method
+        if not hasattr(self.pde, "make_noise_realization"):
+            msg = (
+                f"{self.pde.__class__.__name__} does not implement "
+                "`make_noise_realization`, which is required to support noisy PDEs."
+            )
+            raise NotImplementedError(msg)
+        rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
+        return self.backend.compile_function(rhs_noise)
+
     def _select_backend(self, state: TField):
         """Select backend automatically based on implemented PDE."""
         if isinstance(self._backend, str):
