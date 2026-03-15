@@ -2,6 +2,8 @@ name: "Generate coverage report"
 
 on:
   push:
+    branches:
+      - master
     paths-ignore:
       - 'README.md'
   pull_request:
@@ -69,7 +71,7 @@ jobs:
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage_report.xml
+        files: ./coverage_report.xml
         flags: unittests
         name: codecov-pydev
         fail_ci_if_error: true
