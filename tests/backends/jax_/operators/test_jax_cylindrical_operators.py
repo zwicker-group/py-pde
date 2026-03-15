@@ -69,6 +69,9 @@ def test_findiff_cyl(backend):
     y1 = 4 + 3 / r1
     y2 = -16
     np.testing.assert_allclose(lap.data, [[8, 8], [y1, y1], [y2, y2]])
+    lap = s.laplace(bc={"r": {"derivative": 3}, "z": "periodic"}, backend=backend)
+    y2 = -2 + 3.5 / r2
+    np.testing.assert_allclose(lap.data, [[8, 8], [y1, y1], [y2, y2]])
 
 
 @pytest.mark.parametrize("backend", ["jax"], indirect=True)

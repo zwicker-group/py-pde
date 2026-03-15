@@ -48,9 +48,9 @@ def make_laplace(grid: PolarSymGrid) -> OperatorImplType:
 
     def laplace(arr: jax.Array) -> jax.Array:
         """Apply Laplace operator to array `arr`"""
-        return (arr[2:] - 2 * arr[1:-1] + arr[:-2]) * dr_2 + (
-            arr[2:] - arr[:-2]
-        ) * factor_r
+        term1 = (arr[2:] - 2 * arr[1:-1] + arr[:-2]) * dr_2
+        term2 = (arr[2:] - arr[:-2]) * factor_r
+        return term1 + term2  # type: ignore
 
     return laplace
 
@@ -98,9 +98,7 @@ def make_gradient(
     return gradient
 
 
-@jax_backend.register_operator(
-    PolarSymGrid, "gradient_squared", rank_in=0, rank_out=0
-)
+@jax_backend.register_operator(PolarSymGrid, "gradient_squared", rank_in=0, rank_out=0)
 def make_gradient_squared(
     grid: PolarSymGrid, *, central: bool = True
 ) -> OperatorImplType:
@@ -137,9 +135,7 @@ def make_gradient_squared(
 
         def gradient_squared(arr: jax.Array) -> jax.Array:
             """Apply squared gradient operator to array `arr`"""
-            return (
-                (arr[2:] - arr[1:-1]) ** 2 + (arr[1:-1] - arr[:-2]) ** 2
-            ) * scale  # type: ignore
+            return ((arr[2:] - arr[1:-1]) ** 2 + (arr[1:-1] - arr[:-2]) ** 2) * scale  # type: ignore
 
     return gradient_squared
 
@@ -201,9 +197,7 @@ def make_vector_gradient(grid: PolarSymGrid) -> OperatorImplType:
     return vector_gradient
 
 
-@jax_backend.register_operator(
-    PolarSymGrid, "tensor_divergence", rank_in=2, rank_out=1
-)
+@jax_backend.register_operator(PolarSymGrid, "tensor_divergence", rank_in=2, rank_out=1)
 def make_tensor_divergence(grid: PolarSymGrid) -> OperatorImplType:
     """Make a discretized tensor divergence operator for a polar grid.
 

@@ -50,11 +50,11 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
         arr_mid = arr[1:-1, 1:-1]
         arr_r_l, arr_r_h = arr[:-2, 1:-1], arr[2:, 1:-1]
         arr_z_l, arr_z_h = arr[1:-1, :-2], arr[1:-1, 2:]
-        return (
+        return (  # type: ignore
             (arr_r_h - 2 * arr_mid + arr_r_l) * dr_2
             + (arr_r_h - arr_r_l) * factor_r[:, None]
             + (arr_z_l - 2 * arr_mid + arr_z_h) * dz_2
-        )  # type: ignore
+        )
 
     return laplace
 
@@ -131,9 +131,7 @@ def make_gradient_squared(
     return gradient_squared
 
 
-@jax_backend.register_operator(
-    CylindricalSymGrid, "divergence", rank_in=1, rank_out=0
-)
+@jax_backend.register_operator(CylindricalSymGrid, "divergence", rank_in=1, rank_out=0)
 def make_divergence(grid: CylindricalSymGrid) -> OperatorImplType:
     """Make a discretized divergence operator for a cylindrical grid.
 
@@ -151,11 +149,11 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorImplType:
     def divergence(arr: jax.Array) -> jax.Array:
         """Apply divergence operator to array `arr`"""
         arr_r, arr_z = arr[0], arr[1]
-        return (
+        return (  # type: ignore
             arr_r[1:-1, 1:-1] / rs[:, None]
             + (arr_r[2:, 1:-1] - arr_r[:-2, 1:-1]) * scale_r
             + (arr_z[1:-1, 2:] - arr_z[1:-1, :-2]) * scale_z
-        )  # type: ignore
+        )
 
     return divergence
 

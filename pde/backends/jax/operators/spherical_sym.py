@@ -169,9 +169,7 @@ def make_gradient_squared(
 
         def gradient_squared(arr: jax.Array) -> jax.Array:
             """Apply squared gradient operator to array `arr`"""
-            return (
-                (arr[2:] - arr[1:-1]) ** 2 + (arr[1:-1] - arr[:-2]) ** 2
-            ) * scale  # type: ignore
+            return ((arr[2:] - arr[1:-1]) ** 2 + (arr[1:-1] - arr[:-2]) ** 2) * scale  # type: ignore
 
     return gradient_squared
 
