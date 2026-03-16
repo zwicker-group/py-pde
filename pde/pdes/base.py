@@ -686,7 +686,9 @@ class SDEBase(PDEBase):
                 An example for the state from which the grid and other information can
                 be extracted.
             backend (:class:`~pde.backends.base.BackendBase`):
-                The backend used to build the function.
+                The backend used to build the function. Note that the torch backend
+                seems to have weak random number generators that might lead to
+                spurious correlations.
 
         Returns:
             callable: Function calculating the noise realization
