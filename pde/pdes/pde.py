@@ -22,6 +22,7 @@ from ..tools.docstrings import fill_in_docstring
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
 
+    import jax
     import sympy
     import torch
 
@@ -452,6 +453,16 @@ class PDE(SDEBase):
                 # consistent with the definition of operators.
                 return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
 
+        elif backend.implementation == "jax":
+
+            def rhs_func(*args) -> jax.Array:  # type: ignore
+                """Wrapper that inserts the extra arguments and initialized bc_args."""
+                bc_args = {"t": args[-1]}
+                # Here, the `None` is required by the signature we choose. It
+                # essentially indicates that we do not supply an output array,
+                # consistent with the definition of operators.
+                return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
+
         else:
             msg = f"Backend `{backend}` is not implemented"
             raise NotImplementedError(msg)
@@ -773,6 +784,47 @@ class PDE(SDEBase):
         # compile the recursive chain
         return evolution_rate
 
+    def _make_pde_rhs_jax_collection(
+        self, state: FieldCollection, *, backend: BackendBase, cache: dict[str, Any]
+    ) -> Callable[[TArray, float], TArray]:
+        """Create the compiled rhs if `state` is a field collection.
+
+        Args:
+            state (:class:`~pde.fields.FieldCollection`):
+                An example for the state defining the grid and data types
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
+            cache (dict):
+                Cached information that will be used in the function. The cache is
+                populated by :meth:`PDE._prepare_cache`.
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called
+            with an instance of :class:`~numpy.ndarray` of the state data and
+            the time to obtain an instance of :class:`~numpy.ndarray` giving
+            the evolution rate.
+        """
+        import jax.numpy as jnp
+
+        num_fields = len(state)
+        data_shape = state.data.shape
+        dtype = backend.get_jax_dtype(state.dtype)  # type: ignore
+        rhs_list = tuple(cache["rhs_funcs"][i] for i in range(num_fields))
+
+        starts = tuple(slc.start for slc in state._slices)
+        stops = tuple(slc.stop for slc in state._slices)
+        get_data_tuple = cache["get_data_tuple"]
+
+        # this is the outermost function
+        def evolution_rate(state_data: TArray, t: float = 0) -> TArray:
+            data_tpl = get_data_tuple(state_data)
+            out = jnp.empty(data_shape, dtype=dtype)
+            for i, rhs in enumerate(rhs_list):
+                out = out.at[starts[i] : stops[i]].set(rhs(*data_tpl, t))
+            return out  # type: ignore
+
+        return evolution_rate
+
     def make_evolution_rate(
         self, state: FieldCollection, backend: BackendBase
     ) -> Callable[[TArray, float], TArray]:
@@ -804,6 +856,10 @@ class PDE(SDEBase):
                 )
             if backend.implementation == "torch":
                 return self._make_pde_rhs_torch_collection(
+                    state, backend=backend, cache=cache
+                )
+            if backend.implementation == "jax":
+                return self._make_pde_rhs_jax_collection(
                     state, backend=backend, cache=cache
                 )
             raise NotImplementedError
