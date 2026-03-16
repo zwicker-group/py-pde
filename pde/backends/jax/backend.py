@@ -645,13 +645,10 @@ class JaxBackend(BackendBase):
         import sympy
         from sympy.printing.numpy import JaxPrinter
 
-        from .utils import SPECIAL_FUNCTIONS_JAX
-
         # collect all the user functions
         user_functions = expression.user_funcs.copy()
         if user_funcs is not None:
             user_functions.update(user_funcs)
-        user_functions.update(SPECIAL_FUNCTIONS_JAX)
 
         user_functions = {
             k: self.compile_function(v) for k, v in user_functions.items()

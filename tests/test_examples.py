@@ -47,6 +47,7 @@ def test_example_scripts(path):
     # run the actual test in a separate python process
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + env.get("PYTHONPATH", "")
+    env["MPLBACKEND"] = "agg"  # select a backend without a GUI
     proc = sp.Popen([sys.executable, path], env=env, stdout=sp.PIPE, stderr=sp.PIPE)
     try:
         outs, errs = proc.communicate(timeout=30)
