@@ -16,6 +16,7 @@ from ...grids.boundaries.local import (
     ConstBC2ndOrderBase,
     CurvatureBC,
     DirichletBC,
+    ExpressionBC,
     MixedBC,
     NeumannBC,
     _PeriodicBC,
@@ -30,35 +31,6 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger instance."""
-
-
-def make_virtual_point_evaluator(
-    bc: BCBase, backend: JaxBackend
-) -> JaxVirtualPointEvaluator:
-    """Return function that evaluates the value of a virtual point.
-
-    Args:
-        bc (:class:`~pde.grids.boundaries.local.BCBase`):
-            Defines the boundary conditions for a particular side, for which the setter
-            should be defined.
-        backend (:class`~pde.backends.jax.backend.JaxBackend`):
-            The backend that determines where data is moved
-
-    Returns:
-        function: A function that takes the data array and an index marking the current
-        point, which is assumed to be a virtual point. The result is the data value at
-        this point, which is calculated using the boundary condition.
-    """
-    # if isinstance(bc, UserBC):
-    #     return _make_user_virtual_point_evaluator(bc)
-    # if isinstance(bc, ExpressionBC):
-    #     return _make_expression_virtual_point_evaluator(bc)
-    if isinstance(bc, ConstBC1stOrderBase):
-        return _make_const1storder_virtual_point_evaluator(bc, backend)
-    if isinstance(bc, ConstBC2ndOrderBase):
-        return _make_const2ndorder_virtual_point_evaluator(bc, backend)
-    msg = f"Cannot handle local boundary {bc.__class__}"
-    raise NotImplementedError(msg)
 
 
 def extract_one_coordinate(
@@ -115,6 +87,100 @@ def extract_one_coordinate(
         if num_axes == 3 and axis == 2:
             return arr[..., :, :, index]
     raise NotImplementedError
+
+
+def make_virtual_point_evaluator(
+    bc: BCBase, backend: JaxBackend
+) -> JaxVirtualPointEvaluator:
+    """Return function that evaluates the value of a virtual point.
+
+    Args:
+        bc (:class:`~pde.grids.boundaries.local.BCBase`):
+            Defines the boundary conditions for a particular side, for which the setter
+            should be defined.
+        backend (:class`~pde.backends.jax.backend.JaxBackend`):
+            The backend that determines where data is moved
+
+    Returns:
+        function: A function that takes the data array and an index marking the current
+        point, which is assumed to be a virtual point. The result is the data value at
+        this point, which is calculated using the boundary condition.
+    """
+    # if isinstance(bc, UserBC):
+    #     return _make_user_virtual_point_evaluator(bc)
+    if isinstance(bc, ExpressionBC):
+        return _make_expression_virtual_point_evaluator(bc, backend)
+    if isinstance(bc, ConstBC1stOrderBase):
+        return _make_const1storder_virtual_point_evaluator(bc, backend)
+    if isinstance(bc, ConstBC2ndOrderBase):
+        return _make_const2ndorder_virtual_point_evaluator(bc, backend)
+    msg = f"Cannot handle local boundary {bc.__class__}"
+    raise NotImplementedError(msg)
+
+
+def _make_expression_virtual_point_evaluator(
+    bc: ExpressionBC, backend: JaxBackend
+) -> JaxVirtualPointEvaluator:
+    """Return function that evaluates the value of a virtual point.
+
+    Args:
+        bc (:class:`~pde.grids.boundaries.local.ExpressionBC`):
+            Defines the boundary conditions for a particular side, for which the virtual
+            point evaluator should be defined.
+        backend (:class:`~pde.backends.jax.backend.JaxBackend`):
+            The backend that determines where data is moved
+
+    Returns:
+        function: A function that takes the data array. The result is the data value at
+        the corresponding boundary, which is calculated using the boundary condition.
+    """
+
+    dx = bc.grid.discretization[bc.axis]
+    num_axes = bc.grid.num_axes
+    axis = bc.axis
+
+    # index to read the adjacent cell in the valid data (no ghost cells)
+    index = bc._get_value_cell_index(with_ghost_cells=False)
+
+    # boundary coordinates as jax arrays (num_axes, *boundary_shape)
+    bc_coords_np = np.moveaxis(
+        bc.grid._boundary_coordinates(axis=axis, upper=bc.upper), -1, 0
+    )
+    bc_coords = [backend.from_numpy(bc_coords_np[i]) for i in range(num_axes)]
+
+    # determine if we need to warn about a missing time argument
+    warn_if_time_not_set = (not bc._is_func) and bc._func_expression.depends_on("t")
+
+    # get the expression function
+    if bc._is_func:
+        # use the Python-level callable directly; may not be JAX-JIT-traceable
+        func = bc._make_function()
+    else:
+        # use a JAX-native function derived from the sympy expression
+        func = bc._func_expression.get_function(backend=backend, single_arg=False)
+
+    def virtual_point(arr: jax.Array, idx: tuple[int, ...], args=None) -> jax.Array:
+        """Evaluate the virtual point at the boundary."""
+        # extract adjacent cell values for all boundary points
+        val_field = extract_one_coordinate(
+            arr, num_axes=num_axes, axis=axis, index=index, normal=False
+        )
+
+        # extract time for handling time-dependent BCs
+        if args is None or "t" not in args:
+            if warn_if_time_not_set:
+                msg = (
+                    "Require value for `t` for time-dependent BC. The value must be "
+                    "passed explicitly via `args` when calling a differential operator."
+                )
+                raise RuntimeError(msg)
+            t = 0.0
+        else:
+            t = float(args["t"])
+
+        return func(val_field, dx, *bc_coords, t)  # type: ignore
+
+    return virtual_point  # type: ignore
 
 
 def _get_virtual_point_data_1storder(

@@ -92,8 +92,8 @@ class SphericalLaplacian(TorchDifferentialOperator):
         data_full = self.get_full_data(arr, args=args)
 
         if self.conservative:
-            term_h = self.factor_h * (arr[2:] - arr[1:-1])  # type: ignore
-            term_l = self.factor_l * (arr[1:-1] - arr[:-2])  # type: ignore
+            term_h = self.factor_h * (data_full[2:] - data_full[1:-1])  # type: ignore
+            term_l = self.factor_l * (data_full[1:-1] - data_full[:-2])  # type: ignore
             return term_h - term_l
 
         term1 = (data_full[2:] - 2 * data_full[1:-1] + data_full[:-2]) * self.dr_2

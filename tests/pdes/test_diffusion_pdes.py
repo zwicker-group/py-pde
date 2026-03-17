@@ -16,6 +16,8 @@ from pde import (
 )
 from pde.tools.misc import module_available
 
+ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+
 
 def test_diffusion_single(rng):
     """Test some methods of the simple diffusion model."""
@@ -60,7 +62,7 @@ def test_simple_diffusion_flux_left(rng):
     np.testing.assert_allclose(sol.data, 2 - 2 * grid.axes_coords[0], rtol=5e-3)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_diffusion_time_dependent_bcs(backend):
     """Test PDE with time-dependent BCs."""
     field = ScalarField(UnitGrid([3]))
@@ -81,11 +83,7 @@ def test_diffusion_time_dependent_bcs(backend):
     np.testing.assert_allclose(storage[-1].data, 1, rtol=1e-3)
 
 
-@pytest.mark.parametrize(
-    "backend",
-    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
-    indirect=True,
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_diffusion_sde(backend, rng):
     """Test scaling of noise using a stochastic diffusion equation."""
     # we disable diffusivity to have a simple analytical solution

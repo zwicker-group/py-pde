@@ -59,7 +59,8 @@ class TorchOperatorBase(torch.nn.Module):
         elif isinstance(arr, torch.Tensor):
             tensor = arr
         else:
-            raise TypeError
+            msg = f"Cannot convert {arr}"
+            raise TypeError(msg)
 
         self.register_buffer(name, tensor)
 
@@ -67,8 +68,8 @@ class TorchOperatorBase(torch.nn.Module):
 def torch_heaviside(x1: torch.Tensor, x2: torch.Tensor | None = None) -> torch.Tensor:
     """Return the Heaviside step function using torch.
 
-    This wraps :func:`torch.heaviside` and ensures that scalar fallback values are
-    converted to tensors with a dtype compatible with `x1`.
+    This does not use :func:`torch.heaviside` since this is not implemented for the MPS
+    device.
 
     Args:
         x1 (:class:`torch.Tensor`):
@@ -80,10 +81,15 @@ def torch_heaviside(x1: torch.Tensor, x2: torch.Tensor | None = None) -> torch.T
         :class:`torch.Tensor`:
             Tensor containing the Heaviside values of `x1`.
     """
-    x1_t = torch.tensor(x1)
+    x1 = torch.as_tensor(x1)
     if x2 is None:
-        return torch.heaviside(x1_t, torch.tensor(0.5, dtype=x1_t.dtype))
-    return torch.heaviside(x1_t, torch.tensor(x2, dtype=x1_t.dtype))
+        x2 = 0.5
+    x2_t = torch.as_tensor(x2, dtype=x1.dtype, device=x1.device)
+    return torch.where(
+        x1 > 0,
+        torch.ones_like(x1),
+        torch.where(x1 < 0, torch.zeros_like(x1), x2_t),
+    )
 
 
 def torch_hypot(x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
@@ -102,7 +108,7 @@ def torch_hypot(x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
         :class:`torch.Tensor`:
             Tensor containing the element-wise hypotenuse of `x1` and `x2`.
     """
-    return torch.hypot(torch.tensor(x1), torch.tensor(x2))
+    return torch.hypot(torch.as_tensor(x1), torch.as_tensor(x2))
 
 
 SPECIAL_FUNCTIONS_TORCH: dict[str, Callable] = {

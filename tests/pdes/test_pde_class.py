@@ -16,6 +16,9 @@ from pde.backends import backends
 from pde.fields import FieldCollection, ScalarField, VectorField
 from pde.grids.boundaries.local import BCDataError
 
+ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+ALL_COMPILED_BACKENDS = ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+
 
 def iter_grids():
     """Generate some test grids."""
@@ -72,11 +75,7 @@ def test_pde_scalar(rng):
     np.testing.assert_allclose(res_a.data, res_b.data)
 
 
-@pytest.mark.parametrize(
-    "backend",
-    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
-    indirect=True,
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_pde_explicit_time(backend):
     """Test PDE with an explicit time dependence in rhs."""
     eq = PDE({"u": "t"})
@@ -90,9 +89,7 @@ def test_pde_explicit_time(backend):
     np.testing.assert_allclose(res.data, 0.5, atol=0.01)
 
 
-@pytest.mark.parametrize(
-    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)
 def test_pde_vector_laplace(backend, rng):
     """Test PDE with a single vector field."""
     eq = PDE({"u": "vector_laplace(u)"})
@@ -109,9 +106,7 @@ def test_pde_vector_laplace(backend, rng):
     np.testing.assert_allclose(res_a.data, res_b.data, rtol=1e-6)
 
 
-@pytest.mark.parametrize(
-    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)
 def test_pde_vector_ops(backend, rng):
     """Test PDE with a single vector field."""
     eq = PDE({"u": "tensor_divergence(vector_gradient(u))"})
@@ -128,9 +123,7 @@ def test_pde_vector_ops(backend, rng):
     np.testing.assert_allclose(res_a.data, res_b.data, rtol=1e-6)
 
 
-@pytest.mark.parametrize(
-    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)
 def test_pde_2scalar(backend):
     """Test PDE with two scalar fields."""
     eq = PDE({"u": "laplace(u) - u", "v": "- u * v"})
@@ -147,9 +140,7 @@ def test_pde_2scalar(backend):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize(
-    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)
 def test_pde_vector_scalar(backend, rng):
     """Test PDE with a vector and a scalar field."""
     eq = PDE({"u": "vector_laplace(u) - u + gradient(v)", "v": "- divergence(u)"})
@@ -170,8 +161,9 @@ def test_pde_vector_scalar(backend, rng):
     np.testing.assert_allclose(res_a.data, res_b.data)
 
 
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("grid", iter_grids())
-def test_compare_swift_hohenberg(grid, rng):
+def test_compare_swift_hohenberg(backend, grid, rng):
     """Compare custom class to swift-Hohenberg."""
     rate, kc2, delta = rng.uniform(0.5, 2, size=3)
     eq1 = SwiftHohenbergPDE(rate=rate, kc2=kc2, delta=delta)
@@ -185,8 +177,8 @@ def test_compare_swift_hohenberg(grid, rng):
     assert eq1.complex_valued == eq2.complex_valued
 
     field = ScalarField.random_uniform(grid, rng=rng)
-    res1 = eq1.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
-    res2 = eq2.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
+    res1 = eq1.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
+    res2 = eq2.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
 
     res1.assert_field_compatible(res1)
     np.testing.assert_allclose(res1.data, res2.data)
@@ -238,7 +230,7 @@ def test_custom_operator_torch(backend, rng):
         def __init__(self, grid, bcs, *, dtype, **kwargs):
             super().__init__(dtype=dtype)
 
-        def forward(self, arr):
+        def forward(self, arr, args=None):
             return 2 * arr  # multiply array by a constant factor
 
     # register the function with the torch backend
@@ -253,11 +245,7 @@ def test_custom_operator_torch(backend, rng):
     del backend._operators[grids.UnitGrid]["undefined"]
 
 
-@pytest.mark.parametrize(
-    "backend",
-    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
-    indirect=True,
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_pde_noise(backend, rng):
     """Test noise operator on PDE class."""
     grid = grids.UnitGrid([128, 128])
@@ -281,11 +269,7 @@ def test_pde_noise(backend, rng):
         eq = PDE({"a": 0}, noise=[0.01, 2.0])
 
 
-@pytest.mark.parametrize(
-    "backend",
-    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
-    indirect=True,
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_pde_spatial_args(backend):
     """Test PDE with spatial dependence."""
     field = ScalarField(grids.UnitGrid([4]))
@@ -309,9 +293,7 @@ def test_pde_spatial_args(backend):
         eq.make_pde_rhs(field, backend=backend)(field.data, 0)
 
 
-@pytest.mark.parametrize(
-    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)
 def test_pde_user_funcs(backend, rng):
     """Test user supplied functions."""
     # test a simple case
@@ -333,7 +315,10 @@ def test_pde_user_funcs(backend, rng):
     )
 
 
-@pytest.mark.parametrize("backend", ["numba", "jax", "torch-cpu"], indirect=True)
+# FIXME: torch MPS backend does not support complex numbers correctly
+@pytest.mark.parametrize(
+    "backend", ["numba", "jax", "torch-cpu", "torch-cuda"], indirect=True
+)
 def test_pde_complex_serial(backend, rng):
     """Test complex valued PDE."""
     eq = PDE({"p": "I * laplace(p)"})
@@ -350,11 +335,7 @@ def test_pde_complex_serial(backend, rng):
     np.testing.assert_allclose(res1.data, res2.data)
 
 
-@pytest.mark.parametrize(
-    "backend",
-    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
-    indirect=True,
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_pde_product_operators(backend):
     """Test inner and outer products."""
     eq = PDE(
@@ -408,11 +389,7 @@ def test_pde_consts():
         eq.evolution_rate(field)
 
 
-@pytest.mark.parametrize(
-    "backend",
-    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
-    indirect=True,
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("bc", ["auto_periodic_neumann", {"value": 1}])
 def test_pde_bcs(backend, bc, rng):
     """Test PDE with boundary conditions."""
@@ -442,11 +419,7 @@ def test_pde_bcs_warning(caplog):
     assert "Unused" in caplog.text
 
 
-@pytest.mark.parametrize(
-    "backend",
-    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
-    indirect=True,
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("bc", ["asdf", [{"value": 1}] * 3])
 def test_pde_bcs_error(backend, bc, rng):
     """Test PDE with wrong boundary conditions."""
@@ -458,7 +431,7 @@ def test_pde_bcs_error(backend, bc, rng):
         eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_pde_time_dependent_bcs(backend):
     """Test PDE with time-dependent BCs."""
     field = ScalarField(grids.UnitGrid([3]))
@@ -511,9 +484,7 @@ def test_anti_periodic_bcs():
     assert res2.fluctuations > 0.1
 
 
-@pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_pde_heaviside(backend):
     """Test PDE with a heaviside right hand side."""
     field = ScalarField(grids.CartesianGrid([[-1, 1]], 2), [-1, 1])
@@ -522,11 +493,7 @@ def test_pde_heaviside(backend):
     np.testing.assert_allclose(res.data, np.array([-1.0, 2]))
 
 
-@pytest.mark.parametrize(
-    "backend",
-    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
-    indirect=True,
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_post_step_hook(backend):
     """Test simple post step hook function."""
 
