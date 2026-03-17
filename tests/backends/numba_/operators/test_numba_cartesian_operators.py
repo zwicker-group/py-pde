@@ -93,7 +93,7 @@ def test_laplace_2d(periodic, rng):
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 @pytest.mark.parametrize("method", ["central", "forward", "backward"])
 @pytest.mark.parametrize("periodic", [True, False])
-def test_gradient_cart_methods(ndim, method, periodic, rng):
+def test_gradient_cart_fdm_methods(ndim, method, periodic, rng):
     """Test gradient operators with forward and backward finite-difference methods."""
     bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic=periodic)
     field = ScalarField.random_uniform(bcs.grid, rng=rng)
@@ -106,7 +106,7 @@ def test_gradient_cart_methods(ndim, method, periodic, rng):
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 @pytest.mark.parametrize("method", ["central", "forward", "backward"])
 @pytest.mark.parametrize("periodic", [True, False])
-def test_divergence_cart_methods(ndim, method, periodic, rng):
+def test_divergence_cart_fdm_methods(ndim, method, periodic, rng):
     """Test divergence operators with forward and backward finite-difference methods."""
     bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic=periodic, rank=1)
     field = VectorField.random_uniform(bcs.grid, rng=rng)

@@ -131,9 +131,9 @@ def test_gradient_squared_cyl(backend, rng):
     s1 = field.gradient("auto_periodic_neumann", backend=backend).to_scalar(
         "squared_sum"
     )
-    s2 = field.gradient_squared("auto_periodic_neumann", backend=backend, central=True)
+    s2 = field.gradient_squared("auto_periodic_neumann", central=True, backend=backend)
     np.testing.assert_allclose(s1.data, s2.data, rtol=0.2, atol=0.2)
-    s3 = field.gradient_squared("auto_periodic_neumann", backend=backend, central=False)
+    s3 = field.gradient_squared("auto_periodic_neumann", central=False, backend=backend)
     np.testing.assert_allclose(s1.data, s3.data, rtol=0.2, atol=0.2)
     assert not np.array_equal(s2.data, s3.data)
 
