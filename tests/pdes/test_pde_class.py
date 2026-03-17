@@ -317,7 +317,7 @@ def test_pde_user_funcs(backend, rng):
 
 # FIXME: torch MPS backend does not support complex numbers correctly
 @pytest.mark.parametrize(
-    "backend", set(ALL_COMPILED_BACKENDS) - {"torch-mps"}, indirect=True
+    "backend", ["numba", "jax", "torch-cpu", "torch-cuda"], indirect=True
 )
 def test_pde_complex_serial(backend, rng):
     """Test complex valued PDE."""
