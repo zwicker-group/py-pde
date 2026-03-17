@@ -265,7 +265,7 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
         self.i_write = -1 if bc.upper else 0
         self.i_read = bc._get_value_cell_index(with_ghost_cells=True)
 
-        # boundary coordinates stored as numpy arrays (converted to tensors in forward)
+        # boundary coordinates stored as numpy arrays
         bc_coords_np = np.moveaxis(
             bc.grid._boundary_coordinates(axis=bc.axis, upper=bc.upper), -1, 0
         )
@@ -273,10 +273,15 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
             np.asarray(bc_coords_np[i]) for i in range(bc.grid.num_axes)
         ]
 
+        # convert boundary coordinates to registered tensors
+        self.bc_coords = []
+        for i, coords in enumerate(bc_coords_np):
+            self.register_array(f"coords{i}", np.asarray(coords, dtype=dtype))
+            self.bc_coords.append(getattr(self, f"coords{i}"))
+
+        # save additional information
         self.dx = bc.grid.discretization[bc.axis]
-        self.warn_if_time_not_set = (not bc._is_func) and bc._func_expression.depends_on(
-            "t"
-        )
+        self.warn_t_missing = (not bc._is_func) and bc._func_expression.depends_on("t")
         self.func = bc._make_function()
 
     def forward(self, data_full: Tensor, args=None) -> Tensor:
@@ -288,50 +293,43 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
 
         # extract time for handling time-dependent BCs
         if args is None or "t" not in args:
-            if self.warn_if_time_not_set:
+            if self.warn_t_missing:
                 msg = (
-                    "Require value for `t` for time-dependent BC. The value must "
-                    "be passed explicitly via `args` when calling a differential "
-                    "operator."
+                    "Require value for `t` for time-dependent BC. The value must be "
+                    "passed explicitly via `args` when calling a differential operator."
                 )
                 raise RuntimeError(msg)
             t = 0.0
         else:
             t = float(args["t"])
 
-        # convert boundary coordinates to tensors on the correct device/dtype
-        bc_coords = [
-            torch.from_numpy(c).to(dtype=data_full.dtype, device=data_full.device)
-            for c in self._bc_coords_np
-        ]
-
         if num_axes == 1:
             val_field = data_full[..., i_read]
-            result = self.func(val_field, self.dx, *bc_coords, t)
+            result = self.func(val_field, self.dx, *self.bc_coords, t)
             data_full[..., self.i_write] = result
 
         elif num_axes == 2:
             if axis == 0:
                 val_field = data_full[..., i_read, 1:-1]
-                result = self.func(val_field, self.dx, *bc_coords, t)
+                result = self.func(val_field, self.dx, *self.bc_coords, t)
                 data_full[..., self.i_write, 1:-1] = result
             elif axis == 1:
                 val_field = data_full[..., 1:-1, i_read]
-                result = self.func(val_field, self.dx, *bc_coords, t)
+                result = self.func(val_field, self.dx, *self.bc_coords, t)
                 data_full[..., 1:-1, self.i_write] = result
 
         elif num_axes == 3:
             if axis == 0:
                 val_field = data_full[..., i_read, 1:-1, 1:-1]
-                result = self.func(val_field, self.dx, *bc_coords, t)
+                result = self.func(val_field, self.dx, *self.bc_coords, t)
                 data_full[..., self.i_write, 1:-1, 1:-1] = result
             elif axis == 1:
                 val_field = data_full[..., 1:-1, i_read, 1:-1]
-                result = self.func(val_field, self.dx, *bc_coords, t)
+                result = self.func(val_field, self.dx, *self.bc_coords, t)
                 data_full[..., 1:-1, self.i_write, 1:-1] = result
             elif axis == 2:
                 val_field = data_full[..., 1:-1, 1:-1, i_read]
-                result = self.func(val_field, self.dx, *bc_coords, t)
+                result = self.func(val_field, self.dx, *self.bc_coords, t)
                 data_full[..., 1:-1, 1:-1, self.i_write] = result
 
         else:

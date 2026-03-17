@@ -59,7 +59,8 @@ class TorchOperatorBase(torch.nn.Module):
         elif isinstance(arr, torch.Tensor):
             tensor = arr
         else:
-            raise TypeError
+            msg = f"Cannot convert {arr}"
+            raise TypeError(msg)
 
         self.register_buffer(name, tensor)
 
