@@ -73,7 +73,9 @@ def test_pde_scalar(rng):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend",
+    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
 )
 def test_pde_explicit_time(backend):
     """Test PDE with an explicit time dependence in rhs."""
@@ -89,7 +91,7 @@ def test_pde_explicit_time(backend):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_pde_vector_laplace(backend, rng):
     """Test PDE with a single vector field."""
@@ -108,7 +110,7 @@ def test_pde_vector_laplace(backend, rng):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_pde_vector_ops(backend, rng):
     """Test PDE with a single vector field."""
@@ -127,7 +129,7 @@ def test_pde_vector_ops(backend, rng):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_pde_2scalar(backend):
     """Test PDE with two scalar fields."""
@@ -146,7 +148,7 @@ def test_pde_2scalar(backend):
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
-    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_pde_vector_scalar(backend, rng):
     """Test PDE with a vector and a scalar field."""
@@ -252,7 +254,9 @@ def test_custom_operator_torch(backend, rng):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend",
+    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
 )
 def test_pde_noise(backend, rng):
     """Test noise operator on PDE class."""
@@ -278,7 +282,9 @@ def test_pde_noise(backend, rng):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend",
+    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
 )
 def test_pde_spatial_args(backend):
     """Test PDE with spatial dependence."""
@@ -304,7 +310,7 @@ def test_pde_spatial_args(backend):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_pde_user_funcs(backend, rng):
     """Test user supplied functions."""
@@ -327,7 +333,7 @@ def test_pde_user_funcs(backend, rng):
     )
 
 
-@pytest.mark.parametrize("backend", ["numba", "torch-cpu"], indirect=True)
+@pytest.mark.parametrize("backend", ["numba", "jax", "torch-cpu"], indirect=True)
 def test_pde_complex_serial(backend, rng):
     """Test complex valued PDE."""
     eq = PDE({"p": "I * laplace(p)"})
@@ -345,7 +351,9 @@ def test_pde_complex_serial(backend, rng):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend",
+    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
 )
 def test_pde_product_operators(backend):
     """Test inner and outer products."""
@@ -401,7 +409,9 @@ def test_pde_consts():
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend",
+    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
 )
 @pytest.mark.parametrize("bc", ["auto_periodic_neumann", {"value": 1}])
 def test_pde_bcs(backend, bc, rng):
@@ -433,7 +443,9 @@ def test_pde_bcs_warning(caplog):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend",
+    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
 )
 @pytest.mark.parametrize("bc", ["asdf", [{"value": 1}] * 3])
 def test_pde_bcs_error(backend, bc, rng):
@@ -511,7 +523,9 @@ def test_pde_heaviside(backend):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend",
+    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
 )
 def test_post_step_hook(backend):
     """Test simple post step hook function."""
