@@ -442,20 +442,9 @@ class PDE(SDEBase):
                 # consistent with the definition of operators.
                 return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
 
-        elif backend.implementation == "torch":
-            # move extra arguments to the torch device?
+        elif backend.implementation in {"jax", "torch"}:
 
-            def rhs_func(*args) -> torch.Tensor:  # type: ignore
-                """Wrapper that inserts the extra arguments and initialized bc_args."""
-                bc_args = {"t": args[-1]}
-                # Here, the `None` is required by the signature we choose. It
-                # essentially indicates that we do not supply an output array,
-                # consistent with the definition of operators.
-                return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
-
-        elif backend.implementation == "jax":
-
-            def rhs_func(*args) -> jax.Array:  # type: ignore
+            def rhs_func(*args) -> jax.Array | torch.Tensor:  # type: ignore
                 """Wrapper that inserts the extra arguments and initialized bc_args."""
                 bc_args = {"t": args[-1]}
                 # Here, the `None` is required by the signature we choose. It
@@ -673,7 +662,7 @@ class PDE(SDEBase):
 
         return post_step_hook_impl, 0  # hook function and initial value
 
-    def _make_pde_rhs_numba_collection(
+    def _make_pde_rhs_collection_numba(
         self, state: FieldCollection, *, backend: BackendBase, cache: dict[str, Any]
     ) -> Callable[[TArray, float], TArray]:
         """Create the compiled rhs if `state` is a field collection.
@@ -742,7 +731,7 @@ class PDE(SDEBase):
         # compile the recursive chain
         return chain()  # type: ignore
 
-    def _make_pde_rhs_torch_collection(
+    def _make_pde_rhs_collection_torch(
         self, state: FieldCollection, *, backend: BackendBase, cache: dict[str, Any]
     ) -> Callable[[TArray, float], TArray]:
         """Create the compiled rhs if `state` is a field collection.
@@ -784,7 +773,7 @@ class PDE(SDEBase):
         # compile the recursive chain
         return evolution_rate
 
-    def _make_pde_rhs_jax_collection(
+    def _make_pde_rhs_collection_jax(
         self, state: FieldCollection, *, backend: BackendBase, cache: dict[str, Any]
     ) -> Callable[[TArray, float], TArray]:
         """Create the compiled rhs if `state` is a field collection.
@@ -851,15 +840,15 @@ class PDE(SDEBase):
         if isinstance(state, FieldCollection):
             # state is a collection of fields
             if backend.implementation == "numba":
-                return self._make_pde_rhs_numba_collection(
+                return self._make_pde_rhs_collection_numba(
                     state, backend=backend, cache=cache
                 )
             if backend.implementation == "torch":
-                return self._make_pde_rhs_torch_collection(
+                return self._make_pde_rhs_collection_torch(
                     state, backend=backend, cache=cache
                 )
             if backend.implementation == "jax":
-                return self._make_pde_rhs_jax_collection(
+                return self._make_pde_rhs_collection_jax(
                     state, backend=backend, cache=cache
                 )
             raise NotImplementedError
