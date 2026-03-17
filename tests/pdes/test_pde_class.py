@@ -315,7 +315,10 @@ def test_pde_user_funcs(backend, rng):
     )
 
 
-@pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)
+# FIXME: torch MPS backend does not support complex numbers correctly
+@pytest.mark.parametrize(
+    "backend", set(ALL_COMPILED_BACKENDS) - {"torch-mps"}, indirect=True
+)
 def test_pde_complex_serial(backend, rng):
     """Test complex valued PDE."""
     eq = PDE({"p": "I * laplace(p)"})

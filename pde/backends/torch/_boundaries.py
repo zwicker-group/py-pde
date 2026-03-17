@@ -274,10 +274,8 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
         ]
 
         # convert boundary coordinates to registered tensors
-        self.bc_coords = []
         for i, coords in enumerate(bc_coords_np):
-            self.register_array(f"coords{i}", np.asarray(coords, dtype=dtype))
-            self.bc_coords.append(getattr(self, f"coords{i}"))
+            self.register_array(f"c{i}", np.asarray(coords, dtype=dtype))
 
         # save additional information
         self.dx = bc.grid.discretization[bc.axis]
@@ -316,31 +314,31 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
 
         if num_axes == 1:
             val_field = data_full[..., i_read]
-            result = self.func(val_field, self.dx, *self.bc_coords, t)
+            result = self.func(val_field, self.dx, self.c0, t)
             data_full[..., self.i_write] = result
 
         elif num_axes == 2:
             if axis == 0:
                 val_field = data_full[..., i_read, 1:-1]
-                result = self.func(val_field, self.dx, *self.bc_coords, t)
+                result = self.func(val_field, self.dx, self.c0, self.c1, t)
                 data_full[..., self.i_write, 1:-1] = result
             elif axis == 1:
                 val_field = data_full[..., 1:-1, i_read]
-                result = self.func(val_field, self.dx, *self.bc_coords, t)
+                result = self.func(val_field, self.dx, self.c0, self.c1, t)
                 data_full[..., 1:-1, self.i_write] = result
 
         elif num_axes == 3:
             if axis == 0:
                 val_field = data_full[..., i_read, 1:-1, 1:-1]
-                result = self.func(val_field, self.dx, *self.bc_coords, t)
+                result = self.func(val_field, self.dx, self.c0, self.c1, self.c2, t)
                 data_full[..., self.i_write, 1:-1, 1:-1] = result
             elif axis == 1:
                 val_field = data_full[..., 1:-1, i_read, 1:-1]
-                result = self.func(val_field, self.dx, *self.bc_coords, t)
+                result = self.func(val_field, self.dx, self.c0, self.c1, self.c2, t)
                 data_full[..., 1:-1, self.i_write, 1:-1] = result
             elif axis == 2:
                 val_field = data_full[..., 1:-1, 1:-1, i_read]
-                result = self.func(val_field, self.dx, *self.bc_coords, t)
+                result = self.func(val_field, self.dx, self.c0, self.c1, self.c2, t)
                 data_full[..., 1:-1, 1:-1, self.i_write] = result
 
         else:
