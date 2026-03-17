@@ -278,7 +278,7 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
             self.register_array(f"c{i}", np.asarray(coords, dtype=dtype))
 
         # save additional information
-        self.dx = bc.grid.discretization[bc.axis]
+        self.dx = dtype.type(bc.grid.discretization[bc.axis])
         self.warn_t_missing = (not bc._is_func) and bc._func_expression.depends_on("t")
 
         # get a concrete callable that torch.compile can trace through
@@ -309,8 +309,7 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
                 )
             t = 0.0
         else:
-            t = args["t"]  # pass as-is; float() would create a data-dependent symbolic
-            # expression that torch.compile's fullgraph mode cannot guard
+            t = torch.as_tensor(args["t"])
 
         if num_axes == 1:
             val_field = data_full[..., i_read]
