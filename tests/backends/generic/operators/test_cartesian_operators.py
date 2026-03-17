@@ -11,7 +11,6 @@ from scipy import ndimage
 
 from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid, VectorField
 
-π = np.pi
 
 ALL_BACKENDS = ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
 
