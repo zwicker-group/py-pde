@@ -49,7 +49,8 @@ class TorchBackend(BackendBase):
     compile_options = {
         "fullgraph": True,  # force compilation of entire graph (no graph breaks)
         "dynamic": False,  # compiled functions do not support changing shapes
-        "backend": "aot_eager",  # use aot_eager to avoid inductor compatibility issues
+        "backend": "inductor",  # use compiled optimized kernels for speed
+        "options": {"epilogue_fusion": True, "max_autotune": True},
     }
     """dict: defines options that affect compilation by torch"""
     _dtype_cache: dict[str, dict[DTypeLike, torch.dtype]] = defaultdict(dict)

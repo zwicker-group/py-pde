@@ -291,7 +291,9 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
             # sympy expression: get a concrete lambda via numpy lambdify.
             # Avoids the hash-based caching in ScalarExpression.__call__ which
             # torch.compile's fullgraph mode cannot inline.
-            self.func = bc._func_expression.get_function(backend="numpy", single_arg=False)
+            self.func = bc._func_expression.get_function(
+                backend="torch", single_arg=False
+            )
 
     def forward(self, data_full: Tensor, args=None) -> Tensor:
         """Set the virtual points at the boundary."""
@@ -310,7 +312,7 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
             t = 0.0
         else:
             t = args["t"]  # pass as-is; float() would create a data-dependent symbolic
-                            # expression that torch.compile's fullgraph mode cannot guard
+            # expression that torch.compile's fullgraph mode cannot guard
 
         if num_axes == 1:
             val_field = data_full[..., i_read]

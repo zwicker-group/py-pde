@@ -337,43 +337,31 @@ class PDE(SDEBase):
                 raise
 
             if backend.implementation == "torch":
-                # torch operators have signature (arr, args=None), no output array slot
-                expr._sympy_expr = expr._sympy_expr.replace(
-                    lambda expr: (
-                        # only modify the relevant operator
-                        isinstance(expr.func, UndefinedFunction)
-                        and expr.name == func  # noqa: B023
-                        # and do not modify it when the bc_args have already been set
-                        and not (
-                            isinstance(expr.args[-1], Symbol)
-                            and expr.args[-1].name == "bc_args"
-                        )
-                    ),
-                    # For torch: pass bc_args directly as the second argument (args slot)
-                    lambda expr: expr.func(*expr.args, Symbol("bc_args")),
-                )
+                # Torch operators have signature (arr, args=None), no output array slot
+                # -> pass bc_args directly as the second argument (args slot)
+                def func_call(expr):
+                    return expr.func(*expr.args, Symbol("bc_args"))
             else:
                 # For numpy, numba, jax, and other backends, add None and bc_args as
                 # arguments. The `None` indicates that we do not supply an output array,
                 # but expect the operator to construct this itself.
-                expr._sympy_expr = expr._sympy_expr.replace(
-                    lambda expr: (
-                        # only modify the relevant operator
-                        isinstance(expr.func, UndefinedFunction)
-                        and expr.name == func  # noqa: B023
-                        # and do not modify it when the bc_args have already been set
-                        and not (
-                            isinstance(expr.args[-1], Symbol)
-                            and expr.args[-1].name == "bc_args"
-                        )
-                    ),
-                    # Add None and bc_args as arguments. The `None` indicates that we
-                    # do not supply an output array, but expect the operator to
-                    # construct this itself.
-                    lambda expr: expr.func(
-                        *expr.args, Symbol("none"), Symbol("bc_args")
-                    ),
-                )
+                def func_call(expr):
+                    return expr.func(*expr.args, Symbol("none"), Symbol("bc_args"))
+
+            # replace the call of undefined functions with the correct arguments
+            expr._sympy_expr = expr._sympy_expr.replace(
+                lambda expr: (
+                    # only modify the relevant operator
+                    isinstance(expr.func, UndefinedFunction)
+                    and expr.name == func  # noqa: B023
+                    # and do not modify it when the bc_args have already been set
+                    and not (
+                        isinstance(expr.args[-1], Symbol)
+                        and expr.args[-1].name == "bc_args"
+                    )
+                ),
+                func_call,
+            )
 
     def _compile_rhs_single(
         self,
