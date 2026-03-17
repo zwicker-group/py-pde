@@ -142,13 +142,14 @@ def _make_gradient_jax_1d(
     def gradient(arr: jax.Array) -> jax.Array:
         """Apply gradient operator to array `arr`"""
         if method == "central":
-            return (arr[2:] - arr[:-2]) / (2 * dx)  # type: ignore
-        if method == "forward":
-            return (arr[2:] - arr[1:-1]) / dx  # type: ignore
-        if method == "backward":
-            return (arr[1:-1] - arr[:-2]) / dx  # type: ignore
-        # this cannot be reached because we validated the method before
-        assert False  # noqa: B011, PT015
+            grad_x = (arr[2:] - arr[:-2]) / (2 * dx)  # type: ignore
+        elif method == "forward":
+            grad_x = (arr[2:] - arr[1:-1]) / dx  # type: ignore
+        elif method == "backward":
+            grad_x = (arr[1:-1] - arr[:-2]) / dx  # type: ignore
+        else:
+            raise RuntimeError
+        return grad_x[None, :]
 
     return gradient
 

@@ -129,7 +129,9 @@ def test_single_arg(rng):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend",
+    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
 )
 def test_two_args(backend, rng):
     """Test simple expressions."""
@@ -160,7 +162,7 @@ def test_two_args(backend, rng):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_derivatives(backend):
     """Test vector expressions."""
@@ -190,7 +192,7 @@ def test_derivatives(backend):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_indexed(backend):
     """Test simple expressions."""
@@ -269,7 +271,9 @@ def test_expression_from_expression():
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend",
+    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
 )
 def test_expression_user_funcs(backend):
     """Test the usage of user_funcs."""
@@ -317,7 +321,9 @@ def test_complex_expression():
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend",
+    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
 )
 @pytest.mark.parametrize(
     ("expression", "value"),
@@ -343,7 +349,9 @@ def test_expression_heaviside(backend, expression, value):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend",
+    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
 )
 def test_expression_hypot(backend):
     """Test special cases of hypot expressions."""
@@ -356,7 +364,7 @@ def test_expression_hypot(backend):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_expression_consts(backend):
     """Test the usage of consts."""
@@ -398,7 +406,7 @@ def test_tensor_expression_consts():
     assert d1[1](2) == 5
 
 
-@pytest.mark.parametrize("backend", ["numpy", "torch-cpu"], indirect=True)
+@pytest.mark.parametrize("backend", ["numpy", "jax", "torch-cpu"], indirect=True)
 def test_evaluate_func_scalar(backend):
     """Test the evaluate function with scalar fields."""
     grid = UnitGrid([2, 4])
@@ -427,7 +435,7 @@ def test_evaluate_func_scalar(backend):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numpy", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_evaluate_func_vector(backend):
     """Test the evaluate function with vector fields."""
@@ -449,7 +457,7 @@ def test_evaluate_func_vector(backend):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numpy", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_evaluate_func_invalid(backend):
     """Test the evaluate function with invalid data."""
@@ -486,7 +494,7 @@ def test_evaluate_func_bcs_warning(caplog):
 
 
 @pytest.mark.parametrize(
-    "backend", ["numpy", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend", ["numpy", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
 )
 def test_evaluate_func_collection(backend):
     """Test the evaluate function with a field collection."""
