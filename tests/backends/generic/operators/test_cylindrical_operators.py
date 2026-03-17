@@ -15,7 +15,6 @@ from pde import (
 )
 
 ALL_BACKENDS = ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
-BACKENDS_WITHOUT_TORCH = ["numba", "jax"]
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)

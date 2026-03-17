@@ -9,7 +9,6 @@ import pytest
 from pde import CartesianGrid, PolarSymGrid, ScalarField, Tensor2Field, VectorField
 
 ALL_BACKENDS = ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
-BACKENDS_WITHOUT_TORCH = ["numba", "jax"]
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)

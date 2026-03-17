@@ -243,7 +243,7 @@ def test_examples_tensor_sph(backend, conservative):
     np.testing.assert_allclose(div[2].data, 0, atol=0.1)
 
 
-@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_tensor_sph_symmetry(backend):
     """Test treatment of symmetric tensor field."""
     grid = SphericalSymGrid(1, 16)
@@ -299,3 +299,17 @@ def test_tensor_div_div(backend, conservative):
     )
     est = tf.divergence(bc, backend=backend).divergence(bc, backend=backend)
     np.testing.assert_allclose(res.data[2:-2], est.data[2:-2], rtol=0.02, atol=1)
+
+
+@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
+def test_conservative_sph_tensor(backend):
+    """Test tensor double divergence conservation (numba-specific)."""
+    grid = SphericalSymGrid((0, 2), 50)
+    expr = "1 / cosh((r - 1) * 10)"
+
+    expressions = [[expr, 0, 0], [0, expr, 0], [0, 0, expr]]
+    tf = Tensor2Field.from_expression(grid, expressions)
+    res = tf.apply_operator(
+        "tensor_double_divergence", bc="derivative", conservative=True, backend=backend
+    )
+    assert res.integral == pytest.approx(0, abs=1e-3)
