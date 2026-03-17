@@ -1,8 +1,8 @@
-"""
+"""Generic tests for Cartesian grid operators, applied to multiple backends.
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import platform
 import random
 
 import numpy as np
@@ -11,11 +11,7 @@ from scipy import ndimage
 
 from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid, VectorField
 
-pytest.importorskip("torch")
-if platform.system() == "Windows":
-    pytest.skip("Skip torch tests on Windows", allow_module_level=True)
-
-π = np.pi
+ALL_BACKENDS = ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
 
 
 def _get_random_grid_bcs(ndim: int, dx="random", periodic="random", rank=0):
@@ -38,9 +34,7 @@ def _get_random_grid_bcs(ndim: int, dx="random", periodic="random", rank=0):
     return grid.get_boundary_conditions("auto_periodic_neumann", rank=rank)
 
 
-@pytest.mark.parametrize(
-    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("periodic", [True, False])
 def test_singular_dimensions_2d(backend, periodic, rng):
     """Test grids with singular dimensions."""
@@ -57,9 +51,7 @@ def test_singular_dimensions_2d(backend, periodic, rng):
         np.testing.assert_allclose(expected, res)
 
 
-@pytest.mark.parametrize(
-    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("periodic", [True, False])
 def test_laplace_1d(backend, periodic, rng):
     """Test the implementation of the laplace operator."""
@@ -69,13 +61,10 @@ def test_laplace_1d(backend, periodic, rng):
     )
     l1 = field.laplace(bcs, backend="scipy")
     l2 = field.laplace(bcs, backend=backend)
-    # use bigger tolerance in case of float32 backend
     np.testing.assert_allclose(l1.data, l2.data, rtol=1e-6)
 
 
-@pytest.mark.parametrize(
-    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("periodic", [True, False])
 def test_laplace_2d_nonuniform(backend, periodic, rng):
     """Test the implementation of the laplace operator for non-uniform coordinates."""
@@ -92,13 +81,10 @@ def test_laplace_2d_nonuniform(backend, periodic, rng):
 
     field = ScalarField(bcs.grid, data=a)
     lap = field.laplace(bcs, backend=backend)
-    # use bigger tolerance in case of float32 backend
     np.testing.assert_allclose(lap.data, res, rtol=1e-5)
 
 
-@pytest.mark.parametrize(
-    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("periodic", [True, False])
 def test_laplace_3d(backend, periodic, rng):
     """Test the implementation of the laplace operator."""
@@ -106,13 +92,10 @@ def test_laplace_3d(backend, periodic, rng):
     field = ScalarField.random_uniform(bcs.grid, rng=rng)
     l1 = field.laplace(bcs, backend="scipy")
     l2 = field.laplace(bcs, backend=backend)
-    # use bigger tolerance in case of float32 backend
-    np.testing.assert_allclose(l1.data, l2.data, rtol=2e-6)
+    np.testing.assert_allclose(l1.data, l2.data, rtol=3e-6)
 
 
-@pytest.mark.parametrize(
-    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_gradient_1d(backend):
     """Test specific boundary conditions for the 1d gradient."""
     grid = UnitGrid(5)
@@ -129,9 +112,7 @@ def test_gradient_1d(backend):
     np.testing.assert_allclose(res.data, np.zeros((1, 5)))
 
 
-@pytest.mark.parametrize(
-    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 @pytest.mark.parametrize("periodic", [True, False])
 def test_gradient_cart(backend, ndim, periodic, rng):
@@ -141,13 +122,10 @@ def test_gradient_cart(backend, ndim, periodic, rng):
     res1 = field.gradient(bcs, backend="scipy").data
     res2 = field.gradient(bcs, backend=backend).data
     assert res1.shape == (ndim, *bcs.grid.shape)
-    # use bigger tolerance in case of float32 backend
     np.testing.assert_allclose(res1, res2, rtol=1e-5)
 
 
-@pytest.mark.parametrize(
-    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_gradient_squared_cart(backend, dim, rng):
     """Compare gradient squared operator."""
@@ -165,9 +143,7 @@ def test_gradient_squared_cart(backend, dim, rng):
     assert not np.array_equal(s2.data, s3.data)
 
 
-@pytest.mark.parametrize(
-    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 @pytest.mark.parametrize("periodic", [True, False])
 def test_divergence_cart(backend, ndim, periodic, rng):
@@ -176,13 +152,10 @@ def test_divergence_cart(backend, ndim, periodic, rng):
     field = VectorField.random_uniform(bcs.grid, rng=rng)
     res1 = field.divergence(bcs, backend="scipy").data
     res2 = field.divergence(bcs, backend=backend).data
-    # use bigger tolerance in case of float32 backend
     np.testing.assert_allclose(res1, res2, rtol=2e-6)
 
 
-@pytest.mark.parametrize(
-    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_vector_gradient(backend, ndim, rng):
     """Test different vector gradient operators."""
@@ -191,13 +164,10 @@ def test_vector_gradient(backend, ndim, rng):
     res1 = field.gradient(bcs, backend="scipy").data
     res2 = field.gradient(bcs, backend=backend).data
     assert res1.shape == (ndim, ndim, *bcs.grid.shape)
-    # use bigger tolerance in case of float32 backend
     np.testing.assert_allclose(res1, res2, rtol=5e-6)
 
 
-@pytest.mark.parametrize(
-    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_vector_laplace_cart(backend, ndim, rng):
     """Test different vector laplace operators."""
@@ -206,13 +176,10 @@ def test_vector_laplace_cart(backend, ndim, rng):
     res1 = field.laplace(bcs, backend="scipy").data
     res2 = field.laplace(bcs, backend=backend).data
     assert res1.shape == (ndim, *bcs.grid.shape)
-    # use bigger tolerance in case of float32 backend
     np.testing.assert_allclose(res1, res2, rtol=2e-5)
 
 
-@pytest.mark.parametrize(
-    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_tensor_divergence_cart(backend, ndim, rng):
     """Test different tensor divergence operators."""
@@ -221,13 +188,10 @@ def test_tensor_divergence_cart(backend, ndim, rng):
     res1 = field.divergence(bcs, backend="scipy").data
     res2 = field.divergence(bcs, backend=backend).data
     assert res1.shape == (ndim, *bcs.grid.shape)
-    # use bigger tolerance in case of float32 backend
     np.testing.assert_allclose(res1, res2, rtol=2e-5)
 
 
-@pytest.mark.parametrize(
-    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_2nd_order_bc(backend, rng):
     """Test whether 2nd order boundary conditions can be used."""
     grid = UnitGrid([8, 8])

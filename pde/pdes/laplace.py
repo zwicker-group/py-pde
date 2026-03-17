@@ -81,7 +81,7 @@ def solve_poisson_equation(
     # solve the poisson problem
     result = ScalarField(rhs.grid, label=label)
     try:
-        solver(rhs.data, result.data)
+        solver(rhs.data, result.data)  # type: ignore
     except RuntimeError as err:
         magnitude = rhs.magnitude
         if magnitude > 1e-10:

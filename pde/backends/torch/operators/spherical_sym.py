@@ -7,6 +7,8 @@ r"""This module implements differential operators on spherical grids.
    SphericalGradient
    SphericalGradientSquared
    SphericalDivergence
+   SphericalVectorGradient
+   SphericalTensorDivergence
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -300,56 +302,161 @@ class SphericalDivergence(TorchDifferentialOperator):
         return diff_r + self.factor * arr_r[1:-1]  # type: ignore
 
 
-# @torch_backend.register_operator(
-#     SphericalSymGrid, "vector_gradient", rank_in=1, rank_out=2
-# )
-# class SphericalVectorGradient(TorchDifferentialOperator):
-#     """Spherical vector gradient operator using torch."""
+@torch_backend.register_operator(
+    SphericalSymGrid, "vector_gradient", rank_in=1, rank_out=2
+)
+@fill_in_docstring
+class SphericalVectorGradient(TorchDifferentialOperator):
+    """Spherical vector gradient operator using torch.
 
-#     rank_in = 1
+    {DESCR_SPHERICAL_GRID}
+    """
 
-#     def __init__(
-#         self,
-#         grid: GridBase,
-#         bcs: BoundariesList | None,
-#         *,
-#         dtype: np.dtype,
-#     ):
-#         """Initialize the Spherical divergence operator.
+    rank_in = 1
 
-#         Args:
-#             grid (:class:`~pde.grids.base.GridBase`):
-#                 The grid on which the operator acts
-#             bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
-#                 The boundary conditions applied to the field. If `None`, no boundary
-#                 conditions are enforced.
-#             dtype:
-#                 The data type of the field
-#         """
-#         super().__init__(grid, bcs, dtype=dtype)
+    def __init__(
+        self,
+        grid: GridBase,
+        bcs: BoundariesList | None,
+        *,
+        dtype: np.dtype,
+        method: Literal["central", "forward", "backward"] = "central",
+    ):
+        """Initialize the Spherical vector gradient operator.
 
-#         dr = self.grid.discretization[0]
-#         self.register_array("rs", self.grid.axes_coords[0])
-#         self.scale_r = 1 / (2 * dr)
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid on which the operator acts
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
+                The boundary conditions applied to the field. If `None`, no boundary
+                conditions are enforced.
+            dtype:
+                The data type of the field
+            method (str):
+                The method for calculating the derivative. Possible values are
+                'central', 'forward', and 'backward'.
+        """
+        super().__init__(grid, bcs, dtype=dtype)
 
-#     def forward(self, arr: Tensor, args=None) -> Tensor:
-#         """Fill internal data array, apply operator, and return valid data."""
-#         data_full = self.get_full_data(arr, args=args)
+        self.method = method
+        rs = grid.axes_coords[0]
+        self.register_array("rs", rs)
+        if method == "central":
+            self.scale_r = 0.5 / grid.discretization[0]
+        elif method in {"forward", "backward"}:
+            self.scale_r = 1 / grid.discretization[0]
+        else:
+            msg = f"Unknown derivative type `{method}`"
+            raise ValueError(msg)
 
-#         # assign aliases
-#         arr_r, arr_φ = arr
-#         out_rr, out_rφ = out[0, 0, :], out[0, 1, :]
-#         out_φr, out_φφ = out[1, 0, :], out[1, 1, :]
+    def forward(self, arr: Tensor, args=None) -> Tensor:
+        """Fill internal data array, apply operator, and return valid data."""
+        data_full = self.get_full_data(arr, args=args)
 
-#         for i in range(1, dim_r + 1):  # iterate radial points
-#             out_rr[i - 1] = (arr_r[i + 1] - arr_r[i - 1]) * scale_r
-#             out_rφ[i - 1] = -arr_φ[i] / rs[i - 1]
-#             out_φr[i - 1] = (arr_φ[i + 1] - arr_φ[i - 1]) * scale_r
-#             out_φφ[i - 1] = arr_r[i] / rs[i - 1]
+        arr_r = data_full[0]
 
-#         term1 = (data_full[0, 2:] - data_full[0, :-2]) * self.scale_r
-#         term2 = data_full[0, 1:-1] / self.rs
-#         return term1 + term2
+        if self.method == "central":
+            out_rr = (arr_r[2:] - arr_r[:-2]) * self.scale_r
+        elif self.method == "forward":
+            out_rr = (arr_r[2:] - arr_r[1:-1]) * self.scale_r
+        elif self.method == "backward":
+            out_rr = (arr_r[1:-1] - arr_r[:-2]) * self.scale_r
+
+        out_diag = arr_r[1:-1] / self.rs  # type: ignore
+        zeros = torch.zeros_like(out_rr)
+
+        return torch.stack(
+            [
+                torch.stack([out_rr, zeros, zeros]),
+                torch.stack([zeros, out_diag, zeros]),
+                torch.stack([zeros, zeros, out_diag]),
+            ]
+        )
+
+
+@torch_backend.register_operator(
+    SphericalSymGrid, "tensor_divergence", rank_in=2, rank_out=1
+)
+@fill_in_docstring
+class SphericalTensorDivergence(TorchDifferentialOperator):
+    """Spherical tensor divergence operator using torch.
+
+    {DESCR_SPHERICAL_GRID}
+    """
+
+    rank_in = 2
+
+    def __init__(
+        self,
+        grid: GridBase,
+        bcs: BoundariesList | None,
+        *,
+        dtype: np.dtype,
+        conservative: bool | None = False,
+    ):
+        """Initialize the Spherical tensor divergence operator.
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid on which the operator acts
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
+                The boundary conditions applied to the field. If `None`, no boundary
+                conditions are enforced.
+            dtype:
+                The data type of the field
+            conservative (bool):
+                Flag indicating whether the operator should be conservative (which
+                results in slightly slower computations). Conservative operators ensure
+                mass conservation. If `None`, the value is read from the configuration
+                option `operators.conservative_stencil`.
+        """
+        super().__init__(grid, bcs, dtype=dtype)
+
+        if conservative is None:
+            conservative = config["operators.conservative_stencil"]
+        self.conservative = conservative
+
+        rs = grid.axes_coords[0]
+        dr = grid.discretization[0]
+        self.register_array("rs", rs)
+        self.scale_r = 1 / (2 * dr)
+
+        if self.conservative:
+            rl = rs - dr / 2  # inner radii
+            rh = rs + dr / 2  # outer radii
+            volumes = (rh**3 - rl**3) / 3
+            self.register_array("factor_l", rl**2 / (2 * volumes))
+            self.register_array("factor_h", rh**2 / (2 * volumes))
+            self.register_array("area_factor", (rh**2 - rl**2) / volumes)
+
+    def forward(self, arr: Tensor, args=None) -> Tensor:
+        """Fill internal data array, apply operator, and return valid data."""
+        data_full = self.get_full_data(arr, args=args)
+
+        if self.conservative:
+            arr_rr = data_full[0, 0]
+            arr_φφ = data_full[2, 2]
+
+            term_r_h = self.factor_h * (arr_rr[1:-1] + arr_rr[2:])  # type: ignore
+            term_r_l = self.factor_l * (arr_rr[:-2] + arr_rr[1:-1])  # type: ignore
+            out_r = term_r_h - term_r_l - self.area_factor * arr_φφ[1:-1]  # type: ignore
+            zeros = torch.zeros_like(out_r)
+            return torch.stack([out_r, zeros, zeros])
+
+        # non-conservative implementation
+        arr_rr = data_full[0, 0]
+        arr_rφ = data_full[0, 2]
+        arr_θr = data_full[1, 0]
+        arr_φr = data_full[2, 0]
+        arr_φφ = data_full[2, 2]
+
+        out_r = (arr_rr[2:] - arr_rr[:-2]) * self.scale_r
+        out_r += 2 * (arr_rr[1:-1] - arr_φφ[1:-1]) / self.rs  # type: ignore
+        out_θ = (arr_θr[2:] - arr_θr[:-2]) * self.scale_r + 2 * arr_θr[1:-1] / self.rs  # type: ignore
+        out_φ = (arr_φr[2:] - arr_φr[:-2]) * self.scale_r
+        out_φ += (2 * arr_φr[1:-1] + arr_rφ[1:-1]) / self.rs  # type: ignore
+
+        return torch.stack([out_r, out_θ, out_φ])
 
 
 __all__ = [
@@ -357,4 +464,6 @@ __all__ = [
     "SphericalGradient",
     "SphericalGradientSquared",
     "SphericalLaplacian",
+    "SphericalTensorDivergence",
+    "SphericalVectorGradient",
 ]

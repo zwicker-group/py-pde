@@ -290,7 +290,7 @@ class SolverBase:
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
                 fields.data = state_data
-                noise = self.pde.noise_realization(fields, t)
+                noise = self.pde.noise_realization(fields, t)  # type: ignore
                 if noise is None:
                     return None
                 return noise.data  # type: ignore
@@ -304,7 +304,7 @@ class SolverBase:
                 "`make_noise_realization`, which is required to support noisy PDEs."
             )
             raise NotImplementedError(msg)
-        rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
+        rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)
         return self.backend.compile_function(rhs_noise)
 
     def _select_backend(self, state: TField):

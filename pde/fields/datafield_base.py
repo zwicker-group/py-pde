@@ -957,7 +957,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         op_raw = self.grid.make_operator_no_bc(
             operator_info, backend=backend_impl, **kwargs
         )
-        op_raw(self._data_full, out.data)
+        op_raw(self._data_full, out.data)  # type: ignore
 
         return out
 
