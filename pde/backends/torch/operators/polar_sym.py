@@ -7,6 +7,8 @@ r"""This module implements differential operators on polar grids.
    PolarGradient
    PolarGradientSquared
    PolarDivergence
+   PolarVectorGradient
+   PolarTensorDivergence
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -230,56 +232,114 @@ class PolarDivergence(TorchDifferentialOperator):
         return term1 + term2  # type: ignore
 
 
-# @torch_backend.register_operator(
-#     PolarSymGrid, "vector_gradient", rank_in=1, rank_out=2
-# )
-# class PolarVectorGradient(TorchDifferentialOperator):
-#     """Polar vector gradient operator using torch."""
+@torch_backend.register_operator(PolarSymGrid, "vector_gradient", rank_in=1, rank_out=2)
+@fill_in_docstring
+class PolarVectorGradient(TorchDifferentialOperator):
+    """Polar vector gradient operator using torch.
 
-#     rank_in = 1
+    {DESCR_POLAR_GRID}
+    """
 
-#     def __init__(
-#         self,
-#         grid: GridBase,
-#         bcs: BoundariesList | None,
-#         *,
-#         dtype: np.dtype,
-#     ):
-#         """Initialize the Polar divergence operator.
+    rank_in = 1
 
-#         Args:
-#             grid (:class:`~pde.grids.base.GridBase`):
-#                 The grid on which the operator acts
-#             bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
-#                 The boundary conditions applied to the field. If `None`, no boundary
-#                 conditions are enforced.
-#             dtype:
-#                 The data type of the field
-#         """
-#         super().__init__(grid, bcs, dtype=dtype)
+    def __init__(
+        self,
+        grid: GridBase,
+        bcs: BoundariesList | None,
+        *,
+        dtype: np.dtype,
+    ):
+        """Initialize the Polar vector gradient operator.
 
-#         dr = self.grid.discretization[0]
-#         self.register_array("rs", self.grid.axes_coords[0])
-#         self.scale_r = 1 / (2 * dr)
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid on which the operator acts
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
+                The boundary conditions applied to the field. If `None`, no boundary
+                conditions are enforced.
+            dtype:
+                The data type of the field
+        """
+        super().__init__(grid, bcs, dtype=dtype)
 
-#     def forward(self, arr: Tensor, args=None) -> Tensor:
-#         """Fill internal data array, apply operator, and return valid data."""
-#         data_full = self.get_full_data(arr, args=args)
+        dr = self.grid.discretization[0]
+        self.register_array("rs", self.grid.axes_coords[0])
+        self.scale_r = 1 / (2 * dr)
 
-#         # assign aliases
-#         arr_r, arr_φ = arr
-#         out_rr, out_rφ = out[0, 0, :], out[0, 1, :]
-#         out_φr, out_φφ = out[1, 0, :], out[1, 1, :]
+    def forward(self, arr: Tensor, args=None) -> Tensor:
+        """Fill internal data array, apply operator, and return valid data."""
+        data_full = self.get_full_data(arr, args=args)
 
-#         for i in range(1, dim_r + 1):  # iterate radial points
-#             out_rr[i - 1] = (arr_r[i + 1] - arr_r[i - 1]) * scale_r
-#             out_rφ[i - 1] = -arr_φ[i] / rs[i - 1]
-#             out_φr[i - 1] = (arr_φ[i + 1] - arr_φ[i - 1]) * scale_r
-#             out_φφ[i - 1] = arr_r[i] / rs[i - 1]
+        arr_r, arr_φ = data_full[0], data_full[1]
 
-#         term1 = (data_full[0, 2:] - data_full[0, :-2]) * self.scale_r
-#         term2 = data_full[0, 1:-1] / self.rs
-#         return term1 + term2
+        out_rr = (arr_r[2:] - arr_r[:-2]) * self.scale_r
+        out_rφ = -arr_φ[1:-1] / self.rs  # type: ignore
+        out_φr = (arr_φ[2:] - arr_φ[:-2]) * self.scale_r
+        out_φφ = arr_r[1:-1] / self.rs  # type: ignore
+
+        return torch.stack(
+            [torch.stack([out_rr, out_rφ]), torch.stack([out_φr, out_φφ])]
+        )
 
 
-__all__ = ["PolarDivergence", "PolarGradient", "PolarGradientSquared", "PolarLaplacian"]
+@torch_backend.register_operator(
+    PolarSymGrid, "tensor_divergence", rank_in=2, rank_out=1
+)
+@fill_in_docstring
+class PolarTensorDivergence(TorchDifferentialOperator):
+    """Polar tensor divergence operator using torch.
+
+    {DESCR_POLAR_GRID}
+    """
+
+    rank_in = 2
+
+    def __init__(
+        self,
+        grid: GridBase,
+        bcs: BoundariesList | None,
+        *,
+        dtype: np.dtype,
+    ):
+        """Initialize the Polar tensor divergence operator.
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid on which the operator acts
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
+                The boundary conditions applied to the field. If `None`, no boundary
+                conditions are enforced.
+            dtype:
+                The data type of the field
+        """
+        super().__init__(grid, bcs, dtype=dtype)
+
+        dr = self.grid.discretization[0]
+        self.register_array("rs", self.grid.axes_coords[0])
+        self.scale_r = 1 / (2 * dr)
+
+    def forward(self, arr: Tensor, args=None) -> Tensor:
+        """Fill internal data array, apply operator, and return valid data."""
+        data_full = self.get_full_data(arr, args=args)
+
+        arr_rr, arr_rφ = data_full[0, 0], data_full[0, 1]
+        arr_φr, arr_φφ = data_full[1, 0], data_full[1, 1]
+
+        out_r = (arr_rr[2:] - arr_rr[:-2]) * self.scale_r + (
+            arr_rr[1:-1] - arr_φφ[1:-1]
+        ) / self.rs  # type: ignore
+        out_φ = (arr_φr[2:] - arr_φr[:-2]) * self.scale_r + (
+            arr_rφ[1:-1] + arr_φr[1:-1]
+        ) / self.rs  # type: ignore
+
+        return torch.stack((out_r, out_φ))
+
+
+__all__ = [
+    "PolarDivergence",
+    "PolarGradient",
+    "PolarGradientSquared",
+    "PolarLaplacian",
+    "PolarTensorDivergence",
+    "PolarVectorGradient",
+]

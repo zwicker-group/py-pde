@@ -73,9 +73,9 @@ def test_divergence_field_cyl(backend):
     )
 
 
-@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_vector_gradient_divergence_field_cyl(backend):
-    """Test the divergence operator."""
+    """Test the vector gradient and tensor divergence operators."""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [8, 16], periodic_z=True)
     r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = [np.cos(r) + np.sin(z) ** 2, np.cos(r) ** 2 + np.sin(z), np.zeros_like(r)]
@@ -209,7 +209,7 @@ def test_examples_vector_cyl(backend):
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_examples_vector_laplace_gradient_cyl(backend):
     """Compare vector Laplacian and gradient of vector fields for cylindrical grids."""
     grid = CylindricalSymGrid(1, [0, 2 * np.pi], 32, periodic_z=True)
@@ -238,7 +238,7 @@ def test_examples_vector_laplace_gradient_cyl(backend):
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_examples_tensor_cyl(backend):
     """Compare derivatives of tensorial fields for cylindrical grids."""
     grid = CylindricalSymGrid(1, [0, 2 * np.pi], 32, periodic_z=True)

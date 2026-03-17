@@ -78,7 +78,7 @@ def test_small_annulus_polar(backend, op_name, field, rng):
     assert np.linalg.norm(res[0].data - res[2].data) > 1e-3
 
 
-@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_small_annulus_polar_tensor(backend, rng):
     """Test whether a small annulus gives the same result for tensor divergence."""
     grids = [
@@ -193,7 +193,7 @@ def test_examples_vector_polar(backend):
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_examples_vector_gradient_polar(backend):
     """Compare gradient of vector fields for polar grids."""
     grid = PolarSymGrid(1, 32)
@@ -208,7 +208,7 @@ def test_examples_vector_gradient_polar(backend):
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_examples_tensor_polar(backend):
     """Compare derivatives of tensorial fields for polar grids."""
     grid = PolarSymGrid(1, 32)

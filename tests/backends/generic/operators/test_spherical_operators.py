@@ -178,7 +178,7 @@ def test_examples_scalar_sph(backend):
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_examples_vector_sph_div(backend):
     """Compare derivatives of vector fields for spherical grids."""
     grid = SphericalSymGrid(1, 32)
@@ -188,7 +188,7 @@ def test_examples_vector_sph_div(backend):
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("method", ["central", "forward", "backward"])
 def test_examples_vector_sph_grad(backend, method):
     """Compare derivatives of vector fields for spherical grids."""
@@ -204,7 +204,7 @@ def test_examples_vector_sph_grad(backend, method):
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("conservative", [True, False])
 def test_examples_tensor_sph(backend, conservative):
     """Compare derivatives of tensorial fields for spherical grids."""
