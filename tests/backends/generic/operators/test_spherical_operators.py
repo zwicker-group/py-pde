@@ -1,4 +1,5 @@
-"""
+"""Generic tests for spherical grid operators, applied to multiple backends.
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -7,10 +8,11 @@ import pytest
 
 from pde import CartesianGrid, ScalarField, SphericalSymGrid, Tensor2Field, VectorField
 
-pytest.importorskip("jax")
+ALL_BACKENDS = ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+BACKENDS_WITHOUT_TORCH = ["numba", "jax"]
 
 
-@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_findiff_sph(backend):
     """Test operator for a simple spherical grid."""
     grid = SphericalSymGrid(1.5, 3)
@@ -44,7 +46,7 @@ def test_findiff_sph(backend):
     np.testing.assert_allclose(div.data, [8, 2 + 4 / r1, 4 + 8 / r2], rtol=1e-6)
 
 
-@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_conservative_sph(backend):
     """Test whether the integral over a divergence vanishes."""
     grid = SphericalSymGrid((0, 2), 50)
@@ -60,11 +62,10 @@ def test_conservative_sph(backend):
 
     # test laplacian of scalar field
     lap = vf[0].laplace("derivative", backend=backend)
-    # use bigger tolerance in case of float32 backend
     assert lap.integral == pytest.approx(0, abs=1e-4)
 
 
-@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize(
     ("op_name", "field"),
     [
@@ -96,7 +97,7 @@ def test_small_annulus_sph(backend, op_name, field, rng):
     assert np.linalg.norm(res[0].data - res[2].data) > 1e-3
 
 
-@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_grid_laplace_sph(backend):
     """Test the spherical implementation of the laplace operator."""
     grid_sph = SphericalSymGrid(9, 11)
@@ -115,7 +116,7 @@ def test_grid_laplace_sph(backend):
     )
 
 
-@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("r_inner", [0, 1])
 def test_gradient_squared_sph(backend, r_inner, rng):
     """Compare gradient squared operator for spherical grids."""
@@ -131,7 +132,7 @@ def test_gradient_squared_sph(backend, r_inner, rng):
     assert not np.array_equal(s2.data, s3.data)
 
 
-@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_grid_div_grad_sph(backend):
     """Compare div grad to laplacian for spherical grids."""
     grid = SphericalSymGrid(2 * np.pi, 16)
@@ -148,7 +149,7 @@ def test_grid_div_grad_sph(backend):
     np.testing.assert_allclose(b.data[1:-1], res.data[1:-1], rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_examples_scalar_sph(backend):
     """Compare derivatives of scalar fields for spherical grids."""
     grid = SphericalSymGrid(1, 32)
@@ -177,7 +178,7 @@ def test_examples_scalar_sph(backend):
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
 def test_examples_vector_sph_div(backend):
     """Compare derivatives of vector fields for spherical grids."""
     grid = SphericalSymGrid(1, 32)
@@ -187,7 +188,7 @@ def test_examples_vector_sph_div(backend):
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
 @pytest.mark.parametrize("method", ["central", "forward", "backward"])
 def test_examples_vector_sph_grad(backend, method):
     """Compare derivatives of vector fields for spherical grids."""
@@ -203,7 +204,7 @@ def test_examples_vector_sph_grad(backend, method):
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
 @pytest.mark.parametrize("conservative", [True, False])
 def test_examples_tensor_sph(backend, conservative):
     """Compare derivatives of tensorial fields for spherical grids."""
@@ -242,7 +243,7 @@ def test_examples_tensor_sph(backend, conservative):
     np.testing.assert_allclose(div[2].data, 0, atol=0.1)
 
 
-@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
 def test_tensor_sph_symmetry(backend):
     """Test treatment of symmetric tensor field."""
     grid = SphericalSymGrid(1, 16)
@@ -263,7 +264,7 @@ def test_tensor_sph_symmetry(backend):
     np.testing.assert_allclose(strain_div.data[1:], 0)
 
 
-@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
 def test_tensor_div_div_analytical(backend):
     """Test double divergence of a tensor field against analytical expression."""
     grid = SphericalSymGrid([0.5, 1], 12)
@@ -275,7 +276,7 @@ def test_tensor_div_div_analytical(backend):
     np.testing.assert_allclose(res.data[1:-1], expect.data[1:-1], rtol=0.01)
 
 
-@pytest.mark.parametrize("backend", ["jax"], indirect=True)
+@pytest.mark.parametrize("backend", BACKENDS_WITHOUT_TORCH, indirect=True)
 @pytest.mark.parametrize("conservative", [True, False])
 def test_tensor_div_div(backend, conservative):
     """Test double divergence of a tensor field by comparison with two divergences."""
