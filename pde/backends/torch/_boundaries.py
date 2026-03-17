@@ -18,6 +18,7 @@ from ...grids.boundaries.local import (
     ConstBC2ndOrderBase,
     CurvatureBC,
     DirichletBC,
+    ExpressionBC,
     MixedBC,
     NeumannBC,
     _PeriodicBC,
@@ -254,6 +255,90 @@ class TorchConstBC2ndOrderBoundary(TorchOperatorBase):
         return data_full
 
 
+class TorchExpressionBCBoundary(TorchOperatorBase):
+    """Class implementing expression-based boundary conditions in torch."""
+
+    def __init__(self, bc: ExpressionBC, *, dtype: np.dtype):
+        super().__init__(dtype=dtype)
+        self.bc = bc
+
+        self.i_write = -1 if bc.upper else 0
+        self.i_read = bc._get_value_cell_index(with_ghost_cells=True)
+
+        # boundary coordinates stored as numpy arrays (converted to tensors in forward)
+        bc_coords_np = np.moveaxis(
+            bc.grid._boundary_coordinates(axis=bc.axis, upper=bc.upper), -1, 0
+        )
+        self._bc_coords_np = [
+            np.asarray(bc_coords_np[i]) for i in range(bc.grid.num_axes)
+        ]
+
+        self.dx = bc.grid.discretization[bc.axis]
+        self.warn_if_time_not_set = (not bc._is_func) and bc._func_expression.depends_on(
+            "t"
+        )
+        self.func = bc._make_function()
+
+    def forward(self, data_full: Tensor, args=None) -> Tensor:
+        """Set the virtual points at the boundary."""
+        bc = self.bc
+        num_axes = bc.grid.num_axes
+        axis = bc.axis
+        i_read = self.i_read
+
+        # extract time for handling time-dependent BCs
+        if args is None or "t" not in args:
+            if self.warn_if_time_not_set:
+                msg = (
+                    "Require value for `t` for time-dependent BC. The value must "
+                    "be passed explicitly via `args` when calling a differential "
+                    "operator."
+                )
+                raise RuntimeError(msg)
+            t = 0.0
+        else:
+            t = float(args["t"])
+
+        # convert boundary coordinates to tensors on the correct device/dtype
+        bc_coords = [
+            torch.from_numpy(c).to(dtype=data_full.dtype, device=data_full.device)
+            for c in self._bc_coords_np
+        ]
+
+        if num_axes == 1:
+            val_field = data_full[..., i_read]
+            result = self.func(val_field, self.dx, *bc_coords, t)
+            data_full[..., self.i_write] = result
+
+        elif num_axes == 2:
+            if axis == 0:
+                val_field = data_full[..., i_read, 1:-1]
+                result = self.func(val_field, self.dx, *bc_coords, t)
+                data_full[..., self.i_write, 1:-1] = result
+            elif axis == 1:
+                val_field = data_full[..., 1:-1, i_read]
+                result = self.func(val_field, self.dx, *bc_coords, t)
+                data_full[..., 1:-1, self.i_write] = result
+
+        elif num_axes == 3:
+            if axis == 0:
+                val_field = data_full[..., i_read, 1:-1, 1:-1]
+                result = self.func(val_field, self.dx, *bc_coords, t)
+                data_full[..., self.i_write, 1:-1, 1:-1] = result
+            elif axis == 1:
+                val_field = data_full[..., 1:-1, i_read, 1:-1]
+                result = self.func(val_field, self.dx, *bc_coords, t)
+                data_full[..., 1:-1, self.i_write, 1:-1] = result
+            elif axis == 2:
+                val_field = data_full[..., 1:-1, 1:-1, i_read]
+                result = self.func(val_field, self.dx, *bc_coords, t)
+                data_full[..., 1:-1, 1:-1, self.i_write] = result
+
+        else:
+            raise NotImplementedError
+        return data_full
+
+
 def make_local_ghost_cell_setter(bc: BCBase, *, dtype: np.dtype) -> torch.nn.Module:
     """Return function that sets virtual points for a local BC.
 
@@ -269,6 +354,8 @@ def make_local_ghost_cell_setter(bc: BCBase, *, dtype: np.dtype) -> torch.nn.Mod
     """
     # if isinstance(bc, UserBC):
     #     return _make_user_virtual_point_evaluator(bc)
+    if isinstance(bc, ExpressionBC):
+        return TorchExpressionBCBoundary(bc, dtype=dtype)
     if isinstance(bc, ConstBC1stOrderBase):
         return TorchConstBC1stOrderBoundary(bc, dtype=dtype)
     if isinstance(bc, ConstBC2ndOrderBase):

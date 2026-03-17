@@ -100,3 +100,55 @@ def test_inhomogeneous_bcs_2d(backend):
     res = _apply_ghost_cells(backend, f1, bcs)
     np.testing.assert_allclose(res[1:-1, :], f2._data_full[1:-1, :])
     np.testing.assert_allclose(res[:, 1:-1], f2._data_full[:, 1:-1])
+
+
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+@pytest.mark.parametrize("dim", [1, 2])
+@pytest.mark.parametrize(
+    "bc",
+    [
+        {"type": "virtual_point", "value": "x**2"},
+        {"type": "value_expression", "value": "x**2"},
+        {"type": "derivative_expression", "value": "x"},
+        {"type": "virtual_point", "value": "value + x"},
+    ],
+)
+def test_expression_bc(backend, dim, bc, rng):
+    """Test ExpressionBC (virtual point depends on coordinates or field value)."""
+    from pde.grids.boundaries.local import ExpressionBC
+
+    g = UnitGrid([2] * dim)
+    field = ScalarField.random_uniform(g, dtype=np.float32, rng=rng)
+    bcs = g.get_boundary_conditions(bc)
+
+    # verify these are indeed ExpressionBC instances
+    for bc_axis in bcs:
+        for bc_local in bc_axis:
+            assert isinstance(bc_local, ExpressionBC)
+
+    # reference using Python implementation
+    f_ref = field.copy()
+    f_ref.set_ghost_cells(bcs)
+
+    # apply ghost cells using the backend
+    res = _apply_ghost_cells(backend, field, bcs)
+
+    if dim == 1:
+        np.testing.assert_allclose(
+            np.array(f_ref._data_full, dtype=np.float32),
+            np.array(res, dtype=np.float32),
+            rtol=1e-5,
+        )
+    elif dim == 2:
+        np.testing.assert_allclose(
+            np.array(f_ref._data_full[1:-1, :], dtype=np.float32),
+            np.array(res[1:-1, :], dtype=np.float32),
+            rtol=1e-5,
+        )
+        np.testing.assert_allclose(
+            np.array(f_ref._data_full[:, 1:-1], dtype=np.float32),
+            np.array(res[:, 1:-1], dtype=np.float32),
+            rtol=1e-5,
+        )
+    else:
+        raise NotImplementedError
