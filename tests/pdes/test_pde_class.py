@@ -230,7 +230,7 @@ def test_custom_operator_torch(backend, rng):
         def __init__(self, grid, bcs, *, dtype, **kwargs):
             super().__init__(dtype=dtype)
 
-        def forward(self, arr):
+        def forward(self, arr, args=None):
             return 2 * arr  # multiply array by a constant factor
 
     # register the function with the torch backend

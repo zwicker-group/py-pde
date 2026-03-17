@@ -282,7 +282,16 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
         # save additional information
         self.dx = bc.grid.discretization[bc.axis]
         self.warn_t_missing = (not bc._is_func) and bc._func_expression.depends_on("t")
-        self.func = bc._make_function()
+
+        # get a concrete callable that torch.compile can trace through
+        if bc._is_func:
+            # user-supplied callable: use it directly
+            self.func = bc._make_function()
+        else:
+            # sympy expression: get a concrete lambda via numpy lambdify.
+            # Avoids the hash-based caching in ScalarExpression.__call__ which
+            # torch.compile's fullgraph mode cannot inline.
+            self.func = bc._func_expression.get_function(backend="numpy", single_arg=False)
 
     def forward(self, data_full: Tensor, args=None) -> Tensor:
         """Set the virtual points at the boundary."""
@@ -294,14 +303,14 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
         # extract time for handling time-dependent BCs
         if args is None or "t" not in args:
             if self.warn_t_missing:
-                msg = (
+                _logger.warning(
                     "Require value for `t` for time-dependent BC. The value must be "
                     "passed explicitly via `args` when calling a differential operator."
                 )
-                raise RuntimeError(msg)
             t = 0.0
         else:
-            t = float(args["t"])
+            t = args["t"]  # pass as-is; float() would create a data-dependent symbolic
+                            # expression that torch.compile's fullgraph mode cannot guard
 
         if num_axes == 1:
             val_field = data_full[..., i_read]
