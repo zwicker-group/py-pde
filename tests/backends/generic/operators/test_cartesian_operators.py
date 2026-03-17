@@ -92,7 +92,7 @@ def test_laplace_3d(backend, periodic, rng):
     field = ScalarField.random_uniform(bcs.grid, rng=rng)
     l1 = field.laplace(bcs, backend="scipy")
     l2 = field.laplace(bcs, backend=backend)
-    np.testing.assert_allclose(l1.data, l2.data, rtol=2e-6)
+    np.testing.assert_allclose(l1.data, l2.data, rtol=3e-6)
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)

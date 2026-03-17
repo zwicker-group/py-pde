@@ -485,7 +485,7 @@ class PDE(SDEBase):
             # choose complex dtype to be safe
             dtype = np.ones((1,), dtype=state.dtype).astype(complex).dtype
         else:
-            dtype = state.dtype
+            dtype = state.dtype  # type: ignore
         cache["dtype"] = dtype
 
         # check whether PDE has variables with same names as grid axes

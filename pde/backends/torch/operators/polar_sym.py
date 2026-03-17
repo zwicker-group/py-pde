@@ -325,12 +325,10 @@ class PolarTensorDivergence(TorchDifferentialOperator):
         arr_rr, arr_rφ = data_full[0, 0], data_full[0, 1]
         arr_φr, arr_φφ = data_full[1, 0], data_full[1, 1]
 
-        out_r = (arr_rr[2:] - arr_rr[:-2]) * self.scale_r + (
-            arr_rr[1:-1] - arr_φφ[1:-1]
-        ) / self.rs  # type: ignore
-        out_φ = (arr_φr[2:] - arr_φr[:-2]) * self.scale_r + (
-            arr_rφ[1:-1] + arr_φr[1:-1]
-        ) / self.rs  # type: ignore
+        out_r = (arr_rr[2:] - arr_rr[:-2]) * self.scale_r
+        out_r += (arr_rr[1:-1] - arr_φφ[1:-1]) / self.rs  # type: ignore
+        out_φ = (arr_φr[2:] - arr_φr[:-2]) * self.scale_r
+        out_φ += (arr_rφ[1:-1] + arr_φr[1:-1]) / self.rs  # type: ignore
 
         return torch.stack((out_r, out_φ))
 

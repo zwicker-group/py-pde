@@ -450,13 +450,11 @@ class SphericalTensorDivergence(TorchDifferentialOperator):
         arr_φr = data_full[2, 0]
         arr_φφ = data_full[2, 2]
 
-        out_r = (arr_rr[2:] - arr_rr[:-2]) * self.scale_r + 2 * (
-            arr_rr[1:-1] - arr_φφ[1:-1]
-        ) / self.rs  # type: ignore
+        out_r = (arr_rr[2:] - arr_rr[:-2]) * self.scale_r
+        out_r += 2 * (arr_rr[1:-1] - arr_φφ[1:-1]) / self.rs  # type: ignore
         out_θ = (arr_θr[2:] - arr_θr[:-2]) * self.scale_r + 2 * arr_θr[1:-1] / self.rs  # type: ignore
-        out_φ = (arr_φr[2:] - arr_φr[:-2]) * self.scale_r + (
-            2 * arr_φr[1:-1] + arr_rφ[1:-1]
-        ) / self.rs  # type: ignore
+        out_φ = (arr_φr[2:] - arr_φr[:-2]) * self.scale_r
+        out_φ += (2 * arr_φr[1:-1] + arr_rφ[1:-1]) / self.rs  # type: ignore
 
         return torch.stack([out_r, out_θ, out_φ])
 

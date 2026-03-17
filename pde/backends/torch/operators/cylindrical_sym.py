@@ -336,7 +336,7 @@ class CylindricalVectorLaplacian(TorchDifferentialOperator):
         out_r = (
             (arr_r[1:-1, 2:] - 2 * f_r_m + arr_r[1:-1, :-2]) * self.scale_z
             - f_r_m / self.rs**2  # type: ignore
-            + (f_r_h - f_r_l) * self.s1 / self.rs  # type: ignore
+            + (f_r_h - f_r_l) * self.s1 / self.rs
             + (f_r_h - 2 * f_r_m + f_r_l) * self.s2
         )
 
@@ -346,7 +346,7 @@ class CylindricalVectorLaplacian(TorchDifferentialOperator):
         out_φ = (
             (arr_φ[1:-1, 2:] - 2 * f_φ_m + arr_φ[1:-1, :-2]) * self.scale_z
             - f_φ_m / self.rs**2  # type: ignore
-            + (f_φ_h - f_φ_l) * self.s1 / self.rs  # type: ignore
+            + (f_φ_h - f_φ_l) * self.s1 / self.rs
             + (f_φ_h - 2 * f_φ_m + f_φ_l) * self.s2
         )
 
@@ -355,7 +355,7 @@ class CylindricalVectorLaplacian(TorchDifferentialOperator):
         f_z_h = arr_z[2:, 1:-1]
         out_z = (
             (arr_z[1:-1, 2:] - 2 * f_z_m + arr_z[1:-1, :-2]) * self.scale_z
-            + (f_z_h - f_z_l) * self.s1 / self.rs  # type: ignore
+            + (f_z_h - f_z_l) * self.s1 / self.rs
             + (f_z_h - 2 * f_z_m + f_z_l) * self.s2
         )
 

@@ -24,7 +24,7 @@ def _apply_ghost_cells(backend, field: ScalarField, bcs):
         setter = _jax_backend.make_data_setter(field.grid, rank=field.rank, bcs=bcs)
         return backend._apply_native(setter, field.data, inplace=False)
 
-    elif backend.name.startswith("torch"):
+    if backend.name.startswith("torch"):
         from pde.backends.torch._boundaries import GhostCellSetter as _GhostCellSetter
 
         f_copy = field.copy()
@@ -32,12 +32,11 @@ def _apply_ghost_cells(backend, field: ScalarField, bcs):
         backend._apply_native(setter, f_copy._data_full, inplace=True)
         return f_copy._data_full
 
-    else:
-        # numba, numpy, scipy - use make_ghost_cell_setter
-        f_copy = field.copy()
-        setter = backend.make_ghost_cell_setter(bcs)
-        backend._apply_native(setter, f_copy._data_full, inplace=True)
-        return f_copy._data_full
+    # numba, numpy, scipy - use make_ghost_cell_setter
+    f_copy = field.copy()
+    setter = backend.make_ghost_cell_setter(bcs)
+    backend._apply_native(setter, f_copy._data_full, inplace=True)
+    return f_copy._data_full
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
