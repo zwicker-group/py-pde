@@ -106,7 +106,9 @@ def test_coordinate_conversion(grid, rng):
 
 @pytest.mark.parametrize("grid", iter_grids())
 @pytest.mark.parametrize(
-    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+    "backend",
+    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
 )
 @pytest.mark.parametrize("rank", [0, 2])
 def test_integration_serial(grid, backend, rank, rng):
@@ -125,7 +127,7 @@ def test_integration_serial(grid, backend, rank, rng):
             assert res == pytest.approx(grid.integrate(arr, axes=range(grid.num_axes)))
     else:
         # use reduced tolerance to support potential float32 backends
-        np.testing.assert_allclose(res, grid.integrate(arr), rtol=1e-6)
+        np.testing.assert_allclose(res, grid.integrate(arr), rtol=1e-5)
 
 
 def test_grid_plotting():
