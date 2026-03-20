@@ -506,7 +506,7 @@ def test_post_step_hook(backend):
     np.testing.assert_allclose(result.data[:5, :], 1)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
+@pytest.mark.parametrize("backend", ["numpy", "numba", "jax"], indirect=True)
 def test_post_step_hook_stopiteration(backend):
     """Test simple post step hook function."""
 
