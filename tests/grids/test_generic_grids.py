@@ -117,9 +117,9 @@ def test_integration_serial(grid, backend, rank, rng):
         pytest.skip("`torch` is not available")
 
     arr = rng.normal(size=(grid.dim,) * rank + grid.shape)
-    arr = backend.from_numpy(arr)
-    res = grid.make_integrator(backend=backend)(arr)
-    res = backend.to_numpy(res)
+    arr_native = backend.from_numpy(arr)
+    res_native = grid.make_integrator(backend=backend)(arr_native)
+    res = backend.to_numpy(res_native)
 
     if rank == 0:
         assert np.asarray(res).size == 1
