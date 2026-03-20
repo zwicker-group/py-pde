@@ -717,7 +717,7 @@ class SDEBase(PDEBase):
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
                 """Helper function returning a noise realization."""
-                return scale * np.random.randn(*data_shape)  # noqa: NPY002
+                return scale * np.random.randn(*data_shape)  # noqa: NPY002 # type: ignore
 
             return noise_realization
 

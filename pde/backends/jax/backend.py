@@ -363,7 +363,7 @@ class JaxBackend(BackendBase):
 
         return get_full_with_bcs
 
-    def make_integrator(self, grid: GridBase) -> Callable[[jax.Array], jax.Array]:
+    def make_integrator(self, grid: GridBase) -> Callable[[jax.Array], jax.Array]:  # type: ignore
         """Return function that integrates discretized data over a grid.
 
         Args:

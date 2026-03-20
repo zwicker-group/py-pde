@@ -307,7 +307,7 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
                     "Require value for `t` for time-dependent BC. The value must be "
                     "passed explicitly via `args` when calling a differential operator."
                 )
-            t = 0.0
+            t: float | torch.Tensor = 0.0
         else:
             t = torch.as_tensor(args["t"])
 

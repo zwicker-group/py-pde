@@ -13,6 +13,8 @@ from pde import CartesianGrid, DiffusionPDE, FileStorage, PDEBase, ScalarField, 
 from pde.tools import misc, mpi
 from pde.tools.misc import module_available
 
+ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+
 
 @pytest.mark.skipif(not misc.module_available("h5py"), reason="requires `h5py` module")
 def test_writing_to_storage(tmp_path, rng):
@@ -122,7 +124,7 @@ def test_custom_pde_mpi(rng):
             assert sum(info["post_step_data_list"]) == info3["solver"]["post_step_data"]
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_stop_iteration_hook(backend):
     """Test a custom PDE raising StopIteration in a hook."""
 
@@ -155,7 +157,7 @@ def test_stop_iteration_hook(backend):
     assert info["controller"]["stop_reason"] == "Tracker raised StopIteration"
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_custom_data_hook(backend):
     """Test a custom PDE keeping track of data."""
 
@@ -187,7 +189,7 @@ def test_custom_data_hook(backend):
     assert info["solver"]["post_step_data"] == pytest.approx(value)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_array_data_hook(backend):
     """Test a custom PDE keeping track of array data."""
 

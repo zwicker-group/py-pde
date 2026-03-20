@@ -83,7 +83,7 @@ def torch_heaviside(x1: torch.Tensor, x2: torch.Tensor | None = None) -> torch.T
     """
     x1 = torch.as_tensor(x1)
     if x2 is None:
-        x2 = 0.5
+        x2 = 0.5  # type: ignore
     x2_t = torch.as_tensor(x2, dtype=x1.dtype, device=x1.device)
     return torch.where(
         x1 > 0,
