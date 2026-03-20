@@ -219,7 +219,7 @@ class NumpyBackend(BackendBase):
 
         return apply_operator  # type: ignore
 
-    def make_integrator(
+    def make_integrator(  # type: ignore
         self, grid: GridBase
     ) -> Callable[[NumericArray], NumberOrArray]:
         """Return function that integrates discretized data over a grid.

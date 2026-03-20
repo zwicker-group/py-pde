@@ -351,7 +351,7 @@ class TorchBackend(BackendBase):
         # return the compiled versions of the operator
         return apply_op  # type: ignore
 
-    def make_integrator(
+    def make_integrator(  # type: ignore
         self, grid: GridBase, *, dtype: DTypeLike = np.double
     ) -> Callable[[torch.Tensor], torch.Tensor]:
         """Return function that integrates discretized data over a grid.

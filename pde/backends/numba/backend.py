@@ -690,7 +690,7 @@ class NumbaBackend(NumpyBackend):
 
         return integrate_local
 
-    def make_integrator(
+    def make_integrator(  # type: ignore
         self, grid: GridBase
     ) -> Callable[[NumericArray], NumberOrArray]:
         """Return function that integrates discretized data over a grid.
