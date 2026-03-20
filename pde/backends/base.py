@@ -317,14 +317,13 @@ class BackendBase:
         msg = f"Data setter not defined for backend {self.name}"
         raise NotImplementedError(msg)
 
-    def make_integrator(
-        self, grid: GridBase
-    ) -> Callable[[NumericArray], NumberOrArray]:
+    def make_integrator(self, grid: GridBase) -> Callable[[TArray], TArray]:
         """Return function that integrates discretized data over a grid.
 
-        If this function is used in a multiprocessing run (using MPI), the integrals are
-        performed on all subgrids and then accumulated. Each process then receives the
-        same value representing the global integral.
+        Note that this function takes and returns data in the native representation of
+        the backend. If this function is used in a multiprocessing run (using MPI), the
+        integrals are performed on all subgrids and then accumulated. Each process then
+        receives the same value representing the global integral.
 
         Args:
             grid (:class:`~pde.grid.base.GridBase`):

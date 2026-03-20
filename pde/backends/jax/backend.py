@@ -363,9 +363,7 @@ class JaxBackend(BackendBase):
 
         return get_full_with_bcs
 
-    def make_integrator(
-        self, grid: GridBase
-    ) -> Callable[[NumericArray], NumberOrArray]:
+    def make_integrator(self, grid: GridBase) -> Callable[[jax.Array], jax.Array]:
         """Return function that integrates discretized data over a grid.
 
         Args:
@@ -386,20 +384,7 @@ class JaxBackend(BackendBase):
             """Integrate data using cell volumes."""
             return jnp.sum(arr * cell_volumes, axis=spatial_dims)
 
-        def integrate_global(arr: NumericArray) -> NumberOrArray:
-            """Integrate data.
-
-            Args:
-                arr (:class:`~numpy.ndarray`): discretized data on grid
-            """
-            arr_jax = self.from_numpy(arr)
-            res_jax = integrate_jax(arr_jax)
-            res_np = self.to_numpy(res_jax)
-            if res_np.ndim == 0:
-                return res_np[()]  # type: ignore
-            return res_np  # type: ignore
-
-        return integrate_global
+        return integrate_jax
 
     def make_operator_no_bc(
         self,

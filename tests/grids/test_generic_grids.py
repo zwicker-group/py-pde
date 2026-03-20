@@ -117,9 +117,12 @@ def test_integration_serial(grid, backend, rank, rng):
         pytest.skip("`torch` is not available")
 
     arr = rng.normal(size=(grid.dim,) * rank + grid.shape)
+    arr = backend.from_numpy(arr)
     res = grid.make_integrator(backend=backend)(arr)
+    res = backend.to_numpy(res)
+
     if rank == 0:
-        assert np.isscalar(res)
+        assert np.asarray(res).size == 1
         assert res == pytest.approx(grid.integrate(arr))
         if grid.num_axes == 1:
             assert res == pytest.approx(grid.integrate(arr, axes=0))
