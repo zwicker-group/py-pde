@@ -353,12 +353,8 @@ class TorchBackend(BackendBase):
 
     def make_integrator(
         self, grid: GridBase, *, dtype: DTypeLike = np.double
-    ) -> Callable[[NumericArray], NumberOrArray]:
+    ) -> Callable[[torch.Tensor], torch.Tensor]:
         """Return function that integrates discretized data over a grid.
-
-        If this function is used in a multiprocessing run (using MPI), the integrals are
-        performed on all subgrids and then accumulated. Each process then receives the
-        same value representing the global integral.
 
         Args:
             grid (:class:`~pde.grid.base.GridBase`):
@@ -378,23 +374,7 @@ class TorchBackend(BackendBase):
         )
         integrate_torch.to(self.device)
 
-        def integrate_global(arr: NumericArray) -> NumberOrArray:
-            """Integrate data.
-
-            Args:
-                arr (:class:`~numpy.ndarray`): discretized data on grid
-            """
-            # move data to device
-            arr_torch = self.from_numpy(arr)
-            # integrate on device
-            res = integrate_torch(arr_torch)
-            # return result
-            res_np = self.to_numpy(res)
-            if res_np.ndim == 0:
-                return res_np[()]  # type: ignore
-            return res_np  # type: ignore
-
-        return integrate_global
+        return integrate_torch
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True

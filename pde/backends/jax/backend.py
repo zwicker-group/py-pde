@@ -363,6 +363,29 @@ class JaxBackend(BackendBase):
 
         return get_full_with_bcs
 
+    def make_integrator(self, grid: GridBase) -> Callable[[jax.Array], jax.Array]:
+        """Return function that integrates discretized data over a grid.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the integrator is defined
+
+        Returns:
+            A function that takes a numpy array and returns the integral with the
+            correct weights given by the cell volumes.
+        """
+        spatial_dims = tuple(range(-grid.num_axes, 0))
+        cell_volumes = self.from_numpy(
+            np.broadcast_to(grid.cell_volumes, grid.shape).astype(np.float64)
+        )
+
+        @self.compile_function
+        def integrate_jax(arr: jax.Array) -> jax.Array:
+            """Integrate data using cell volumes."""
+            return jnp.sum(arr * cell_volumes, axis=spatial_dims)
+
+        return integrate_jax
+
     def make_operator_no_bc(
         self,
         grid: GridBase,
