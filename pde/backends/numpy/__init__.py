@@ -8,8 +8,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .. import backends
+from .. import backend_registry
 from .backend import NumpyBackend
 
-numpy_backend = NumpyBackend(backends.get_config("numpy"), name="numpy")
-backends.add(numpy_backend)
+numpy_backend = NumpyBackend(backend_registry.get_config("numpy"), name="numpy")
+backend_registry.add(numpy_backend)

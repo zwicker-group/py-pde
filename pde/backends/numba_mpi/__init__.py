@@ -19,11 +19,13 @@ except ImportError as err:
 else:
     del numba_mpi  # clean workspace
 
-from .. import backends
+from .. import backend_registry
 from .backend import NumbaMPIBackend
 
 # add the loaded numba-mpi backend to the registry
-backends.add(NumbaMPIBackend(backends.get_config("numba_mpi"), name="numba_mpi"))
+backend_registry.add(
+    NumbaMPIBackend(backend_registry.get_config("numba_mpi"), name="numba_mpi")
+)
 
 # register some numba overloads
 from . import overloads

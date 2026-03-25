@@ -150,7 +150,7 @@ class BackendRegistry:
 
 
 # initiate the backend registry - there should only be one instance of this class
-backends = BackendRegistry()
+backend_registry = BackendRegistry()
 
 
 def load_default_config(module_path: str | Path) -> list[Parameter] | None:
@@ -191,9 +191,10 @@ def get_backend(backend: str | BackendBase) -> BackendBase:
     """
     if isinstance(backend, BackendBase):
         return backend
-    return backends[str(backend)]  # if it's not a class, it needs to be a backend name
+    # if it's not a class, it needs to be a backend name
+    return backend_registry[str(backend)]
 
 
 def registered_backends() -> list[str]:
     """Returns all registered backends."""
-    return sorted(backends._backends)
+    return sorted(backend_registry._backends)

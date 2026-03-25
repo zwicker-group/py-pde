@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from pde import backends, get_backend
+from pde.backends import backend_registry, get_backend
 from pde.backends.numba.utils import random_seed
 from pde.tools.misc import module_available
 
@@ -63,7 +63,7 @@ if module_available("torch"):
         except RuntimeError:
             _logger.info("Torch device `%s` is unavailable", device)
         else:
-            backends.add(backend)
+            backend_registry.add(backend)
 
 
 @pytest.fixture

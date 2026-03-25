@@ -1116,11 +1116,11 @@ class GridBase(metaclass=ABCMeta):
     @property
     def operators(cls) -> set[str]:
         """set: all operators defined for this class"""
-        from ..backends import backends
+        from ..backends import backend_registry
 
         # get all operators registered on the class
         operators = set()
-        for backend in backends.values():
+        for backend in backend_registry.values():
             operators |= backend.get_registered_operators(cls)
         return operators
 
@@ -1128,11 +1128,11 @@ class GridBase(metaclass=ABCMeta):
     @property
     def operators(self) -> set[str]:
         """set: all operators defined for this instance"""
-        from ..backends import backends
+        from ..backends import backend_registry
 
         # get all operators registered on the class
         operators = set()
-        for backend in backends.values():
+        for backend in backend_registry.values():
             operators |= backend.get_registered_operators(self)
         return operators
 

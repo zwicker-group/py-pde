@@ -11,7 +11,7 @@ from collections import defaultdict
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
-from ..solvers import AdaptiveSolverBase, SolverBase
+from ..solvers import AdaptiveSolverBase
 from ..tools.config import Config, Parameter
 from ..tools.math import OnlineStatistics
 from ..tools.typing import (
