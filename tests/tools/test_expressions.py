@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
-from pde.backends import backends
+from pde.backends import get_backend
 from pde.backends.numba import numba_backend
 from pde.tools.expressions import (
     BCDataError,
@@ -368,7 +368,7 @@ def test_expression_hypot(backend):
 )
 def test_expression_consts(backend):
     """Test the usage of consts."""
-    backend_obj = backends[backend]
+    backend_obj = get_backend(backend)
     expr = ScalarExpression("a", consts={"a": 1})
     assert expr.constant
     assert not expr.depends_on("a")

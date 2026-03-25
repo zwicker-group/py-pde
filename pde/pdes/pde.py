@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from ..backends import BackendBase, backends
+from ..backends import get_backend
 from ..fields import FieldCollection, VectorField
 from ..fields.datafield_base import DataFieldBase
 from ..grids.boundaries import set_default_bc
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     import sympy
     import torch
 
+    from ..backends import BackendBase
     from ..fields.base import FieldBase
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.expressions import ScalarExpression
@@ -611,7 +612,7 @@ class PDE(SDEBase):
             :class:`~pde.fields.FieldBase`:
             Field describing the evolution rate of the PDE
         """
-        cache = self._prepare_cache(state, backend=backends["numpy"])
+        cache = self._prepare_cache(state, backend=get_backend("numpy"))
 
         # create an empty copy of the current field
         result = state.copy()
@@ -657,9 +658,9 @@ class PDE(SDEBase):
             msg = "`post_step_hook` not set"
             raise NotImplementedError(msg)
 
-        from ..backends import backends
+        from ..backends import get_backend
 
-        post_step_hook = backends[backend].compile_function(self.post_step_hook)
+        post_step_hook = get_backend(backend).compile_function(self.post_step_hook)
 
         def post_step_hook_impl(state_data, t, post_step_data):
             post_step_hook(state_data, t)
@@ -834,7 +835,7 @@ class PDE(SDEBase):
             instance of the state data and time to obtain the associated evolution rate.
         """
         # load backend and initialize cache
-        backend = backends[backend]
+        backend = get_backend(backend)
         cache = self._prepare_cache(state, backend=backend)
 
         if isinstance(state, DataFieldBase):

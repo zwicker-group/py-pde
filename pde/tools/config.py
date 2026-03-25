@@ -367,10 +367,10 @@ class GlobalConfig:
         """
         if key.startswith("backend."):
             # use configurations of backend
-            from ..backends import backends
+            from ..backends import get_backend
 
             _, backend, config_key = key.split(".", 2)
-            return backends[backend].config, config_key
+            return get_backend(backend).config, config_key
 
         if key.startswith("numba."):
             # legacy location for numba related configurations; deprecated on 2025-12-22
@@ -379,10 +379,10 @@ class GlobalConfig:
                 DeprecationWarning,
                 stacklevel=2,
             )
-            from ..backends import backends
+            from ..backends import get_backend
 
             backend, config_key = key.split(".", 1)
-            return backends[backend].config, config_key
+            return get_backend(backend).config, config_key
 
         # use global configuration
         return self._config, key

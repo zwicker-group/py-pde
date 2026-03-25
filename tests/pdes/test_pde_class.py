@@ -12,7 +12,7 @@ import sympy
 from scipy import stats
 
 from pde import PDE, MemoryStorage, SwiftHohenbergPDE, grids
-from pde.backends import backends
+from pde.backends import get_backend
 from pde.fields import FieldCollection, ScalarField, VectorField
 from pde.grids.boundaries.local import BCDataError
 
@@ -186,7 +186,7 @@ def test_compare_swift_hohenberg(backend, grid, rng):
 
 def test_custom_operator_numba(rng):
     """Test using a custom operator using the numba backend."""
-    backend = backends["numba"]
+    backend = get_backend("numba")
     grid = grids.UnitGrid([32])
     field = ScalarField.random_normal(grid, rng=rng)
     eq = PDE({"u": "undefined(u)"})
@@ -281,7 +281,7 @@ def test_pde_spatial_args(backend):
     # test combination of spatial dependence and differential operators
     eq = PDE({"a": "dot(gradient(x), gradient(a))"})
     rhs = eq.make_pde_rhs(field, backend=backend)
-    res = backends[backend]._apply_native(rhs, field.data, 0.0)
+    res = get_backend(backend)._apply_native(rhs, field.data, 0.0)
     np.testing.assert_allclose(res, np.array([0.0, 0.0, 0.0, 0.0]))
 
     # test invalid spatial dependence

@@ -8,7 +8,6 @@ import numpy as np
 import pytest
 
 from pde import PDE, KleinGordonPDE, ScalarField, UnitGrid
-from pde.backends import backends
 from pde.tools.misc import module_available
 
 
@@ -27,7 +26,7 @@ def test_klein_gordon_consistency(dim, rng):
 
     # compare numba to numpy implementation
     if module_available("numba"):
-        rhs = eq.make_pde_rhs(state, backend=backends["numba"])
+        rhs = eq.make_pde_rhs(state, backend="numba")
         np.testing.assert_allclose(field.data, rhs(state.data, 0), rtol=1e-6)
 
     # compare torch to numpy implementation

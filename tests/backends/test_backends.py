@@ -11,8 +11,7 @@ pytest.importorskip("torch")
 if platform.system() == "Windows":
     pytest.skip("Skip torch tests on Windows", allow_module_level=True)
 
-from pde import CahnHilliardPDE, ScalarField, UnitGrid, config
-from pde.backends import backends
+from pde import CahnHilliardPDE, ScalarField, UnitGrid, backends, config, get_backend
 from pde.backends.base import BackendBase
 from pde.backends.torch import TorchBackend
 
@@ -40,17 +39,17 @@ def test_backend_configuration():
     # test modification of known backend
     assert config["backend.numba.fastmath"]
     assert backends.get_config("numba")["fastmath"]
-    assert backends["numba"].config["fastmath"]
+    assert get_backend("numba").config["fastmath"]
 
-    backends["numba"].config["fastmath"] = False
+    get_backend("numba").config["fastmath"] = False
     assert not config["backend.numba.fastmath"]
     assert not backends.get_config("numba")["fastmath"]
-    assert not backends["numba"].config["fastmath"]
+    assert not get_backend("numba").config["fastmath"]
 
     config["backend.numba.fastmath"] = True
     assert config["backend.numba.fastmath"]
     assert backends.get_config("numba")["fastmath"]
-    assert backends["numba"].config["fastmath"]
+    assert get_backend("numba").config["fastmath"]
 
     # test configuration of new backend
     class MyBackend(BackendBase): ...

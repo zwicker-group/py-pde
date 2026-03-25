@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ..backends import backends
+from ..backends import get_backend
 from ..fields import ScalarField, VectorField
 from ..tools.docstrings import fill_in_docstring
 
@@ -72,7 +72,7 @@ def solve_poisson_equation(
         :class:`~pde.fields.scalar.ScalarField`: Field :math:`u` solving the equation.
     """
     # get the operator information
-    operator = backends["scipy"].get_operator_info(rhs.grid, "poisson_solver")
+    operator = get_backend("scipy").get_operator_info(rhs.grid, "poisson_solver")
     # get the boundary conditions
     bcs = rhs.grid.get_boundary_conditions(bc)
     # get the actual solver

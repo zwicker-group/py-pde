@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from pde.backends import backends
+from pde import backends, get_backend
 from pde.backends.numba.utils import random_seed
 from pde.tools.misc import module_available
 
@@ -78,13 +78,13 @@ def backend(request):
         # a numba backend
         if not module_available("numba"):
             pytest.skip("`numba` is not available")
-        backend = backends["numba"]
+        backend = get_backend("numba")
 
     elif request.param == "jax":
         # a jax backend
         if not module_available("jax"):
             pytest.skip("`jax` is not available")
-        backend = backends["jax"]
+        backend = get_backend("jax")
 
     elif request.param.startswith("torch"):
         # a torch backend, which might possible include a device
@@ -94,13 +94,13 @@ def backend(request):
             pytest.skip("Skip `torch` tests on Windows")
 
         try:
-            backend = backends[request.param]
+            backend = get_backend(request.param)
         except KeyError as err:
             pytest.skip(str(err))
 
     else:
         # try loading a generic backend by name
-        backend = backends[request.param]
+        backend = get_backend(request.param)
 
     return backend
 

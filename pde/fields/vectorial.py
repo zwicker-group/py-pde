@@ -310,9 +310,9 @@ class VectorField(DataFieldBase):
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written.
         """
-        from ..backends import backends
+        from ..backends import get_backend
 
-        return backends[backend].make_outer_prod_operator(self)
+        return get_backend(backend).make_outer_prod_operator(self)
 
     @fill_in_docstring
     def divergence(

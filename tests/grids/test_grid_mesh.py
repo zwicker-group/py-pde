@@ -5,8 +5,14 @@
 import numpy as np
 import pytest
 
-from pde import DiffusionPDE, FieldCollection, ScalarField, Tensor2Field, VectorField
-from pde.backends import backends
+from pde import (
+    DiffusionPDE,
+    FieldCollection,
+    ScalarField,
+    Tensor2Field,
+    VectorField,
+    get_backend,
+)
 from pde.grids import CylindricalSymGrid, PolarSymGrid, SphericalSymGrid, UnitGrid
 from pde.grids._mesh import GridMesh, _get_optimal_decomposition
 from pde.tools import mpi
@@ -187,11 +193,11 @@ def test_boundary_conditions_numba(bc, rng):
     # split without ghost cells
     f1 = mesh.split_field_mpi(field)
     bc1 = f1.grid.get_boundary_conditions(bc)
-    backends["numba_mpi"].make_ghost_cell_setter(bc1)(f1._data_full)
+    get_backend("numba_mpi").make_ghost_cell_setter(bc1)(f1._data_full)
 
     # split after setting ghost cells
     bc2 = field.grid.get_boundary_conditions(bc)
-    backends["numba_mpi"].make_ghost_cell_setter(bc2)(field._data_full)
+    get_backend("numba_mpi").make_ghost_cell_setter(bc2)(field._data_full)
     f2 = mesh.split_field_mpi(field)
 
     np.testing.assert_equal(f1._data_full[1:-1, :], f2._data_full[1:-1, :])

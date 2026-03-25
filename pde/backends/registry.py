@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib
 import logging
 from typing import TYPE_CHECKING
@@ -113,17 +114,8 @@ class BackendRegistry:
         if link_config:
             self._configs[backend.name] = backend.config
 
-    def __getitem__(self, backend: str | BackendBase) -> BackendBase:
-        """Return backend object, potentially loading the respective package.
-
-        As a special case, we also allow full backend objects, which are simply
-        returned. This is a simple way to allow providing full backend objects in places
-        where we otherwise would expect a backend name.
-        """
-        if isinstance(backend, BackendBase):
-            return backend
-        name = str(backend)  # if it's not a class, it needs to be a backend name
-
+    def __getitem__(self, name: str) -> BackendBase:
+        """Return backend object, potentially loading the respective package."""
         # handle special names
         if name == "default":
             name = config["default_backend"]
@@ -147,8 +139,14 @@ class BackendRegistry:
         return name == "default" or name in self._backends
 
     def __iter__(self) -> Iterator[str]:
-        """Iterate over the defined backends."""
+        """Iterate over the names of the defined backends."""
         return self._backends.keys().__iter__()
+
+    def values(self) -> Iterator[BackendBase]:
+        """Iterate over all backends that can be imported."""
+        for name in self:
+            with contextlib.suppress(ImportError):
+                yield self[name]
 
 
 # initiate the backend registry - there should only be one instance of this class
@@ -179,6 +177,21 @@ def load_default_config(module_path: str | Path) -> list[Parameter] | None:
     except AttributeError:
         _logger.warning("Configuration module had no variable `DEFAULT_CONFIG`")
         return None
+
+
+def get_backend(backend: str | BackendBase) -> BackendBase:
+    """Return backend specified by string of instance.
+
+    Args:
+        backend (str or :class:`~pde.backends.base.BackendBase`):
+            Backend specified by name given as a string. As a special case, we also
+            allow full backend objects, which are simply returned. This is a simple
+            way to allow providing full backend objects in places where we otherwise
+            would expect a backend name.
+    """
+    if isinstance(backend, BackendBase):
+        return backend
+    return backends[str(backend)]  # if it's not a class, it needs to be a backend name
 
 
 def registered_backends() -> list[str]:

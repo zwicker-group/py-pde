@@ -152,9 +152,10 @@ class SolverBase:
             if self._backend == "auto":
                 msg = "Automatic backend selection did not happen, yet."
                 raise RuntimeError(msg)
-            from ..backends import backends
 
-            self._backend = backends[self._backend]
+            from ..backends import get_backend
+
+            self._backend = get_backend(self._backend)
         return self._backend
 
     def _make_error_synchronizer(

@@ -378,10 +378,10 @@ class ExpressionBase(metaclass=ABCMeta):
         Returns:
             function: the function
         """
-        from ..backends import backends
+        from ..backends import get_backend
         # TODO add caching
 
-        return backends[backend].make_expression_function(
+        return get_backend(backend).make_expression_function(
             self, single_arg=single_arg, user_funcs=user_funcs
         )
 
@@ -919,11 +919,11 @@ def evaluate(
     """
     from sympy.core.function import AppliedUndef
 
-    from ..backends import backends
+    from ..backends import get_backend
     from ..fields import VectorField
 
     # load the backend object
-    backend = backends[backend]
+    backend = get_backend(backend)
 
     # validate input
     if consts is None:

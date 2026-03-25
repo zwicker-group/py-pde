@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from ..backends import BackendBase, backends
+from ..backends import BackendBase, get_backend
 from ..fields import FieldCollection
 from ..fields.datafield_base import DataFieldBase
 
@@ -201,7 +201,7 @@ class PDEBase(metaclass=ABCMeta):
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.make_evolution_rate(state, backend=backends["numba"])
+        return self.make_evolution_rate(state, backend=get_backend("numba"))
 
     def check_rhs_consistency(
         self,
@@ -340,7 +340,7 @@ class PDEBase(metaclass=ABCMeta):
         if isinstance(backend, BackendBase):
             return backend  # backend has already been selected
         if backend != "auto":
-            return backends[backend]  # load the respective backend
+            return get_backend(backend)  # load the respective backend
 
         # choose backend automatically by trial and error to see which one works
         for backend in ["numba", "torch", "numpy"]:
@@ -354,7 +354,7 @@ class PDEBase(metaclass=ABCMeta):
         else:
             msg = "Could not select a suitable backend"
             raise RuntimeError(msg)
-        return backends[backend]
+        return get_backend(backend)
 
     def make_pde_rhs(
         self,
