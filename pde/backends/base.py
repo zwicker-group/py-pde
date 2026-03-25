@@ -107,6 +107,10 @@ class BackendBase:
         cls._logger = _base_logger.getChild(cls.__qualname__)
         cls._operators = defaultdict(dict)
 
+    def __repr__(self) -> str:
+        """Return concise string representation of this backend."""
+        return f"{self.__class__.__name__}(name={self.name!r})"
+
     def from_numpy(self, value: Any) -> Any:
         """Convert values from numpy to native representation.
 

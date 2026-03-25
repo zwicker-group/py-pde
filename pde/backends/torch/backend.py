@@ -82,6 +82,13 @@ class TorchBackend(BackendBase):
         super().__init__(config, name=name)
         self.device = device
 
+    def __repr__(self) -> str:
+        """Return concise string representation of this backend."""
+        return (
+            f"{self.__class__.__name__}(name={self.name!r}, "
+            f"device={str(self.device)!r})"
+        )
+
     @property
     def device(self) -> torch.device:
         """The currently assigned torch device."""
