@@ -11,15 +11,8 @@ pytest.importorskip("torch")
 if platform.system() == "Windows":
     pytest.skip("Skip torch tests on Windows", allow_module_level=True)
 
-from pde import (
-    CahnHilliardPDE,
-    ScalarField,
-    UnitGrid,
-    backend_registry,
-    config,
-    get_backend,
-)
-from pde.backends.base import BackendBase
+from pde import CahnHilliardPDE, ScalarField, UnitGrid, config, get_backend
+from pde.backends import BackendBase, backend_registry
 from pde.backends.torch import TorchBackend
 
 
