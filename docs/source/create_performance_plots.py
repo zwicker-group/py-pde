@@ -85,7 +85,7 @@ def calculate_single_run(backend: str, size: int, periodic=False) -> float:
     field = ScalarField.random_normal(grid, rng=rng)
     field.set_ghost_cells(bc="auto_periodic_neumann")
 
-    if backend in {"numba", "torch", "scipy"}:
+    if backend in {"numba", "torch", "jax", "scipy"}:
         op = grid.make_operator("laplace", bc="auto_periodic_neumann", backend=backend)
         return time_function(op, field.data)
 
@@ -151,7 +151,7 @@ def collect_performance_data(periodic=False) -> dict[int, dict[str, float]]:
     for size in display_progress(sizes):
         statistics[int(size)] = {
             backend: get_single_run(backend, size, periodic)
-            for backend in ["numba", "numba_no_bc", "torch", "scipy", "opencv"]
+            for backend in ["numba", "numba_no_bc", "torch", "jax", "scipy", "opencv"]
         }
 
     return statistics
@@ -171,8 +171,9 @@ def plot_performance(performance_data, title=None):
         {"key": "numba", "label": "py-pde [numba]", "fmt": "C0.-"},
         {"key": "numba_no_bc", "label": "", "fmt": "C0:"},
         {"key": "torch", "label": "py-pde [torch:cpu]", "fmt": "C1.-"},
-        {"key": "opencv", "label": "opencv", "fmt": "C2.-"},
-        {"key": "scipy", "label": "scipy", "fmt": "C3.-"},
+        {"key": "jax", "label": "py-pde [jax]", "fmt": "C2.-"},
+        {"key": "opencv", "label": "opencv", "fmt": "C3.-"},
+        {"key": "scipy", "label": "scipy", "fmt": "C4.-"},
     ]
 
     sizes = np.array(sorted(performance_data.keys()))
@@ -185,7 +186,7 @@ def plot_performance(performance_data, title=None):
     plt.xlim(grid_sizes[0], grid_sizes[-1])
     plt.xlabel("Number of grid points")
     plt.ylabel("Runtime [ms]")
-    plt.legend(loc="best")
+    plt.legend(loc="best", fontsize=8)
 
     # fix ticks of y-axis
     locmaj = mpl.ticker.LogLocator(base=10, numticks=12)

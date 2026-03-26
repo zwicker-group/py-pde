@@ -120,9 +120,9 @@ class PDE(SDEBase):
                 condition for all operators of the field named `c`.
             post_step_hook (callable):
                 A function with signature `(state_data, t)` that will be called after
-                every time step. The function can modify the :class:`~numpy.ndarray` of
-                the state_data in place and it can abort the simulation immediately by
-                raising `StopIteration` (currently does not work with `torch` backend).
+                every time step. The function must return `state_data`, which can be
+                modified in place. The hook can also abort the simulation immediately by
+                raising `StopIteration` (might not work with all backends).
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expressions in `rhs`.

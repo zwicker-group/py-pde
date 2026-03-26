@@ -141,8 +141,8 @@ class PDEBase(metaclass=ABCMeta):
 
         This function receives three arguments: the current state as a numpy array, the
         current time point, and a numpy array that can store data for the hook function.
-        The function can modify the state data in place. If the function makes use of
-        the data feature, it must replace the data in place.
+        The function must return the state data and the hook data, which it can both
+        modify in place.
 
         The hook can also be used to abort the simulation when a user-defined condition
         is met by raising `StopIteration`. Note that this interrupts the inner-most
