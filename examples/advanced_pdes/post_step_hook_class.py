@@ -24,6 +24,7 @@ class CustomPDE(PDEBase):
                 # Abort simulation when correction exceeds 400
                 # Note that the `post_step_data` of the previous step will be returned.
                 raise StopIteration
+            return state_data, post_step_data
 
         return post_step_hook, 0.0  # hook function and initial value for data
 

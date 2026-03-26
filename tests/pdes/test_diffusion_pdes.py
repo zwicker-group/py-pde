@@ -95,7 +95,7 @@ def test_diffusion_sde(backend, rng):
     var_expected = var_local * t_range / grid.typical_discretization
     dist = stats.norm(scale=np.sqrt(var_expected)).cdf
     if backend.implementation == "torch":
-        # torch seems to have weak RNG, so the random numbers are not very independent
+        # torch seems to have weak RNG, so random numbers are not very independent
         assert stats.kstest(np.ravel(sol.data), dist).pvalue > 1e-4
     else:
         assert stats.kstest(np.ravel(sol.data), dist).pvalue > 0.1

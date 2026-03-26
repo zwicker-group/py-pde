@@ -19,17 +19,25 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from ..backends import BackendBase, backends
+from ..backends import BackendBase, get_backend
 from ..fields import FieldCollection
 from ..fields.datafield_base import DataFieldBase
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    import jax
+
     from ..fields.base import FieldBase
     from ..solvers.base import SolverBase
     from ..solvers.controller import TRangeType
-    from ..tools.typing import ArrayLike, NumericArray, StepperHook, TArray, TField
+    from ..tools.typing import (
+        ArrayLike,
+        NumericArray,
+        StepperHook,
+        TField,
+        TNativeArray,
+    )
     from ..trackers.base import TrackerCollectionDataType
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
@@ -141,7 +149,7 @@ class PDEBase(metaclass=ABCMeta):
         loop, so that some final information might be still reflect the values they
         assumed at the last tracker interrupt. Additional information (beside the
         current state) should be returned by the `post_step_data`. Note that raising
-        `StopIteration` might not work with the `torch` backend.
+        `StopIteration` only works for some backends.
 
         Example:
             The following code provides an example that creates a hook function that
@@ -158,6 +166,7 @@ class PDEBase(metaclass=ABCMeta):
                         overshoot = (state_data[i] - 1).sum()  # get total correction
                         state_data[i] = 1  # limit data entries
                         post_step_data += overshoot  # accumulate total correction
+                        return state_data, post_step_data
 
                     return post_step_hook, 0.0  # hook function and initial value
 
@@ -201,7 +210,7 @@ class PDEBase(metaclass=ABCMeta):
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.make_evolution_rate(state, backend=backends["numba"])
+        return self.make_evolution_rate(state, backend=get_backend("numba"))
 
     def check_rhs_consistency(
         self,
@@ -340,7 +349,7 @@ class PDEBase(metaclass=ABCMeta):
         if isinstance(backend, BackendBase):
             return backend  # backend has already been selected
         if backend != "auto":
-            return backends[backend]  # load the respective backend
+            return get_backend(backend)  # load the respective backend
 
         # choose backend automatically by trial and error to see which one works
         for backend in ["numba", "torch", "numpy"]:
@@ -354,13 +363,13 @@ class PDEBase(metaclass=ABCMeta):
         else:
             msg = "Could not select a suitable backend"
             raise RuntimeError(msg)
-        return backends[backend]
+        return get_backend(backend)
 
     def make_pde_rhs(
         self,
         state: TField,
         backend: str | BackendBase = "auto",
-    ) -> Callable[[TArray, float], TArray]:
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
         Args:
@@ -385,7 +394,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def make_evolution_rate(
         self, state, backend: BackendBase
-    ) -> Callable[[TArray, float], TArray]:
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Return function evaluating right hand side of the PDE using given backend.
 
         Args:
@@ -645,24 +654,33 @@ class SDEBase(PDEBase):
         for n, var in enumerate(noise_vars_field):
             noise_var[state._slices[n]] = var
 
-        if backend.implementation in {"jax", "numba", "numpy"}:
+        if backend.implementation in {"numba", "numpy", "jax"}:
+            # TODO: Implement noise determination on jax backend. This will likely only
+            # be necessary once we move more of the simulation loop to the device, so
+            # the whole time step is calculated on the device
+
             # determine noise realization for slices with non-zero variance
             def noise_realization(
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
                 """Helper function returning a noise realization."""
                 out = np.empty(data_shape)
-                for n in range(len(state_data)):
+                for n in range(data_shape[0]):
                     if noise_var[n] == 0:
                         out[n].fill(0)
                     else:
                         scale = np.sqrt(noise_var[n] / cell_volumes)
-                        out[n] = scale * np.random.randn(*state_data[n].shape)  # noqa: NPY002
+                        out[n] = scale * np.random.randn(*data_shape[1:])
                 return out
+
+            if backend.implementation == "numba":
+                noise_realization = backend.compile_function(noise_realization)
 
         else:
             # Determine noise realization for all slices. This implementation is mainly
             # for `torch`, which does not support the `if` construct above.
+
+            @backend.compile_function
             def noise_realization(
                 state_data: NumericArray, t: float
             ) -> NumericArray | None:
@@ -671,15 +689,18 @@ class SDEBase(PDEBase):
                 for n in range(len(state_data)):
                     # Note that this evaluates the noise even if the variance is zero
                     scale = np.sqrt(noise_var[n] / cell_volumes)
-                    out[n] = scale * np.random.randn(*state_data[n].shape)  # noqa: NPY002
+                    out[n] = scale * np.random.randn(*state_data[n].shape)
                 return out
 
         return noise_realization
 
     def make_noise_realization(
         self, state: TField, backend: BackendBase
-    ) -> Callable[[NumericArray, float], NumericArray | None]:
+    ) -> Callable[[TNativeArray, float], TNativeArray | None]:
         """Return a function for determining one realization of the noise term.
+
+        These functions generally assume that the field data is provided in the native
+        form of the backend.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -701,7 +722,7 @@ class SDEBase(PDEBase):
                 """Helper function returning a noise realization."""
                 return None
 
-            return noise_realization
+            return noise_realization  # type: ignore
 
         if state.dtype != float:
             msg = "Noise is only supported for float types"
@@ -713,18 +734,34 @@ class SDEBase(PDEBase):
             data_shape: tuple[int, ...] = state.data.shape
             scale = np.sqrt(float(self.noise) / state.grid.cell_volumes)
 
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-                return scale * np.random.randn(*data_shape)  # noqa: NPY002 # type: ignore
+            if backend.implementation == "jax":
+                from jax import random as jrandom
+                from jax.experimental.random import stateful_rng
 
-            return noise_realization
+                # initialize jax random number generator with numpy random number
+                seed = self.rng.integers(0, np.iinfo(np.uint32).max + 1)
+                rng = stateful_rng(seed)
+
+                def noise_realization(state_data: jax.Array, t: float) -> jax.Array:  # type: ignore
+                    """Helper function returning a noise realization."""
+                    key = rng.key()
+                    return scale * jrandom.normal(key, shape=data_shape)  # type: ignore
+
+            else:
+                # assume that other backends support the numpy random number interface
+
+                def noise_realization(
+                    state_data: NumericArray, t: float
+                ) -> NumericArray | None:
+                    """Helper function returning a noise realization."""
+                    return scale * np.random.randn(*data_shape)  # type: ignore
+
+            return noise_realization  # type: ignore
 
         # Deal with the more complicated case of collections next, where we assume
         # different noise strengths for each field
         assert isinstance(state, FieldCollection)
-        return self._make_noise_realization_collection(state, backend)
+        return self._make_noise_realization_collection(state, backend)  # type: ignore
 
 
 def expr_prod(factor: float, expression: str) -> str:

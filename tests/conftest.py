@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from pde.backends import backends
+from pde.backends import backend_registry, get_backend
 from pde.backends.numba.utils import random_seed
 from pde.tools.misc import module_available
 
@@ -55,7 +55,8 @@ def init_random_number_generators():
 if module_available("torch"):
     from pde.backends.torch import TorchBackend, torch_backend
 
-    for device in ["cpu", "cuda", "mps"]:
+    # TODO: Test mps device once torch-mps works well again
+    for device in ["cpu", "cuda"]:  # , "mps"]:
         try:
             backend = TorchBackend(
                 torch_backend.config, name=f"torch-{device}", device=device
@@ -63,7 +64,7 @@ if module_available("torch"):
         except RuntimeError:
             _logger.info("Torch device `%s` is unavailable", device)
         else:
-            backends.add(backend)
+            backend_registry.add(backend)
 
 
 @pytest.fixture
@@ -78,13 +79,13 @@ def backend(request):
         # a numba backend
         if not module_available("numba"):
             pytest.skip("`numba` is not available")
-        backend = backends["numba"]
+        backend = get_backend("numba")
 
     elif request.param == "jax":
         # a jax backend
         if not module_available("jax"):
             pytest.skip("`jax` is not available")
-        backend = backends["jax"]
+        backend = get_backend("jax")
 
     elif request.param.startswith("torch"):
         # a torch backend, which might possible include a device
@@ -94,13 +95,13 @@ def backend(request):
             pytest.skip("Skip `torch` tests on Windows")
 
         try:
-            backend = backends[request.param]
+            backend = get_backend(request.param)
         except KeyError as err:
             pytest.skip(str(err))
 
     else:
         # try loading a generic backend by name
-        backend = backends[request.param]
+        backend = get_backend(request.param)
 
     return backend
 

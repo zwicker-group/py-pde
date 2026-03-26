@@ -653,9 +653,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             A function which returns interpolated values when called with arbitrary
             positions within the space of the grid.
         """
-        from ..backends import backends
+        from ..backends import get_backend
 
-        return backends[backend].make_interpolator(
+        return get_backend(backend).make_interpolator(
             self, fill=fill, with_ghost_cells=with_ghost_cells
         )
 
@@ -931,10 +931,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             :class:`DataFieldBase`: Field data after applying the operator. This field
             is identical to `out` if this argument was specified.
         """
-        from ..backends import backends
+        from ..backends import get_backend
 
         # get information about the operator
-        backend_impl = backends[backend]
+        backend_impl = get_backend(backend)
         operator_info = backend_impl.get_operator_info(self.grid, operator)
         out_cls = self.get_class_by_rank(operator_info.rank_out)
 
@@ -980,9 +980,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written.
         """
-        from ..backends import backends
+        from ..backends import get_backend
 
-        return backends[backend].make_inner_prod_operator(self, conjugate=conjugate)
+        return get_backend(backend).make_inner_prod_operator(self, conjugate=conjugate)
 
     def smooth(
         self,

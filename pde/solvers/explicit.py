@@ -34,7 +34,7 @@ class EulerSolver(AdaptiveSolverBase):
 
     def _make_single_step_fixed_dt(
         self, state: TField, dt: float
-    ) -> Callable[[NumericArray, float], None]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Make a simple Euler stepper with fixed time step.
 
         Args:
@@ -55,13 +55,14 @@ class EulerSolver(AdaptiveSolverBase):
             rhs_pde = self.backend.make_pde_rhs(self.pde, state)
             rhs_noise = self._make_noise_realization(state)
 
-            def stepper(state_data: NumericArray, t: float) -> None:
+            def stepper(state_data: NumericArray, t: float) -> NumericArray:
                 """Perform a single Euler-Maruyama step."""
                 evolution_rate = rhs_pde(state_data, t)
                 noise_realization = rhs_noise(state_data, t)
                 state_data += dt * evolution_rate
                 if noise_realization is not None:
                     state_data += np.sqrt(dt) * noise_realization
+                return state_data
 
             self._logger.info(
                 "Initialize explicit Euler-Maruyama stepper with dt=%g", dt
@@ -72,9 +73,10 @@ class EulerSolver(AdaptiveSolverBase):
             self.info["scheme"] = "euler"
             rhs_pde = self.backend.make_pde_rhs(self.pde, state)
 
-            def stepper(state_data: NumericArray, t: float) -> None:
+            def stepper(state_data: NumericArray, t: float) -> NumericArray:
                 """Perform a single Euler step."""
                 state_data += dt * rhs_pde(state_data, t)
+                return state_data
 
             self._logger.info("Initialize explicit Euler stepper with dt=%g", dt)
 
@@ -176,7 +178,9 @@ class EulerSolver(AdaptiveSolverBase):
                         steps += 1
                         t += dt_step
                         state_data[...] = step_small
-                        post_step_hook(state_data, t, post_step_data)
+                        state_data, post_step_data = post_step_hook(
+                            state_data, t, post_step_data
+                        )
                         if dt_stats is not None:
                             dt_stats.add(dt_step)
 
@@ -199,7 +203,7 @@ class RungeKuttaSolver(AdaptiveSolverBase):
 
     def _make_single_step_fixed_dt(
         self, state: TField, dt: float
-    ) -> Callable[[NumericArray, float], None]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Make function doing a single explicit Runge-Kutta step of order 5(4)
 
         Args:
@@ -221,7 +225,7 @@ class RungeKuttaSolver(AdaptiveSolverBase):
         # obtain functions determining how the PDE is evolved
         rhs = self.backend.make_pde_rhs(self.pde, state)
 
-        def stepper(state_data: NumericArray, t: float) -> None:
+        def stepper(state_data: NumericArray, t: float) -> NumericArray:
             """Compiled inner loop for speed."""
             # calculate the intermediate values in Runge-Kutta
             k1 = dt * rhs(state_data, t)
@@ -230,6 +234,7 @@ class RungeKuttaSolver(AdaptiveSolverBase):
             k4 = dt * rhs(state_data + k3, t + dt)
 
             state_data += (k1 + 2 * k2 + 2 * k3 + k4) / 6
+            return state_data
 
         self._logger.info("Initialize explicit Runge-Kutta-45 stepper with dt=%g", dt)
         return stepper

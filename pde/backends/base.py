@@ -9,23 +9,24 @@ import inspect
 import logging
 from collections import defaultdict
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
 
-from ..solvers import AdaptiveSolverBase, SolverBase
+from ..solvers import AdaptiveSolverBase
 from ..tools.config import Config, Parameter
 from ..tools.math import OnlineStatistics
 from ..tools.typing import (
     DataSetter,
     FloatingArray,
     GhostCellSetter,
+    NativeArray,
     Number,
     NumberOrArray,
     NumericArray,
     OperatorFactory,
     OperatorInfo,
     OperatorType,
-    TArray,
     TField,
+    TNativeArray,
 )
 
 if TYPE_CHECKING:
@@ -51,6 +52,7 @@ _RESERVED_BACKEND_NAMES: set[str] = {
     "unknown",
 }
 TFunc = TypeVar("TFunc", bound=Callable)
+TValue = TypeVar("TValue")
 
 
 class BackendBase:
@@ -59,6 +61,10 @@ class BackendBase:
     implementation: str = "undefined"
     """str: The name of the python module that is used to implement this backend. This
     information can be used to distinguish the general implementation of backends."""
+
+    copy_data: bool = False
+    """bool: Flag indicating whether data needs to be copied between numpy's
+    representation on CPU and a native device."""
 
     config: Config
     """dict: Configuration options of this backend."""
@@ -107,6 +113,15 @@ class BackendBase:
         cls._logger = _base_logger.getChild(cls.__qualname__)
         cls._operators = defaultdict(dict)
 
+    def __repr__(self) -> str:
+        """Return concise string representation of this backend."""
+        return f"{self.__class__.__name__}(name={self.name!r})"
+
+    @overload
+    def from_numpy(self, value: NumericArray) -> NativeArray: ...
+    @overload
+    def from_numpy(self, value: TValue) -> TValue: ...
+
     def from_numpy(self, value: Any) -> Any:
         """Convert values from numpy to native representation.
 
@@ -114,6 +129,11 @@ class BackendBase:
             value: The value to convert from numpy representation
         """
         return value
+
+    @overload
+    def to_numpy(self, value: NativeArray) -> NumericArray: ...
+    @overload
+    def to_numpy(self, value: TValue) -> TValue: ...
 
     def to_numpy(self, value: Any) -> Any:
         """Convert native values to numpy representation.
@@ -153,7 +173,7 @@ class BackendBase:
             value[...] = self.to_numpy(value_native)
             return value
         res_native = func(value_native, *args, **kwargs)
-        return self.to_numpy(res_native)  # type: ignore
+        return self.to_numpy(res_native)
 
     def compile_function(self, func: TFunc) -> TFunc:
         """General method that compiles a user function.
@@ -317,7 +337,7 @@ class BackendBase:
         msg = f"Data setter not defined for backend {self.name}"
         raise NotImplementedError(msg)
 
-    def make_integrator(self, grid: GridBase) -> Callable[[TArray], TArray]:
+    def make_integrator(self, grid: GridBase) -> Callable[[TNativeArray], TNativeArray]:
         """Return function that integrates discretized data over a grid.
 
         Note that this function takes and returns data in the native representation of
@@ -502,7 +522,7 @@ class BackendBase:
 
     def make_pde_rhs(
         self, eq: PDEBase, state: TField, *, native: bool = False
-    ) -> Callable[[TArray, float], TArray]:
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
         Args:

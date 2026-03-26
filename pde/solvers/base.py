@@ -152,9 +152,10 @@ class SolverBase:
             if self._backend == "auto":
                 msg = "Automatic backend selection did not happen, yet."
                 raise RuntimeError(msg)
-            from ..backends import backends
 
-            self._backend = backends[self._backend]
+            from ..backends import get_backend
+
+            self._backend = get_backend(self._backend)
         return self._backend
 
     def _make_error_synchronizer(
@@ -215,6 +216,7 @@ class SolverBase:
                 state_data: NumericArray, t: float, post_step_data: NumericArray
             ):
                 """Default hook function does nothing."""
+                return state_data, None  # `None` indicates lack of `post_step_data`
 
             self._post_step_data_init = None
             self._logger.debug("No post-step hook defined")
@@ -227,7 +229,7 @@ class SolverBase:
 
     def _make_single_step_fixed_dt(
         self, state: TField, dt: float
-    ) -> Callable[[NumericArray, float], None]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function doing a single step with a fixed time step.
 
         Args:
@@ -260,8 +262,12 @@ class SolverBase:
             for i in range(steps):
                 # calculate the right hand side
                 t = t_start + i * dt
-                single_step(state_data, t)
-                post_step_hook(state_data, t, post_step_data)
+                # perform time step
+                state_data = single_step(state_data, t)
+                # do post step calculations
+                state_data, post_step_data = post_step_hook(
+                    state_data, t, post_step_data
+                )
 
             return t + dt
 
@@ -304,8 +310,19 @@ class SolverBase:
                 "`make_noise_realization`, which is required to support noisy PDEs."
             )
             raise NotImplementedError(msg)
-        rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)
-        return self.backend.compile_function(rhs_noise)
+        rhs_native = self.pde.make_noise_realization(state, backend=self.backend)
+        rhs_compiled = self.backend.compile_function(rhs_native)
+
+        if self.backend.copy_data:
+
+            def rhs_numpy(state_data: NumericArray, t: float) -> NumericArray:
+                state_native = self.backend.from_numpy(state_data)
+                noise_native = rhs_compiled(state_native, t)
+                return self.backend.to_numpy(noise_native)
+
+            return rhs_numpy
+
+        return rhs_compiled  # type: ignore
 
     def _select_backend(self, state: TField):
         """Select backend automatically based on implemented PDE."""
@@ -519,7 +536,9 @@ class AdaptiveSolverBase(SolverBase):
                     steps += 1
                     t += dt_step
                     state_data[...] = new_state
-                    post_step_hook(state_data, t, post_step_data)
+                    state_data, post_step_data = post_step_hook(
+                        state_data, t, post_step_data
+                    )
 
                     if dt_stats is not None:
                         dt_stats.add(dt_step)

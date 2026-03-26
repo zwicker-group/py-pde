@@ -16,6 +16,8 @@ def post_step_hook(state_data, t):
     if t > 1e3:
         raise StopIteration  # abort simulation at given time
 
+    return state_data
+
 
 eq = PDE({"c": "laplace(c)"}, post_step_hook=post_step_hook)
 state = ScalarField(UnitGrid([64, 64]))

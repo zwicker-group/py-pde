@@ -109,8 +109,8 @@ def _make_fixed_stepper(
         for i in range(steps):
             # calculate the right hand side
             t = t_start + i * dt
-            single_step(state_data, t)
-            post_step_hook(state_data, t, post_step_data)
+            state_data = single_step(state_data, t)
+            state_data, post_step_data = post_step_hook(state_data, t, post_step_data)
 
         return t + dt
 
@@ -168,7 +168,9 @@ def _make_adams_bashforth_stepper(
             # calculate the right hand side
             t = t_start + i * dt
             single_step(state_data, t, state_prev)
-            post_step_hook(state_data, t, post_step_data=post_step_data)
+            state_data, post_step_data = post_step_hook(
+                state_data, t, post_step_data=post_step_data
+            )
 
         return t + dt
 
@@ -254,7 +256,9 @@ def _make_adaptive_stepper_general(
                 steps += 1
                 t += dt_step
                 state_data[...] = new_state
-                post_step_hook(state_data, t, post_step_data)
+                state_data, post_step_data = post_step_hook(
+                    state_data, t, post_step_data
+                )
 
                 if dt_stats is not None:
                     dt_stats.add(dt_step)

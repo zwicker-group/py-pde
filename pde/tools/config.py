@@ -367,10 +367,10 @@ class GlobalConfig:
         """
         if key.startswith("backend."):
             # use configurations of backend
-            from ..backends import backends
+            from ..backends import get_backend
 
             _, backend, config_key = key.split(".", 2)
-            return backends[backend].config, config_key
+            return get_backend(backend).config, config_key
 
         if key.startswith("numba."):
             # legacy location for numba related configurations; deprecated on 2025-12-22
@@ -379,10 +379,10 @@ class GlobalConfig:
                 DeprecationWarning,
                 stacklevel=2,
             )
-            from ..backends import backends
+            from ..backends import get_backend
 
             backend, config_key = key.split(".", 1)
-            return backends[backend].config, config_key
+            return get_backend(backend).config, config_key
 
         # use global configuration
         return self._config, key
@@ -422,11 +422,11 @@ class GlobalConfig:
         return config[data_key]
 
     def __iter__(self):
-        from ..backends import backends
+        from ..backends import backend_registry
 
         yield from self._config
 
-        for backend, config in backends._configs.items():
+        for backend, config in backend_registry._configs.items():
             for subkey in config:
                 yield f"backend.{backend}.{subkey}"
 
@@ -442,12 +442,12 @@ class GlobalConfig:
             tuple: Key-value pairs of configuration items, including items from all
                 backend configurations with keys prefixed by `backend.<name>.`.
         """
-        from ..backends import backends
+        from ..backends import backend_registry
 
         if just_values:
             yield from self._config.items()
 
-            for backend, config in backends._configs.items():
+            for backend, config in backend_registry._configs.items():
                 for subkey, value in config.items():
                     yield f"backend.{backend}.{subkey}", value
 
@@ -455,7 +455,7 @@ class GlobalConfig:
             for key in self._config:
                 yield key, self._config.data[key]
 
-            for backend, config in backends._configs.items():
+            for backend, config in backend_registry._configs.items():
                 for subkey in config:
                     yield f"backend.{backend}.{subkey}", config.data[subkey]
 
@@ -501,9 +501,9 @@ class GlobalConfig:
 
         # add configurations of the actual backends
         if incl_backends:
-            from ..backends import backends
+            from ..backends import backend_registry
 
-            for backend, config in backends._configs.items():
+            for backend, config in backend_registry._configs.items():
                 for name, p in config.to_dict(ret_values=ret_values).items():
                     res[f"backend.{backend}.{name}"] = p
         return res

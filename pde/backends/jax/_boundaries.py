@@ -176,7 +176,7 @@ def _make_expression_virtual_point_evaluator(
                 raise RuntimeError(msg)
             t = 0.0
         else:
-            t = float(args["t"])
+            t = args["t"]
 
         return func(val_field, dx, *bc_coords, t)  # type: ignore
 

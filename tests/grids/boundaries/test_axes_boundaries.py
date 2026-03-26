@@ -7,8 +7,7 @@ import itertools
 import numpy as np
 import pytest
 
-from pde import PolarSymGrid, ScalarField, UnitGrid
-from pde.backends import backends
+from pde import PolarSymGrid, ScalarField, UnitGrid, get_backend
 from pde.grids.base import PeriodicityError
 from pde.grids.boundaries.axes import (
     BCDataError,
@@ -151,7 +150,7 @@ def test_set_ghost_cells(dim, periodic, rng):
     bcs.set_ghost_cells(arr1)
 
     arr2 = field._data_full.copy()
-    setter = backends["numba"].make_ghost_cell_setter(bcs)
+    setter = get_backend("numba").make_ghost_cell_setter(bcs)
     setter(arr2)
 
     # test valid BCs:

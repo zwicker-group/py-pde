@@ -53,7 +53,7 @@ class CrankNicolsonSolver(SolverBase):
 
     def _make_single_step_fixed_dt(
         self, state: TField, dt: float
-    ) -> Callable[[NumericArray, float], None]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function doing a single step with an implicit Euler scheme.
 
         Args:
@@ -76,7 +76,7 @@ class CrankNicolsonSolver(SolverBase):
         α = self.explicit_fraction
 
         # handle deterministic version of the pde
-        def crank_nicolson_step(state_data: NumericArray, t: float) -> None:
+        def crank_nicolson_step(state_data: NumericArray, t: float) -> NumericArray:
             """Compiled inner loop for speed."""
             nfev = 0  # count function evaluations
 
@@ -110,5 +110,6 @@ class CrankNicolsonSolver(SolverBase):
                 msg = "Crank-Nicolson step did not converge."
                 raise ConvergenceError(msg)
             nfev += n + 2
+            return state_data
 
         return crank_nicolson_step

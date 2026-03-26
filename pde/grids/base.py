@@ -15,7 +15,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import functools
 import itertools
 import json
@@ -383,9 +382,9 @@ class GridBase(metaclass=ABCMeta):
                 to have the correct dimensions, which are not checked. If `bcs` are
                 given, a third argument is allowed, which sets arguments for the BCs.
         """
-        from ..backends import backends
+        from ..backends import get_backend
 
-        return backends[backend].make_data_setter(self, bcs=bcs)
+        return get_backend(backend).make_data_setter(self, bcs=bcs)
 
     @property
     @abstractmethod
@@ -1117,26 +1116,24 @@ class GridBase(metaclass=ABCMeta):
     @property
     def operators(cls) -> set[str]:
         """set: all operators defined for this class"""
-        from ..backends import backends
+        from ..backends import backend_registry
 
         # get all operators registered on the class
         operators = set()
-        for name in backends:
-            with contextlib.suppress(ImportError):
-                operators |= backends[name].get_registered_operators(cls)
+        for backend in backend_registry.values():
+            operators |= backend.get_registered_operators(cls)
         return operators
 
     @operators.instancemethod  # type: ignore
     @property
     def operators(self) -> set[str]:
         """set: all operators defined for this instance"""
-        from ..backends import backends
+        from ..backends import backend_registry
 
         # get all operators registered on the class
         operators = set()
-        for name in backends:
-            with contextlib.suppress(ImportError):
-                operators |= backends[name].get_registered_operators(self)
+        for backend in backend_registry.values():
+            operators |= backend.get_registered_operators(self)
         return operators
 
     @cached_method()
@@ -1182,10 +1179,10 @@ class GridBase(metaclass=ABCMeta):
             signature (arr: NumericArray, out: NumericArray), so they `out` array need
             to be supplied explicitly.
         """
-        from ..backends import backends
+        from ..backends import get_backend
 
         # determine the operator for the chosen backend
-        return backends[backend].make_operator_no_bc(
+        return get_backend(backend).make_operator_no_bc(
             self, operator=operator, dtype=dtype, native=native, **kwargs
         )
 
@@ -1248,10 +1245,10 @@ class GridBase(metaclass=ABCMeta):
             callable: the function that applies the operator. This function has the
             signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
-        from ..backends import backends
+        from ..backends import get_backend
 
         # determine the operator for the chosen backend
-        backend_impl = backends[backend]
+        backend_impl = get_backend(backend)
         operator_info = backend_impl.get_operator_info(self, operator)
 
         # set the boundary conditions before applying this operator
@@ -1491,9 +1488,9 @@ class GridBase(metaclass=ABCMeta):
             callable: A function that takes a numpy array and returns the integral with
             the correct weights given by the cell volumes.
         """
-        from ..backends import backends
+        from ..backends import get_backend
 
-        return backends[backend].make_integrator(self)
+        return get_backend(backend).make_integrator(self)
 
 
 def registered_grids() -> dict[str, type[GridBase]]:
