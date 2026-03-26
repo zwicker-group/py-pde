@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from ..backends import BackendBase
     from ..grids.boundaries.axes import BoundariesData
-    from ..tools.typing import TArray
+    from ..tools.typing import TNativeArray
 
 
 class SwiftHohenbergPDE(PDEBase):
@@ -116,7 +116,7 @@ class SwiftHohenbergPDE(PDEBase):
 
     def make_evolution_rate(
         self, state: ScalarField, backend: BackendBase
-    ) -> Callable[[TArray, float], TArray]:
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:

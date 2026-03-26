@@ -35,8 +35,8 @@ if TYPE_CHECKING:
         NumberOrArray,
         NumericArray,
         StepperHook,
-        TArray,
         TField,
+        TNativeArray,
     )
 
 # Define short notations that can appear in mathematical equations and need to be
@@ -579,7 +579,7 @@ class PDE(SDEBase):
             starts: tuple[int, ...] = tuple(slc.start for slc in state._slices)
             stops: tuple[int, ...] = tuple(slc.stop for slc in state._slices)
 
-            def get_data_tuple(state_data: TArray) -> tuple[TArray, ...]:
+            def get_data_tuple(state_data: NumericArray) -> tuple[NumericArray, ...]:
                 """Helper for turning state_data into a tuple of field data."""
                 return tuple(
                     (
@@ -662,14 +662,16 @@ class PDE(SDEBase):
 
         post_step_hook = get_backend(backend).compile_function(self.post_step_hook)
 
+        @get_backend(backend).compile_function
         def post_step_hook_impl(state_data, t, post_step_data):
-            post_step_hook(state_data, t)
+            state_data = post_step_hook(state_data, t)
+            return state_data, None  # None indicates lack of `post_step_data`
 
         return post_step_hook_impl, 0  # hook function and initial value
 
     def _make_pde_rhs_collection_numba(
         self, state: FieldCollection, *, backend: BackendBase, cache: dict[str, Any]
-    ) -> Callable[[TArray, float], TArray]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Create the compiled rhs if `state` is a field collection.
 
         Args:
@@ -699,8 +701,8 @@ class PDE(SDEBase):
 
         def chain(
             i: int = 0,
-            inner: Callable[[TArray, float, TArray], None] | None = None,
-        ) -> Callable[[TArray, float], TArray]:
+            inner: Callable[[NumericArray, float, NumericArray], None] | None = None,
+        ) -> Callable[[NumericArray, float], NumericArray]:
             """Recursive helper function for applying all rhs."""
             # run through all functions
             rhs = rhs_list[i]
@@ -708,13 +710,13 @@ class PDE(SDEBase):
             if inner is None:
                 # the innermost function does not need to call a child
                 @nb.jit
-                def wrap(data_tpl: TArray, t: float, out: TArray) -> None:
+                def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
             else:
                 # all other functions need to call one deeper in the chain
                 @nb.jit
-                def wrap(data_tpl: TArray, t: float, out: TArray) -> None:
+                def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
                     inner(data_tpl, t, out)
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
@@ -724,21 +726,21 @@ class PDE(SDEBase):
 
             # this is the outermost function
             @nb.jit
-            def evolution_rate(state_data: TArray, t: float = 0) -> TArray:
+            def evolution_rate(state_data: NumericArray, t: float = 0) -> NumericArray:
                 out = np.empty(data_shape)
                 with nb.objmode():
                     data_tpl = get_data_tuple(state_data)
                     wrap(data_tpl, t, out)
-                return out  # type: ignore
+                return out
 
             return evolution_rate  # type: ignore
 
         # compile the recursive chain
-        return chain()  # type: ignore
+        return chain()
 
     def _make_pde_rhs_collection_torch(
         self, state: FieldCollection, *, backend: BackendBase, cache: dict[str, Any]
-    ) -> Callable[[TArray, float], TArray]:
+    ) -> Callable[[torch.Tensor, float], torch.Tensor]:
         """Create the compiled rhs if `state` is a field collection.
 
         Args:
@@ -768,19 +770,19 @@ class PDE(SDEBase):
         get_data_tuple = cache["get_data_tuple"]
 
         # this is the outermost function
-        def evolution_rate(state_data: TArray, t: float = 0) -> TArray:
+        def evolution_rate(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
             data_tpl = get_data_tuple(state_data)
             out = torch.empty(data_shape, dtype=dtype)
             for i, rhs in enumerate(rhs_list):
                 out[starts[i] : stops[i]] = rhs(*data_tpl, t)
-            return out  # type: ignore
+            return out
 
         # compile the recursive chain
         return evolution_rate
 
     def _make_pde_rhs_collection_jax(
         self, state: FieldCollection, *, backend: BackendBase, cache: dict[str, Any]
-    ) -> Callable[[TArray, float], TArray]:
+    ) -> Callable[[jax.Array, float], jax.Array]:
         """Create the compiled rhs if `state` is a field collection.
 
         Args:
@@ -810,18 +812,18 @@ class PDE(SDEBase):
         get_data_tuple = cache["get_data_tuple"]
 
         # this is the outermost function
-        def evolution_rate(state_data: TArray, t: float = 0) -> TArray:
+        def evolution_rate(state_data: jax.Array, t: float = 0) -> jax.Array:
             data_tpl = get_data_tuple(state_data)
             out = jnp.empty(data_shape, dtype=dtype)
             for i, rhs in enumerate(rhs_list):
                 out = out.at[starts[i] : stops[i]].set(rhs(*data_tpl, t))
-            return out  # type: ignore
+            return out
 
         return evolution_rate
 
     def make_evolution_rate(
         self, state: FieldCollection, backend: BackendBase
-    ) -> Callable[[TArray, float], TArray]:
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
@@ -845,15 +847,15 @@ class PDE(SDEBase):
         if isinstance(state, FieldCollection):
             # state is a collection of fields
             if backend.implementation == "numba":
-                return self._make_pde_rhs_collection_numba(
+                return self._make_pde_rhs_collection_numba(  # type: ignore
                     state, backend=backend, cache=cache
                 )
             if backend.implementation == "torch":
-                return self._make_pde_rhs_collection_torch(
+                return self._make_pde_rhs_collection_torch(  # type: ignore
                     state, backend=backend, cache=cache
                 )
             if backend.implementation == "jax":
-                return self._make_pde_rhs_collection_jax(
+                return self._make_pde_rhs_collection_jax(  # type: ignore
                     state, backend=backend, cache=cache
                 )
             raise NotImplementedError

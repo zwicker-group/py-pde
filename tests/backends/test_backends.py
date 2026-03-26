@@ -16,11 +16,15 @@ from pde.backends import BackendBase, backend_registry
 from pde.backends.torch import TorchBackend
 
 
-@pytest.mark.parametrize("device", ["cpu", "mps", "cuda"])
-def test_backend_selection(device, rng):
+@pytest.mark.parametrize(
+    "backend", ["torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+def test_backend_selection(backend, rng):
     """Test whether backends can be easily constructed."""
+    # try setting the torch device explicitly by creating a new backend on the fly
+    device = str(backend.device)
     try:
-        backend = TorchBackend(name=f"my-torch-{device}", device=device)
+        backend_new = TorchBackend(name=f"my-torch-{device}", device=device)
     except RuntimeError:
         pytest.skip(f"Device `{device}` is not available")
 
@@ -28,7 +32,7 @@ def test_backend_selection(device, rng):
     # it is important that we use a PDE of sufficient complexity here, so that we test
     # that operators are created for the correct backend.
     eq = CahnHilliardPDE()
-    eq.solve(state, t_range=1, backend=backend)
+    eq.solve(state, t_range=1, backend=backend_new)
 
     assert eq.diagnostics["solver"]["backend"]["name"] == f"my-torch-{device}"
     assert eq.diagnostics["solver"]["backend"]["device"] == device

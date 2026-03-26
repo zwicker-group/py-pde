@@ -30,12 +30,7 @@ if TYPE_CHECKING:
     from ...solvers.base import SolverBase
     from ...tools.config import Config
     from ...tools.expressions import ExpressionBase
-    from ...tools.typing import (
-        NumberOrArray,
-        NumericArray,
-        TArray,
-        TField,
-    )
+    from ...tools.typing import NumberOrArray, NumericArray, TField, TNativeArray
     from ..base import TFunc
     from ..numpy.backend import OperatorInfo
     from .operators.common import TorchDifferentialOperator
@@ -45,6 +40,7 @@ class TorchBackend(BackendBase):
     """Defines :mod:`torch` backend."""
 
     implementation = "torch"
+    copy_data = True
 
     compile_options = {
         "fullgraph": True,  # force compilation of entire graph (no graph breaks)
@@ -383,9 +379,9 @@ class TorchBackend(BackendBase):
 
         return integrate_torch
 
-    def make_inner_prod_operator(
+    def make_inner_prod_operator(  # type: ignore
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> Callable[[TArray, TArray, TArray | None], TArray]:
+    ) -> Callable[[torch.Tensor, torch.Tensor, torch.Tensor | None], torch.Tensor]:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -438,11 +434,11 @@ class TorchBackend(BackendBase):
             msg = f"Unsupported shapes ({a.shape}, {b.shape})"
             raise TypeError(msg)
 
-        return dot  # type: ignore
+        return dot
 
-    def make_outer_prod_operator(
+    def make_outer_prod_operator(  # type: ignore
         self, field: DataFieldBase
-    ) -> Callable[[TArray, TArray, TArray | None], TArray]:
+    ) -> Callable[[torch.Tensor, torch.Tensor, torch.Tensor | None], torch.Tensor]:
         """Return operator calculating the outer product between two fields.
 
         This supports typically only supports products between two vector fields.
@@ -461,19 +457,19 @@ class TorchBackend(BackendBase):
             raise TypeError(msg)
 
         def outer(
-            a: NumericArray, b: NumericArray, out: NumericArray | None = None
-        ) -> NumericArray:
+            a: torch.Tensor, b: torch.Tensor, out: torch.Tensor | None = None
+        ) -> torch.Tensor:
             """Calculate the outer product using numpy."""
             if out is not None:
                 msg = "torch implementation of inner product does not allow `out` arg."
                 raise TypeError(msg)
-            return torch.einsum("i...,j...->ij...", a, b)  # type: ignore
+            return torch.einsum("i...,j...->ij...", a, b)
 
-        return outer  # type: ignore
+        return outer
 
     def make_pde_rhs(
         self, eq: PDEBase, state: TField, *, native: bool = False
-    ) -> Callable[[TArray, float], TArray]:
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
         Args:

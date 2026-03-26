@@ -38,8 +38,8 @@ if TYPE_CHECKING:
         OperatorImplType,
         OperatorInfo,
         OperatorType,
-        TArray,
         TField,
+        TNativeArray,
     )
     from ..base import TFunc
     from .typing import JaxDataSetter, JaxGhostCellSetter
@@ -49,6 +49,7 @@ class JaxBackend(BackendBase):
     """Defines :mod:`jax` backend."""
 
     implementation = "jax"
+    copy_data = True
 
     _dtype_cache: dict[str, dict[DTypeLike, DTypeLike]] = defaultdict(dict)
     """dict: contains information about the dtypes available for the current device"""
@@ -564,9 +565,9 @@ class JaxBackend(BackendBase):
 
         return apply_op  # type: ignore
 
-    def make_inner_prod_operator(
+    def make_inner_prod_operator(  # type: ignore
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> Callable[[TArray, TArray, TArray | None], TArray]:
+    ) -> Callable[[jax.Array, jax.Array, jax.Array | None], jax.Array]:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -617,11 +618,11 @@ class JaxBackend(BackendBase):
             msg = f"Unsupported shapes ({a.shape}, {b.shape})"
             raise TypeError(msg)
 
-        return dot  # type: ignore
+        return dot
 
-    def make_outer_prod_operator(
+    def make_outer_prod_operator(  # type: ignore
         self, field: DataFieldBase
-    ) -> Callable[[TArray, TArray, TArray | None], TArray]:
+    ) -> Callable[[jax.Array, jax.Array, jax.Array | None], jax.Array]:
         """Return operator calculating the outer product between two fields.
 
         This typically only supports products between two vector fields.
@@ -648,7 +649,7 @@ class JaxBackend(BackendBase):
                 raise TypeError(msg)
             return jnp.einsum("i...,j...->ij...", a, b)
 
-        return outer  # type: ignore
+        return outer
 
     def make_expression_function(
         self,
@@ -734,7 +735,7 @@ class JaxBackend(BackendBase):
 
     def make_pde_rhs(
         self, eq: PDEBase, state: TField, *, native: bool = False
-    ) -> Callable[[TArray, float], TArray]:
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
         Args:

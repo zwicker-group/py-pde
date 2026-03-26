@@ -24,7 +24,7 @@ class DiffusionCustomNoisePDE(DiffusionPDE):
         x_values = state.grid.cell_coords[..., 0]
 
         def noise_realization(state_data, t):
-            return x_values * np.random.uniform(-noise, noise, size=state_data.shape)  # noqa: NPY002
+            return x_values * np.random.uniform(-noise, noise, size=state_data.shape)
 
         return noise_realization
 

@@ -55,7 +55,8 @@ def init_random_number_generators():
 if module_available("torch"):
     from pde.backends.torch import TorchBackend, torch_backend
 
-    for device in ["cpu", "cuda", "mps"]:
+    # TODO: Test mps device once torch-mps works well again
+    for device in ["cpu", "cuda"]:  # , "mps"]:
         try:
             backend = TorchBackend(
                 torch_backend.config, name=f"torch-{device}", device=device

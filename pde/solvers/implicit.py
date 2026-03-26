@@ -49,7 +49,7 @@ class ImplicitSolver(SolverBase):
 
     def _make_single_step_fixed_dt_deterministic(
         self, state: TField, dt: float
-    ) -> Callable[[NumericArray, float], None]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function doing a deterministic step with an implicit Euler scheme.
 
         Args:
@@ -72,7 +72,7 @@ class ImplicitSolver(SolverBase):
         maxerror2 = self.maxerror**2
 
         # handle deterministic version of the pde
-        def implicit_step(state_data: NumericArray, t: float) -> None:
+        def implicit_step(state_data: NumericArray, t: float) -> NumericArray:
             """Compiled inner loop for speed."""
             nfev = 0  # count function evaluations
 
@@ -103,13 +103,14 @@ class ImplicitSolver(SolverBase):
                 msg = "Implicit Euler step did not converge."
                 raise ConvergenceError(msg)
             nfev += n + 1
+            return state_data
 
         self._logger.info("Initialize implicit Euler stepper with dt=%g", dt)
         return implicit_step
 
     def _make_single_step_fixed_dt_stochastic(
         self, state: TField, dt: float
-    ) -> Callable[[NumericArray, float], None]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function doing a step for a SDE with an implicit Euler scheme.
 
         Args:
@@ -131,7 +132,7 @@ class ImplicitSolver(SolverBase):
         maxerror2 = self.maxerror**2
 
         # handle deterministic version of the pde
-        def implicit_step(state_data: NumericArray, t: float) -> None:
+        def implicit_step(state_data: NumericArray, t: float) -> NumericArray:
             """Compiled inner loop for speed."""
             nfev = 0  # count function evaluations
 
@@ -168,6 +169,7 @@ class ImplicitSolver(SolverBase):
                 msg = "Semi-implicit Euler-Maruyama step did not converge."
                 raise ConvergenceError(msg)
             nfev += n + 1
+            return state_data
 
         self._logger.info(
             "Initialize semi-implicit Euler-Maruyama stepper with dt=%g", dt
@@ -176,7 +178,7 @@ class ImplicitSolver(SolverBase):
 
     def _make_single_step_fixed_dt(
         self, state: TField, dt: float
-    ) -> Callable[[NumericArray, float], None]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function doing a single step with an implicit Euler scheme.
 
         Args:

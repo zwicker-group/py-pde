@@ -257,7 +257,7 @@ computations should be performed with compiled PDEs as described below.
 Another feature of custom PDE classes is a special function that is called after every
 time step. This function is defined by :meth:`~pde.pdes.PDEBase.make_post_step_hook` and
 allows direct manipulation of the state data and also abortion of the simulation by
-raising :class:`StopIteration` (currently does not work with the `torch` backend).
+raising :class:`StopIteration` (this latter function does not work with all backends).
 
 .. code-block:: python
 
@@ -272,6 +272,7 @@ raising :class:`StopIteration` (currently does not work with the `torch` backend
                 if state_data.std() > 1:
                     raise StopIteration  # abort simulation
                 post_step_data += 1  # increment number of times hook was called
+                return state_data, post_step_data
 
             return post_step_hook, 0  # hook function and initial value for data
 

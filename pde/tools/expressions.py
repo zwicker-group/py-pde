@@ -1065,7 +1065,7 @@ def evaluate(
 
     # calculate the result of the expression
     func = expr.get_function(single_arg=False, user_funcs=ops, backend=backend)
-    result_data = func(*field_data, None, {}, *extra_args)
+    result_data: NumericArray = func(*field_data, None, {}, *extra_args)  # type: ignore
 
     # turn result into a proper field
     result_data = backend.to_numpy(result_data)

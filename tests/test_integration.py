@@ -78,6 +78,7 @@ def test_custom_pde_mpi(rng):
                     if state_data.flat[i] > 1:
                         state_data.flat[i] -= 1
                         post_step_data += 2
+                return state_data, post_step_data
 
             return post_step_hook, 0.0
 
@@ -134,6 +135,7 @@ def test_stop_iteration_hook(backend):
                 if state_data.sum() > 1:
                     raise StopIteration
                 post_step_data += 1
+                return state_data, post_step_data
 
             return post_step_hook, 0
 
@@ -141,8 +143,15 @@ def test_stop_iteration_hook(backend):
             return ScalarField(state.grid, 1)
 
         def make_evolution_rate(self, state, backend):
-            def pde_rhs(state_data, t):
-                return np.ones_like(state_data)
+            if backend.implementation == "jax":
+                from jax import numpy as jnp
+
+                def pde_rhs(state_data, t):
+                    return jnp.ones_like(state_data)
+            else:
+
+                def pde_rhs(state_data, t):
+                    return np.ones_like(state_data)
 
             return pde_rhs
 
@@ -165,6 +174,7 @@ def test_custom_data_hook(backend):
         def make_post_step_hook(self, state, backend):
             def post_step_hook(state_data, t, post_step_data):
                 post_step_data += state_data.mean()
+                return state_data, post_step_data
 
             return post_step_hook, 0.0
 
@@ -172,8 +182,15 @@ def test_custom_data_hook(backend):
             return ScalarField(state.grid, 1)
 
         def make_evolution_rate(self, state, backend):
-            def pde_rhs(state_data, t):
-                return np.ones_like(state_data)
+            if backend.implementation == "jax":
+                from jax import numpy as jnp
+
+                def pde_rhs(state_data, t):
+                    return jnp.ones_like(state_data)
+            else:
+
+                def pde_rhs(state_data, t):
+                    return np.ones_like(state_data)
 
             return pde_rhs
 
@@ -197,6 +214,7 @@ def test_array_data_hook(backend):
         def make_post_step_hook(self, state, backend):
             def post_step_hook(state_data, t, post_step_data):
                 post_step_data += state_data
+                return state_data, post_step_data
 
             return post_step_hook, np.zeros_like(state.data)
 
@@ -204,8 +222,15 @@ def test_array_data_hook(backend):
             return ScalarField(state.grid, 1)
 
         def make_evolution_rate(self, state, backend):
-            def pde_rhs(state_data, t):
-                return np.ones_like(state_data)
+            if backend.implementation == "jax":
+                from jax import numpy as jnp
+
+                def pde_rhs(state_data, t):
+                    return jnp.ones_like(state_data)
+            else:
+
+                def pde_rhs(state_data, t):
+                    return np.ones_like(state_data)
 
             return pde_rhs
 

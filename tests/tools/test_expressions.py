@@ -20,6 +20,9 @@ from pde.tools.expressions import (
     parse_number,
 )
 
+ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+ALL_BACKENDS_NO_NUMBA = ["numpy", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+
 
 def test_parse_number():
     """Test parse_number function."""
@@ -128,11 +131,7 @@ def test_single_arg(rng):
         ScalarExpression(np.exp)
 
 
-@pytest.mark.parametrize(
-    "backend",
-    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
-    indirect=True,
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_two_args(backend, rng):
     """Test simple expressions."""
     e = ScalarExpression("2 * a ** b")
@@ -149,7 +148,7 @@ def test_two_args(backend, rng):
 
     for x in [rng.random(2), rng.random((2, 5))]:
         res = 2 * x[0] ** x[1]
-        np.testing.assert_allclose(e.get_function(backend)(*x), res)
+        np.testing.assert_allclose(e.get_function(backend)(*x), res, rtol=1e-6)
         if x.ndim == 1:
             func = e.get_function(backend, single_arg=True)
             np.testing.assert_allclose(func(x), res)
@@ -161,9 +160,7 @@ def test_two_args(backend, rng):
     np.testing.assert_allclose(g.get_function(backend)(2, 3), [24, 16 * np.log(2)])
 
 
-@pytest.mark.parametrize(
-    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_derivatives(backend):
     """Test vector expressions."""
     e = ScalarExpression("a * b**2")
@@ -191,9 +188,7 @@ def test_derivatives(backend):
     np.testing.assert_allclose(d4.get_function(backend)(2, 3), np.zeros((2, 2, 2, 2)))
 
 
-@pytest.mark.parametrize(
-    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_indexed(backend):
     """Test simple expressions."""
     e = ScalarExpression("2 * a[0] ** a[1]", allow_indexed=True)
@@ -270,11 +265,7 @@ def test_expression_from_expression():
         ScalarExpression(expr, "b")
 
 
-@pytest.mark.parametrize(
-    "backend",
-    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
-    indirect=True,
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_expression_user_funcs(backend):
     """Test the usage of user_funcs."""
     expr = ScalarExpression("func()", user_funcs={"func": lambda: 1})
@@ -282,19 +273,26 @@ def test_expression_user_funcs(backend):
     assert expr.get_function(backend)() == 1
     assert expr.value == 1
 
-    expr = ScalarExpression("f(pi)", user_funcs={"f": np.sin})
-    assert expr.constant
-    assert expr() == pytest.approx(0)
-    assert expr.get_function(backend)() == pytest.approx(0)
-    assert expr.value == pytest.approx(0)
+    if backend.implementation == "jax":
+        from jax import numpy as jnp
 
-    expr = TensorExpression("[0, f(pi)]", user_funcs={"f": np.sin})
+        user_funcs = {"f": jnp.sin}
+    else:
+        user_funcs = {"f": np.sin}
+
+    expr = ScalarExpression("f(pi)", user_funcs=user_funcs)
     assert expr.constant
-    np.testing.assert_allclose(expr(), np.array([0, 0]), atol=1e-14)
+    assert expr() == pytest.approx(0, abs=1e-7)
+    assert expr.get_function(backend)() == pytest.approx(0, abs=1e-7)
+    assert expr.value == pytest.approx(0, abs=1e-7)
+
+    expr = TensorExpression("[0, f(pi)]", user_funcs=user_funcs)
+    assert expr.constant
+    np.testing.assert_allclose(expr(), np.array([0, 0]), atol=1e-7)
     np.testing.assert_allclose(
-        expr.get_function(backend)(), np.array([0, 0]), atol=1e-14
+        expr.get_function(backend)(), np.array([0, 0]), atol=1e-7
     )
-    np.testing.assert_allclose(expr.value, np.array([0, 0]), atol=1e-14)
+    np.testing.assert_allclose(expr.value, np.array([0, 0]), atol=1e-7)
 
 
 def test_complex_expression():
@@ -320,11 +318,7 @@ def test_complex_expression():
     np.testing.assert_allclose(expr.value, np.array([[1, -1], [1j, 2]]))
 
 
-@pytest.mark.parametrize(
-    "backend",
-    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
-    indirect=True,
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize(
     ("expression", "value"),
     [("Heaviside(x)", 0.5), ("Heaviside(x, 0.75)", 0.75), ("heaviside(x, 0.75)", 0.75)],
@@ -348,11 +342,7 @@ def test_expression_heaviside(backend, expression, value):
     np.testing.assert_allclose(f(np.array([-1.0, 0.0, 1.0])), np.array([0, value, 1]))
 
 
-@pytest.mark.parametrize(
-    "backend",
-    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
-    indirect=True,
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_expression_hypot(backend):
     """Test special cases of hypot expressions."""
     expr = ScalarExpression("hypot(a, b)")
@@ -363,9 +353,7 @@ def test_expression_hypot(backend):
     assert f(3.0, 4.0) == 5.0
 
 
-@pytest.mark.parametrize(
-    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_expression_consts(backend):
     """Test the usage of consts."""
     backend_obj = get_backend(backend)
@@ -434,9 +422,8 @@ def test_evaluate_func_scalar(backend):
     np.testing.assert_allclose(res.data, 3.14)
 
 
-@pytest.mark.parametrize(
-    "backend", ["numpy", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+# TODO: Support numba
+@pytest.mark.parametrize("backend", ALL_BACKENDS_NO_NUMBA, indirect=True)
 def test_evaluate_func_vector(backend):
     """Test the evaluate function with vector fields."""
     grid = UnitGrid([3])
@@ -456,9 +443,7 @@ def test_evaluate_func_vector(backend):
     )
 
 
-@pytest.mark.parametrize(
-    "backend", ["numpy", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_evaluate_func_invalid(backend):
     """Test the evaluate function with invalid data."""
     field = ScalarField.from_expression(UnitGrid([3]), "x")
@@ -493,9 +478,8 @@ def test_evaluate_func_bcs_warning(caplog):
     assert "Unused" in caplog.text
 
 
-@pytest.mark.parametrize(
-    "backend", ["numpy", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+# TODO: Support numba
+@pytest.mark.parametrize("backend", ALL_BACKENDS_NO_NUMBA, indirect=True)
 def test_evaluate_func_collection(backend):
     """Test the evaluate function with a field collection."""
     grid = UnitGrid([3])

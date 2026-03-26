@@ -19,7 +19,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, TypeVar, Union
 
 import numpy as np
 from numpy.typing import ArrayLike  # noqa: F401
@@ -44,8 +44,9 @@ FloatOrArray = float | np.ndarray[Any, np.dtype[np.floating]]
 
 # generic array types that work for various fields or arrays
 TField = TypeVar("TField", "FieldCollection", "DataFieldBase")
-# the generic array type also supports torch.Tensor and jax.Array
-TArray = TypeVar("TArray", NumericArray, "Tensor", "Array")
+# the following generic array type also supports torch.Tensor and jax.Array
+NativeArray = Union[NumericArray, "Tensor", "Array"]
+TNativeArray = TypeVar("TNativeArray", NumericArray, "Tensor", "Array")
 
 
 class OperatorInfo(NamedTuple):
@@ -58,7 +59,10 @@ class OperatorInfo(NamedTuple):
 
 
 # operators act on an array and either return result or write it into supplied array
-OperatorImplType = Callable[[TArray], TArray] | Callable[[TArray, TArray], None]
+OperatorImplType = (
+    Callable[[TNativeArray], TNativeArray]
+    | Callable[[TNativeArray, TNativeArray], None]
+)
 
 
 class OperatorFactory(Protocol):
@@ -78,10 +82,10 @@ class OperatorType(Protocol):
 
     def __call__(
         self,
-        arr: TArray,
-        out: TArray | None = None,
+        arr: TNativeArray,
+        out: TNativeArray | None = None,
         args: dict[str, Any] | None = None,
-    ) -> TArray:
+    ) -> TNativeArray:
         """Evaluate the operator.
 
         Args:
@@ -137,11 +141,14 @@ class DataSetter(Protocol):
 class StepperHook(Protocol):
     def __call__(
         self, state_data: NumericArray, t: float, post_step_data: NumericArray
-    ) -> None:
+    ) -> tuple[NumericArray, NumericArray]:
         """Function analyzing and potentially modifying the current state.
 
         Args:
             state_data: Current state data
             t: Current time
-            post_step_data: Data after the step
+            post_step_data: Data to be stored for later analysis
+
+        Returns:
+            tuple(state_data, post_step_data): Can be the same arrays as the input
         """
