@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from .operators.common import TorchDifferentialOperator
 
 
-class TorchBackend(BackendBase):
+class TorchBackend(BackendBase[torch.Tensor]):
     """Defines :mod:`torch` backend."""
 
     implementation = "torch"
@@ -354,7 +354,7 @@ class TorchBackend(BackendBase):
         # return the compiled versions of the operator
         return apply_op  # type: ignore
 
-    def make_integrator(  # type: ignore
+    def make_integrator(
         self, grid: GridBase, *, dtype: DTypeLike = np.double
     ) -> Callable[[torch.Tensor], torch.Tensor]:
         """Return function that integrates discretized data over a grid.
@@ -379,7 +379,7 @@ class TorchBackend(BackendBase):
 
         return integrate_torch
 
-    def make_inner_prod_operator(  # type: ignore
+    def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
     ) -> Callable[[torch.Tensor, torch.Tensor, torch.Tensor | None], torch.Tensor]:
         """Return operator calculating the dot product between two fields.
@@ -436,7 +436,7 @@ class TorchBackend(BackendBase):
 
         return dot
 
-    def make_outer_prod_operator(  # type: ignore
+    def make_outer_prod_operator(
         self, field: DataFieldBase
     ) -> Callable[[torch.Tensor, torch.Tensor, torch.Tensor | None], torch.Tensor]:
         """Return operator calculating the outer product between two fields.

@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from .typing import JaxDataSetter, JaxGhostCellSetter
 
 
-class JaxBackend(BackendBase):
+class JaxBackend(BackendBase[jax.Array]):
     """Defines :mod:`jax` backend."""
 
     implementation = "jax"
@@ -371,7 +371,7 @@ class JaxBackend(BackendBase):
 
         return get_full_with_bcs
 
-    def make_integrator(self, grid: GridBase) -> Callable[[jax.Array], jax.Array]:  # type: ignore
+    def make_integrator(self, grid: GridBase) -> Callable[[jax.Array], jax.Array]:
         """Return function that integrates discretized data over a grid.
 
         Args:
@@ -565,7 +565,7 @@ class JaxBackend(BackendBase):
 
         return apply_op  # type: ignore
 
-    def make_inner_prod_operator(  # type: ignore
+    def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
     ) -> Callable[[jax.Array, jax.Array, jax.Array | None], jax.Array]:
         """Return operator calculating the dot product between two fields.
@@ -620,7 +620,7 @@ class JaxBackend(BackendBase):
 
         return dot
 
-    def make_outer_prod_operator(  # type: ignore
+    def make_outer_prod_operator(
         self, field: DataFieldBase
     ) -> Callable[[jax.Array, jax.Array, jax.Array | None], jax.Array]:
         """Return operator calculating the outer product between two fields.

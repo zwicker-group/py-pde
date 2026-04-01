@@ -9,7 +9,7 @@ import inspect
 import logging
 from collections import defaultdict
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, overload
 
 from ..solvers import AdaptiveSolverBase
 from ..tools.config import Config, Parameter
@@ -55,8 +55,12 @@ TFunc = TypeVar("TFunc", bound=Callable)
 TValue = TypeVar("TValue")
 
 
-class BackendBase:
-    """Basic backend from which all other backends inherit."""
+class BackendBase(Generic[TNativeArray]):
+    """Basic backend from which all other backends inherit.
+
+    The generic type parameter `TNativeArray` determines the type of the native data
+    representation of the backend.
+    """
 
     implementation: str = "undefined"
     """str: The name of the python module that is used to implement this backend. This
@@ -453,7 +457,7 @@ class BackendBase:
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+    ) -> Callable[[TNativeArray, TNativeArray, TNativeArray | None], TNativeArray]:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -475,7 +479,7 @@ class BackendBase:
 
     def make_outer_prod_operator(
         self, field: DataFieldBase
-    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+    ) -> Callable[[TNativeArray, TNativeArray, TNativeArray | None], TNativeArray]:
         """Return operator calculating the outer product between two fields.
 
         This supports typically only supports products between two vector fields.

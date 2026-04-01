@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
@@ -128,7 +128,11 @@ class KuramotoSivashinskyPDE(SDEBase):
             instance of the state data and time to obtain the associated evolution rate.
         """
         nu_value = self.nu
-        args = {"backend": backend, "native": True, "dtype": state.dtype}
+        args: dict[str, Any] = {
+            "backend": backend,
+            "native": True,
+            "dtype": state.dtype,
+        }
         laplace = state.grid.make_operator(operator="laplace", bc=self.bc, **args)
         laplace2 = state.grid.make_operator(operator="laplace", bc=self.bc_lap, **args)
         gradient_sq = state.grid.make_operator(

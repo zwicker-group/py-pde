@@ -334,21 +334,18 @@ def make_colored_noise(
         k2s = np.add.outer(k2s, k**2)
 
     # scaling of all modes with k != 0
-    k2s.flat[0] = 1
-    scaling = scale * k2s ** (exponent / 4)
-    scaling.flat[0] = 0
+    k2s.flat[0] = 1.0
+    scaling: NumericArray = scale * k2s ** (0.25 * exponent)
+    scaling.flat[0] = 0.0
 
     def noise_colored() -> NumericArray:
         """Return array of colored noise."""
         # random field
         arr: NumericArray = rng.normal(size=shape)
-
         # forward transform
         arr = np_rfftn(arr)
-
         # scale according to frequency
-        arr *= scaling
-
+        arr *= scaling  # type: ignore
         # backwards transform
         return np_irfftn(arr, s=shape, axes=range(dim))  # type: ignore
 

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ...fields import DataFieldBase, VectorField
+from ...tools.typing import NumericArray
 from ..base import BackendBase, OperatorInfo, TFunc
 
 if TYPE_CHECKING:
@@ -24,13 +25,12 @@ if TYPE_CHECKING:
         DataSetter,
         GhostCellSetter,
         NumberOrArray,
-        NumericArray,
         OperatorType,
         TField,
     )
 
 
-class NumpyBackend(BackendBase):
+class NumpyBackend(BackendBase[NumericArray]):
     """Defines :mod:`numpy` backend, from which all other backends inherit."""
 
     implementation = "numpy"
@@ -329,7 +329,7 @@ class NumpyBackend(BackendBase):
 
         return outer
 
-    def make_pde_rhs(  # type: ignore
+    def make_pde_rhs(
         self, eq: PDEBase, state: TField, *, native: bool = False
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.

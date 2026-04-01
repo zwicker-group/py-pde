@@ -1226,7 +1226,7 @@ class NumbaBackend(NumpyBackend):
 
         return insert
 
-    def make_pde_rhs(  # type: ignore
+    def make_pde_rhs(
         self, eq: PDEBase, state: TField, *, native: bool = False
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
