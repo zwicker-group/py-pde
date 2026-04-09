@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from ...pdes import PDEBase
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
+        BinaryOperatorImplType,
         DataSetter,
         GhostCellSetter,
         NumberOrArray,
@@ -43,6 +44,23 @@ class NumpyBackend(BackendBase[NumericArray]):
                 The function that needs to be compiled for this backend
         """
         return func
+
+    def _apply_operator(
+        self, func: Callable, *values: NumericArray, out: NumericArray, **kwargs
+    ) -> None:
+        r"""Apply a native operator to numpy data.
+
+        Args:
+            func (callable):
+                The operator defined in the native space of the backend
+            values (:class:`~numpy.ndarray`):
+                The array data that is fed to the function
+            out (:class:`~numpy.ndarray`):
+                The array to which the results are written
+            *args, **kwargs:
+                Additional arguments that are forwarded to the function call
+        """
+        func(*values, out=out, **kwargs)
 
     def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
@@ -249,7 +267,7 @@ class NumpyBackend(BackendBase[NumericArray]):
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+    ) -> BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -301,9 +319,7 @@ class NumpyBackend(BackendBase[NumericArray]):
 
         return dot
 
-    def make_outer_prod_operator(
-        self, field: DataFieldBase
-    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+    def make_outer_prod_operator(self, field: DataFieldBase) -> BinaryOperatorImplType:
         """Return operator calculating the outer product between two fields.
 
         This supports typically only supports products between two vector fields.
@@ -330,7 +346,7 @@ class NumpyBackend(BackendBase[NumericArray]):
         return outer
 
     def make_pde_rhs(
-        self, eq: PDEBase, state: TField, *, native: bool = False
+        self, eq: PDEBase, state: TField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
@@ -339,10 +355,6 @@ class NumpyBackend(BackendBase[NumericArray]):
                 The object describing the differential equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which information can be extracted
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
 
         Returns:
             Function returning deterministic part of the right hand side of the PDE

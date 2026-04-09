@@ -205,7 +205,7 @@ def test_custom_operator_numba(rng):
 
     eq._cache = {}  # reset cache to force recompilation
     rhs = eq.make_evolution_rate(field, backend=backend)
-    res = backend._apply_native(rhs, field.data, 0)  # last argument is time
+    res = rhs(field.data, 0)  # last argument is time
     np.testing.assert_allclose(2 * field.data, res.data)
 
     # reset original state
@@ -238,8 +238,8 @@ def test_custom_operator_torch(backend, rng):
 
     eq._cache = {}  # reset cache to force recompilation
     rhs = eq.make_evolution_rate(field, backend=backend)
-    res = backend._apply_native(rhs, field.data, 0)  # last argument is time
-    np.testing.assert_allclose(2 * field.data, res.data)
+    res = backend._apply_function(rhs, field.data, 0)  # second argument is time
+    np.testing.assert_allclose(2 * field.data, res)
 
     # reset original state
     del backend._operators[grids.UnitGrid]["undefined"]
@@ -276,12 +276,13 @@ def test_pde_spatial_args(backend):
 
     eq = PDE({"a": "x"})
     rhs = eq.make_pde_rhs(field, backend=backend)
-    np.testing.assert_allclose(rhs(field.data, 0.0), np.array([0.5, 1.5, 2.5, 3.5]))
+    res = backend._apply_function(rhs, field.data, 0)
+    np.testing.assert_allclose(res, np.array([0.5, 1.5, 2.5, 3.5]))
 
     # test combination of spatial dependence and differential operators
     eq = PDE({"a": "dot(gradient(x), gradient(a))"})
     rhs = eq.make_pde_rhs(field, backend=backend)
-    res = get_backend(backend)._apply_native(rhs, field.data, 0.0)
+    res = backend._apply_function(rhs, field.data, 0.0)
     np.testing.assert_allclose(res, np.array([0.0, 0.0, 0.0, 0.0]))
 
     # test invalid spatial dependence
@@ -289,8 +290,10 @@ def test_pde_spatial_args(backend):
     if backend == "numpy":
         with pytest.raises(RuntimeError):
             eq.evolution_rate(field)
-    with pytest.raises(RuntimeError):
-        eq.make_pde_rhs(field, backend=backend)(field.data, 0)
+
+    with pytest.raises(RuntimeError):  # noqa: PT012
+        rhs = eq.make_pde_rhs(field, backend=backend)
+        backend._apply_function(rhs, field.data, 0)
 
 
 @pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)
@@ -308,7 +311,7 @@ def test_pde_user_funcs(backend, rng):
         rhs.data, field.gradient("auto_periodic_neumann").data[0]
     )
     rhs = eq.make_evolution_rate(field, backend=backend)
-    res = backend._apply_native(rhs, field.data, 0)  # last argument is time
+    res = backend._apply_function(rhs, field.data, 0)  # last argument is time
     # Use larger tolerance since torch backends might only support float32
     np.testing.assert_allclose(
         res.data, field.gradient("auto_periodic_neumann").data[0], rtol=2e-5
@@ -445,7 +448,7 @@ def test_pde_time_dependent_bcs(backend):
     np.testing.assert_allclose(storage[-1].data, 1, rtol=1e-3)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
+@pytest.mark.parametrize("backend", ["numpy", "numba", "jax"], indirect=True)
 def test_pde_integral(backend, rng):
     """Test PDE with integral."""
     grid = grids.UnitGrid([16])
@@ -454,7 +457,8 @@ def test_pde_integral(backend, rng):
 
     # test rhs
     rhs = eq.make_pde_rhs(field, backend=backend)
-    np.testing.assert_allclose(rhs(field.data, 0), -field.integral)
+    res = backend._apply_function(rhs, field.data, 0)
+    np.testing.assert_allclose(res, -field.integral)
 
     # test evolution
     for method in ["scipy", "euler"]:

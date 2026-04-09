@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from ...solvers.base import SolverBase
     from ...tools.config import Config
     from ...tools.expressions import ExpressionBase
-    from ...tools.typing import NumberOrArray, NumericArray, TField, TNativeArray
+    from ...tools.typing import NumberOrArray, NumericArray, TField
     from ..base import TFunc
     from ..numpy.backend import OperatorInfo
     from .operators.common import TorchDifferentialOperator
@@ -210,13 +210,31 @@ class TorchBackend(BackendBase[torch.Tensor]):
         opts = self.compile_options | compile_options
         return torch.compile(func, **opts)  # type: ignore
 
+    def _apply_operator(
+        self, func: Callable, *values: NumericArray, out: NumericArray, **kwargs
+    ) -> None:
+        r"""Apply a native operator to numpy data.
+
+        Args:
+            func (callable):
+                The operator defined in the native space of the backend
+            values (:class:`~numpy.ndarray`):
+                The array data that is fed to the function
+            out (:class:`~numpy.ndarray`):
+                The array to which the results are written
+            *args, **kwargs:
+                Additional arguments that are forwarded to the function call
+        """
+        values_native = [self.from_numpy(value) for value in values]
+        out_native = func(*values_native, **kwargs)
+        out[...] = self.to_numpy(out_native)
+
     def make_operator_no_bc(
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
         *,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> TorchDifferentialOperator:
         """Return a compiled function applying an operator without boundary conditions.
@@ -240,10 +258,6 @@ class TorchBackend(BackendBase[torch.Tensor]):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -263,16 +277,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         # compile the function and move it to the device
         torch_operator_jitted = self.compile_function(torch_operator)
         torch_operator_jitted.to(self.device)  # type: ignore
-
-        if native:
-            return torch_operator_jitted  # type: ignore
-
-        def operator_no_bc(arr: NumericArray, out: NumericArray) -> None:
-            arr_torch = self.from_numpy(arr)
-            out_torch = torch_operator_jitted(arr_torch)  # type: ignore
-            out[...] = self.to_numpy(out_torch)
-
-        return operator_no_bc  # type: ignore
+        return torch_operator_jitted  # type: ignore
 
     def make_operator(
         self,
@@ -468,8 +473,8 @@ class TorchBackend(BackendBase[torch.Tensor]):
         return outer
 
     def make_pde_rhs(
-        self, eq: PDEBase, state: TField, *, native: bool = False
-    ) -> Callable[[TNativeArray, float], TNativeArray]:
+        self, eq: PDEBase, state: TField
+    ) -> Callable[[torch.Tensor, float], torch.Tensor]:
         """Return a function for evaluating the right hand side of the PDE.
 
         Args:
@@ -515,20 +520,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
                 rhs_native = make_rhs(state, backend=self)
 
         # get the compiled right hand side
-        rhs_torch = self.compile_function(rhs_native)
-        if native:
-            return rhs_torch
-
-        def rhs(arr: NumericArray, t: float = 0) -> NumericArray:
-            """Helper wrapping function working with torch tensors."""
-            arr_torch = self.from_numpy(arr)
-            # We wrap the scalar time into a tensor, so torch correctly identifies it as
-            # a value that is modified each time we call the function.
-            t_torch = self.from_numpy(t)
-            res_torch = rhs_torch(arr_torch, t_torch)
-            return self.to_numpy(res_torch)  # type: ignore
-
-        return rhs  # type: ignore
+        return self.compile_function(rhs_native)
 
     def make_inner_stepper(
         self,

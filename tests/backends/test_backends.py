@@ -24,7 +24,7 @@ def test_backend_selection(backend, rng):
     # try setting the torch device explicitly by creating a new backend on the fly
     device = str(backend.device)
     try:
-        backend_new = TorchBackend(name=f"my-torch-{device}", device=device)
+        new_backend = TorchBackend(name=f"my-torch-{device}", device=device)
     except RuntimeError:
         pytest.skip(f"Device `{device}` is not available")
 
@@ -32,7 +32,7 @@ def test_backend_selection(backend, rng):
     # it is important that we use a PDE of sufficient complexity here, so that we test
     # that operators are created for the correct backend.
     eq = CahnHilliardPDE()
-    eq.solve(state, t_range=1, backend=backend_new)
+    eq.solve(state, t_range=1, backend=new_backend)
 
     assert eq.diagnostics["solver"]["backend"]["name"] == f"my-torch-{device}"
     assert eq.diagnostics["solver"]["backend"]["device"] == device

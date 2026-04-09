@@ -397,12 +397,17 @@ class PDEBase(metaclass=ABCMeta):
     ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Return function evaluating right hand side of the PDE using given backend.
 
+        Note:
+            This factory function must return a function that processes fields stored
+            in the native format of the backend. For instance, a function returned for
+            the `jax` backend must deal with :class:`jax.Array` objects.
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted.
             backend (str):
-                Determines the backend
+                Determines the backend.
 
         Returns:
             callable: Function determining the right hand side of the PDE

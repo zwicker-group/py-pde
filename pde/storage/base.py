@@ -472,8 +472,8 @@ class StorageBase(metaclass=ABCMeta):
             t_end = self.times[-1]
 
         # determine the associated indices
-        i_start = np.searchsorted(self.times, t_start, side="left")
-        i_end = np.searchsorted(self.times, t_end, side="right")
+        i_start: int = np.searchsorted(self.times, t_start, side="left")
+        i_end: int = np.searchsorted(self.times, t_end, side="right")
 
         # extract the actual memory
         return MemoryStorage(

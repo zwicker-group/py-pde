@@ -18,24 +18,24 @@ def _apply_ghost_cells(backend, field: ScalarField, bcs):
 
     Returns the full data array (including ghost cells) after applying the BCs.
     """
+    f_copy = field.copy()
     if backend.name == "jax":
         from pde.backends.jax import jax_backend as _jax_backend
 
         setter = _jax_backend.make_data_setter(field.grid, rank=field.rank, bcs=bcs)
-        return backend._apply_native(setter, field.data, inplace=False)
+        backend._apply_operator(setter, field.data, out=f_copy._data_full)
 
-    if backend.name.startswith("torch"):
+    elif backend.name.startswith("torch"):
         from pde.backends.torch._boundaries import GhostCellSetter as _GhostCellSetter
 
-        f_copy = field.copy()
         setter = _GhostCellSetter(bcs=bcs, dtype=field.dtype).to(backend.device)
-        backend._apply_native(setter, f_copy._data_full, inplace=True)
-        return f_copy._data_full
+        backend._apply_operator(setter, f_copy._data_full, out=f_copy._data_full)
 
-    # numba, numpy, scipy - use make_ghost_cell_setter
-    f_copy = field.copy()
-    setter = backend.make_ghost_cell_setter(bcs)
-    backend._apply_native(setter, f_copy._data_full, inplace=True)
+    else:
+        # numba, numpy, scipy - use make_ghost_cell_setter
+        setter = backend.make_ghost_cell_setter(bcs)
+        setter(f_copy._data_full)
+
     return f_copy._data_full
 
 

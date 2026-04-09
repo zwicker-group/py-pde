@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from ..pdes.base import PDEBase
     from ..solvers.base import SolverBase
     from ..tools.expressions import ExpressionBase
-    from ..tools.typing import OperatorImplType
+    from ..tools.typing import BinaryOperatorImplType, OperatorImplType
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
@@ -147,38 +147,6 @@ class BackendBase(Generic[TNativeArray]):
         """
         return value
 
-    def _apply_native(
-        self,
-        func: Callable,
-        value: NumericArray,
-        *args,
-        inplace: bool = False,
-        **kwargs,
-    ) -> NumericArray:
-        r"""Apply a native function to numpy data.
-
-        Args:
-            func (callable):
-                The function defined in the native space of the backend
-            value (:class:`~numpy.ndarray`):
-                The array data that is fed to the function
-            inplace (bool):
-                If true, `value` it is assumed the function modifies the data inplace,
-                so we return the modified `value`
-            *args, **kwargs:
-                Additional arguments that are forwarded to the function call
-
-        Returns:
-            :class:`~numpy.ndarray`: The result as a numpy array
-        """
-        value_native = self.from_numpy(value)
-        if inplace:
-            func(value_native, *args, **kwargs)
-            value[...] = self.to_numpy(value_native)
-            return value
-        res_native = func(value_native, *args, **kwargs)
-        return self.to_numpy(res_native)
-
     def compile_function(self, func: TFunc) -> TFunc:
         """General method that compiles a user function.
 
@@ -188,6 +156,43 @@ class BackendBase(Generic[TNativeArray]):
         """
         msg = f"Compiling functions is not supported by backend `{self.name}`"
         raise NotImplementedError(msg)
+
+    def _apply_function(
+        self, func: Callable, *values: NumericArray, **kwargs
+    ) -> NumericArray:
+        r"""Apply a native function to numpy data and return result.
+
+        Args:
+            func (callable):
+                The function defined in the native space of the backend
+            *values (:class:`~numpy.ndarray`):
+                The array data that is fed to the function
+            **kwargs:
+                Additional arguments that are forwarded to the function call
+
+        Returns:
+            :class:`~numpy.ndarray`: The result as a numpy array
+        """
+        values_native = [self.from_numpy(value) for value in values]
+        res_native = func(*values_native, **kwargs)
+        return self.to_numpy(res_native)
+
+    def _apply_operator(
+        self, func: Callable, *values: NumericArray, out: NumericArray, **kwargs
+    ) -> None:
+        r"""Apply a native operator to numpy data and store result in `out`.
+
+        Args:
+            func (callable):
+                The operator defined in the native space of the backend
+            *values (:class:`~numpy.ndarray`):
+                The array data that is fed to the function
+            out (:class:`~numpy.ndarray`):
+                The array to which the results are written
+            *args, **kwargs:
+                Additional arguments that are forwarded to the function call
+        """
+        raise NotImplementedError
 
     def register_operator(
         self,
@@ -366,7 +371,6 @@ class BackendBase(Generic[TNativeArray]):
         operator: str | OperatorInfo,
         *,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> OperatorImplType:
         """Return a compiled function applying an operator without boundary conditions.
@@ -390,10 +394,6 @@ class BackendBase(Generic[TNativeArray]):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -457,7 +457,7 @@ class BackendBase(Generic[TNativeArray]):
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> Callable[[TNativeArray, TNativeArray, TNativeArray | None], TNativeArray]:
+    ) -> BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -470,16 +470,14 @@ class BackendBase(Generic[TNativeArray]):
                 Whether to use the complex conjugate for the second operand
 
         Returns:
-            function that takes two instance of :class:`~numpy.ndarray`, which contain
-            the discretized data of the two operands. An optional third argument can
-            specify the output array to which the result is written.
+            Function that takes two instance of native data arrays, which contain the
+            discretized data of the two operands. An optional third argument can specify
+            the output array to which the result is written.
         """
         msg = f"Inner product not defined for backend {self.name}"
         raise NotImplementedError(msg)
 
-    def make_outer_prod_operator(
-        self, field: DataFieldBase
-    ) -> Callable[[TNativeArray, TNativeArray, TNativeArray | None], TNativeArray]:
+    def make_outer_prod_operator(self, field: DataFieldBase) -> BinaryOperatorImplType:
         """Return operator calculating the outer product between two fields.
 
         This supports typically only supports products between two vector fields.
@@ -489,9 +487,9 @@ class BackendBase(Generic[TNativeArray]):
                 Field for which the outer product is defined
 
         Returns:
-            function that takes two instance of :class:`~numpy.ndarray`, which contain
-            the discretized data of the two operands. An optional third argument can
-            specify the output array to which the result is written.
+            Function that takes two instance of native data arrays, which contain the
+            discretized data of the two operands. An optional third argument can specify
+            the output array to which the result is written.
         """
         msg = f"Outer product not defined for backend {self.name}"
         raise NotImplementedError(msg)
@@ -525,7 +523,9 @@ class BackendBase(Generic[TNativeArray]):
         raise NotImplementedError(msg)
 
     def make_pde_rhs(
-        self, eq: PDEBase, state: TField, *, native: bool = False
+        self,
+        eq: PDEBase,
+        state: TField,
     ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Return a function for evaluating the right hand side of the PDE.
 

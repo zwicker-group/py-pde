@@ -34,9 +34,11 @@ if TYPE_CHECKING:
     from ...pdes import PDEBase
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
+        BinaryOperatorImplType,
         DataSetter,
         FloatingArray,
         GhostCellSetter,
+        InexactArray,
         Number,
         NumberOrArray,
         NumericArray,
@@ -722,7 +724,7 @@ class NumbaBackend(NumpyBackend):
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+    ) -> BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -861,9 +863,7 @@ class NumbaBackend(NumpyBackend):
 
         return dot_compiled
 
-    def make_outer_prod_operator(
-        self, field: DataFieldBase
-    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+    def make_outer_prod_operator(self, field: DataFieldBase) -> BinaryOperatorImplType:
         """Return operator calculating the outer product between two fields.
 
         This supports typically only supports products between two vector fields.
@@ -1060,7 +1060,7 @@ class NumbaBackend(NumpyBackend):
 
     def make_inserter(
         self, grid: GridBase, *, with_ghost_cells: bool = False
-    ) -> Callable[[NumericArray, FloatingArray, NumberOrArray], None]:
+    ) -> Callable[[InexactArray, FloatingArray, NumberOrArray], None]:
         """Return a compiled function to insert values at interpolated positions.
 
         Args:
@@ -1089,7 +1089,7 @@ class NumbaBackend(NumpyBackend):
 
             @self.compile_function
             def insert(
-                data: NumericArray, point: FloatingArray, amount: NumberOrArray
+                data: InexactArray, point: FloatingArray, amount: NumberOrArray
             ) -> None:
                 """Add an amount to a field at an interpolated position.
 
@@ -1125,7 +1125,7 @@ class NumbaBackend(NumpyBackend):
 
             @self.compile_function
             def insert(
-                data: NumericArray, point: FloatingArray, amount: NumberOrArray
+                data: InexactArray, point: FloatingArray, amount: NumberOrArray
             ) -> None:
                 """Add an amount to a field at an interpolated position.
 
@@ -1173,7 +1173,7 @@ class NumbaBackend(NumpyBackend):
 
             @self.compile_function
             def insert(
-                data: NumericArray, point: FloatingArray, amount: NumberOrArray
+                data: InexactArray, point: FloatingArray, amount: NumberOrArray
             ) -> None:
                 """Add an amount to a field at an interpolated position.
 
@@ -1227,7 +1227,7 @@ class NumbaBackend(NumpyBackend):
         return insert
 
     def make_pde_rhs(
-        self, eq: PDEBase, state: TField, *, native: bool = False
+        self, eq: PDEBase, state: TField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
@@ -1236,10 +1236,6 @@ class NumbaBackend(NumpyBackend):
                 The object describing the differential equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which information can be extracted
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
 
         Returns:
             Function returning deterministic part of the right hand side of the PDE

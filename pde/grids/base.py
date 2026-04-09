@@ -1143,7 +1143,6 @@ class GridBase(metaclass=ABCMeta):
         *,
         backend: str | BackendBase = "default",
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> OperatorImplType:
         """Return a compiled function applying an operator without boundary conditions.
@@ -1167,10 +1166,6 @@ class GridBase(metaclass=ABCMeta):
                 The backend to use for making the operator
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -1183,7 +1178,7 @@ class GridBase(metaclass=ABCMeta):
 
         # determine the operator for the chosen backend
         return get_backend(backend).make_operator_no_bc(
-            self, operator=operator, dtype=dtype, native=native, **kwargs
+            self, operator=operator, dtype=dtype, **kwargs
         )
 
     @fill_in_docstring
@@ -1468,7 +1463,7 @@ class GridBase(metaclass=ABCMeta):
             stacklevel=2,
         )
 
-        return numba_backend.make_inserter(grid=self, with_ghost_cells=with_ghost_cells)
+        return numba_backend.make_inserter(grid=self, with_ghost_cells=with_ghost_cells)  # type: ignore
 
     def make_integrator(
         self, backend: str | BackendBase = "numpy"

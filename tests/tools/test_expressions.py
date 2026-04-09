@@ -374,7 +374,7 @@ def test_expression_consts(backend):
     expr = ScalarExpression("a + b", consts={"a": np.array([1, 2])})
     assert not expr.constant
     np.testing.assert_allclose(expr(np.array([2, 3])), np.array([3, 5]))
-    res = backend_obj._apply_native(expr.get_function(backend), np.array([2, 3]))
+    res = backend_obj._apply_function(expr.get_function(backend), np.array([2, 3]))
     np.testing.assert_allclose(res, np.array([3, 5]))
     expr = ScalarExpression("a * b", consts={"a": np.array([1, 2])})
     dexpr_da = expr.differentiate("b")

@@ -36,10 +36,11 @@ Real = int | float  # a real number (no complex number allowed)
 Number = Real | complex | np.number  # any number, including complex numbers
 
 # array types:
-NumericArray = np.ndarray[Any, np.dtype[np.number]]  # array of numbers (incl complex)
+NumericArray = np.ndarray[Any, np.dtype[np.number]]  # array of int, real, or complex
 NumberOrArray = Number | NumericArray  # number or array of numbers (incl complex)
+InexactArray = np.ndarray[Any, np.dtype[np.inexact]]  # array of real or complex numbers
 # a floating number or an array of floating (no integers and no complex numbers)
-FloatingArray = np.ndarray[Any, np.dtype[np.floating]]
+FloatingArray = np.ndarray[Any, np.dtype[np.floating]]  # array of real numbers
 FloatOrArray = float | np.ndarray[Any, np.dtype[np.floating]]
 
 # generic array types that work for various fields or arrays
@@ -61,8 +62,11 @@ class OperatorInfo(NamedTuple):
 # operators act on an array and either return result or write it into supplied array
 OperatorImplType = (
     Callable[[TNativeArray], TNativeArray]
-    | Callable[[TNativeArray, TNativeArray], None]
+    | Callable[[TNativeArray, TNativeArray], TNativeArray]
 )
+BinaryOperatorImplType = Callable[
+    [TNativeArray, TNativeArray, TNativeArray | None], TNativeArray
+]
 
 
 class OperatorFactory(Protocol):

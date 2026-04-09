@@ -24,7 +24,11 @@ if TYPE_CHECKING:
 
     from ..backends import BackendBase
     from ..grids.boundaries.axes import BoundariesData
-    from ..tools.typing import Number, NumberOrArray, NumericArray
+    from ..tools.typing import (
+        BinaryOperatorImplType,
+        Number,
+        NumberOrArray,
+    )
     from .tensorial import Tensor2Field
 
 
@@ -295,7 +299,7 @@ class VectorField(DataFieldBase):
 
     def make_outer_prod_operator(
         self, backend: str | BackendBase = "numba"
-    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+    ) -> BinaryOperatorImplType:
         """Return operator calculating the outer product of two vector fields.
 
         Warning:

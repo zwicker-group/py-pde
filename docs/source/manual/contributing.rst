@@ -48,14 +48,21 @@ where the arguments denote the grid class, the name of the operator, and the fac
 function, respectively.
 
 
-Design choices
-""""""""""""""
-The data layout of field classes (subclasses of
-:class:`~pde.fields.base.FieldBase`) was chosen to allow for a simple
-decomposition of different fields and tensor components. Consequently, the data
-is laid out in memory such that spatial indices are last. For instance, the data
-of a vector field ``field`` defined on a 2d Cartesian grid will have three
-dimensions and can be accessed as ``field.data[vector_component, x, y]``,
+Data layout
+"""""""""""
+Since the package supports several different backends, data can reside in various
+places (e.g., CPU or GPU).
+To avoid confusion, we adhere to the following principles: Data that the user
+manipulates directly should always be stored in numpy arrays on the CPU.
+In contrast, inner loops for solving PDEs can move memory to GPU or any other device.
+Consequently, operators typically assume that data is stored in the native version of
+the respective backend.
+
+The data layout of field classes (subclasses of :class:`~pde.fields.base.FieldBase`) was
+chosen to allow for a simple decomposition of different fields and tensor components.
+Consequently, data is laid out in memory such that spatial indices are last.
+For instance, the data of a vector field ``field`` defined on a 2d Cartesian grid will
+have three dimensions and can be accessed as ``field.data[vector_component, x, y]``,
 where ``vector_component`` is either 0 or 1.
 
 

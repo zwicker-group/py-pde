@@ -7,7 +7,7 @@ import platform
 import numpy as np
 import pytest
 
-from pde import ScalarField, UnitGrid, pdes
+from pde import ScalarField, UnitGrid, get_backend, pdes
 from pde.solvers import EulerSolver
 from pde.tools.misc import module_available
 
@@ -46,14 +46,14 @@ def test_pde_consistency(pde_class, dim, rng):
     # compare torch to numpy implementation
     if module_available("torch") and platform.system() != "Windows":
         rhs = eq.make_pde_rhs(state, backend="torch")
-        res = rhs(state.data, 0)
+        res = get_backend("torch")._apply_function(rhs, state.data, 0)
         # use reduced tolerance to support potential float32 devices
         np.testing.assert_allclose(field.data, res, rtol=5e-6)
 
     # compare jax to numpy implementation
     if module_available("jax"):
         rhs = eq.make_pde_rhs(state, backend="jax")
-        res = rhs(state.data, 0)
+        res = get_backend("jax")._apply_function(rhs, state.data, 0)
         # use reduced tolerance to support potential float32 devices
         np.testing.assert_allclose(field.data, res, rtol=5e-6)
 
