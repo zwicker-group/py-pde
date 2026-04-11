@@ -6,9 +6,9 @@
    ~base.SolverBase
    ~base.AdaptiveSolverBase
    ~controller.Controller
-   ~explicit.ExplicitSolver
-   ~explicit.EulerSolver
-   ~explicit.RungeKuttaSolver
+   ~euler.ExplicitSolver
+   ~euler.EulerSolver
+   ~runge_kutta.RungeKuttaSolver
    ~explicit_mpi.ExplicitMPISolver
    ~implicit.ImplicitSolver
    ~crank_nicolson.CrankNicolsonSolver
@@ -37,8 +37,9 @@ from .adams_bashforth import AdamsBashforthSolver  # noqa: F401
 from .base import *  # noqa: F403
 from .controller import Controller  # noqa: F401
 from .crank_nicolson import CrankNicolsonSolver  # noqa: F401
-from .explicit import EulerSolver, ExplicitSolver, RungeKuttaSolver  # noqa: F401
+from .euler import EulerSolver, ExplicitSolver  # noqa: F401
 from .implicit import ImplicitSolver  # noqa: F401
+from .runge_kutta import RungeKuttaSolver  # noqa: F401
 from .scipy import ScipySolver  # noqa: F401
 
 try:

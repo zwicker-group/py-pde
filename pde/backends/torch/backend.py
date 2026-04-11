@@ -8,7 +8,7 @@ from __future__ import annotations
 import numbers
 import warnings
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import torch
@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     from ...grids import GridBase
     from ...grids.boundaries.axes import BoundariesBase
     from ...pdes import PDEBase
-    from ...solvers.base import SolverBase
     from ...tools.config import Config
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import NumberOrArray, NumericArray, TField
@@ -84,6 +83,14 @@ class TorchBackend(BackendBase[torch.Tensor]):
             f"{self.__class__.__name__}(name={self.name!r}, "
             f"device={str(self.device)!r})"
         )
+
+    @property
+    def info(self) -> dict[str, Any]:
+        """dict: relevant information about the backend"""
+        info = super().info
+        info["device"] = self.device.type
+        info["compile"] = self.config["compile"]
+        return info
 
     @property
     def device(self) -> torch.device:
@@ -521,35 +528,6 @@ class TorchBackend(BackendBase[torch.Tensor]):
 
         # get the compiled right hand side
         return self.compile_function(rhs_native)
-
-    def make_inner_stepper(
-        self,
-        solver: SolverBase,
-        stepper_style: Literal["fixed", "adaptive"],
-        state: TField,
-        dt: float,
-    ) -> Callable:
-        """Return a stepper function using an explicit scheme.
-
-        Args:
-            solver (:class:`~pde.solvers.base.SolverBase`):
-                The solver instance, which determines how the stepper is constructed
-            stepper_style (str):
-                The style of the stepper, either "fixed" or "adaptive"
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-            dt (float):
-                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
-
-        Returns:
-            Function that can be called to advance the `state` from time `t_start` to
-            time `t_end`. The function call signature is `(state: numpy.ndarray,
-            t_start: float, t_end: float)`
-        """
-        solver.info["backend"]["device"] = self.device.type
-        solver.info["backend"]["compile"] = self.config["compile"]
-        return super().make_inner_stepper(solver, stepper_style, state, dt)
 
     def make_expression_function(
         self,

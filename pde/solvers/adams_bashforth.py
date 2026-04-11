@@ -5,26 +5,22 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from .base import SolverBase
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from ..tools.typing import NumericArray, TField
+    from ..tools.typing import InnerStepperType, NumericArray, TField
 
 
 class AdamsBashforthSolver(SolverBase):
     """Explicit Adams-Bashforth multi-step solver."""
 
-    name = "adams–bashforth"
+    name = "adams-bashforth"
 
-    def _make_fixed_stepper(
-        self, state: TField, dt: float
-    ) -> Callable[[NumericArray, float, int, Any], float]:
+    def _make_inner_stepper(self, state: TField) -> InnerStepperType:
         """Return a stepper function using an explicit scheme with fixed time steps.
 
         Args:
@@ -38,6 +34,7 @@ class AdamsBashforthSolver(SolverBase):
             msg = "Deterministic Adams-Bashforth does not support stochastic equations"
             raise RuntimeError(msg)
 
+        dt = float(self.info["dt"])
         rhs_pde = self.backend.make_pde_rhs(self.pde, state)
         post_step_hook = self._make_post_step_hook(state)
 
@@ -55,10 +52,13 @@ class AdamsBashforthSolver(SolverBase):
         init_state_prev = True
 
         def fixed_stepper(
-            state_data: NumericArray, t_start: float, steps: int, post_step_data
+            state_data: NumericArray, t_start: float, t_end: float
         ) -> float:
             """Perform `steps` steps with fixed time steps."""
             nonlocal state_prev, init_state_prev
+
+            # calculate number of steps that lead to an end time closest to t_end
+            steps = max(1, round((t_end - t_start) / self.info["dt"]))
 
             if init_state_prev:
                 # initialize the state_prev with an estimate of the previous step
@@ -69,10 +69,11 @@ class AdamsBashforthSolver(SolverBase):
                 # calculate the right hand side
                 t = t_start + i * dt
                 single_step(state_data, t, state_prev)
-                state_data, post_step_data = post_step_hook(
-                    state_data, t, post_step_data=post_step_data
+                state_data, self.info["post_step_data"] = post_step_hook(
+                    state_data, t, post_step_data=self.info["post_step_data"]
                 )
 
+            self.info["steps"] += steps
             return t + dt
 
         self._logger.info("Initialize explicit Adams-Bashforth stepper with dt=%g", dt)

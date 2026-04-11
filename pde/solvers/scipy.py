@@ -12,11 +12,9 @@ import numpy as np
 from .base import SolverBase
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from ..backends.base import BackendBase
     from ..pdes.base import PDEBase
-    from ..tools.typing import NumericArray, TField
+    from ..tools.typing import NumericArray, StepperType, TField
 
 
 class ScipySolverError(RuntimeError): ...
@@ -45,9 +43,7 @@ class ScipySolver(SolverBase):
         super().__init__(pde, backend=backend)
         self.solver_params = kwargs
 
-    def make_stepper(
-        self, state: TField, dt: float | None = None
-    ) -> Callable[[TField, float, float], float]:
+    def make_stepper(self, state: TField, dt: float | None = None) -> StepperType:
         """Return a stepper function.
 
         Args:
@@ -119,4 +115,4 @@ class ScipySolver(SolverBase):
             )
         else:
             self._logger.info("Initialize %s stepper", self.__class__.__name__)
-        return stepper
+        return stepper  # type: ignore

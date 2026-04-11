@@ -50,6 +50,14 @@ function, respectively.
 
 Data layout
 """""""""""
+
+..  figure:: /_images/data_layout.*
+    :figwidth: 50%
+    :align: right
+    :alt: Schematic of the data flow during a simulation.
+
+    Schematic of the data flow during a simulation.
+
 Since the package supports several different backends, data can reside in various
 places (e.g., CPU or GPU).
 To avoid confusion, we adhere to the following principles: Data that the user

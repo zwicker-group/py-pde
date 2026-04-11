@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import functools
 import warnings
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numba as nb
 import numpy as np
@@ -18,12 +18,10 @@ from ...fields import DataFieldBase, VectorField
 from ...grids import DimensionError, DomainError, GridBase
 from ...grids.boundaries.axes import BoundariesBase, BoundariesList, BoundariesSetter
 from ...grids.boundaries.local import BCBase, UserBC
-from ...solvers import AdaptiveSolverBase, SolverBase
 from ...tools.cache import cached_method
 from ...tools.config import is_hpc_environment
 from ...tools.typing import OperatorInfo
 from ..numpy.backend import NumpyBackend
-from .overloads import OnlineStatistics
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -32,6 +30,7 @@ if TYPE_CHECKING:
 
     from ...grids.boundaries.axis import BoundaryAxisBase
     from ...pdes import PDEBase
+    from ...solvers.base import SolverBase
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
         BinaryOperatorImplType,
@@ -39,6 +38,7 @@ if TYPE_CHECKING:
         FloatingArray,
         GhostCellSetter,
         InexactArray,
+        InnerStepperType,
         Number,
         NumberOrArray,
         NumericArray,
@@ -859,7 +859,7 @@ class NumbaBackend(NumpyBackend):
             a: NumericArray, b: NumericArray, out: NumericArray | None = None
         ) -> NumericArray:
             """Numba implementation to calculate dot product between two fields."""
-            return dot(a, b, out)
+            return dot(a, b, out)  # type: ignore
 
         return dot_compiled
 
@@ -1429,20 +1429,12 @@ class NumbaBackend(NumpyBackend):
 
         return self.compile_function(function)  # type: ignore
 
-    def make_inner_stepper(
-        self,
-        solver: SolverBase,
-        stepper_style: Literal["fixed", "adaptive"],
-        state: TField,
-        dt: float,
-    ) -> Callable:
+    def make_inner_stepper(self, solver: SolverBase, state: TField) -> InnerStepperType:
         """Return a stepper function using an explicit scheme.
 
         Args:
             solver (:class:`~pde.solvers.base.SolverBase`):
                 The solver instance, which determines how the stepper is constructed
-            stepper_style (str):
-                Either "fixed" or "adaptive" to select the type of stepper
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
@@ -1454,18 +1446,10 @@ class NumbaBackend(NumpyBackend):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
+        from ._solvers import make_inner_stepper
+
         assert solver.backend == self
-
-        from ._solvers import make_adaptive_stepper, make_fixed_stepper
-
-        solver.info["dt_statistics"] = OnlineStatistics()
-
-        if stepper_style == "fixed":
-            return make_fixed_stepper(solver, state, dt=dt)
-        if stepper_style == "adaptive":
-            assert isinstance(solver, AdaptiveSolverBase)
-            return make_adaptive_stepper(solver, state)
-        raise NotImplementedError
+        return make_inner_stepper(solver, state)
 
     def make_mpi_synchronizer(
         self, operator: int | str = "MAX"

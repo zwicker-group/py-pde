@@ -7,23 +7,22 @@ TODO: Implement this not as a separate solver but as a separate numba-mpi backen
 
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
-from .explicit import EulerSolver
+from ..tools.math import OnlineStatistics
+from .euler import EulerSolver
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from ..backends.base import BackendBase
     from ..pdes.base import PDEBase
-    from ..tools.typing import TField
-    from .base import AdaptiveStepperType, FixedStepperType
+    from ..tools.typing import StepperType, TField
 
 
 class ExplicitMPISolver(EulerSolver):
-    """Various explicit PDE solve using MPI.
+    """Explicit Euler solver using MPI.
 
     Warning:
         This solver can only be used if MPI is properly installed. In particular, python
@@ -118,9 +117,19 @@ class ExplicitMPISolver(EulerSolver):
 
         return mpi.parallel_run
 
-    def make_stepper(
-        self, state: TField, dt=None
-    ) -> Callable[[TField, float, float], float]:
+    def _init_post_step_data(self) -> None:
+        """Initialize the post step data for all nodes."""
+        from ..tools import mpi
+
+        if mpi.is_main:
+            self.info["post_step_data_list"] = [
+                copy.deepcopy(self.info["post_step_data"])
+                for _ in range(len(self.mesh))
+            ]
+        else:
+            self.info["post_step_data_list"] = None
+
+    def make_stepper(self, state: TField, dt=None) -> StepperType:
         """Return a stepper function using an explicit scheme.
 
         Args:
@@ -158,8 +167,9 @@ class ExplicitMPISolver(EulerSolver):
                 )
 
         self._select_backend(state)
-        self.info["dt"] = dt
+        self.info["dt"] = float(dt)
         self.info["dt_adaptive"] = self.adaptive
+        self.info["dt_statistics"] = OnlineStatistics()
         self.info["steps"] = 0
         self.info["stochastic"] = getattr(self.pde, "is_sde", False)
         self.info["use_mpi"] = True
@@ -169,91 +179,42 @@ class ExplicitMPISolver(EulerSolver):
         sub_state = self.mesh.extract_subfield(state)
         self.info["grid_decomposition"] = self.mesh.shape
 
-        if self.adaptive:
-            # create stepper with adaptive steps
-            adaptive_stepper: AdaptiveStepperType = self.backend.make_inner_stepper(
-                solver=self, stepper_style="adaptive", state=sub_state, dt=dt
+        # create inner stepper adaptive steps
+        # TODO: Use backend compilation
+        inner_stepper = self._make_inner_stepper(sub_state)
+        self._init_post_step_data()
+
+        def wrapped_stepper(state: TField, t_start: float, t_end: float) -> float:
+            """Advance `state` from `t_start` to `t_end` using adaptive steps."""
+            nonlocal dt  # `dt` stores value for the next call
+
+            # retrieve last post_step_data and continue with this
+            self.info["post_step_data"] = self.mesh.scatter(
+                self.info["post_step_data_list"]
             )
-            self.info["post_step_data"] = self._post_step_data_init
 
-            def wrapped_stepper(state: TField, t_start: float, t_end: float) -> float:
-                """Advance `state` from `t_start` to `t_end` using adaptive steps."""
-                nonlocal dt  # `dt` stores value for the next call
+            # distribute the end time and the field to all nodes
+            t_end = self.mesh.broadcast(t_end)
+            substate_data = self.mesh.split_field_data_mpi(state.data)
 
-                # retrieve last post_step_data for this node and continue with this
-                post_step_data = self.info["post_step_data"]
+            # Evolve the sub-state on each individual node. The nodes synchronize
+            # field data via special boundary conditions and they synchronize the
+            # maximal error via the error synchronizer. Apart from that, all nodes
+            # work independently.
+            t_last = inner_stepper(substate_data, t_start, t_end)
 
-                # distribute the end time and the field to all nodes
-                t_end = self.mesh.broadcast(t_end)
-                substate_data = self.mesh.split_field_data_mpi(state.data)
+            # check whether t_last is the same for all processes
+            t_list = self.mesh.gather(t_last)
+            if t_list is not None and not np.isclose(min(t_list), max(t_list)):
+                msg = f"Processes went out of sync: t_last={t_list}"
+                raise RuntimeError(msg)
 
-                # Evolve the sub-state on each individual node. The nodes synchronize
-                # field data via special boundary conditions and they synchronize the
-                # maximal error via the error synchronizer. Apart from that, all nodes
-                # work independently.
-                t_last, dt, steps = adaptive_stepper(
-                    substate_data,
-                    t_start,
-                    t_end,
-                    dt,
-                    self.info["dt_statistics"],
-                    post_step_data,
-                )
+            # collect the data from all nodes
+            post_step_data_list = self.mesh.gather(self.info["post_step_data"])
+            self.mesh.combine_field_data_mpi(substate_data, out=state.data)
 
-                # check whether dt is the same for all processes
-                dt_list = self.mesh.allgather(dt)
-                if not np.isclose(min(dt_list), max(dt_list)):
-                    # abort simulations in all nodes when they went out of sync
-                    msg = f"Processes went out of sync: dt={dt_list}"
-                    raise RuntimeError(msg)
+            if mpi.is_main:
+                self.info["post_step_data_list"] = post_step_data_list
+            return t_last
 
-                # collect the data from all nodes
-                post_step_data_list = self.mesh.gather(post_step_data)
-                self.mesh.combine_field_data_mpi(substate_data, out=state.data)
-
-                if mpi.is_main:
-                    self.info["steps"] += steps
-                    self.info["post_step_data_list"] = post_step_data_list
-                return t_last
-
-        else:
-            # create stepper with fixed steps
-            fixed_stepper: FixedStepperType = self.backend.make_inner_stepper(
-                solver=self, stepper_style="fixed", state=sub_state, dt=dt
-            )
-            self.info["post_step_data"] = self._post_step_data_init
-
-            def wrapped_stepper(state: TField, t_start: float, t_end: float) -> float:  # type: ignore
-                """Advance `state` from `t_start` to `t_end` using fixed steps."""
-                # retrieve last post_step_data and continue with this
-                post_step_data = self.info["post_step_data"]
-
-                # calculate number of steps (which is at least 1)
-                steps = max(1, round((t_end - t_start) / dt))
-
-                # distribute the number of steps and the field to all nodes
-                steps = self.mesh.broadcast(steps)
-                substate_data = self.mesh.split_field_data_mpi(state.data)
-
-                # Evolve the sub-state on each individual node. The nodes synchronize
-                # field data via special boundary conditions. Apart from that, all nodes
-                # work independently.
-                t_last = fixed_stepper(substate_data, t_start, steps, post_step_data)
-
-                # check whether t_last is the same for all processes
-                t_list = self.mesh.gather(t_last)
-                if t_list is not None and not np.isclose(min(t_list), max(t_list)):
-                    msg = f"Processes went out of sync: t_last={t_list}"
-                    raise RuntimeError(msg)
-
-                # collect the data from all nodes
-                post_step_data_list = self.mesh.gather(post_step_data)
-                self.mesh.combine_field_data_mpi(substate_data, out=state.data)
-
-                # store information in the main node
-                if mpi.is_main:
-                    self.info["steps"] += steps
-                    self.info["post_step_data_list"] = post_step_data_list
-                return t_last
-
-        return wrapped_stepper
+        return wrapped_stepper  # type: ignore

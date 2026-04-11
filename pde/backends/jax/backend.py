@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import numbers
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import jax
 import jax.numpy as jnp
@@ -29,7 +29,6 @@ if TYPE_CHECKING:
     from ...grids.boundaries.axes import BoundariesBase
     from ...grids.boundaries.local import BCBase
     from ...pdes import PDEBase
-    from ...solvers.base import SolverBase
     from ...tools.config import Config
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
@@ -85,6 +84,14 @@ class JaxBackend(BackendBase[jax.Array]):
             f"{self.__class__.__name__}(name={self.name!r}, "
             f"device={str(self.device)!r})"
         )
+
+    @property
+    def info(self) -> dict[str, Any]:
+        """dict: relevant information about the backend"""
+        info = super().info
+        info["device"] = self.device.device_kind
+        info["compile"] = self.config["compile"]
+        return info
 
     @property
     def device(self) -> jax.Device:
@@ -765,43 +772,3 @@ class JaxBackend(BackendBase[jax.Array]):
 
         # get the compiled right hand side
         return self.compile_function(rhs_native)
-
-    def make_inner_stepper(
-        self,
-        solver: SolverBase,
-        stepper_style: Literal["fixed", "adaptive"],
-        state: TField,
-        dt: float,
-    ) -> Callable:
-        """Return a stepper function using an explicit scheme.
-
-        Args:
-            solver (:class:`~pde.solvers.base.SolverBase`):
-                The solver instance, which determines how the stepper is constructed
-            stepper_style (str):
-                The style of the stepper, either "fixed" or "adaptive"
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-            dt (float):
-                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
-
-        Returns:
-            Function that can be called to advance the `state` from time `t_start` to
-            time `t_end`. The function call signature is `(state: numpy.ndarray,
-            t_start: float, t_end: float)`
-        """
-        solver.info["backend"]["device"] = self.device.device_kind
-        solver.info["backend"]["compile"] = self.config["compile"]
-
-        inner_stepper = super().make_inner_stepper(solver, stepper_style, state, dt)
-
-        def wrapped_stepper(
-            state_data: NumericArray, t_start: float, steps: int, post_step_data
-        ) -> float:
-            state_native = self.from_numpy(state_data)
-            t_final = inner_stepper(state_native, t_start, steps, post_step_data)
-            state_data[:] = self.to_numpy(state_native)
-            return t_final
-
-        return wrapped_stepper

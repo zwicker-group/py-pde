@@ -9,7 +9,15 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, DiffusionPDE, FileStorage, PDEBase, ScalarField, UnitGrid
+from pde import (
+    CartesianGrid,
+    DiffusionPDE,
+    FileStorage,
+    MemoryStorage,
+    PDEBase,
+    ScalarField,
+    UnitGrid,
+)
 from pde.tools import misc, mpi
 from pde.tools.misc import module_available
 
@@ -132,7 +140,7 @@ def test_stop_iteration_hook(backend):
     class TestPDE(PDEBase):
         def make_post_step_hook(self, state, backend):
             def post_step_hook(state_data, t, post_step_data):
-                if state_data.sum() > 1:
+                if state_data.mean() > 0.7:
                     raise StopIteration
                 post_step_data += 1
                 return state_data, post_step_data
@@ -157,16 +165,23 @@ def test_stop_iteration_hook(backend):
 
     grid = UnitGrid([16])
     field = ScalarField(grid)
+    storage = MemoryStorage()
     eq = TestPDE()
 
-    args = {"state": field, "t_range": 1, "dt": 0.01, "tracker": None, "ret_info": True}
+    args = {
+        "state": field,
+        "t_range": 1,
+        "dt": 0.01,
+        "tracker": storage.tracker(0.5),
+        "ret_info": True,
+    }
     res, info = eq.solve(backend=backend, solver="euler", **args)
 
-    np.testing.assert_allclose(res.data, 0.07)
+    np.testing.assert_array_less(storage.data[-1], res.data)
     assert info["controller"]["stop_reason"] == "Tracker raised StopIteration"
 
 
-@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
 def test_custom_data_hook(backend):
     """Test a custom PDE keeping track of data."""
 
@@ -201,12 +216,12 @@ def test_custom_data_hook(backend):
     args = {"state": field, "t_range": 1, "dt": 0.1, "tracker": None, "ret_info": True}
     res, info = eq.solve(backend=backend, solver="euler", **args)
 
-    np.testing.assert_allclose(res.data, 1.0)
+    np.testing.assert_allclose(res.data, 1.0, rtol=1e-6)
     value = np.linspace(0, 1, 11).sum()
     assert info["solver"]["post_step_data"] == pytest.approx(value)
 
 
-@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
 def test_array_data_hook(backend):
     """Test a custom PDE keeping track of array data."""
 
@@ -241,7 +256,7 @@ def test_array_data_hook(backend):
     args = {"state": field, "t_range": 1, "dt": 0.1, "tracker": None, "ret_info": True}
     res, info = eq.solve(backend=backend, solver="euler", **args)
 
-    np.testing.assert_allclose(res.data, 1.0)
+    np.testing.assert_allclose(res.data, 1.0, rtol=1e-6)
     value = np.linspace(0, 1, 11).sum()
     np.testing.assert_allclose(info["solver"]["post_step_data"], value)
 

@@ -156,3 +156,41 @@ class StepperHook(Protocol):
         Returns:
             tuple(state_data, post_step_data): Can be the same arrays as the input
         """
+
+
+class StepperType(Protocol):
+    """General stepper type working with py-pde fields."""
+
+    def __call__(self, state: TField, t_start: float, t_end: float) -> float:
+        """General stepper that advances the state given as a field.
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                The state, which will be updated in-place
+            t_start (float):
+                Initial time point
+            t_end (float):
+                Desired final time point
+
+        Returns:
+            float: the actual final time point
+        """
+
+
+class InnerStepperType(Protocol):
+    """General stepper type working with numpy arrays."""
+
+    def __call__(self, state_data: NumericArray, t_start: float, t_end: float) -> float:
+        """General stepper that advances the state given as a numpy array.
+
+        Args:
+            state_data (:class:`~numpy.ndarray`):
+                The state, which will be updated in-place
+            t_start (float):
+                Initial time point
+            t_end (float):
+                Desired final time point
+
+        Returns:
+            float: the actual final time point
+        """

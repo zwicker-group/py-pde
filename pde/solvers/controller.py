@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import datetime
 import logging
 import sys
@@ -177,6 +178,8 @@ class Controller:
 
         # initialize the stepper
         stepper = self.solver.make_stepper(state=state, dt=dt)
+        with contextlib.suppress(AttributeError):
+            self.info["backend"] = self.solver.backend.info
 
         # store intermediate profiling information before starting simulation
         prof_start_tracker = get_time()

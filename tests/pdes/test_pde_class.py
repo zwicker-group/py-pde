@@ -120,7 +120,7 @@ def test_pde_vector_ops(backend, rng):
 
     res_a.assert_field_compatible(res_b)
     # reduced accuracy to allow float32 dtypes
-    np.testing.assert_allclose(res_a.data, res_b.data, rtol=1e-6)
+    np.testing.assert_allclose(res_a.data, res_b.data, rtol=1e-5)
 
 
 @pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)

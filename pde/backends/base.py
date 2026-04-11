@@ -9,11 +9,9 @@ import inspect
 import logging
 from collections import defaultdict
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, overload
 
-from ..solvers import AdaptiveSolverBase
 from ..tools.config import Config, Parameter
-from ..tools.math import OnlineStatistics
 from ..tools.typing import (
     DataSetter,
     FloatingArray,
@@ -37,7 +35,7 @@ if TYPE_CHECKING:
     from ..pdes.base import PDEBase
     from ..solvers.base import SolverBase
     from ..tools.expressions import ExpressionBase
-    from ..tools.typing import BinaryOperatorImplType, OperatorImplType
+    from ..tools.typing import BinaryOperatorImplType, OperatorImplType, StepperType
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
@@ -120,6 +118,11 @@ class BackendBase(Generic[TNativeArray]):
     def __repr__(self) -> str:
         """Return concise string representation of this backend."""
         return f"{self.__class__.__name__}(name={self.name!r})"
+
+    @property
+    def info(self) -> dict[str, Any]:
+        """dict: relevant information about the backend"""
+        return {"name": self.name, "implementation": self.implementation}
 
     @overload
     def from_numpy(self, value: NumericArray) -> NativeArray: ...
@@ -545,42 +548,6 @@ class BackendBase(Generic[TNativeArray]):
         msg = f"PDE right hand side not defined for backend {self.name}"
         raise NotImplementedError(msg)
 
-    def make_inner_stepper(
-        self,
-        solver: SolverBase,
-        stepper_style: Literal["fixed", "adaptive"],
-        state: TField,
-        dt: float,
-    ) -> Callable:
-        """Return a stepper function using an explicit scheme.
-
-        Args:
-            solver (:class:`~pde.solvers.base.SolverBase`):
-                The solver instance, which determines how the stepper is constructed
-            stepper_style (str):
-                The style of the stepper, either "fixed" or "adaptive"
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-            dt (float):
-                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
-
-        Returns:
-            Function that can be called to advance the `state` from time `t_start` to
-            time `t_end`. The function call signature is `(state: numpy.ndarray,
-            t_start: float, t_end: float)`
-        """
-        solver.info["dt_statistics"] = OnlineStatistics()
-
-        assert solver.backend == self
-        if stepper_style == "fixed":
-            return solver._make_fixed_stepper(state, dt)
-        if stepper_style == "adaptive":
-            assert isinstance(solver, AdaptiveSolverBase)
-            return solver._make_adaptive_stepper(state)
-        msg = f"Backend cannot handle stepper style `{stepper_style}`"
-        raise NotImplementedError(msg)
-
     def make_expression_function(
         self,
         expression: ExpressionBase,
@@ -628,3 +595,37 @@ class BackendBase(Generic[TNativeArray]):
             return value
 
         return synchronize_value
+
+    def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
+        """Return a stepper function using an explicit scheme.
+
+        Args:
+            solver (:class:`~pde.solvers.base.SolverBase`):
+                The solver instance, which determines how the stepper is constructed
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        inner_stepper = solver._make_inner_stepper(state)
+
+        # We don't access self.pde directly since we might want to reuse the solver
+        # infrastructure for more general cases where a PDE is not defined.
+
+        def stepper(state: TField, t_start: float, t_end: float) -> float:
+            """Advance `state` from `t_start` to `t_end` using fixed steps."""
+            # push state data to native backend
+            state_native = solver.backend.from_numpy(state.data)
+            # call the stepper with fixed time steps
+            t_last = inner_stepper(state.data, t_start, t_end)
+            # retrieve data from native backend
+            state.data[:] = solver.backend.to_numpy(state_native)
+            return t_last
+
+        return stepper  # type: ignore
