@@ -11,7 +11,7 @@ import numpy as np
 
 from ...fields import DataFieldBase, VectorField
 from ...tools.typing import NumericArray
-from ..base import BackendBase, OperatorInfo, TFunc
+from ..base import BackendBase, OperatorInfo
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -28,6 +28,7 @@ if TYPE_CHECKING:
         NumberOrArray,
         OperatorType,
         TField,
+        TFunc,
     )
 
 

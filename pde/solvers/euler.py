@@ -51,7 +51,6 @@ class EulerSolver(AdaptiveSolverBase):
         """
         if self.pde.is_sde:
             # handle stochastic version of the pde
-            self.info["scheme"] = "euler-maruyama"
             rhs_pde = self.backend.make_pde_rhs(self.pde, state)
             rhs_noise = self._make_noise_realization(state)
 
@@ -70,7 +69,6 @@ class EulerSolver(AdaptiveSolverBase):
 
         else:
             # handle deterministic version of the pde
-            self.info["scheme"] = "euler"
             rhs_pde = self.backend.make_pde_rhs(self.pde, state)
 
             def stepper(state_data: NumericArray, t: float) -> NumericArray:
@@ -143,7 +141,6 @@ class EulerSolver(AdaptiveSolverBase):
 
                 # do single step with dt
                 step_large = state_cur + dt_step * rate
-
                 # do double step with half the time step
                 step_small = state_cur + 0.5 * dt_step * rate
 

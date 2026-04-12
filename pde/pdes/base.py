@@ -752,6 +752,15 @@ class SDEBase(PDEBase):
                     key = rng.key()
                     return scale * jrandom.normal(key, shape=data_shape)  # type: ignore
 
+            elif backend.implementation == "torch":
+                from ..backends.torch import TorchBackend
+                from ..backends.torch.utils import TorchGaussianNoise
+
+                assert isinstance(backend, TorchBackend)
+                noise_realization = TorchGaussianNoise(
+                    data_shape, dtype=backend.get_numpy_dtype(state.dtype), scale=scale
+                )
+
             else:
                 # assume that other backends support the numpy random number interface
 

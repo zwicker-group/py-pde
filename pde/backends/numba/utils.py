@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 import os
 import warnings
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any
 
 import numba as nb
 import numpy as np
@@ -35,11 +35,8 @@ from ...tools.typing import NumericArray
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ...tools.typing import Number
-
-
-if TYPE_CHECKING:
     from ...grids.base import GridBase
+    from ...tools.typing import Number, TFunc
 
 # numba version as a list of integers
 NUMBA_VERSION = [int(v) for v in nb.__version__.split(".")[:2]]
@@ -193,9 +190,6 @@ class Counter:
 
 # global variable counting the number of compilations
 JIT_COUNT = Counter()
-
-
-TFunc = TypeVar("TFunc", bound="Callable")
 
 
 def numba_environment() -> dict[str, Any]:

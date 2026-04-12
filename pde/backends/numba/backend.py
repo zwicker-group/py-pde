@@ -38,14 +38,14 @@ if TYPE_CHECKING:
         FloatingArray,
         GhostCellSetter,
         InexactArray,
-        InnerStepperType,
         Number,
         NumberOrArray,
         NumericArray,
         OperatorType,
+        StepperType,
         TField,
+        TFunc,
     )
-    from ..base import TFunc
 
 
 class NumbaBackend(NumpyBackend):
@@ -1429,7 +1429,26 @@ class NumbaBackend(NumpyBackend):
 
         return self.compile_function(function)  # type: ignore
 
-    def make_inner_stepper(self, solver: SolverBase, state: TField) -> InnerStepperType:
+    def make_mpi_synchronizer(
+        self, operator: int | str = "MAX"
+    ) -> Callable[[float], float]:
+        """Return function that synchronizes values between multiple MPI processes.
+
+        Warning:
+            The default implementation does not synchronize anything. This is simply a
+            hook, which can be used by backends that support MPI
+
+        Args:
+            operator (str or int):
+                Flag determining how the value from multiple nodes is combined.
+                Possible values include "MAX", "MIN", and "SUM".
+
+        Returns:
+            Function that can be used to synchronize values across nodes
+        """
+        return register_jitable(super().make_mpi_synchronizer(operator=operator))  # type: ignore
+
+    def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
         """Return a stepper function using an explicit scheme.
 
         Args:
@@ -1449,23 +1468,15 @@ class NumbaBackend(NumpyBackend):
         from ._solvers import make_inner_stepper
 
         assert solver.backend == self
-        return make_inner_stepper(solver, state)
 
-    def make_mpi_synchronizer(
-        self, operator: int | str = "MAX"
-    ) -> Callable[[float], float]:
-        """Return function that synchronizes values between multiple MPI processes.
+        inner_stepper = make_inner_stepper(solver, state)
 
-        Warning:
-            The default implementation does not synchronize anything. This is simply a
-            hook, which can be used by backends that support MPI
+        # We don't access self.pde directly since we might want to reuse the solver
+        # infrastructure for more general cases where a PDE is not defined.
 
-        Args:
-            operator (str or int):
-                Flag determining how the value from multiple nodes is combined.
-                Possible values include "MAX", "MIN", and "SUM".
+        def stepper(state: TField, t_start: float, t_end: float) -> float:
+            """Advance `state` from `t_start` to `t_end` using fixed steps."""
+            # call the stepper with field data directly
+            return inner_stepper(state.data, t_start, t_end)
 
-        Returns:
-            Function that can be used to synchronize values across nodes
-        """
-        return register_jitable(super().make_mpi_synchronizer(operator=operator))  # type: ignore
+        return stepper  # type: ignore

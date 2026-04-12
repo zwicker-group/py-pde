@@ -8,7 +8,6 @@ from __future__ import annotations
 import inspect
 import logging
 from collections import defaultdict
-from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, overload
 
 from ..tools.config import Config, Parameter
@@ -28,6 +27,8 @@ from ..tools.typing import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     from numpy.typing import DTypeLike
 
     from ..fields import DataFieldBase
@@ -35,7 +36,12 @@ if TYPE_CHECKING:
     from ..pdes.base import PDEBase
     from ..solvers.base import SolverBase
     from ..tools.expressions import ExpressionBase
-    from ..tools.typing import BinaryOperatorImplType, OperatorImplType, StepperType
+    from ..tools.typing import (
+        BinaryOperatorImplType,
+        OperatorImplType,
+        StepperType,
+        TFunc,
+    )
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
@@ -49,7 +55,6 @@ _RESERVED_BACKEND_NAMES: set[str] = {
     "undetermined",
     "unknown",
 }
-TFunc = TypeVar("TFunc", bound=Callable)
 TValue = TypeVar("TValue")
 
 
@@ -613,19 +618,17 @@ class BackendBase(Generic[TNativeArray]):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
-        inner_stepper = solver._make_inner_stepper(state)
+        if self.copy_data:
+            self._logger.warning(
+                "Backend requires that data is copied, so it likely needs to implement "
+                "its own `make_stepper` method to control data."
+            )
 
-        # We don't access self.pde directly since we might want to reuse the solver
-        # infrastructure for more general cases where a PDE is not defined.
+        inner_stepper = solver._make_inner_stepper(state)
 
         def stepper(state: TField, t_start: float, t_end: float) -> float:
             """Advance `state` from `t_start` to `t_end` using fixed steps."""
-            # push state data to native backend
-            state_native = solver.backend.from_numpy(state.data)
-            # call the stepper with fixed time steps
-            t_last = inner_stepper(state.data, t_start, t_end)
-            # retrieve data from native backend
-            state.data[:] = solver.backend.to_numpy(state_native)
-            return t_last
+            # call the stepper with field data directly
+            return inner_stepper(state.data, t_start, t_end)
 
         return stepper  # type: ignore

@@ -17,7 +17,7 @@ from ...fields import VectorField
 from ...grids import GridBase
 from ...grids.boundaries.axes import BoundariesList
 from ...tools.cache import cached_method
-from ..base import BackendBase, TFunc
+from ..base import BackendBase
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -38,8 +38,8 @@ if TYPE_CHECKING:
         OperatorInfo,
         OperatorType,
         TField,
+        TFunc,
     )
-    from ..base import TFunc
     from .typing import JaxDataSetter, JaxGhostCellSetter
 
 

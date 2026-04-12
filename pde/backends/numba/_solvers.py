@@ -5,22 +5,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import numba as nb
 import numpy as np
 
-from ...solvers import AdamsBashforthSolver
+from ...solvers import AdamsBashforthSolver, EulerSolver
 from ...solvers.base import AdaptiveSolverBase, SolverBase, _make_dt_adjuster
-from ...tools.typing import InnerStepperType, NumericArray, StepperHook, TField
+from .overloads import OnlineStatistics, OnlineStatistics_np
 from .utils import jit
 
 if TYPE_CHECKING:
-    from ...tools.math import OnlineStatistics
-
-
-SingleStepType = Callable[[NumericArray, float], None]
+    from ...tools.typing import InnerStepperType, NumericArray, StepperHook, TField
 
 
 def _make_post_step_hook(solver: SolverBase, state: TField) -> StepperHook:
@@ -112,9 +108,9 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> InnerStepperType:
     def fixed_stepper(state_data: NumericArray, t_start: float, t_end: float) -> float:
         """Advance `state` from `t_start` to `t_end` using fixed steps."""
         steps = max(1, round((t_end - t_start) / dt))
-        post_hook_data = solver.info["post_hook_data"]
+        post_step_data = solver.info["post_step_data"]
         # call the stepper with fixed time steps
-        t_last: float = compiled_stepper(state_data, t_start, steps, post_hook_data)
+        t_last: float = compiled_stepper(state_data, t_start, steps, post_step_data)
         solver.info["steps"] += steps
         return t_last
 
@@ -215,6 +211,10 @@ def _make_adaptive_stepper_general(
         time `t_end`. The function call signature is `(state: numpy.ndarray,
         t_start: float, t_end: float)`
     """
+    # add extra information
+    solver.info["dt_adaptive"] = solver.adaptive
+    solver.info["dt_statistics"] = OnlineStatistics()
+
     # obtain functions determining how the PDE is evolved
     single_step_error = solver._make_single_step_error_estimate(state)
     signature_single_step = (nb.typeof(state.data), nb.double, nb.double)
@@ -244,7 +244,7 @@ def _make_adaptive_stepper_general(
         t_start: float,
         t_end: float,
         dt_init: float,
-        dt_stats: OnlineStatistics | None = None,
+        dt_stats: OnlineStatistics_np | None = None,
         post_step_data=None,
     ) -> tuple[float, float, int]:
         """Adaptive stepper that advances the state in time."""
@@ -307,160 +307,142 @@ def _make_adaptive_stepper_general(
     return adaptive_stepper
 
 
-# def _make_adaptive_stepper_euler(
-#     solver: EulerSolver, state: TField
-# ) -> InnerStepperType:
-#     """Return a stepper function using an explicit scheme.
+def _make_adaptive_stepper_euler(
+    solver: AdaptiveSolverBase, state: TField
+) -> InnerStepperType:
+    """Return a stepper function using an explicit scheme.
 
-#     Args:
-#         solver (:class:`~pde.solvers.explicit.EulerSolver`):
-#             The solver instance, which determines how the stepper is constructed
-#         state (:class:`~pde.fields.base.FieldBase`):
-#             An example for the state from which the grid and other information can
-#             be extracted
+    Args:
+        solver (:class:`~pde.solvers.explicit.EulerSolver`):
+            The solver instance, which determines how the stepper is constructed
+        state (:class:`~pde.fields.base.FieldBase`):
+            An example for the state from which the grid and other information can
+            be extracted
 
-#     Returns:
-#         Function that can be called to advance the `state` from time `t_start` to
-#         time `t_end`. The function call signature is `(state: numpy.ndarray,
-#         t_start: float, t_end: float)`
-#     """
-#     if getattr(solver.pde, "is_sde", False):
-#         msg = "Cannot use adaptive stepper with stochastic equation"
-#         raise RuntimeError(msg)
+    Returns:
+        Function that can be called to advance the `state` from time `t_start` to
+        time `t_end`. The function call signature is `(state: numpy.ndarray,
+        t_start: float, t_end: float)`
+    """
+    # add extra information
+    solver.info["dt_adaptive"] = solver.adaptive
+    solver.info["dt_statistics"] = OnlineStatistics()
 
-#     # obtain functions determining how the PDE is evolved
-#     single_step_error = solver._make_single_step_error_estimate(state)
-#     signature_single_step = (nb.typeof(state.data), nb.double, nb.double)
-#     single_step_error = jit(signature_single_step)(single_step_error)
-#     post_step_hook = _make_post_step_hook(solver, state)
-#     sync_errors = solver.backend.make_mpi_synchronizer(operator="MAX")
+    # obtain functions determining how the PDE is evolved
+    rhs_pde = solver.backend.make_pde_rhs(solver.pde, state)
+    single_step_error = solver._make_single_step_error_estimate(state)
+    signature_single_step = (nb.typeof(state.data), nb.double, nb.double)
+    single_step_error = jit(signature_single_step)(single_step_error)
+    post_step_hook = _make_post_step_hook(solver, state)
+    sync_errors = solver.backend.make_mpi_synchronizer(operator="MAX")
 
-#     # obtain auxiliary functions
-#     signature = (nb.double, nb.double)
-#     adjust_dt = jit(signature)(_make_dt_adjuster(solver.dt_min, solver.dt_max))
-#     tolerance = solver.tolerance
-#     dt_min = solver.dt_min
+    # obtain auxiliary functions
+    signature = (nb.double, nb.double)
+    adjust_dt = jit(signature)(_make_dt_adjuster(solver.dt_min, solver.dt_max))
+    tolerance = solver.tolerance
+    dt_min = solver.dt_min
 
-#     # provide compiled function for innermost loop
-#     compiled_stepper_signature = (
-#         nb.typeof(state.data),
-#         nb.double,
-#         nb.double,
-#         nb.double,
-#         nb.typeof(solver.info["dt_statistics"]),
-#         nb.typeof(solver.info["post_step_data"]),
-#     )
+    # provide compiled function for innermost loop
+    compiled_stepper_signature = (
+        nb.typeof(state.data),
+        nb.double,
+        nb.double,
+        nb.double,
+        nb.typeof(solver.info["dt_statistics"]),
+        nb.typeof(solver.info["post_step_data"]),
+    )
 
-#     @jit(compiled_stepper_signature)
-#     def compiled_stepper(
-#         state_data: NumericArray,
-#         t_start: float,
-#         t_end: float,
-#         dt_init: float,
-#         dt_stats: OnlineStatistics | None = None,
-#         post_step_data=None,
-#     ) -> tuple[float, float, int]:
-#         """Adaptive stepper that advances the state in time."""
-#         dt_opt = dt_init
-#         rate = rhs_pde(state_data, t_start)  # calculate initial rate
+    @jit(compiled_stepper_signature)
+    def compiled_stepper(
+        state_data: NumericArray,
+        t_start: float,
+        t_end: float,
+        dt_init: float,
+        dt_stats: OnlineStatistics_np | None = None,
+        post_step_data=None,
+    ) -> tuple[float, float, int]:
+        """Adaptive stepper that advances the state in time."""
+        state_cur = state_data
+        dt_opt = dt_init
+        rate = rhs_pde(state_data, t_start)  # calculate initial rate
 
-#         t = t_start
-#         steps = 0
-#         while True:
-#             # use a smaller (but not too small) time step if close to t_end
-#             dt_step = max(min(dt_opt, t_end - t), dt_min)
+        t = t_start
+        steps = 0
+        while True:
+            # use a smaller (but not too small) time step if close to t_end
+            dt_step = max(min(dt_opt, t_end - t), dt_min)
 
-#             # try two different step sizes to estimate errors
-#             new_state, error = single_step_error(state_data, t, dt_step)
+            # do single step with dt
+            step_large = state_cur + dt_step * rate
+            # do double step with half the time step
+            step_small = state_cur + 0.5 * dt_step * rate
 
-#             error_rel = error / tolerance  # normalize error to given tolerance
-#             # synchronize the error between all processes (necessary for MPI)
-#             error_rel = sync_errors(error_rel)
+            try:
+                # calculate rate at the midpoint of the double step
+                rate_midpoint = rhs_pde(step_small, t + 0.5 * dt_step)
+            except Exception:
+                # an exception likely signals that rate could not be calculated
+                error_rel = np.nan
+            else:
+                # advance to end of double step
+                step_small += 0.5 * dt_step * rate_midpoint
 
-#             # do the step if the error is sufficiently small
-#             if error_rel <= 1:
-#                 steps += 1
-#                 t += dt_step
-#                 state_data[...] = new_state
-#                 state_data, post_step_data = post_step_hook(
-#                     state_data, t, post_step_data
-#                 )
+                # calculate maximal error
+                error = np.abs(step_large - step_small).max()
+                error_rel = error / tolerance  # normalize error to given tolerance
 
-#                 if dt_stats is not None:
-#                     dt_stats.add(dt_step)
+            # synchronize the error between all processes (necessary for MPI)
+            error_rel = sync_errors(error_rel)
 
-#             if t < t_end:
-#                 # adjust the time step and continue (happens in every MPI process)
-#                 dt_opt = adjust_dt(dt_step, error_rel)
-#             else:
-#                 break  # return to the controller
+            if error_rel <= 1:  # error is sufficiently small
+                try:
+                    # calculating the rate at putative new step
+                    rate = rhs_pde(step_small, t)
+                except Exception:
+                    # calculating the rate failed => retry with smaller dt
+                    error_rel = np.nan
+                else:
+                    # everything worked => do the step
+                    steps += 1
+                    t += dt_step
+                    state_cur, post_step_data = post_step_hook(
+                        step_small, t, post_step_data
+                    )
+                    if dt_stats is not None:
+                        dt_stats.add(dt_step)
 
-#         return t, dt_opt, steps
+            if t < t_end:
+                # adjust the time step and continue
+                dt_opt = adjust_dt(dt_step, error_rel)
+            else:
+                break  # return to the controller
 
-#     def adaptive_stepper(
-#         state_data: NumericArray, t_start: float, t_end: float
-#     ) -> tuple[NumericArray, float]:
-#         """Adaptive stepper that advances the state in time."""
-#         dt_opt = solver.info["dt"]  # time step from last step
+        state_data[:] = state_cur
+        return t, dt_opt, steps
 
-#         # call compiled stepper
-#         t_final, dt_opt, steps = compiled_stepper(
-#             state_data,
-#             t_start,
-#             t_end,
-#             dt_init=dt_opt,
-#             dt_stats=solver.info["dt_statistics"],
-#             post_step_data=solver.info["post_step_data"],
-#         )
+    def adaptive_stepper(
+        state_data: NumericArray, t_start: float, t_end: float
+    ) -> float:
+        """Adaptive stepper that advances the state in time."""
+        dt_opt = solver.info["dt"]  # time step from last step
 
-#         solver.info["dt"] = dt_opt  # save last optimal time step
-#         solver.info["steps"] += steps
-#         return state_data, t_final
+        # call compiled stepper
+        t_final: float
+        t_final, dt_opt, steps = compiled_stepper(
+            state_data,
+            t_start,
+            t_end,
+            dt_init=dt_opt,
+            dt_stats=solver.info["dt_statistics"],
+            post_step_data=solver.info["post_step_data"],
+        )
 
-#     solver._logger.info("Initialized adaptive stepper")
-#     return adaptive_stepper
+        solver.info["dt"] = dt_opt  # save last optimal time step
+        solver.info["steps"] += steps
+        return t_final
 
-
-# def _make_adaptive_stepper_euler_old(
-#     solver: EulerSolver, state: TField
-# ) -> InnerStepperType:
-#     """Return a stepper function using an explicit scheme.
-
-#     Args:
-#         solver (:class:`~pde.solvers.explicit.EulerSolver`):
-#             The solver instance, which determines how the stepper is constructed
-#         state (:class:`~pde.fields.base.FieldBase`):
-#             An example for the state from which the grid and other information can
-#             be extracted
-
-#     Returns:
-#         Function that can be called to advance the `state` from time `t_start` to
-#         time `t_end`. The function call signature is `(state: numpy.ndarray,
-#         t_start: float, t_end: float)`
-#     """
-#     if nb.config.DISABLE_JIT:
-#         # this can be used to debug numba implementations and for test coverage checks
-#         return solver._make_inner_stepper(state)
-#     # create compiled function for adjusting the time step
-#     adjust_dt = _make_dt_adjuster(solver.dt_min, solver.dt_max)
-#     adjust_signature = (nb.double, nb.double)
-#     adjust_dt = jit(adjust_signature)(adjust_dt)
-
-#     # create the adaptive stepper and compile it
-#     stepper = solver._make_inner_stepper(
-#         state,
-#         post_step_hook=_make_post_step_hook(solver, state),
-#         adjust_dt=adjust_dt,
-#     )
-#     signature = (
-#         nb.typeof(state.data),
-#         nb.double,
-#         nb.double,
-#         nb.double,
-#         nb.typeof(solver.info["dt_statistics"]),
-#         nb.typeof(solver.info["post_step_data"]),
-#     )
-#     return jit(signature)(stepper)  # type: ignore
+    solver._logger.info("Initialized adaptive stepper")
+    return adaptive_stepper
 
 
 def make_inner_stepper(solver: SolverBase, state: TField) -> InnerStepperType:
@@ -481,9 +463,8 @@ def make_inner_stepper(solver: SolverBase, state: TField) -> InnerStepperType:
     # get the actual inner stepper
     if isinstance(solver, AdaptiveSolverBase) and solver.adaptive:
         # dealing with an adaptive stepper
-        # TODO: Implement special case of adaptive euler solver
-        # if isinstance(solver, EulerSolver) and solver.adaptive:
-        #     return _make_adaptive_stepper_euler(solver, state)
+        if isinstance(solver, EulerSolver) and solver.adaptive:
+            return _make_adaptive_stepper_euler(solver, state)
         return _make_adaptive_stepper_general(solver, state)
 
     # dealing with an fixed stepper

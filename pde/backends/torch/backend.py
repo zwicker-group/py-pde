@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import numbers
-import warnings
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
@@ -15,8 +14,9 @@ import torch
 
 from ...fields import VectorField
 from ...grids import GridBase
-from ..base import BackendBase, OperatorInfo, TFunc
-from .utils import NUMPY_TO_TORCH_DTYPE, TORCH_TO_NUMPY_DTYPE
+from ...pdes import PDEBase, SDEBase
+from ..base import BackendBase, OperatorInfo
+from .typing import NUMPY_TO_TORCH_DTYPE, TORCH_TO_NUMPY_DTYPE, TorchRHSType
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -26,11 +26,10 @@ if TYPE_CHECKING:
     from ...fields import DataFieldBase
     from ...grids import GridBase
     from ...grids.boundaries.axes import BoundariesBase
-    from ...pdes import PDEBase
+    from ...solvers import SolverBase
     from ...tools.config import Config
     from ...tools.expressions import ExpressionBase
-    from ...tools.typing import NumberOrArray, NumericArray, TField
-    from ..base import TFunc
+    from ...tools.typing import NumberOrArray, NumericArray, StepperType, TField, TFunc
     from ..numpy.backend import OperatorInfo
     from .operators.common import TorchDifferentialOperator
 
@@ -178,7 +177,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         # only supports narrower types
         return TORCH_TO_NUMPY_DTYPE[self.get_torch_dtype(dtype)]
 
-    def from_numpy(self, value: Any) -> Any:
+    def from_numpy(self, value: Any) -> torch.Tensor:  # type: ignore
         """Convert values from numpy to torch representation.
 
         This method also ensures that the value is copied to the selected device.
@@ -479,9 +478,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
 
         return outer
 
-    def make_pde_rhs(
-        self, eq: PDEBase, state: TField
-    ) -> Callable[[torch.Tensor, float], torch.Tensor]:
+    def make_pde_rhs(self, eq: PDEBase, state: TField) -> TorchRHSType:  # type: ignore
         """Return a function for evaluating the right hand side of the PDE.
 
         Args:
@@ -489,45 +486,42 @@ class TorchBackend(BackendBase[torch.Tensor]):
                 The object describing the differential equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which information can be extracted
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
 
         Returns:
             Function returning deterministic part of the right hand side of the PDE.
         """
-        # the following method is deprecated since 2026-03-02
         try:
-            make_rhs = eq.make_pde_rhs_torch  # type: ignore
-        except AttributeError:
-            # method is not implemented, which should be the default
-            rhs_native = None
-        else:
-            warnings.warn(
-                "`eq.make_pde_rhs_torch` method is deprecated. Implement "
-                "`eq.make_evolution_rate` instead.",
-                DeprecationWarning,
-                stacklevel=2,
+            make_rhs = eq.make_evolution_rate
+        except AttributeError as err:
+            msg = (
+                "The right-hand side of the PDE is not implemented using the "
+                f"`{self.name}` backend. To add the implementation, provide the "
+                "method `make_evolution_rate`, which should return a compilable "
+                "function calculating the evolution rate."
             )
-            rhs_native = make_rhs(state)
-
-        if rhs_native is None:
-            try:
-                make_rhs = eq.make_evolution_rate
-            except AttributeError as err:
-                msg = (
-                    "The right-hand side of the PDE is not implemented using the "
-                    f"`{self.name}` backend. To add the implementation, provide the "
-                    "method `make_evolution_rate`, which should return a compilable "
-                    "function calculating the evolution rate."
-                )
-                raise NotImplementedError(msg) from err
-            else:
-                rhs_native = make_rhs(state, backend=self)
+            raise NotImplementedError(msg) from err
+        else:
+            rhs_native = make_rhs(state, backend=self)
 
         # get the compiled right hand side
-        return self.compile_function(rhs_native)
+        return self.compile_function(rhs_native)  # type: ignore
+
+    def _make_pde_rhs_noise(self, eq: PDEBase, state: TField) -> TorchRHSType:
+        """Return a function for evaluating the noise of the PDE.
+
+        Args:
+            eq (:class:`~pde.pdes.base.PDEBase`):
+                The object describing the differential equation
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which information can be extracted
+
+        Returns:
+            Function returning deterministic part of the right hand side of the PDE.
+        """
+        assert isinstance(eq, SDEBase)
+        rhs_noise_native = eq.make_noise_realization(state, backend=self)
+        # get the compiled right hand side
+        return self.compile_function(rhs_noise_native)  # type: ignore
 
     def make_expression_function(
         self,
@@ -613,3 +607,39 @@ class TorchBackend(BackendBase[torch.Tensor]):
         else:
             result = func
         return self.compile_function(result)
+
+    def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
+        """Return a stepper function using an explicit scheme.
+
+        Args:
+            solver (:class:`~pde.solvers.base.SolverBase`):
+                The solver instance, which determines how the stepper is constructed
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        from ._solvers import make_inner_stepper
+
+        assert solver.backend == self
+
+        # create the Torch module that calculates the right hand side
+        inner_stepper = make_inner_stepper(solver, state)
+
+        def stepper(state: TField, t_start: float, t_end: float) -> float:
+            """Advance `state` from `t_start` to `t_end` using fixed steps."""
+            # push state data to native backend
+            state_tensor: torch.Tensor = solver.backend.from_numpy(state.data)  # type: ignore
+            # call the stepper with fixed time steps
+            state_tensor, t_last = inner_stepper(state_tensor, t_start, t_end)
+            # retrieve data from native backend
+            state.data[:] = solver.backend.to_numpy(state_tensor)
+            return t_last
+
+        return stepper  # type: ignore

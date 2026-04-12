@@ -35,6 +35,7 @@ if TYPE_CHECKING:
         StepperHook,
         StepperType,
         TField,
+        TNativeArray,
     )
 
 
@@ -213,14 +214,15 @@ class SolverBase:
             # hook function is not necessary or was not supplied -> provide no-op
 
             def post_step_hook(
-                state_data: NumericArray, t: float, post_step_data: NumericArray
-            ):
+                state_data: TNativeArray, t: float, post_step_data: Any
+            ) -> tuple[TNativeArray, Any]:
                 """Default hook function does nothing."""
-                return state_data, None  # `None` indicates lack of `post_step_data`
+                return (state_data, post_step_data)
 
-            self.info["post_step_data"] = None
+            self.info["post_step_data"] = None  # no data for absent hook
             self._logger.debug("No post-step hook defined")
 
+        assert "post_step_data" in self.info
         return post_step_hook  # type: ignore
 
     def _make_single_step_fixed_dt(
@@ -328,7 +330,7 @@ class SolverBase:
         """Select backend automatically based on implemented PDE."""
         if isinstance(self._backend, str):
             self._backend = self.pde.determine_backend(state, self._backend)
-        self.info["backend"] = {"name": self.backend_name}
+        self.info["backend"] = self.backend.info
 
     def make_stepper(self, state: TField, dt: float | None = None) -> StepperType:
         """Return a stepper function using an explicit scheme.
@@ -413,7 +415,7 @@ class AdaptiveSolverBase(SolverBase):
             `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
         if self.pde.is_sde:
-            msg = "Deterministic stepper does not support stochastic equations"
+            msg = "Adaptive stepper does not support stochastic equations"
             raise RuntimeError(msg)
 
         rhs_pde = self.backend.make_pde_rhs(self.pde, state)

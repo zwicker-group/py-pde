@@ -64,7 +64,6 @@ class ImplicitSolver(SolverBase):
             raise RuntimeError(msg)
 
         self.info["function_evaluations"] = 0
-        self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
 
         rhs = self.backend.make_pde_rhs(self.pde, state)
@@ -121,7 +120,6 @@ class ImplicitSolver(SolverBase):
                 Time step of the implicit step
         """
         self.info["function_evaluations"] = 0
-        self.info["scheme"] = "implicit-euler-maruyama"
         self.info["stochastic"] = True
 
         # get the function that calculates the noise

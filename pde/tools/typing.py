@@ -49,6 +49,9 @@ TField = TypeVar("TField", "FieldCollection", "DataFieldBase")
 NativeArray = Union[NumericArray, "Tensor", "Array"]
 TNativeArray = TypeVar("TNativeArray", NumericArray, "Tensor", "Array")
 
+# generic array types that work for various fields or arrays
+TFunc = TypeVar("TFunc", bound=Callable)
+
 
 class OperatorInfo(NamedTuple):
     """Stores information about an operator."""
@@ -144,8 +147,8 @@ class DataSetter(Protocol):
 
 class StepperHook(Protocol):
     def __call__(
-        self, state_data: NumericArray, t: float, post_step_data: NumericArray
-    ) -> tuple[NumericArray, NumericArray]:
+        self, state_data: TNativeArray, t: float, post_step_data: Any
+    ) -> tuple[TNativeArray, Any]:
         """Function analyzing and potentially modifying the current state.
 
         Args:

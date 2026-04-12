@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from pde import (
+    CallbackTracker,
     CartesianGrid,
     DiffusionPDE,
     FileStorage,
@@ -134,8 +135,12 @@ def test_custom_pde_mpi(rng):
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
-def test_stop_iteration_hook(backend):
+@pytest.mark.parametrize("adaptive", [False])
+def test_stop_iteration_hook(backend, adaptive):
     """Test a custom PDE raising StopIteration in a hook."""
+
+    if backend.implementation == "torch":
+        backend.compile_options["fullgraph"] = False
 
     class TestPDE(PDEBase):
         def make_post_step_hook(self, state, backend):
@@ -172,7 +177,11 @@ def test_stop_iteration_hook(backend):
         "state": field,
         "t_range": 1,
         "dt": 0.01,
-        "tracker": storage.tracker(0.5),
+        "adaptive": adaptive,
+        "tracker": [
+            storage.tracker(0.5),
+            CallbackTracker(lambda state, time: None, 0.1),
+        ],
         "ret_info": True,
     }
     res, info = eq.solve(backend=backend, solver="euler", **args)

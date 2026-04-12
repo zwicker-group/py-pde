@@ -772,7 +772,7 @@ class PDE(SDEBase):
         # this is the outermost function
         def evolution_rate(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
             data_tpl = get_data_tuple(state_data)
-            out = torch.empty(data_shape, dtype=dtype)
+            out = torch.empty(data_shape, dtype=dtype, device=state_data.device)
             for i, rhs in enumerate(rhs_list):
                 out[starts[i] : stops[i]] = rhs(*data_tpl, t)
             return out

@@ -22,7 +22,7 @@ import functools
 import logging
 import numbers
 from hashlib import sha1
-from typing import TYPE_CHECKING, Any, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 from scipy import sparse
@@ -31,7 +31,7 @@ from typing_extensions import Self
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
-TFunc = TypeVar("TFunc", bound="Callable")
+    from .typing import TFunc
 
 
 def objects_equal(a, b) -> bool:
