@@ -77,7 +77,6 @@ def backend(request):
     """
     if request.param == "numba":
         # a numba backend
-        pytest.skip("TEMPORARILY")
         if not module_available("numba"):
             pytest.skip("`numba` is not available")
         backend = get_backend("numba")
@@ -103,7 +102,6 @@ def backend(request):
 
     else:
         # try loading a generic backend by name
-        pytest.skip("TEMPORARILY")
         backend = get_backend(request.param)
 
     return backend

@@ -1111,8 +1111,8 @@ class NumbaBackend(NumpyBackend):
                     msg = "Point lies outside the grid domain"
                     raise DomainError(msg)
 
-                data[..., c_li] += w_l * amount / cell_volume(c_li)
-                data[..., c_hi] += w_h * amount / cell_volume(c_hi)
+                data[..., c_li] += w_l * amount / cell_volume(c_li)  # type: ignore
+                data[..., c_hi] += w_h * amount / cell_volume(c_hi)  # type: ignore
 
         elif grid.num_axes == 2:
             # specialize for 2-dimensional interpolation
@@ -1150,14 +1150,14 @@ class NumbaBackend(NumpyBackend):
                     raise DomainError(msg)
 
                 cell_vol = cell_volume(c_xli, c_yli)
-                data[..., c_xli, c_yli] += w_xl * w_yl * amount / cell_vol
+                data[..., c_xli, c_yli] += w_xl * w_yl * amount / cell_vol  # type: ignore
                 cell_vol = cell_volume(c_xli, c_yhi)
-                data[..., c_xli, c_yhi] += w_xl * w_yh * amount / cell_vol
+                data[..., c_xli, c_yhi] += w_xl * w_yh * amount / cell_vol  # type: ignore
 
                 cell_vol = cell_volume(c_xhi, c_yli)
-                data[..., c_xhi, c_yli] += w_xh * w_yl * amount / cell_vol
+                data[..., c_xhi, c_yli] += w_xh * w_yl * amount / cell_vol  # type: ignore
                 cell_vol = cell_volume(c_xhi, c_yhi)
-                data[..., c_xhi, c_yhi] += w_xh * w_yh * amount / cell_vol
+                data[..., c_xhi, c_yhi] += w_xh * w_yh * amount / cell_vol  # type: ignore
 
         elif grid.num_axes == 3:
             # specialize for 3-dimensional interpolation
@@ -1199,24 +1199,24 @@ class NumbaBackend(NumpyBackend):
                     raise DomainError(msg)
 
                 cell_vol = cell_volume(c_xli, c_yli, c_zli)
-                data[..., c_xli, c_yli, c_zli] += w_xl * w_yl * w_zl * amount / cell_vol
+                data[..., c_xli, c_yli, c_zli] += w_xl * w_yl * w_zl * amount / cell_vol  # type: ignore
                 cell_vol = cell_volume(c_xli, c_yli, c_zhi)
-                data[..., c_xli, c_yli, c_zhi] += w_xl * w_yl * w_zh * amount / cell_vol
+                data[..., c_xli, c_yli, c_zhi] += w_xl * w_yl * w_zh * amount / cell_vol  # type: ignore
 
                 cell_vol = cell_volume(c_xli, c_yhi, c_zli)
-                data[..., c_xli, c_yhi, c_zli] += w_xl * w_yh * w_zl * amount / cell_vol
+                data[..., c_xli, c_yhi, c_zli] += w_xl * w_yh * w_zl * amount / cell_vol  # type: ignore
                 cell_vol = cell_volume(c_xli, c_yhi, c_zhi)
-                data[..., c_xli, c_yhi, c_zhi] += w_xl * w_yh * w_zh * amount / cell_vol
+                data[..., c_xli, c_yhi, c_zhi] += w_xl * w_yh * w_zh * amount / cell_vol  # type: ignore
 
                 cell_vol = cell_volume(c_xhi, c_yli, c_zli)
-                data[..., c_xhi, c_yli, c_zli] += w_xh * w_yl * w_zl * amount / cell_vol
+                data[..., c_xhi, c_yli, c_zli] += w_xh * w_yl * w_zl * amount / cell_vol  # type: ignore
                 cell_vol = cell_volume(c_xhi, c_yli, c_zhi)
-                data[..., c_xhi, c_yli, c_zhi] += w_xh * w_yl * w_zh * amount / cell_vol
+                data[..., c_xhi, c_yli, c_zhi] += w_xh * w_yl * w_zh * amount / cell_vol  # type: ignore
 
                 cell_vol = cell_volume(c_xhi, c_yhi, c_zli)
-                data[..., c_xhi, c_yhi, c_zli] += w_xh * w_yh * w_zl * amount / cell_vol
+                data[..., c_xhi, c_yhi, c_zli] += w_xh * w_yh * w_zl * amount / cell_vol  # type: ignore
                 cell_vol = cell_volume(c_xhi, c_yhi, c_zhi)
-                data[..., c_xhi, c_yhi, c_zhi] += w_xh * w_yh * w_zh * amount / cell_vol
+                data[..., c_xhi, c_yhi, c_zhi] += w_xh * w_yh * w_zh * amount / cell_vol  # type: ignore
 
         else:
             msg = (

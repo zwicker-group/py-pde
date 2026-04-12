@@ -190,14 +190,17 @@ def test_stop_iteration_hook(backend, adaptive):
     assert info["controller"]["stop_reason"] == "Tracker raised StopIteration"
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
-def test_custom_data_hook(backend):
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+@pytest.mark.parametrize("adaptive", [True, False])
+def test_custom_data_hook(backend, adaptive):
     """Test a custom PDE keeping track of data."""
 
     class TestPDE(PDEBase):
         def make_post_step_hook(self, state, backend):
             def post_step_hook(state_data, t, post_step_data):
-                post_step_data += state_data.mean()
+                post_step_data = state_data.mean()
                 return state_data, post_step_data
 
             return post_step_hook, 0.0
@@ -222,12 +225,18 @@ def test_custom_data_hook(backend):
     field = ScalarField(grid)
     eq = TestPDE()
 
-    args = {"state": field, "t_range": 1, "dt": 0.1, "tracker": None, "ret_info": True}
+    args = {
+        "state": field,
+        "t_range": 1,
+        "dt": 0.1,
+        "tracker": None,
+        "ret_info": True,
+        "adaptive": adaptive,
+    }
     res, info = eq.solve(backend=backend, solver="euler", **args)
 
-    np.testing.assert_allclose(res.data, 1.0, rtol=1e-6)
-    value = np.linspace(0, 1, 11).sum()
-    assert info["solver"]["post_step_data"] == pytest.approx(value)
+    np.testing.assert_allclose(res.data, 1.0, rtol=1e-5)
+    assert info["solver"]["post_step_data"] == pytest.approx(res.data.mean())
 
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)

@@ -199,7 +199,7 @@ class FixedSolver(torch.nn.Module):
         self.stepper = stepper
         self.dt = dt
         self.post_step_hook = post_step_hook
-        self.post_step_data = post_step_data
+        self.register_buffer("post_step_data", torch.tensor(post_step_data))
 
     def forward(
         self, state_data: torch.Tensor, t_start: float, steps: int
@@ -223,7 +223,7 @@ class FixedSolver(torch.nn.Module):
             # perform single time step
             state_data = self.stepper.single_step(state_data, t, self.dt)
             if self.post_step_hook is not None:  # apply to post-step hook
-                state_data, self.post_step_data = self.post_step_hook(
+                state_data, self.post_step_data[...] = self.post_step_hook(
                     state_data, t, self.post_step_data
                 )
         return state_data
@@ -280,6 +280,8 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperT
         # call the stepper with fixed time steps
         state_data = inner_solver(state_data, t_start, steps)
         solver.info["steps"] += steps
+        if post_step_hook is not None:
+            solver.info["post_step_data"] = inner_solver.post_step_data.cpu()
         return state_data, t_start + dt * steps
 
     return fixed_stepper
@@ -321,7 +323,7 @@ class AdaptiveSolver(torch.nn.Module):
         self.stepper = stepper
         self.dt = dt_init
         self.post_step_hook = post_step_hook
-        self.post_step_data = post_step_data
+        self.register_buffer("post_step_data", torch.tensor(post_step_data))
 
         self.dt_min = dt_min
         self.dt_max = dt_max
@@ -413,7 +415,7 @@ class AdaptiveSolver(torch.nn.Module):
                 t = t + dt_step
 
                 if self.post_step_hook is not None:  # apply to post-step hook
-                    state_data, self.post_step_data = self.post_step_hook(
+                    state_data, self.post_step_data[...] = self.post_step_hook(
                         new_state, t, self.post_step_data
                     )
                 else:
@@ -484,6 +486,8 @@ def _make_adaptive_stepper_general(
         # save some data for the solver
         solver.info["dt"] = inner_solver.dt
         solver.info["steps"] = inner_solver.steps
+        if post_step_hook is not None:
+            solver.info["post_step_data"] = inner_solver.post_step_data.cpu()
         return state_data, t_final
 
     return adaptive_stepper

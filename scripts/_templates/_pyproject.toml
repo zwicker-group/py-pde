@@ -165,7 +165,6 @@ module = [
     "numpy.*",
     "pandas.*",
     "pyfftw.*",
-    "pytest.*",
     "qtpy.*",
     "scipy.*",
     "sympy.*",

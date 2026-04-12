@@ -95,7 +95,7 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> InnerStepperType:
     @jit(compiled_stepper_signature)
     def compiled_stepper(
         state_data: NumericArray, t_start: float, steps: int, post_step_data: Any
-    ) -> float:
+    ) -> tuple[float, Any]:
         """Perform `steps` steps with fixed time steps."""
         for i in range(steps):
             # calculate the right hand side
@@ -103,14 +103,17 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> InnerStepperType:
             state_data = single_step(state_data, t)
             state_data, post_step_data = post_step_hook(state_data, t, post_step_data)
 
-        return t + dt
+        return t + dt, post_step_data
 
     def fixed_stepper(state_data: NumericArray, t_start: float, t_end: float) -> float:
         """Advance `state` from `t_start` to `t_end` using fixed steps."""
         steps = max(1, round((t_end - t_start) / dt))
         post_step_data = solver.info["post_step_data"]
         # call the stepper with fixed time steps
-        t_last: float = compiled_stepper(state_data, t_start, steps, post_step_data)
+        t_last: float
+        t_last, solver.info["post_step_data"] = compiled_stepper(
+            state_data, t_start, steps, post_step_data
+        )
         solver.info["steps"] += steps
         return t_last
 
@@ -155,7 +158,7 @@ def _make_adams_bashforth_stepper(
         t_start: float,
         steps: int,
         post_step_data: Any,
-    ) -> float:
+    ) -> tuple[float, Any]:
         """Perform `steps` steps with fixed time steps."""
         for i in range(steps):
             # calculate the right hand side
@@ -166,7 +169,7 @@ def _make_adams_bashforth_stepper(
             state_data += dt * (1.5 * rhs_cur - 0.5 * rhs_prev)
             state_data, post_step_data = post_step_hook(state_data, t, post_step_data)
 
-        return t + dt
+        return t + dt, post_step_data
 
     # allocate memory to store the state of the previous time step; this memory will be
     # initialized at the first call
@@ -183,7 +186,8 @@ def _make_adams_bashforth_stepper(
             init_state_prev = False
 
         steps = max(1, round((t_end - t_start) / dt))
-        t_final: float = compiled_stepper(
+        t_final: float
+        t_final, solver.info["post_step_data"] = compiled_stepper(
             state_data, state_prev, t_start, steps, solver.info["post_step_data"]
         )
 
@@ -246,7 +250,7 @@ def _make_adaptive_stepper_general(
         dt_init: float,
         dt_stats: OnlineStatistics_np | None = None,
         post_step_data=None,
-    ) -> tuple[float, float, int]:
+    ) -> tuple[float, float, int, Any]:
         """Adaptive stepper that advances the state in time."""
         dt_opt = dt_init
         t = t_start
@@ -280,7 +284,7 @@ def _make_adaptive_stepper_general(
             else:
                 break  # return to the controller
 
-        return t, dt_opt, steps
+        return t, dt_opt, steps, post_step_data
 
     def adaptive_stepper(
         state_data: NumericArray, t_start: float, t_end: float
@@ -290,7 +294,7 @@ def _make_adaptive_stepper_general(
 
         # call compiled stepper
         t_final: float
-        t_final, dt_opt, steps = compiled_stepper(
+        t_final, dt_opt, steps, solver.info["post_step_data"] = compiled_stepper(
             state_data,
             t_start,
             t_end,
@@ -360,7 +364,7 @@ def _make_adaptive_stepper_euler(
         dt_init: float,
         dt_stats: OnlineStatistics_np | None = None,
         post_step_data=None,
-    ) -> tuple[float, float, int]:
+    ) -> tuple[float, float, int, Any]:
         """Adaptive stepper that advances the state in time."""
         state_cur = state_data
         dt_opt = dt_init
@@ -418,7 +422,7 @@ def _make_adaptive_stepper_euler(
                 break  # return to the controller
 
         state_data[:] = state_cur
-        return t, dt_opt, steps
+        return t, dt_opt, steps, post_step_data
 
     def adaptive_stepper(
         state_data: NumericArray, t_start: float, t_end: float
@@ -428,7 +432,7 @@ def _make_adaptive_stepper_euler(
 
         # call compiled stepper
         t_final: float
-        t_final, dt_opt, steps = compiled_stepper(
+        t_final, dt_opt, steps, solver.info["post_step_data"] = compiled_stepper(
             state_data,
             t_start,
             t_end,
