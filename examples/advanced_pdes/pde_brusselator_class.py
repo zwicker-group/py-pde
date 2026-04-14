@@ -53,7 +53,7 @@ class BrusselatorPDE(PDEBase):
         d0, d1 = self.diffusivity
         a, b = self.a, self.b
         laplace = state.grid.make_operator(
-            "laplace", bc=self.bc, backend=backend, native=True, dtype=state.dtype
+            "laplace", bc=self.bc, backend=backend, dtype=state.dtype
         )
 
         def pde_rhs(state_data, t):

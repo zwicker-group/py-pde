@@ -388,10 +388,10 @@ def test_pde_with_bc_setter(backend):
     field = ScalarField.random_normal(UnitGrid([4, 4], periodic=[False, True]))
 
     eq1 = DiffusionPDE(bc=setter)
-    res1 = eq1.solve(field, t_range=1.01, dt=0.1, backend=backend)
+    res1 = eq1.solve(field, t_range=1.01, dt=0.1, backend=backend, tracker=None)
 
     bc = {"x-": "neumann", "x+": {"value_expression": "t"}, "y": "periodic"}
     eq2 = DiffusionPDE(bc=bc)
-    res2 = eq2.solve(field, t_range=1.01, dt=0.1, backend=backend)
+    res2 = eq2.solve(field, t_range=1.01, dt=0.1, backend=backend, tracker=None)
 
     np.testing.assert_allclose(res1.data, res2.data)

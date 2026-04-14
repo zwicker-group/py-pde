@@ -471,7 +471,7 @@ class NumbaBackend(NumpyBackend):
 
         return set_valid_bcs
 
-    @cached_method(ignore_args=["native"])
+    @cached_method()
     def make_operator(
         self,
         grid: GridBase,
@@ -479,7 +479,6 @@ class NumbaBackend(NumpyBackend):
         *,
         bcs: BoundariesBase,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
@@ -495,8 +494,6 @@ class NumbaBackend(NumpyBackend):
                 The boundary conditions used before the operator is applied
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                This flag has no effect for the `numba` backend.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 

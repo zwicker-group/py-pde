@@ -133,11 +133,7 @@ class SwiftHohenbergPDE(PDEBase):
         kc2 = self.kc2
         delta = self.delta
 
-        args: dict[str, Any] = {
-            "backend": backend,
-            "native": True,
-            "dtype": state.dtype,
-        }
+        args: dict[str, Any] = {"backend": backend, "dtype": state.dtype}
         laplace = state.grid.make_operator(operator="laplace", bc=self.bc, **args)
         laplace2 = state.grid.make_operator(operator="laplace", bc=self.bc_lap, **args)
 

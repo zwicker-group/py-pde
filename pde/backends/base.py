@@ -421,7 +421,6 @@ class BackendBase(Generic[TNativeArray]):
         *,
         bcs: BoundariesBase,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
@@ -437,10 +436,6 @@ class BackendBase(Generic[TNativeArray]):
                 The boundary conditions used before the operator is applied
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -542,10 +537,6 @@ class BackendBase(Generic[TNativeArray]):
                 The object describing the differential equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which information can be extracted
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
 
         Returns:
             Function returning deterministic part of the right hand side of the PDE

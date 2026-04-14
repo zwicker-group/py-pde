@@ -199,7 +199,8 @@ class FixedSolver(torch.nn.Module):
         self.stepper = stepper
         self.dt = dt
         self.post_step_hook = post_step_hook
-        self.register_buffer("post_step_data", torch.tensor(post_step_data))
+        if post_step_hook is not None:
+            self.register_buffer("post_step_data", torch.tensor(post_step_data))
 
     def forward(
         self, state_data: torch.Tensor, t_start: float, steps: int
@@ -223,7 +224,7 @@ class FixedSolver(torch.nn.Module):
             # perform single time step
             state_data = self.stepper.single_step(state_data, t, self.dt)
             if self.post_step_hook is not None:  # apply to post-step hook
-                state_data, self.post_step_data[...] = self.post_step_hook(
+                state_data, self.post_step_data[...] = self.post_step_hook(  # type: ignore
                     state_data, t, self.post_step_data
                 )
         return state_data
@@ -323,7 +324,8 @@ class AdaptiveSolver(torch.nn.Module):
         self.stepper = stepper
         self.dt = dt_init
         self.post_step_hook = post_step_hook
-        self.register_buffer("post_step_data", torch.tensor(post_step_data))
+        if post_step_hook is not None:
+            self.register_buffer("post_step_data", torch.tensor(post_step_data))
 
         self.dt_min = dt_min
         self.dt_max = dt_max
@@ -415,7 +417,7 @@ class AdaptiveSolver(torch.nn.Module):
                 t = t + dt_step
 
                 if self.post_step_hook is not None:  # apply to post-step hook
-                    state_data, self.post_step_data[...] = self.post_step_hook(
+                    state_data, self.post_step_data[...] = self.post_step_hook(  # type: ignore
                         new_state, t, self.post_step_data
                     )
                 else:

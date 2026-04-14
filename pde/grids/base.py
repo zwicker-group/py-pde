@@ -1189,7 +1189,6 @@ class GridBase(metaclass=ABCMeta):
         *,
         backend: str | BackendBase = "default",
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
@@ -1206,10 +1205,6 @@ class GridBase(metaclass=ABCMeta):
                 The backend to use for making the operator
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -1249,7 +1244,7 @@ class GridBase(metaclass=ABCMeta):
         # set the boundary conditions before applying this operator
         bcs = self.get_boundary_conditions(bc, rank=operator_info.rank_in)
         return backend_impl.make_operator(
-            self, operator_info, bcs=bcs, dtype=dtype, native=native, **kwargs
+            self, operator_info, bcs=bcs, dtype=dtype, **kwargs
         )
 
     def slice(self, indices: Sequence[int]) -> GridBase:

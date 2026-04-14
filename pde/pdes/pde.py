@@ -325,7 +325,7 @@ class PDE(SDEBase):
             op_backend = "numba" if backend.implementation == "numpy" else backend
             try:
                 ops[func] = state.grid.make_operator(
-                    func, bc=bc, backend=op_backend, native=True, dtype=dtype
+                    func, bc=bc, backend=op_backend, dtype=dtype
                 )
             except BCDataError:
                 # wrong data was supplied for the boundary condition

@@ -292,7 +292,6 @@ class TorchBackend(BackendBase[torch.Tensor]):
         *,
         bcs: BoundariesBase,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> TorchDifferentialOperator:
         """Return a torch function applying an operator with boundary conditions.
@@ -308,10 +307,6 @@ class TorchBackend(BackendBase[torch.Tensor]):
                 The boundary conditions used before the operator is applied
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -338,32 +333,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         # compile the function and move it to the device
         torch_operator_jitted = self.compile_function(torch_operator)
         torch_operator_jitted.to(self.device)  # type: ignore
-
-        if native:
-            # return the native representation if requested
-            return torch_operator_jitted  # type: ignore
-
-        # wrap the operator such that it can be called from numpy
-        shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
-
-        # define numpy version of the operator
-        def apply_op(
-            arr: NumericArray, out: NumericArray | None = None, args=None
-        ) -> NumericArray:
-            """Set boundary conditions and apply operator."""
-            arr_torch = self.from_numpy(arr)
-
-            if out is None:
-                out = np.empty(shape_out, dtype=arr.dtype)
-            elif out.shape != shape_out:
-                msg = f"Incompatible shapes {out.shape} != {shape_out}"
-                raise ValueError(msg)
-            out_torch = torch_operator_jitted(arr_torch)  # type: ignore
-            out[:] = self.to_numpy(out_torch)
-            return out
-
-        # return the compiled versions of the operator
-        return apply_op  # type: ignore
+        return torch_operator_jitted  # type: ignore
 
     def make_integrator(
         self, grid: GridBase, *, dtype: DTypeLike = np.double

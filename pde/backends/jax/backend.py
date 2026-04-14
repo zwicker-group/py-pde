@@ -474,7 +474,6 @@ class JaxBackend(BackendBase[jax.Array]):
         *,
         bcs: BoundariesBase,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
@@ -490,10 +489,6 @@ class JaxBackend(BackendBase[jax.Array]):
                 The boundary conditions used before the operator is applied
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -539,41 +534,7 @@ class JaxBackend(BackendBase[jax.Array]):
             # apply operator
             return operator_raw(arr_full)  # type: ignore
 
-        if native:
-            return apply_op_jax  # type: ignore
-
-        # calculate shapes of the full data
-        shape_in_valid = (grid.dim,) * operator_info.rank_in + grid.shape
-        shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
-
-        # define numpy version of the operator
-        def apply_op(
-            arr: NumericArray, out: NumericArray | None = None, args=None
-        ) -> NumericArray:
-            """Set boundary conditions and apply operator."""
-            # check input array
-            if arr.shape != shape_in_valid:
-                msg = f"Incompatible shapes {arr.shape} != {shape_in_valid}"
-                raise ValueError(msg)
-            # ensure `out` array is allocated and has the right shape
-            if out is not None and out.shape != shape_out:
-                msg = f"Incompatible shapes {out.shape} != {shape_out}"
-                raise ValueError(msg)
-
-            # convert data to jax and apply operator
-            arr_jax = self.from_numpy(arr)
-            out_jax = apply_op_jax(arr_jax, args=args)
-
-            # return result
-            if out is None:
-                out = self.to_numpy(out_jax)
-            else:
-                out[:] = self.to_numpy(out_jax)
-
-            # return valid part of the output
-            return out
-
-        return apply_op  # type: ignore
+        return apply_op_jax  # type: ignore
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True

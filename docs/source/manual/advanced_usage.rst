@@ -444,7 +444,7 @@ introduced above:
             diffusivity = self.diffusivity
 
             # create operators with correct attributes
-            args = {"backend": backend, "native": True, "dtype": state.dtype}
+            args = {"backend": backend, "dtype": state.dtype}
             laplace_u = state.grid.make_operator("laplace", bc=self.bc, **args)
             gradient_u = state.grid.make_operator("gradient", bc=self.bc, **args)
             laplace2_u = state.grid.make_operator("laplace", bc=self.bc_laplace, **args)

@@ -1012,9 +1012,7 @@ def evaluate(
             # create the function evaluating the operator
             op_backend = "numba" if backend.implementation == "numpy" else backend
             try:
-                ops[func] = grid.make_operator(
-                    func, bc=bc, native=True, backend=op_backend
-                )
+                ops[func] = grid.make_operator(func, bc=bc, backend=op_backend)
             except BCDataError:
                 # wrong data was supplied for the boundary condition
                 raise

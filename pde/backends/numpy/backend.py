@@ -161,7 +161,6 @@ class NumpyBackend(BackendBase[NumericArray]):
         *,
         bcs: BoundariesBase,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
@@ -177,10 +176,6 @@ class NumpyBackend(BackendBase[NumericArray]):
                 The boundary conditions used before the operator is applied
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
