@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from ...grids.boundaries.axes import BoundariesBase
     from ...grids.boundaries.local import BCBase
     from ...pdes import PDEBase
+    from ...solvers import SolverBase
     from ...tools.config import Config
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
@@ -37,6 +38,7 @@ if TYPE_CHECKING:
         OperatorImplType,
         OperatorInfo,
         OperatorType,
+        StepperType,
         TField,
         TFunc,
     )
@@ -733,3 +735,39 @@ class JaxBackend(BackendBase[jax.Array]):
 
         # get the compiled right hand side
         return self.compile_function(rhs_native)
+
+    def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
+        """Return a stepper function using an explicit scheme.
+
+        Args:
+            solver (:class:`~pde.solvers.base.SolverBase`):
+                The solver instance, which determines how the stepper is constructed
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        from ._solvers import make_inner_stepper
+
+        assert solver.backend == self
+
+        # create the Torch module that calculates the right hand side
+        inner_stepper = make_inner_stepper(solver, state)
+
+        def stepper(state: TField, t_start: float, t_end: float) -> float:
+            """Advance `state` from `t_start` to `t_end` using fixed steps."""
+            # push state data to native backend
+            state_tensor: jax.Array = solver.backend.from_numpy(state.data)  # type: ignore
+            # call the stepper with fixed time steps
+            state_tensor, t_last = inner_stepper(state_tensor, t_start, t_end)
+            # retrieve data from native backend
+            state.data[:] = solver.backend.to_numpy(state_tensor)
+            return t_last
+
+        return stepper  # type: ignore

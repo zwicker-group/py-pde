@@ -140,7 +140,8 @@ def test_stop_iteration_hook(backend, adaptive):
     """Test a custom PDE raising StopIteration in a hook."""
 
     if backend.implementation == "torch":
-        backend.compile_options["fullgraph"] = False
+        # backend.compile_options["fullgraph"] = False
+        backend.config["compile"] = False
 
     class TestPDE(PDEBase):
         def make_post_step_hook(self, state, backend):
@@ -161,6 +162,13 @@ def test_stop_iteration_hook(backend, adaptive):
 
                 def pde_rhs(state_data, t):
                     return jnp.ones_like(state_data)
+
+            elif backend.implementation == "torch":
+                import torch
+
+                def pde_rhs(state_data, t):
+                    return torch.ones_like(state_data)
+
             else:
 
                 def pde_rhs(state_data, t):

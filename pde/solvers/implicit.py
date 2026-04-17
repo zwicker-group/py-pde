@@ -124,7 +124,8 @@ class ImplicitSolver(SolverBase):
 
         # get the function that calculates the noise
         rhs = self.backend.make_pde_rhs(self.pde, state)
-        rhs_noise = self._make_noise_realization(state)
+        rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
+        rhs_noise = self.backend.compile_function(rhs_noise)
 
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2

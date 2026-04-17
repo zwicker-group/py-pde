@@ -32,14 +32,14 @@ NUMPY_TO_TORCH_DTYPE |= {np.dtype(k): v for k, v in NUMPY_TO_TORCH_DTYPE.items()
 
 
 class TorchRHSType(Protocol):
-    """General stepper type working with numpy arrays."""
+    """General stepper type working with torch tensors."""
 
     def __call__(self, state_data: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
         """Evaluates right hand side of the PDE in a torch backend.
 
         Args:
             state_data (:class:`~torch.Tensor`):
-                The state, which will be updated in-place
+                The current state
             t (float):
                 Current time point
 
@@ -58,7 +58,7 @@ class TorchInnerStepperType(Protocol):
 
         Args:
             state_data (:class:`~torch.Tensor`):
-                The state, which will be updated in-place
+                The current state
             t_start (float):
                 Initial time point
             t_end (float):

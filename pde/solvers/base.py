@@ -288,6 +288,13 @@ class SolverBase:
         Returns:
             callable: Function calculating the noise realization
         """
+        # deprecated on 2026-04-17
+        warnings.warn(
+            "Deprecated method. Use pde.make_noise_realization instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         if self.backend.implementation == "numpy" and hasattr(
             self.pde, "noise_realization"
         ):

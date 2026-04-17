@@ -70,3 +70,24 @@ class JaxVirtualPointEvaluator(Protocol):
             idx: Index tuple
             args: Additional arguments (optional)
         """
+
+
+class JaxInnerStepperType(Protocol):
+    """General stepper type working with jax arrays."""
+
+    def __call__(
+        self, state_data: Array, t_start: float, t_end: float
+    ) -> tuple[Array, float]:
+        """General stepper that advances the state given as a jax array.
+
+        Args:
+            state_data (:class:`~jax.Array`):
+                The current state
+            t_start (float):
+                Initial time point
+            t_end (float):
+                Desired final time point
+
+        Returns:
+            tuple of the state and time at the final point
+        """
