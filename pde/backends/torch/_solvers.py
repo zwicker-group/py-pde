@@ -288,12 +288,13 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperT
     return fixed_stepper
 
 
-class AdaptiveSolver(torch.nn.Module):
+class TorchAdaptiveSolverBase(torch.nn.Module):
+    """Base module for adaptive time integrator."""
+
     atol = 1e-6
 
     def __init__(
         self,
-        stepper: TorchStepper,
         dt_init: float,
         post_step_hook: StepperHook | None,
         post_step_data: Any,
@@ -305,8 +306,6 @@ class AdaptiveSolver(torch.nn.Module):
         """Initialize an adaptive time integrator.
 
         Args:
-            stepper (:class:`TorchStepper`):
-                Object performing individual time steps.
             dt_init (float):
                 Initial time-step size.
             post_step_hook (callable):
@@ -321,7 +320,6 @@ class AdaptiveSolver(torch.nn.Module):
                 Maximum allowed time-step size.
         """
         super().__init__()
-        self.stepper = stepper
         self.dt = dt_init
         self.post_step_hook = post_step_hook
         if post_step_hook is not None:
@@ -394,6 +392,69 @@ class AdaptiveSolver(torch.nn.Module):
                 A tuple ``(state, t)`` containing the final state and the reached
                 final time.
         """
+        raise NotImplementedError
+
+
+class TorchAdaptiveGeneralSolver(TorchAdaptiveSolverBase):
+    """General adaptive time integrator."""
+
+    def __init__(
+        self,
+        stepper: TorchStepper,
+        dt_init: float,
+        post_step_hook: StepperHook | None,
+        post_step_data: Any,
+        *,
+        tolerance: float,
+        dt_min: float,
+        dt_max: float,
+    ):
+        """Initialize an adaptive time integrator.
+
+        Args:
+            stepper (:class:`TorchStepper`):
+                Object performing individual time steps.
+            dt_init (float):
+                Initial time-step size.
+            post_step_hook (callable):
+                Optional hook applied after each accepted step.
+            post_step_data (Any):
+                Mutable data passed to the post-step hook.
+            tolerance (float):
+                Target error tolerance for adaptive stepping.
+            dt_min (float):
+                Minimum allowed time-step size.
+            dt_max (float):
+                Maximum allowed time-step size.
+        """
+        super().__init__(
+            dt_init,
+            post_step_hook,
+            post_step_data,
+            tolerance=tolerance,
+            dt_min=dt_min,
+            dt_max=dt_max,
+        )
+        self.stepper = stepper
+
+    def forward(
+        self, state_data: torch.Tensor, t_start: float, t_end: float
+    ) -> tuple[torch.Tensor, float]:
+        """Advance the state from ``t_start`` to ``t_end`` adaptively.
+
+        Args:
+            state_data (:class:`torch.Tensor`):
+                The initial state.
+            t_start (float):
+                The initial time.
+            t_end (float):
+                The final time.
+
+        Returns:
+            tuple:
+                A tuple ``(state, t)`` containing the final state and the reached
+                final time.
+        """
         t = t_start
         while True:
             # use a smaller (but not too small) time step if close to t_end
@@ -434,6 +495,117 @@ class AdaptiveSolver(torch.nn.Module):
         return state_data, t
 
 
+class TorchAdaptiveEulerSolver(TorchAdaptiveSolverBase):
+    """Adaptive time integrator optimized for the explicit Euler scheme."""
+
+    def __init__(
+        self,
+        rhs: TorchRHSType,
+        dt_init: float,
+        post_step_hook: StepperHook | None,
+        post_step_data: Any,
+        *,
+        tolerance: float,
+        dt_min: float,
+        dt_max: float,
+    ):
+        """Initialize an adaptive Euler integrator.
+
+        Args:
+            rhs (callable):
+                Function evaluating the deterministic time derivative.
+            dt_init (float):
+                Initial time-step size.
+            post_step_hook (callable):
+                Optional hook applied after each accepted step.
+            post_step_data (Any):
+                Mutable data passed to the post-step hook.
+            tolerance (float):
+                Target error tolerance for adaptive stepping.
+            dt_min (float):
+                Minimum allowed time-step size.
+            dt_max (float):
+                Maximum allowed time-step size.
+        """
+        super().__init__(
+            dt_init,
+            post_step_hook,
+            post_step_data,
+            tolerance=tolerance,
+            dt_min=dt_min,
+            dt_max=dt_max,
+        )
+        self.rhs = rhs
+
+    def _eval_rhs(self, state_data: torch.Tensor, t: float) -> torch.Tensor:
+        """Evaluate the right-hand side with time on the correct device."""
+        t_device = torch.tensor(t, device=state_data.device)
+        return self.rhs(state_data, t_device)
+
+    def forward(
+        self, state_data: torch.Tensor, t_start: float, t_end: float
+    ) -> tuple[torch.Tensor, float]:
+        """Advance the state from ``t_start`` to ``t_end`` adaptively."""
+        state_cur = state_data
+        rate = self._eval_rhs(state_cur, t_start)
+
+        t = t_start
+        while True:
+            # use a smaller (but not too small) time step if close to t_end
+            if self.dt < self.dt_min:
+                dt_step = self.dt_min
+            elif self.dt > t_end - t + self.atol:
+                dt_step = t_end - t + self.atol
+            else:
+                dt_step = self.dt
+
+            # do single step with dt
+            step_large = state_cur + dt_step * rate
+            # do double step with half the time step
+            step_small = state_cur + 0.5 * dt_step * rate
+
+            try:
+                # calculate rate at the midpoint of the double step
+                rate_midpoint = self._eval_rhs(step_small, t + 0.5 * dt_step)
+            except Exception:
+                # an exception likely signals that rate could not be calculated
+                error_rel = torch.tensor(float("nan"), device=state_cur.device)
+            else:
+                # advance to end of double step
+                step_small = step_small + 0.5 * dt_step * rate_midpoint
+
+                # calculate maximal error
+                error = torch.max(torch.abs(step_large - step_small))
+                error_rel = error / self.tolerance
+
+            if error_rel <= 1:
+                try:
+                    # calculate the rate at the putative new step
+                    rate = self._eval_rhs(step_small, t)
+                except Exception:
+                    # calculating the rate failed => retry with smaller dt
+                    error_rel = torch.tensor(float("nan"), device=state_cur.device)
+                else:
+                    self.steps += 1
+                    t += dt_step
+
+                    if self.post_step_hook is not None:
+                        state_cur, self.post_step_data[...] = self.post_step_hook(  # type: ignore
+                            step_small, t, self.post_step_data
+                        )
+                    else:
+                        state_cur = step_small
+
+                    self.dt_stats.add(dt_step)
+
+            if t < t_end:
+                self.dt = self.adjust_dt(dt_step, error_rel)
+            else:
+                break
+
+        return state_cur, t
+
+
 def _make_adaptive_stepper_general(
     solver: AdaptiveSolverBase, state: TField
 ) -> TorchInnerStepperType:
@@ -458,22 +630,39 @@ def _make_adaptive_stepper_general(
 
     # create subfunctions
     rhs = solver.backend.make_pde_rhs(solver.pde, state)
+    rhs = solver.backend.compile_function(rhs)
     post_step_hook = _make_post_step_hook(solver, state, backend=solver.backend)
 
-    # get compiled version of a single step
-    stepper = solver.backend.compile_function(EulerStepper(rhs))
-    stepper.to(solver.backend.device)
+    if isinstance(solver, EulerSolver):
+        # define the an optimized solver for the case euler stepper
+        inner_solver: TorchAdaptiveSolverBase = TorchAdaptiveEulerSolver(
+            rhs,
+            dt_init=float(solver.info["dt"]),
+            post_step_hook=post_step_hook,
+            post_step_data=solver.info["post_step_data"],
+            tolerance=float(solver.tolerance),
+            dt_min=float(solver.dt_min),
+            dt_max=float(solver.dt_max),
+        )
+    else:
+        # get compiled version of a single step
+        if isinstance(solver, EulerSolver):
+            stepper = solver.backend.compile_function(EulerStepper(rhs))
+        else:
+            msg = f"Solver {solver} is not supported by torch backend."
+            raise NotImplementedError(msg)
+        stepper.to(solver.backend.device)
 
-    # define the actual solver
-    inner_solver = AdaptiveSolver(
-        stepper,
-        dt_init=float(solver.info["dt"]),
-        post_step_hook=post_step_hook,
-        post_step_data=solver.info["post_step_data"],
-        tolerance=float(solver.tolerance),
-        dt_min=float(solver.dt_min),
-        dt_max=float(solver.dt_max),
-    )
+        # define the actual solver
+        inner_solver = TorchAdaptiveGeneralSolver(
+            stepper,
+            dt_init=float(solver.info["dt"]),
+            post_step_hook=post_step_hook,
+            post_step_data=solver.info["post_step_data"],
+            tolerance=float(solver.tolerance),
+            dt_min=float(solver.dt_min),
+            dt_max=float(solver.dt_max),
+        )
     inner_solver.to(solver.backend.device)
 
     # add extra information
@@ -513,7 +702,6 @@ def make_inner_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperTy
     """
     # get the actual inner stepper
     if isinstance(solver, AdaptiveSolverBase) and solver.adaptive:
-        # TODO: implement optimized Euler stepper
         return _make_adaptive_stepper_general(solver, state)
 
     # dealing with an fixed stepper
