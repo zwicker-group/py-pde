@@ -233,16 +233,6 @@ def _make_adaptive_stepper_general(
     dt_min = solver.dt_min
 
     # provide compiled function for innermost loop
-    compiled_stepper_signature = (
-        nb.typeof(state.data),
-        nb.double,
-        nb.double,
-        nb.double,
-        nb.typeof(solver.info["dt_statistics"]),
-        nb.typeof(solver.info["post_step_data"]),
-    )
-
-    @jit(compiled_stepper_signature)
     def compiled_stepper(
         state_data: NumericArray,
         t_start: float,
@@ -285,6 +275,18 @@ def _make_adaptive_stepper_general(
                 break  # return to the controller
 
         return t, dt_opt, steps, post_step_data
+
+    if not nb.config.DISABLE_JIT:
+        # compile the stepper if enabled for numba
+        compiled_stepper_signature = (
+            nb.typeof(state.data),
+            nb.double,
+            nb.double,
+            nb.double,
+            nb.typeof(solver.info["dt_statistics"]),
+            nb.typeof(solver.info["post_step_data"]),
+        )
+        compiled_stepper = jit(compiled_stepper_signature)(compiled_stepper)
 
     def adaptive_stepper(
         state_data: NumericArray, t_start: float, t_end: float
@@ -346,17 +348,6 @@ def _make_adaptive_stepper_euler(
     tolerance = solver.tolerance
     dt_min = solver.dt_min
 
-    # provide compiled function for innermost loop
-    compiled_stepper_signature = (
-        nb.typeof(state.data),
-        nb.double,
-        nb.double,
-        nb.double,
-        nb.typeof(solver.info["dt_statistics"]),
-        nb.typeof(solver.info["post_step_data"]),
-    )
-
-    @jit(compiled_stepper_signature)
     def compiled_stepper(
         state_data: NumericArray,
         t_start: float,
@@ -423,6 +414,18 @@ def _make_adaptive_stepper_euler(
 
         state_data[:] = state_cur
         return t, dt_opt, steps, post_step_data
+
+    if not nb.config.DISABLE_JIT:
+        # compile the stepper if enabled for numba
+        compiled_stepper_signature = (
+            nb.typeof(state.data),
+            nb.double,
+            nb.double,
+            nb.double,
+            nb.typeof(solver.info["dt_statistics"]),
+            nb.typeof(solver.info["post_step_data"]),
+        )
+        compiled_stepper = jit(compiled_stepper_signature)(compiled_stepper)
 
     def adaptive_stepper(
         state_data: NumericArray, t_start: float, t_end: float

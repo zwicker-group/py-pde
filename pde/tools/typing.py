@@ -145,6 +145,19 @@ class DataSetter(Protocol):
         """
 
 
+class PostStepHook(Protocol):
+    def __call__(self, state_data: TNativeArray, t: float) -> TNativeArray:
+        """Function analyzing and potentially modifying the current state.
+
+        Args:
+            state_data: Current state data
+            t: Current time
+
+        Returns:
+            state_data: Can be the same arrays as the input
+        """
+
+
 class StepperHook(Protocol):
     def __call__(
         self, state_data: TNativeArray, t: float, post_step_data: Any

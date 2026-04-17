@@ -34,6 +34,7 @@ if TYPE_CHECKING:
         ArrayLike,
         NumberOrArray,
         NumericArray,
+        PostStepHook,
         StepperHook,
         TField,
         TNativeArray,
@@ -78,7 +79,7 @@ class PDE(SDEBase):
         *,
         bc: BoundariesData | None = None,
         bc_ops: dict[str, BoundariesData] | None = None,
-        post_step_hook: Callable[[NumericArray, float], None] | None = None,
+        post_step_hook: PostStepHook | None = None,
         user_funcs: dict[str, Callable] | None = None,
         consts: dict[str, NumberOrArray] | None = None,
         noise: ArrayLike | dict[str, NumberOrArray] = 0,
@@ -663,9 +664,11 @@ class PDE(SDEBase):
         post_step_hook = get_backend(backend).compile_function(self.post_step_hook)
 
         @get_backend(backend).compile_function
-        def post_step_hook_impl(state_data, t, post_step_data):
+        def post_step_hook_impl(
+            state_data: TNativeArray, t: float, post_step_data: Any
+        ) -> tuple[TNativeArray, Any]:
             state_data = post_step_hook(state_data, t)
-            return state_data, None  # None indicates lack of `post_step_data`
+            return state_data, None  # `None` indicates lack of `post_step_data`
 
         return post_step_hook_impl, 0  # hook function and initial value
 

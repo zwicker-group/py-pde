@@ -307,7 +307,7 @@ def test_vector_bcs(backend):
     bcs = {"x": {"value": [0, 1]}, "y": {"value": [2, 3]}}
     s1 = v.divergence(bcs, backend="scipy").data
     div = grid.make_operator("divergence", bcs, backend=backend)
-    s2 = div(v.data)
+    s2 = div(backend.from_numpy(v.data))
 
     # check correct broadcasting of boundary condition
     bc1 = {"x": {"value": 1}, "y": {"derivative": 0}}

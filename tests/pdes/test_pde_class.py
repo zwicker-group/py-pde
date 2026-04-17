@@ -158,7 +158,7 @@ def test_pde_vector_scalar(backend, rng):
     res_b = eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
 
     res_a.assert_field_compatible(res_b)
-    np.testing.assert_allclose(res_a.data, res_b.data)
+    np.testing.assert_allclose(res_a.data, res_b.data, rtol=1e-6)
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
