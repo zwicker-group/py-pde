@@ -28,21 +28,21 @@ from pde.solvers import (
 )
 
 SOLVER_CLASSES = [
-    EulerSolver,
-    RungeKuttaSolver,
-    ImplicitSolver,
-    CrankNicolsonSolver,
     AdamsBashforthSolver,
+    CrankNicolsonSolver,
+    EulerSolver,
+    ImplicitSolver,
+    RungeKuttaSolver,
     ScipySolver,
 ]
 
 NOT_SUPPORTED = {
-    "jax": {ImplicitSolver, CrankNicolsonSolver},
+    "jax": {CrankNicolsonSolver, ImplicitSolver},
     "torch": {
-        RungeKuttaSolver,
-        ImplicitSolver,
-        CrankNicolsonSolver,
         AdamsBashforthSolver,
+        CrankNicolsonSolver,
+        ImplicitSolver,
+        RungeKuttaSolver,
     },
 }
 

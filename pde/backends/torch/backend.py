@@ -15,6 +15,7 @@ import torch
 from ...fields import VectorField
 from ...grids import GridBase
 from ...pdes import PDEBase, SDEBase
+from ...solvers.scipy import ScipySolver
 from ..base import BackendBase, OperatorInfo
 from .typing import NUMPY_TO_TORCH_DTYPE, TORCH_TO_NUMPY_DTYPE, TorchRHSType
 
@@ -614,6 +615,9 @@ class TorchBackend(BackendBase[torch.Tensor]):
         from ._solvers import make_inner_stepper
 
         assert solver.backend == self
+        if isinstance(solver, ScipySolver):
+            msg = "Torch backend does not support Scipy solver"
+            raise NotImplementedError(msg)
 
         # create the Torch module that calculates the right hand side
         inner_stepper = make_inner_stepper(solver, state)

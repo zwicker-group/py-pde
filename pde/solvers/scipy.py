@@ -75,7 +75,9 @@ class ScipySolver(SolverBase):
 
         def rhs_helper(t: float, state_flat: NumericArray) -> NumericArray:
             """Helper function to provide the correct call convention."""
-            rhs_value = rhs(state_flat.reshape(shape), t)
+            state_native = self.backend.numpy_to_native(state_flat.reshape(shape))
+            rhs_native = rhs(state_native, t)
+            rhs_value = self.backend.native_to_numpy(rhs_native)
             y = np.broadcast_to(rhs_value, shape).flat
             if np.any(np.isnan(y)):
                 # this check is necessary, since solve_ivp does not deal correctly with
