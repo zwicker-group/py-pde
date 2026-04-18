@@ -291,7 +291,7 @@ def _make_expression_function_from_expression(bc: ExpressionBC) -> Callable:
             msg = "Compiled function does not give same value"
             raise RuntimeError(msg) from None
 
-    return value_func  # type: ignore
+    return value_func
 
 
 def _make_expression_virtual_point_evaluator(bc: ExpressionBC) -> VirtualPointEvaluator:
@@ -356,7 +356,7 @@ def _make_expression_virtual_point_evaluator(bc: ExpressionBC) -> VirtualPointEv
     # evaluate the function to force compilation and catch errors early
     virtual_point(np.zeros([3] * num_axes), (0,) * num_axes, numba_dict(t=0.0))
 
-    return virtual_point  # type: ignore
+    return virtual_point
 
 
 def _make_value_getter(bc: ConstBC1stOrderBase) -> Callable[[], NumericArray]:
@@ -591,7 +591,7 @@ def _make_const1storder_virtual_point_evaluator(
                 val_field = arr_1d[..., index]
             return const()[bc_idx] + factor()[bc_idx] * val_field  # type: ignore
 
-    return virtual_point  # type: ignore
+    return virtual_point
 
 
 def _get_virtual_point_data_2ndorder(bc: ConstBC2ndOrderBase):

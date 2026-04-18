@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import sympy
+from scipy import special
 from sympy.core import basic
 
 from ..fields.base import FieldBase
@@ -90,6 +91,7 @@ def parse_number(
 SPECIAL_FUNCTIONS: dict[str, Callable] = {
     "Heaviside": np.heaviside,
     "hypot": np.hypot,
+    "erf": special.erf,
 }
 
 

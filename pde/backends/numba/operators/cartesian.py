@@ -69,7 +69,7 @@ def make_corner_point_setter_2d(grid: CartesianGrid) -> Callable[[NumericArray],
             arr[0, -1] = 0.5 * (arr[0, -2] + arr[1, -1])
             arr[-1, -1] = 0.5 * (arr[-1, -2] + arr[-2, -1])
 
-    return set_corner_points  # type: ignore
+    return set_corner_points
 
 
 def _make_laplace_numba_1d(grid: CartesianGrid) -> OperatorImplType:
@@ -91,7 +91,7 @@ def _make_laplace_numba_1d(grid: CartesianGrid) -> OperatorImplType:
         for i in range(1, dim_x + 1):
             out[i - 1] = (arr[i - 1] - 2 * arr[i] + arr[i + 1]) * scale
 
-    return laplace  # type: ignore
+    return laplace
 
 
 def _make_laplace_numba_2d(
@@ -172,7 +172,7 @@ def _make_laplace_numba_2d(
                             value += arr[i + x - 1, j + y - 1] * stencil[x, y]
                     out[i - 1, j - 1] = value
 
-    return laplace  # type: ignore
+    return laplace
 
 
 def _make_laplace_numba_3d(grid: CartesianGrid) -> OperatorImplType:
@@ -203,7 +203,7 @@ def _make_laplace_numba_3d(grid: CartesianGrid) -> OperatorImplType:
                     lap_z = (arr[i, j, k - 1] - val_mid + arr[i, j, k + 1]) * scale_z
                     out[i - 1, j - 1, k - 1] = lap_x + lap_y + lap_z
 
-    return laplace  # type: ignore
+    return laplace
 
 
 def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorImplType:
@@ -247,7 +247,7 @@ def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorImplType:
         """Apply Laplace operator to array `arr`"""
         laplace_impl(arr, out)
 
-    return laplace  # type: ignore
+    return laplace
 
 
 def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorImplType:
@@ -291,7 +291,7 @@ def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorImplType:
         """Apply Laplace operator to array `arr`"""
         laplace_impl(arr, out)
 
-    return laplace  # type: ignore
+    return laplace
 
 
 @numba_backend.register_operator(CartesianGrid, "laplace", rank_in=0, rank_out=0)
@@ -371,7 +371,7 @@ def _make_gradient_numba_1d(
             elif method == "backward":
                 out[0, i - 1] = (arr[i] - arr[i - 1]) / dx
 
-    return gradient  # type: ignore
+    return gradient
 
 
 def _make_gradient_numba_2d(
@@ -416,7 +416,7 @@ def _make_gradient_numba_2d(
                     out[0, i - 1, j - 1] = (arr[i, j] - arr[i - 1, j]) * scale_x
                     out[1, i - 1, j - 1] = (arr[i, j] - arr[i, j - 1]) * scale_y
 
-    return gradient  # type: ignore
+    return gradient
 
 
 def _make_gradient_numba_3d(
@@ -483,7 +483,7 @@ def _make_gradient_numba_3d(
                             arr[i, j, k] - arr[i, j, k - 1]
                         ) * scale_z
 
-    return gradient  # type: ignore
+    return gradient
 
 
 @numba_backend.register_operator(CartesianGrid, "gradient", rank_in=0, rank_out=1)
@@ -557,7 +557,7 @@ def _make_gradient_squared_numba_1d(
                 diff_r = (arr[i] - arr[i - 1]) ** 2
                 out[i - 1] = (diff_l + diff_r) * scale
 
-    return gradient_squared  # type: ignore
+    return gradient_squared
 
 
 def _make_gradient_squared_numba_2d(
@@ -614,7 +614,7 @@ def _make_gradient_squared_numba_2d(
                     ) * scale_y
                     out[i - 1, j - 1] = term_x + term_y
 
-    return gradient_squared  # type: ignore
+    return gradient_squared
 
 
 def _make_gradient_squared_numba_3d(
@@ -678,7 +678,7 @@ def _make_gradient_squared_numba_3d(
                         ) * scale_z
                         out[i - 1, j - 1, k - 1] = term_x + term_y + term_z
 
-    return gradient_squared  # type: ignore
+    return gradient_squared
 
 
 @numba_backend.register_operator(
@@ -745,7 +745,7 @@ def _make_divergence_numba_1d(
             elif method == "backward":
                 out[i - 1] = (arr[0, i] - arr[0, i - 1]) / dx
 
-    return divergence  # type: ignore
+    return divergence
 
 
 def _make_divergence_numba_2d(
@@ -791,7 +791,7 @@ def _make_divergence_numba_2d(
                     d_y = (arr[1, i, j] - arr[1, i, j - 1]) * scale_y
                 out[i - 1, j - 1] = d_x + d_y
 
-    return divergence  # type: ignore
+    return divergence
 
 
 def _make_divergence_numba_3d(
@@ -841,7 +841,7 @@ def _make_divergence_numba_3d(
                         d_z = (arr[2, i, j, k] - arr[2, i, j, k - 1]) * scale_z
                     out[i - 1, j - 1, k - 1] = d_x + d_y + d_z
 
-    return divergence  # type: ignore
+    return divergence
 
 
 @numba_backend.register_operator(CartesianGrid, "divergence", rank_in=1, rank_out=0)

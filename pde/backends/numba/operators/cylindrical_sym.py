@@ -64,7 +64,7 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
                     + (arr_z_l - 2 * arr[i, j] + arr_z_h) * dz_2
                 )
 
-    return laplace  # type: ignore
+    return laplace
 
 
 @numba_backend.register_operator(CylindricalSymGrid, "gradient", rank_in=0, rank_out=1)
@@ -97,7 +97,7 @@ def make_gradient(grid: CylindricalSymGrid) -> OperatorImplType:
                 out[1, i - 1, j - 1] = (arr[i, j + 1] - arr[i, j - 1]) * scale_z
                 out[2, i - 1, j - 1] = 0  # no phi dependence by definition
 
-    return gradient  # type: ignore
+    return gradient
 
 
 @numba_backend.register_operator(
@@ -154,7 +154,7 @@ def make_gradient_squared(
                     term_z = (arr_z_h - arr_c) ** 2 + (arr_c - arr_z_l) ** 2
                     out[i - 1, j - 1] = term_r * scale_r + term_z * scale_z
 
-    return gradient_squared  # type: ignore
+    return gradient_squared
 
 
 @numba_backend.register_operator(
@@ -194,7 +194,7 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorImplType:
                     + (arr_z[i, j + 1] - arr_z[i, j - 1]) * scale_z
                 )
 
-    return divergence  # type: ignore
+    return divergence
 
 
 @numba_backend.register_operator(
@@ -244,7 +244,7 @@ def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorImplType:
                 out_φz[i - 1, j - 1] = (arr_φ[i, j + 1] - arr_φ[i, j - 1]) * scale_z
                 out_zz[i - 1, j - 1] = (arr_z[i, j + 1] - arr_z[i, j - 1]) * scale_z
 
-    return vector_gradient  # type: ignore
+    return vector_gradient
 
 
 @numba_backend.register_operator(
@@ -306,7 +306,7 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
                     + (f_z_h - 2 * f_z_m + f_z_l) * s2
                 )
 
-    return vector_laplace  # type: ignore
+    return vector_laplace
 
 
 @numba_backend.register_operator(
@@ -362,4 +362,4 @@ def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorImplType:
                     + arr_zr[i, j] / rs[i - 1]
                 )
 
-    return tensor_divergence  # type: ignore
+    return tensor_divergence

@@ -55,7 +55,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorImplType:
             out[i - 1] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr_2
             out[i - 1] += (arr[i + 1] - arr[i - 1]) * factor_r[i - 1]
 
-    return laplace  # type: ignore
+    return laplace
 
 
 @numba_backend.register_operator(PolarSymGrid, "gradient", rank_in=0, rank_out=1)
@@ -101,7 +101,7 @@ def make_gradient(
                 out[0, i - 1] = (arr[i] - arr[i - 1]) * scale_r
             out[1, i - 1] = 0  # no angular dependence by definition
 
-    return gradient  # type: ignore
+    return gradient
 
 
 @numba_backend.register_operator(
@@ -154,7 +154,7 @@ def make_gradient_squared(
                 term = (arr[i + 1] - arr[i]) ** 2 + (arr[i] - arr[i - 1]) ** 2
                 out[i - 1] = term * scale
 
-    return gradient_squared  # type: ignore
+    return gradient_squared
 
 
 @numba_backend.register_operator(PolarSymGrid, "divergence", rank_in=1, rank_out=0)
@@ -187,7 +187,7 @@ def make_divergence(grid: PolarSymGrid) -> OperatorImplType:
             out[i - 1] = (arr[0, i + 1] - arr[0, i - 1]) * scale_r
             out[i - 1] += arr[0, i] / rs[i - 1]
 
-    return divergence  # type: ignore
+    return divergence
 
 
 @numba_backend.register_operator(PolarSymGrid, "vector_gradient", rank_in=1, rank_out=2)
@@ -226,7 +226,7 @@ def make_vector_gradient(grid: PolarSymGrid) -> OperatorImplType:
             out_φr[i - 1] = (arr_φ[i + 1] - arr_φ[i - 1]) * scale_r
             out_φφ[i - 1] = arr_r[i] / rs[i - 1]
 
-    return vector_gradient  # type: ignore
+    return vector_gradient
 
 
 @numba_backend.register_operator(
@@ -268,4 +268,4 @@ def make_tensor_divergence(grid: PolarSymGrid) -> OperatorImplType:
             term = (arr_rφ[i] + arr_φr[i]) / rs[i - 1]
             out_φ[i - 1] = (arr_φr[i + 1] - arr_φr[i - 1]) * scale_r + term
 
-    return tensor_divergence  # type: ignore
+    return tensor_divergence

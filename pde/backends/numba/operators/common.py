@@ -103,7 +103,7 @@ def make_derivative(
         msg = f"Numba derivative operator not implemented for {num_axes:d} axes"
         raise NotImplementedError(msg)
 
-    return diff  # type: ignore
+    return diff
 
 
 def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorImplType:
@@ -171,4 +171,4 @@ def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorImplType:
         msg = f"Numba derivative operator not implemented for {num_axes:d} axes"
         raise NotImplementedError(msg)
 
-    return diff  # type: ignore
+    return diff

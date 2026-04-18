@@ -90,7 +90,7 @@ def make_laplace(
                 diff_1 = (arr[i + 1] - arr[i - 1]) / (rs[i - 1] * dr)
                 out[i - 1] = diff_2 + diff_1
 
-    return laplace  # type: ignore
+    return laplace
 
 
 @numba_backend.register_operator(SphericalSymGrid, "gradient", rank_in=0, rank_out=1)
@@ -138,7 +138,7 @@ def make_gradient(
                 out[0, i - 1] = (arr[i] - arr[i - 1]) * scale_r
             out[1, i - 1] = out[2, i - 1] = 0  # no angular dependence by definition
 
-    return gradient  # type: ignore
+    return gradient
 
 
 @numba_backend.register_operator(
@@ -191,7 +191,7 @@ def make_gradient_squared(
                 term = (arr[i + 1] - arr[i]) ** 2 + (arr[i] - arr[i - 1]) ** 2
                 out[i - 1] = term * scale
 
-    return gradient_squared  # type: ignore
+    return gradient_squared
 
 
 @numba_backend.register_operator(SphericalSymGrid, "divergence", rank_in=1, rank_out=0)
@@ -296,7 +296,7 @@ def make_divergence(
                     diff_r = (arr_r[i] - arr_r[i - 1]) / dr
                 out[i - 1] = diff_r + factors[i - 1] * arr_r[i]
 
-    return divergence  # type: ignore
+    return divergence
 
 
 @numba_backend.register_operator(
@@ -380,7 +380,7 @@ def make_vector_gradient(
             out_θθ[i - 1] = arr_r[i] / rs[i - 1]
             out_φφ[i - 1] = arr_r[i] / rs[i - 1]
 
-    return vector_gradient  # type: ignore
+    return vector_gradient
 
 
 @numba_backend.register_operator(
@@ -494,7 +494,7 @@ def make_tensor_divergence(
                 deriv_r = (arr_φr[i + 1] - arr_φr[i - 1]) * scale_r
                 out_φ[i - 1] = deriv_r + (2 * arr_φr[i] + arr_rφ[i]) / rs[i - 1]
 
-    return tensor_divergence  # type: ignore
+    return tensor_divergence
 
 
 @numba_backend.register_operator(
@@ -619,4 +619,4 @@ def make_tensor_double_divergence(
                 enum = (arr_rr[i] - arr_φφ[i]) / rs[i - 1] + arr_rr_dr - arr_φφ_dr
                 out[i - 1] = lap_rr + 2 * enum / rs[i - 1]
 
-    return tensor_double_divergence  # type: ignore
+    return tensor_double_divergence

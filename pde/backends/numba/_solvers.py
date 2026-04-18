@@ -61,7 +61,7 @@ def _make_post_step_hook(solver: SolverBase, state: TField) -> StepperHook:
     post_step_hook = jit(signature_hook)(post_step_hook)
 
     solver._logger.debug("Compiled post-step hook")
-    return post_step_hook  # type: ignore
+    return post_step_hook
 
 
 def _make_fixed_stepper(solver: SolverBase, state: TField) -> InnerStepperType:

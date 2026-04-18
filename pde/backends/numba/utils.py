@@ -25,7 +25,8 @@ from typing import TYPE_CHECKING, Any
 import numba as nb
 import numpy as np
 from numba.core.types import npytypes, scalars
-from numba.extending import is_jitted, overload, register_jitable
+from numba.extending import is_jitted, register_jitable
+from numba.extending import overload as nb_overload
 from numba.typed import Dict as NumbaDict
 from typing_extensions import Self
 
@@ -267,7 +268,7 @@ def flat_idx(arr: NumericArray, i: int) -> Number:
     return arr.flat[i]  # type: ignore
 
 
-@overload(flat_idx)
+@nb_overload(flat_idx)
 def ol_flat_idx(arr, i):
     """Helper function allowing indexing of scalars as if they arrays."""
     if isinstance(arr, nb.types.Number):

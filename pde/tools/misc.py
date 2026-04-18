@@ -24,18 +24,18 @@ import errno
 import functools
 import importlib
 import json
-from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, Protocol, overload
 
 import numpy as np
 
 if TYPE_CHECKING:
+    import types
+    from collections.abc import Callable
+
     from numpy.typing import DTypeLike
 
-    from .typing import ArrayLike, Number, NumericArray
-
-TFunc = TypeVar("TFunc", bound=Callable[..., Any])
+    from .typing import ArrayLike, Number, NumericArray, TFunc, TNativeArray
 
 
 _MODULE_AVAILABILITY_CACHE: dict[str, bool] = {}
@@ -77,7 +77,19 @@ def ensure_directory_exists(folder: str | Path):
             raise
 
 
-def decorator_arguments(decorator: Callable) -> Callable:
+class _FlexibleDecorator(Protocol):
+    """Type of a decorator that can be called with and without arguments."""
+
+    @overload
+    def __call__(self, function: TFunc) -> TFunc: ...
+
+    @overload
+    def __call__(self, *args, **kwargs) -> Callable[[TFunc], TFunc]: ...
+
+    def __call__(self, *args, **kwargs) -> Callable: ...
+
+
+def decorator_arguments(decorator: Callable) -> _FlexibleDecorator:
     r"""make a decorator usable with and without arguments:
 
     The resulting decorator can be used like `@decorator`
@@ -218,7 +230,7 @@ class hybridmethod:
         return self.finstance.__get__(instance, cls)
 
 
-def estimate_computation_speed(func: Callable, *args, **kwargs) -> float:
+def estimate_computation_speed(func: TFunc, *args, **kwargs) -> float:
     """Estimates the computation speed of a function.
 
     Args:
@@ -348,3 +360,20 @@ def number_array(
         result = np.array(data, dtype=np.dtype(dtype), copy=copy)
 
     return result
+
+
+def get_array_namespace(arr: TNativeArray) -> types.ModuleType:
+    """Get the namespace associated with an array.
+
+    This function should be used to write general functions that can work with many
+    backends, such as :mod:`jax`.
+
+    Args:
+        arr (:class:`~numpy.ndarray` or another array type):
+            The array whose namespace will be returned
+
+    Returns:
+        A python module defining typical functions that can be applied to arrays. In
+        many cases this will be :mod:`numpy`.
+    """
+    return arr.__array_namespace__()  # type: ignore

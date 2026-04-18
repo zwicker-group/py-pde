@@ -88,7 +88,7 @@ def make_cell_volume_getter(grid: GridBase, *, flat_index: bool = False) -> Cell
             def get_cell_volume(*args) -> float:
                 return cell_volumes[args]  # type: ignore
 
-    return get_cell_volume  # type: ignore
+    return get_cell_volume
 
 
 def make_interpolation_axis_data(

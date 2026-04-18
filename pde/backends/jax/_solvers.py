@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import jax.numpy as jnp
 
-from ...solvers import AdamsBashforthSolver, EulerSolver
+from ...solvers import AdamsBashforthSolver, EulerSolver, RungeKuttaSolver, ScipySolver
 from ...solvers.base import AdaptiveSolverBase, SolverBase, _make_dt_adjuster
 from ...tools.math import OnlineStatistics
 
@@ -18,6 +18,14 @@ if TYPE_CHECKING:
 
     from ...tools.typing import StepperHook, TField
     from .typing import JaxInnerStepperType
+
+
+TESTED_SOLVERS = [
+    EulerSolver,
+    RungeKuttaSolver,
+    AdamsBashforthSolver,
+    ScipySolver,
+]
 
 
 def _make_post_step_hook(solver: SolverBase, state: TField) -> StepperHook:
@@ -319,6 +327,11 @@ def make_inner_stepper(solver: SolverBase, state: TField) -> JaxInnerStepperType
             Function that advances the state from ``t_start`` to ``t_end`` with
             signature ``(state_data, t_start, t_end) -> (state_data, t_final)``.
     """
+    if solver.__class__ not in TESTED_SOLVERS:
+        solver._logger.warning(
+            "Solver %s not supported by backend %s", solver, solver.backend
+        )
+
     # get the actual inner stepper
     if isinstance(solver, AdaptiveSolverBase) and solver.adaptive:
         # dealing with an adaptive stepper

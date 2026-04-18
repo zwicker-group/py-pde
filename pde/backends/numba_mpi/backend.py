@@ -238,7 +238,7 @@ class NumbaMPIBackend(NumbaBackend):
                 integral = integrate_local(arr)
                 return mpi_allreduce(integral, operator="SUM")  # type: ignore
 
-        return integrate_global  # type: ignore
+        return integrate_global
 
     def make_mpi_synchronizer(
         self, operator: int | str = "MAX"

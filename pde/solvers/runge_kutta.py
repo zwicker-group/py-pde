@@ -14,8 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
+from ..tools.misc import get_array_namespace
 from .base import AdaptiveSolverBase
 
 if TYPE_CHECKING:
@@ -130,6 +129,9 @@ class RungeKuttaSolver(AdaptiveSolverBase):
             state_data: NumericArray, t: float, dt: float
         ) -> tuple[NumericArray, float]:
             """Basic stepper to estimate error."""
+            # support any backend following Python Array API
+            nx = get_array_namespace(state_data)
+
             # do the six intermediate steps
             k1 = dt * rhs(state_data, t)
             k2 = dt * rhs(state_data + b21 * k1, t + a2 * dt)
@@ -146,7 +148,7 @@ class RungeKuttaSolver(AdaptiveSolverBase):
 
             # estimate the maximal error
             error_local = r1 * k1 + r3 * k3 + r4 * k4 + r5 * k5 + r6 * k6
-            error = np.abs(error_local).max()
+            error = nx.abs(error_local).max()
 
             state_new = state_data + c1 * k1 + c3 * k3 + c4 * k4 + c5 * k5
             return state_new, error
