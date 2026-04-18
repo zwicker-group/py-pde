@@ -31,14 +31,10 @@ class KuramotoSivashinskyPDE(PDEBase):
     def make_evolution_rate(self, state, backend):
         """Compilable implementation of the PDE."""
         gradient_squared = state.grid.make_operator(
-            "gradient_squared",
-            bc=self.bc,
-            backend=backend,
-            native=True,
-            dtype=state.dtype,
+            "gradient_squared", bc=self.bc, backend=backend, dtype=state.dtype
         )
         laplace = state.grid.make_operator(
-            "laplace", bc=self.bc, backend=backend, native=True, dtype=state.dtype
+            "laplace", bc=self.bc, backend=backend, dtype=state.dtype
         )
 
         def pde_rhs(data, t):

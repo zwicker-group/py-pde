@@ -22,7 +22,7 @@ import torch
 from .... import config
 from ....grids import GridBase, SphericalSymGrid
 from ....tools.docstrings import fill_in_docstring
-from .. import torch_backend
+from ..backend import TorchBackend
 from .common import TorchDifferentialOperator
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from ....grids.boundaries import BoundariesList
 
 
-@torch_backend.register_operator(SphericalSymGrid, "laplace", rank_in=0, rank_out=0)
+@TorchBackend.register_operator(SphericalSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 class SphericalLaplacian(TorchDifferentialOperator):
     """Spherical Laplace using torch.
@@ -101,7 +101,7 @@ class SphericalLaplacian(TorchDifferentialOperator):
         return term1 + term2  # type: ignore
 
 
-@torch_backend.register_operator(SphericalSymGrid, "gradient", rank_in=0, rank_out=1)
+@TorchBackend.register_operator(SphericalSymGrid, "gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
 class SphericalGradient(TorchDifferentialOperator):
     """Spherical gradient operator using torch.
@@ -159,7 +159,7 @@ class SphericalGradient(TorchDifferentialOperator):
         return torch.stack((r, torch.zeros_like(r), torch.zeros_like(r)))
 
 
-@torch_backend.register_operator(
+@TorchBackend.register_operator(
     SphericalSymGrid, "gradient_squared", rank_in=0, rank_out=0
 )
 @fill_in_docstring
@@ -214,7 +214,7 @@ class SphericalGradientSquared(TorchDifferentialOperator):
         return (term1 + term2) * self.scale  # type: ignore
 
 
-@torch_backend.register_operator(SphericalSymGrid, "divergence", rank_in=1, rank_out=0)
+@TorchBackend.register_operator(SphericalSymGrid, "divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
 class SphericalDivergence(TorchDifferentialOperator):
     """Spherical divergence operator using torch.
@@ -302,7 +302,7 @@ class SphericalDivergence(TorchDifferentialOperator):
         return diff_r + self.factor * arr_r[1:-1]  # type: ignore
 
 
-@torch_backend.register_operator(
+@TorchBackend.register_operator(
     SphericalSymGrid, "vector_gradient", rank_in=1, rank_out=2
 )
 @fill_in_docstring
@@ -374,7 +374,7 @@ class SphericalVectorGradient(TorchDifferentialOperator):
         )
 
 
-@torch_backend.register_operator(
+@TorchBackend.register_operator(
     SphericalSymGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
 @fill_in_docstring

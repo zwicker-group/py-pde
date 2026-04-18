@@ -8,12 +8,9 @@ from __future__ import annotations
 import inspect
 import logging
 from collections import defaultdict
-from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, overload
 
-from ..solvers import AdaptiveSolverBase
-from ..tools.config import Config, Parameter
-from ..tools.math import OnlineStatistics
+from ..tools.config import Config, ConfigLike
 from ..tools.typing import (
     DataSetter,
     FloatingArray,
@@ -30,6 +27,8 @@ from ..tools.typing import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from numpy.typing import DTypeLike
 
     from ..fields import DataFieldBase
@@ -37,7 +36,12 @@ if TYPE_CHECKING:
     from ..pdes.base import PDEBase
     from ..solvers.base import SolverBase
     from ..tools.expressions import ExpressionBase
-    from ..tools.typing import OperatorImplType
+    from ..tools.typing import (
+        BinaryOperatorImplType,
+        OperatorImplType,
+        StepperType,
+        TFunc,
+    )
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for backends."""
@@ -51,12 +55,15 @@ _RESERVED_BACKEND_NAMES: set[str] = {
     "undetermined",
     "unknown",
 }
-TFunc = TypeVar("TFunc", bound=Callable)
 TValue = TypeVar("TValue")
 
 
-class BackendBase:
-    """Basic backend from which all other backends inherit."""
+class BackendBase(Generic[TNativeArray]):
+    """Basic backend from which all other backends inherit.
+
+    The generic type parameter `TNativeArray` determines the type of the native data
+    representation of the backend.
+    """
 
     implementation: str = "undefined"
     """str: The name of the python module that is used to implement this backend. This
@@ -78,12 +85,7 @@ class BackendBase:
     defined on parent classes.
     """
 
-    def __init__(
-        self,
-        config: Sequence[Parameter] | dict[str, Any] | Config | None,
-        *,
-        name: str | None = None,
-    ):
+    def __init__(self, config: ConfigLike | None, *, name: str | None = None):
         """Initialize the backend.
 
         Args:
@@ -102,6 +104,22 @@ class BackendBase:
             self._logger.warning("Backend uses reserved name.")
         self.name = name
 
+    @classmethod
+    def from_args(
+        cls, config: ConfigLike | None, args: str = "", *, name: str | None = None
+    ):
+        """Initialize backend with extra arguments.
+
+        Args:
+            config (:class:`~pde.tools.config.Config`):
+                Configuration data for the backend
+            args (str):
+                Additional arguments that determine how the backend is initialized
+            name (str):
+                The name of the backend
+        """
+        raise NotImplementedError
+
     def __init_subclass__(cls, **kwargs) -> None:
         """Initialize class-level attributes of subclasses.
 
@@ -117,12 +135,17 @@ class BackendBase:
         """Return concise string representation of this backend."""
         return f"{self.__class__.__name__}(name={self.name!r})"
 
-    @overload
-    def from_numpy(self, value: NumericArray) -> NativeArray: ...
-    @overload
-    def from_numpy(self, value: TValue) -> TValue: ...
+    @property
+    def info(self) -> dict[str, Any]:
+        """dict: relevant information about the backend"""
+        return {"name": self.name, "implementation": self.implementation}
 
-    def from_numpy(self, value: Any) -> Any:
+    @overload
+    def numpy_to_native(self, value: NumericArray) -> NativeArray: ...
+    @overload
+    def numpy_to_native(self, value: TValue) -> TValue: ...
+
+    def numpy_to_native(self, value: Any) -> Any:
         """Convert values from numpy to native representation.
 
         Args:
@@ -131,49 +154,17 @@ class BackendBase:
         return value
 
     @overload
-    def to_numpy(self, value: NativeArray) -> NumericArray: ...
+    def native_to_numpy(self, value: NativeArray) -> NumericArray: ...
     @overload
-    def to_numpy(self, value: TValue) -> TValue: ...
+    def native_to_numpy(self, value: TValue) -> TValue: ...
 
-    def to_numpy(self, value: Any) -> Any:
+    def native_to_numpy(self, value: Any) -> Any:
         """Convert native values to numpy representation.
 
         Args:
             value: The value to convert to numpy representation
         """
         return value
-
-    def _apply_native(
-        self,
-        func: Callable,
-        value: NumericArray,
-        *args,
-        inplace: bool = False,
-        **kwargs,
-    ) -> NumericArray:
-        r"""Apply a native function to numpy data.
-
-        Args:
-            func (callable):
-                The function defined in the native space of the backend
-            value (:class:`~numpy.ndarray`):
-                The array data that is fed to the function
-            inplace (bool):
-                If true, `value` it is assumed the function modifies the data inplace,
-                so we return the modified `value`
-            *args, **kwargs:
-                Additional arguments that are forwarded to the function call
-
-        Returns:
-            :class:`~numpy.ndarray`: The result as a numpy array
-        """
-        value_native = self.from_numpy(value)
-        if inplace:
-            func(value_native, *args, **kwargs)
-            value[...] = self.to_numpy(value_native)
-            return value
-        res_native = func(value_native, *args, **kwargs)
-        return self.to_numpy(res_native)
 
     def compile_function(self, func: TFunc) -> TFunc:
         """General method that compiles a user function.
@@ -185,8 +176,46 @@ class BackendBase:
         msg = f"Compiling functions is not supported by backend `{self.name}`"
         raise NotImplementedError(msg)
 
+    def _apply_function(
+        self, func: Callable, *values: NumericArray, **kwargs
+    ) -> NumericArray:
+        r"""Apply a native function to numpy data and return result.
+
+        Args:
+            func (callable):
+                The function defined in the native space of the backend
+            *values (:class:`~numpy.ndarray`):
+                The array data that is fed to the function
+            **kwargs:
+                Additional arguments that are forwarded to the function call
+
+        Returns:
+            :class:`~numpy.ndarray`: The result as a numpy array
+        """
+        values_native = [self.numpy_to_native(value) for value in values]
+        res_native = func(*values_native, **kwargs)
+        return self.native_to_numpy(res_native)
+
+    def _apply_operator(
+        self, func: Callable, *values: NumericArray, out: NumericArray, **kwargs
+    ) -> None:
+        r"""Apply a native operator to numpy data and store result in `out`.
+
+        Args:
+            func (callable):
+                The operator defined in the native space of the backend
+            *values (:class:`~numpy.ndarray`):
+                The array data that is fed to the function
+            out (:class:`~numpy.ndarray`):
+                The array to which the results are written
+            *args, **kwargs:
+                Additional arguments that are forwarded to the function call
+        """
+        raise NotImplementedError
+
+    @classmethod
     def register_operator(
-        self,
+        cls,
         grid_cls: type[GridBase],
         name: str,
         factory_func: OperatorFactory | None = None,
@@ -235,7 +264,7 @@ class BackendBase:
                 factor_func_arg (OperatorFactory):
                     The operator factory function to register
             """
-            self._operators[grid_cls][name] = OperatorInfo(
+            cls._operators[grid_cls][name] = OperatorInfo(
                 factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out, name=name
             )
             return factor_func_arg
@@ -362,7 +391,6 @@ class BackendBase:
         operator: str | OperatorInfo,
         *,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> OperatorImplType:
         """Return a compiled function applying an operator without boundary conditions.
@@ -386,10 +414,6 @@ class BackendBase:
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -409,7 +433,6 @@ class BackendBase:
         *,
         bcs: BoundariesBase,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
@@ -425,10 +448,6 @@ class BackendBase:
                 The boundary conditions used before the operator is applied
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -453,7 +472,7 @@ class BackendBase:
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+    ) -> BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -466,16 +485,14 @@ class BackendBase:
                 Whether to use the complex conjugate for the second operand
 
         Returns:
-            function that takes two instance of :class:`~numpy.ndarray`, which contain
-            the discretized data of the two operands. An optional third argument can
-            specify the output array to which the result is written.
+            Function that takes two instance of native data arrays, which contain the
+            discretized data of the two operands. An optional third argument can specify
+            the output array to which the result is written.
         """
         msg = f"Inner product not defined for backend {self.name}"
         raise NotImplementedError(msg)
 
-    def make_outer_prod_operator(
-        self, field: DataFieldBase
-    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+    def make_outer_prod_operator(self, field: DataFieldBase) -> BinaryOperatorImplType:
         """Return operator calculating the outer product between two fields.
 
         This supports typically only supports products between two vector fields.
@@ -485,9 +502,9 @@ class BackendBase:
                 Field for which the outer product is defined
 
         Returns:
-            function that takes two instance of :class:`~numpy.ndarray`, which contain
-            the discretized data of the two operands. An optional third argument can
-            specify the output array to which the result is written.
+            Function that takes two instance of native data arrays, which contain the
+            discretized data of the two operands. An optional third argument can specify
+            the output array to which the result is written.
         """
         msg = f"Outer product not defined for backend {self.name}"
         raise NotImplementedError(msg)
@@ -521,7 +538,9 @@ class BackendBase:
         raise NotImplementedError(msg)
 
     def make_pde_rhs(
-        self, eq: PDEBase, state: TField, *, native: bool = False
+        self,
+        eq: PDEBase,
+        state: TField,
     ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
@@ -530,51 +549,11 @@ class BackendBase:
                 The object describing the differential equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which information can be extracted
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
 
         Returns:
             Function returning deterministic part of the right hand side of the PDE
         """
         msg = f"PDE right hand side not defined for backend {self.name}"
-        raise NotImplementedError(msg)
-
-    def make_inner_stepper(
-        self,
-        solver: SolverBase,
-        stepper_style: Literal["fixed", "adaptive"],
-        state: TField,
-        dt: float,
-    ) -> Callable:
-        """Return a stepper function using an explicit scheme.
-
-        Args:
-            solver (:class:`~pde.solvers.base.SolverBase`):
-                The solver instance, which determines how the stepper is constructed
-            stepper_style (str):
-                The style of the stepper, either "fixed" or "adaptive"
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-            dt (float):
-                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
-
-        Returns:
-            Function that can be called to advance the `state` from time `t_start` to
-            time `t_end`. The function call signature is `(state: numpy.ndarray,
-            t_start: float, t_end: float)`
-        """
-        solver.info["dt_statistics"] = OnlineStatistics()
-
-        assert solver.backend == self
-        if stepper_style == "fixed":
-            return solver._make_fixed_stepper(state, dt)
-        if stepper_style == "adaptive":
-            assert isinstance(solver, AdaptiveSolverBase)
-            return solver._make_adaptive_stepper(state)
-        msg = f"Backend cannot handle stepper style `{stepper_style}`"
         raise NotImplementedError(msg)
 
     def make_expression_function(
@@ -624,3 +603,35 @@ class BackendBase:
             return value
 
         return synchronize_value
+
+    def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
+        """Return a stepper function using an explicit scheme.
+
+        Args:
+            solver (:class:`~pde.solvers.base.SolverBase`):
+                The solver instance, which determines how the stepper is constructed
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        if self.copy_data:
+            self._logger.warning(
+                "Backend requires that data is copied, so it likely needs to implement "
+                "its own `make_stepper` method to control data."
+            )
+
+        inner_stepper = solver._make_inner_stepper(state)
+
+        def stepper(state: TField, t_start: float, t_end: float) -> float:
+            """Advance `state` from `t_start` to `t_end` using fixed steps."""
+            # call the stepper with field data directly
+            return inner_stepper(state.data, t_start, t_end)
+
+        return stepper  # type: ignore

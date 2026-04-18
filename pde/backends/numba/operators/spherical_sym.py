@@ -24,16 +24,20 @@ from .... import config
 from ....grids.spherical import SphericalSymGrid
 from ....tools.docstrings import fill_in_docstring
 from .. import numba_backend
+from ..backend import NumbaBackend
 from ..utils import jit
 
 if TYPE_CHECKING:
     from ....tools.typing import NumericArray, OperatorImplType
 
 
-@numba_backend.register_operator(SphericalSymGrid, "laplace", rank_in=0, rank_out=0)
+@NumbaBackend.register_operator(SphericalSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(
-    grid: SphericalSymGrid, *, conservative: bool | None = None
+    grid: SphericalSymGrid,
+    *,
+    backend: NumbaBackend = numba_backend,
+    conservative: bool | None = None,
 ) -> OperatorImplType:
     """Make a discretized laplace operator for a spherical grid.
 
@@ -42,6 +46,8 @@ def make_laplace(
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
             The spherical grid for which this operator will be defined
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
         conservative (bool):
             Flag indicating whether the laplace operator should be conservative (which
             results in slightly slower computations). Conservative operators ensure mass
@@ -90,14 +96,15 @@ def make_laplace(
                 diff_1 = (arr[i + 1] - arr[i - 1]) / (rs[i - 1] * dr)
                 out[i - 1] = diff_2 + diff_1
 
-    return laplace  # type: ignore
+    return laplace
 
 
-@numba_backend.register_operator(SphericalSymGrid, "gradient", rank_in=0, rank_out=1)
+@NumbaBackend.register_operator(SphericalSymGrid, "gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(
     grid: SphericalSymGrid,
     *,
+    backend: NumbaBackend = numba_backend,
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorImplType:
     """Make a discretized gradient operator for a spherical grid.
@@ -107,6 +114,8 @@ def make_gradient(
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
             The spherical grid for which this operator will be defined
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
         method (str):
             The method for calculating the derivative. Possible values are 'central',
             'forward', and 'backward'.
@@ -138,15 +147,18 @@ def make_gradient(
                 out[0, i - 1] = (arr[i] - arr[i - 1]) * scale_r
             out[1, i - 1] = out[2, i - 1] = 0  # no angular dependence by definition
 
-    return gradient  # type: ignore
+    return gradient
 
 
-@numba_backend.register_operator(
+@NumbaBackend.register_operator(
     SphericalSymGrid, "gradient_squared", rank_in=0, rank_out=0
 )
 @fill_in_docstring
 def make_gradient_squared(
-    grid: SphericalSymGrid, *, central: bool = True
+    grid: SphericalSymGrid,
+    *,
+    backend: NumbaBackend = numba_backend,
+    central: bool = True,
 ) -> OperatorImplType:
     """Make a discretized gradient squared operator for a spherical grid.
 
@@ -155,6 +167,8 @@ def make_gradient_squared(
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
             The spherical grid for which this operator will be defined
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
         central (bool):
             Whether a central difference approximation is used for the gradient
             operator. If this is False, the squared gradient is calculated as
@@ -191,14 +205,15 @@ def make_gradient_squared(
                 term = (arr[i + 1] - arr[i]) ** 2 + (arr[i] - arr[i - 1]) ** 2
                 out[i - 1] = term * scale
 
-    return gradient_squared  # type: ignore
+    return gradient_squared
 
 
-@numba_backend.register_operator(SphericalSymGrid, "divergence", rank_in=1, rank_out=0)
+@NumbaBackend.register_operator(SphericalSymGrid, "divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(
     grid: SphericalSymGrid,
     *,
+    backend: NumbaBackend = numba_backend,
     safe: bool | None = None,
     conservative: bool | None = None,
     method: Literal["central", "forward", "backward"] = "central",
@@ -215,6 +230,8 @@ def make_divergence(
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
             The polar grid for which this operator will be defined
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
         safe (bool):
             Add extra checks for the validity of the input. If `None`. the value is read
             from the configuration option `operators.tensor_symmetry_check`.
@@ -296,16 +313,17 @@ def make_divergence(
                     diff_r = (arr_r[i] - arr_r[i - 1]) / dr
                 out[i - 1] = diff_r + factors[i - 1] * arr_r[i]
 
-    return divergence  # type: ignore
+    return divergence
 
 
-@numba_backend.register_operator(
+@NumbaBackend.register_operator(
     SphericalSymGrid, "vector_gradient", rank_in=1, rank_out=2
 )
 @fill_in_docstring
 def make_vector_gradient(
     grid: SphericalSymGrid,
     *,
+    backend: NumbaBackend = numba_backend,
     method: Literal["central", "forward", "backward"] = "central",
     safe: bool | None = None,
 ) -> OperatorImplType:
@@ -321,6 +339,8 @@ def make_vector_gradient(
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
             The spherical grid for which this operator will be defined
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
         method (str):
             The method for calculating the derivative. Possible values are 'central',
             'forward', and 'backward'.
@@ -380,16 +400,17 @@ def make_vector_gradient(
             out_θθ[i - 1] = arr_r[i] / rs[i - 1]
             out_φφ[i - 1] = arr_r[i] / rs[i - 1]
 
-    return vector_gradient  # type: ignore
+    return vector_gradient
 
 
-@numba_backend.register_operator(
+@NumbaBackend.register_operator(
     SphericalSymGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
 @fill_in_docstring
 def make_tensor_divergence(
     grid: SphericalSymGrid,
     *,
+    backend: NumbaBackend = numba_backend,
     safe: bool | None = None,
     conservative: bool | None = False,
 ) -> OperatorImplType:
@@ -400,6 +421,8 @@ def make_tensor_divergence(
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
             The spherical grid for which this operator will be defined
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
         safe (bool):
             Add extra checks for the validity of the input. If `None`. the value is read
             from the configuration option `operators.tensor_symmetry_check`.
@@ -494,16 +517,17 @@ def make_tensor_divergence(
                 deriv_r = (arr_φr[i + 1] - arr_φr[i - 1]) * scale_r
                 out_φ[i - 1] = deriv_r + (2 * arr_φr[i] + arr_rφ[i]) / rs[i - 1]
 
-    return tensor_divergence  # type: ignore
+    return tensor_divergence
 
 
-@numba_backend.register_operator(
+@NumbaBackend.register_operator(
     SphericalSymGrid, "tensor_double_divergence", rank_in=2, rank_out=0
 )
 @fill_in_docstring
 def make_tensor_double_divergence(
     grid: SphericalSymGrid,
     *,
+    backend: NumbaBackend = numba_backend,
     safe: bool | None = None,
     conservative: bool | None = None,
 ) -> OperatorImplType:
@@ -514,6 +538,8 @@ def make_tensor_double_divergence(
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
             The spherical grid for which this operator will be defined
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
         safe (bool):
             Add extra checks for the validity of the input. If `None`. the value is read
             from the configuration option `operators.tensor_symmetry_check`.
@@ -619,4 +645,4 @@ def make_tensor_double_divergence(
                 enum = (arr_rr[i] - arr_φφ[i]) / rs[i - 1] + arr_rr_dr - arr_φφ_dr
                 out[i - 1] = lap_rr + 2 * enum / rs[i - 1]
 
-    return tensor_double_divergence  # type: ignore
+    return tensor_double_divergence

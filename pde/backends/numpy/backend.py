@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ...fields import DataFieldBase, VectorField
-from ..base import BackendBase, OperatorInfo, TFunc
+from ...tools.typing import NumericArray
+from ..base import BackendBase, OperatorInfo
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,16 +22,17 @@ if TYPE_CHECKING:
     from ...pdes import PDEBase
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
+        BinaryOperatorImplType,
         DataSetter,
         GhostCellSetter,
         NumberOrArray,
-        NumericArray,
         OperatorType,
         TField,
+        TFunc,
     )
 
 
-class NumpyBackend(BackendBase):
+class NumpyBackend(BackendBase[NumericArray]):
     """Defines :mod:`numpy` backend, from which all other backends inherit."""
 
     implementation = "numpy"
@@ -43,6 +45,23 @@ class NumpyBackend(BackendBase):
                 The function that needs to be compiled for this backend
         """
         return func
+
+    def _apply_operator(
+        self, func: Callable, *values: NumericArray, out: NumericArray, **kwargs
+    ) -> None:
+        r"""Apply a native operator to numpy data.
+
+        Args:
+            func (callable):
+                The operator defined in the native space of the backend
+            values (:class:`~numpy.ndarray`):
+                The array data that is fed to the function
+            out (:class:`~numpy.ndarray`):
+                The array to which the results are written
+            *args, **kwargs:
+                Additional arguments that are forwarded to the function call
+        """
+        func(*values, out=out, **kwargs)
 
     def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
@@ -142,7 +161,6 @@ class NumpyBackend(BackendBase):
         *,
         bcs: BoundariesBase,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
@@ -158,10 +176,6 @@ class NumpyBackend(BackendBase):
                 The boundary conditions used before the operator is applied
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -249,7 +263,7 @@ class NumpyBackend(BackendBase):
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+    ) -> BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -301,9 +315,7 @@ class NumpyBackend(BackendBase):
 
         return dot
 
-    def make_outer_prod_operator(
-        self, field: DataFieldBase
-    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+    def make_outer_prod_operator(self, field: DataFieldBase) -> BinaryOperatorImplType:
         """Return operator calculating the outer product between two fields.
 
         This supports typically only supports products between two vector fields.
@@ -329,8 +341,8 @@ class NumpyBackend(BackendBase):
 
         return outer
 
-    def make_pde_rhs(  # type: ignore
-        self, eq: PDEBase, state: TField, *, native: bool = False
+    def make_pde_rhs(
+        self, eq: PDEBase, state: TField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
@@ -339,10 +351,6 @@ class NumpyBackend(BackendBase):
                 The object describing the differential equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which information can be extracted
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
 
         Returns:
             Function returning deterministic part of the right hand side of the PDE

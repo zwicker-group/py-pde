@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Code for creating performance plots.
+"""Code for creating plots showing performance of operators.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -44,7 +44,7 @@ else:
         cv2.Laplacian, ddepth=cv2.CV_64F, borderType=cv2.BORDER_REFLECT
     )
 # determine path of the cache for the ground truth of simulations
-GROUND_TRUTH_CACHE = Path(__file__).resolve().parent / "_cache" / "performance_data"
+RESULT_CACHE = Path(__file__).resolve().parent / "_cache" / "performance_ops"
 
 
 def time_function(func, arg, repeat: int = 3, use_out: bool = False) -> float:
@@ -111,7 +111,7 @@ def get_single_run(backend: str, size: int, periodic=False) -> float:
         periodic (bool):
             Whether the grid is periodic or not
     """
-    cache_file = GROUND_TRUTH_CACHE / f"{backend}_{size}_{periodic}.json"
+    cache_file = RESULT_CACHE / f"{backend}_{size}_{periodic}.json"
 
     if cache_file.exists():
         # read performance data
@@ -130,7 +130,7 @@ def get_single_run(backend: str, size: int, periodic=False) -> float:
         # write  performance data
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         with cache_file.open("w") as f:
-            return json.dump(data, f)
+            json.dump(data, f)
 
     return runtime
 

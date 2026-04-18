@@ -146,7 +146,7 @@ def _make_expression_virtual_point_evaluator(
     bc_coords_np = np.moveaxis(
         bc.grid._boundary_coordinates(axis=axis, upper=bc.upper), -1, 0
     )
-    bc_coords = [backend.from_numpy(bc_coords_np[i]) for i in range(num_axes)]
+    bc_coords = [backend.numpy_to_native(bc_coords_np[i]) for i in range(num_axes)]
 
     # determine if we need to warn about a missing time argument
     warn_if_time_not_set = (not bc._is_func) and bc._func_expression.depends_on("t")
@@ -257,8 +257,8 @@ def _make_const1storder_virtual_point_evaluator(
 
     # calculate necessary constants and move them to device
     const, factor, index = _get_virtual_point_data_1storder(bc)
-    const = backend.from_numpy(bc._match_data_shape(const))
-    factor = backend.from_numpy(bc._match_data_shape(factor))
+    const = backend.numpy_to_native(bc._match_data_shape(const))
+    factor = backend.numpy_to_native(bc._match_data_shape(factor))
 
     def virtual_point(arr: jax.Array, idx: tuple[int, ...], args=None) -> jax.Array:
         """Evaluate the virtual point at `idx`"""
@@ -334,9 +334,9 @@ def _make_const2ndorder_virtual_point_evaluator(
 
     # calculate necessary constants
     value, f1, i1, f2, i2 = _get_virtual_point_data_2ndorder(bc)
-    value = backend.from_numpy(bc._match_data_shape(value))
-    f1 = backend.from_numpy(bc._match_data_shape(f1))
-    f2 = backend.from_numpy(bc._match_data_shape(f2))
+    value = backend.numpy_to_native(bc._match_data_shape(value))
+    f1 = backend.numpy_to_native(bc._match_data_shape(f1))
+    f2 = backend.numpy_to_native(bc._match_data_shape(f2))
 
     def virtual_point(arr: jax.Array, idx: tuple[int, ...], args=None) -> jax.Array:
         """Evaluate the virtual point at `idx`"""

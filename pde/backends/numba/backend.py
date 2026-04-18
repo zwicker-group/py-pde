@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import functools
 import warnings
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numba as nb
 import numpy as np
@@ -18,12 +18,10 @@ from ...fields import DataFieldBase, VectorField
 from ...grids import DimensionError, DomainError, GridBase
 from ...grids.boundaries.axes import BoundariesBase, BoundariesList, BoundariesSetter
 from ...grids.boundaries.local import BCBase, UserBC
-from ...solvers import AdaptiveSolverBase, SolverBase
 from ...tools.cache import cached_method
 from ...tools.config import is_hpc_environment
 from ...tools.typing import OperatorInfo
 from ..numpy.backend import NumpyBackend
-from .overloads import OnlineStatistics
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -32,18 +30,22 @@ if TYPE_CHECKING:
 
     from ...grids.boundaries.axis import BoundaryAxisBase
     from ...pdes import PDEBase
+    from ...solvers.base import SolverBase
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
+        BinaryOperatorImplType,
         DataSetter,
         FloatingArray,
         GhostCellSetter,
+        InexactArray,
         Number,
         NumberOrArray,
         NumericArray,
         OperatorType,
+        StepperType,
         TField,
+        TFunc,
     )
-    from ..base import TFunc
 
 
 class NumbaBackend(NumpyBackend):
@@ -469,7 +471,7 @@ class NumbaBackend(NumpyBackend):
 
         return set_valid_bcs
 
-    @cached_method(ignore_args=["native"])
+    @cached_method()
     def make_operator(
         self,
         grid: GridBase,
@@ -477,7 +479,6 @@ class NumbaBackend(NumpyBackend):
         *,
         bcs: BoundariesBase,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
@@ -493,8 +494,6 @@ class NumbaBackend(NumpyBackend):
                 The boundary conditions used before the operator is applied
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                This flag has no effect for the `numba` backend.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -518,7 +517,7 @@ class NumbaBackend(NumpyBackend):
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
-        operator_raw = operator_info.factory(grid, **kwargs)
+        operator_raw = operator_info.factory(grid, backend=self, **kwargs)
 
         # calculate shapes of the full data
         shape_in_valid = (grid.dim,) * operator_info.rank_in + grid.shape
@@ -722,7 +721,7 @@ class NumbaBackend(NumpyBackend):
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+    ) -> BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -857,13 +856,11 @@ class NumbaBackend(NumpyBackend):
             a: NumericArray, b: NumericArray, out: NumericArray | None = None
         ) -> NumericArray:
             """Numba implementation to calculate dot product between two fields."""
-            return dot(a, b, out)
+            return dot(a, b, out)  # type: ignore
 
         return dot_compiled
 
-    def make_outer_prod_operator(
-        self, field: DataFieldBase
-    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
+    def make_outer_prod_operator(self, field: DataFieldBase) -> BinaryOperatorImplType:
         """Return operator calculating the outer product between two fields.
 
         This supports typically only supports products between two vector fields.
@@ -1060,7 +1057,7 @@ class NumbaBackend(NumpyBackend):
 
     def make_inserter(
         self, grid: GridBase, *, with_ghost_cells: bool = False
-    ) -> Callable[[NumericArray, FloatingArray, NumberOrArray], None]:
+    ) -> Callable[[InexactArray, FloatingArray, NumberOrArray], None]:
         """Return a compiled function to insert values at interpolated positions.
 
         Args:
@@ -1089,7 +1086,7 @@ class NumbaBackend(NumpyBackend):
 
             @self.compile_function
             def insert(
-                data: NumericArray, point: FloatingArray, amount: NumberOrArray
+                data: InexactArray, point: FloatingArray, amount: NumberOrArray
             ) -> None:
                 """Add an amount to a field at an interpolated position.
 
@@ -1111,8 +1108,8 @@ class NumbaBackend(NumpyBackend):
                     msg = "Point lies outside the grid domain"
                     raise DomainError(msg)
 
-                data[..., c_li] += w_l * amount / cell_volume(c_li)
-                data[..., c_hi] += w_h * amount / cell_volume(c_hi)
+                data[..., c_li] += w_l * amount / cell_volume(c_li)  # type: ignore
+                data[..., c_hi] += w_h * amount / cell_volume(c_hi)  # type: ignore
 
         elif grid.num_axes == 2:
             # specialize for 2-dimensional interpolation
@@ -1125,7 +1122,7 @@ class NumbaBackend(NumpyBackend):
 
             @self.compile_function
             def insert(
-                data: NumericArray, point: FloatingArray, amount: NumberOrArray
+                data: InexactArray, point: FloatingArray, amount: NumberOrArray
             ) -> None:
                 """Add an amount to a field at an interpolated position.
 
@@ -1150,14 +1147,14 @@ class NumbaBackend(NumpyBackend):
                     raise DomainError(msg)
 
                 cell_vol = cell_volume(c_xli, c_yli)
-                data[..., c_xli, c_yli] += w_xl * w_yl * amount / cell_vol
+                data[..., c_xli, c_yli] += w_xl * w_yl * amount / cell_vol  # type: ignore
                 cell_vol = cell_volume(c_xli, c_yhi)
-                data[..., c_xli, c_yhi] += w_xl * w_yh * amount / cell_vol
+                data[..., c_xli, c_yhi] += w_xl * w_yh * amount / cell_vol  # type: ignore
 
                 cell_vol = cell_volume(c_xhi, c_yli)
-                data[..., c_xhi, c_yli] += w_xh * w_yl * amount / cell_vol
+                data[..., c_xhi, c_yli] += w_xh * w_yl * amount / cell_vol  # type: ignore
                 cell_vol = cell_volume(c_xhi, c_yhi)
-                data[..., c_xhi, c_yhi] += w_xh * w_yh * amount / cell_vol
+                data[..., c_xhi, c_yhi] += w_xh * w_yh * amount / cell_vol  # type: ignore
 
         elif grid.num_axes == 3:
             # specialize for 3-dimensional interpolation
@@ -1173,7 +1170,7 @@ class NumbaBackend(NumpyBackend):
 
             @self.compile_function
             def insert(
-                data: NumericArray, point: FloatingArray, amount: NumberOrArray
+                data: InexactArray, point: FloatingArray, amount: NumberOrArray
             ) -> None:
                 """Add an amount to a field at an interpolated position.
 
@@ -1199,24 +1196,24 @@ class NumbaBackend(NumpyBackend):
                     raise DomainError(msg)
 
                 cell_vol = cell_volume(c_xli, c_yli, c_zli)
-                data[..., c_xli, c_yli, c_zli] += w_xl * w_yl * w_zl * amount / cell_vol
+                data[..., c_xli, c_yli, c_zli] += w_xl * w_yl * w_zl * amount / cell_vol  # type: ignore
                 cell_vol = cell_volume(c_xli, c_yli, c_zhi)
-                data[..., c_xli, c_yli, c_zhi] += w_xl * w_yl * w_zh * amount / cell_vol
+                data[..., c_xli, c_yli, c_zhi] += w_xl * w_yl * w_zh * amount / cell_vol  # type: ignore
 
                 cell_vol = cell_volume(c_xli, c_yhi, c_zli)
-                data[..., c_xli, c_yhi, c_zli] += w_xl * w_yh * w_zl * amount / cell_vol
+                data[..., c_xli, c_yhi, c_zli] += w_xl * w_yh * w_zl * amount / cell_vol  # type: ignore
                 cell_vol = cell_volume(c_xli, c_yhi, c_zhi)
-                data[..., c_xli, c_yhi, c_zhi] += w_xl * w_yh * w_zh * amount / cell_vol
+                data[..., c_xli, c_yhi, c_zhi] += w_xl * w_yh * w_zh * amount / cell_vol  # type: ignore
 
                 cell_vol = cell_volume(c_xhi, c_yli, c_zli)
-                data[..., c_xhi, c_yli, c_zli] += w_xh * w_yl * w_zl * amount / cell_vol
+                data[..., c_xhi, c_yli, c_zli] += w_xh * w_yl * w_zl * amount / cell_vol  # type: ignore
                 cell_vol = cell_volume(c_xhi, c_yli, c_zhi)
-                data[..., c_xhi, c_yli, c_zhi] += w_xh * w_yl * w_zh * amount / cell_vol
+                data[..., c_xhi, c_yli, c_zhi] += w_xh * w_yl * w_zh * amount / cell_vol  # type: ignore
 
                 cell_vol = cell_volume(c_xhi, c_yhi, c_zli)
-                data[..., c_xhi, c_yhi, c_zli] += w_xh * w_yh * w_zl * amount / cell_vol
+                data[..., c_xhi, c_yhi, c_zli] += w_xh * w_yh * w_zl * amount / cell_vol  # type: ignore
                 cell_vol = cell_volume(c_xhi, c_yhi, c_zhi)
-                data[..., c_xhi, c_yhi, c_zhi] += w_xh * w_yh * w_zh * amount / cell_vol
+                data[..., c_xhi, c_yhi, c_zhi] += w_xh * w_yh * w_zh * amount / cell_vol  # type: ignore
 
         else:
             msg = (
@@ -1226,8 +1223,8 @@ class NumbaBackend(NumpyBackend):
 
         return insert
 
-    def make_pde_rhs(  # type: ignore
-        self, eq: PDEBase, state: TField, *, native: bool = False
+    def make_pde_rhs(
+        self, eq: PDEBase, state: TField
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
@@ -1236,10 +1233,6 @@ class NumbaBackend(NumpyBackend):
                 The object describing the differential equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which information can be extracted
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
 
         Returns:
             Function returning deterministic part of the right hand side of the PDE
@@ -1433,44 +1426,6 @@ class NumbaBackend(NumpyBackend):
 
         return self.compile_function(function)  # type: ignore
 
-    def make_inner_stepper(
-        self,
-        solver: SolverBase,
-        stepper_style: Literal["fixed", "adaptive"],
-        state: TField,
-        dt: float,
-    ) -> Callable:
-        """Return a stepper function using an explicit scheme.
-
-        Args:
-            solver (:class:`~pde.solvers.base.SolverBase`):
-                The solver instance, which determines how the stepper is constructed
-            stepper_style (str):
-                Either "fixed" or "adaptive" to select the type of stepper
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-            dt (float):
-                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
-
-        Returns:
-            Function that can be called to advance the `state` from time `t_start` to
-            time `t_end`. The function call signature is `(state: numpy.ndarray,
-            t_start: float, t_end: float)`
-        """
-        assert solver.backend == self
-
-        from ._solvers import make_adaptive_stepper, make_fixed_stepper
-
-        solver.info["dt_statistics"] = OnlineStatistics()
-
-        if stepper_style == "fixed":
-            return make_fixed_stepper(solver, state, dt=dt)
-        if stepper_style == "adaptive":
-            assert isinstance(solver, AdaptiveSolverBase)
-            return make_adaptive_stepper(solver, state)
-        raise NotImplementedError
-
     def make_mpi_synchronizer(
         self, operator: int | str = "MAX"
     ) -> Callable[[float], float]:
@@ -1489,3 +1444,36 @@ class NumbaBackend(NumpyBackend):
             Function that can be used to synchronize values across nodes
         """
         return register_jitable(super().make_mpi_synchronizer(operator=operator))  # type: ignore
+
+    def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
+        """Return a stepper function using an explicit scheme.
+
+        Args:
+            solver (:class:`~pde.solvers.base.SolverBase`):
+                The solver instance, which determines how the stepper is constructed
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        from ._solvers import make_inner_stepper
+
+        assert solver.backend == self
+
+        inner_stepper = make_inner_stepper(solver, state)
+
+        # We don't access self.pde directly since we might want to reuse the solver
+        # infrastructure for more general cases where a PDE is not defined.
+
+        def stepper(state: TField, t_start: float, t_end: float) -> float:
+            """Advance `state` from `t_start` to `t_end` using fixed steps."""
+            # call the stepper with field data directly
+            return inner_stepper(state.data, t_start, t_end)
+
+        return stepper  # type: ignore

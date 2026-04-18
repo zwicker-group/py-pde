@@ -77,7 +77,7 @@ class CrankNicolsonSolver(SolverBase):
 
         # handle deterministic version of the pde
         def crank_nicolson_step(state_data: NumericArray, t: float) -> NumericArray:
-            """Compiled inner loop for speed."""
+            """Compilable inner loop for speed."""
             nfev = 0  # count function evaluations
 
             # keep values at the current time t point used in iteration

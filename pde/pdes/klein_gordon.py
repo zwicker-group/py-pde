@@ -144,11 +144,7 @@ class KleinGordonPDE(PDEBase):
         speed2 = self.speed**2
         mass2 = self.mass**2
         laplace = state.grid.make_operator(
-            operator="laplace",
-            bc=self.bc,
-            backend=backend,
-            native=True,
-            dtype=state.dtype,
+            operator="laplace", bc=self.bc, backend=backend, dtype=state.dtype
         )
 
         def pde_rhs(state_data, t=0):

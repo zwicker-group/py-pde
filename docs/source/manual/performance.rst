@@ -3,13 +3,29 @@ Performance
 
 Measuring performance
 """""""""""""""""""""
+..  figure:: /_images/performance_cahn_hilliard.*
+    :figwidth: 50%
+    :align: right
+    :alt: Runtime as a function of simulation time for various backends.
+
+    Performance of solving the Cahn-Hilliard equation with various backends.
 
 The performance of the `py-pde` package depends on many details and general 
 statements are thus difficult to make.
 However, since the core operators can be compiled using :mod:`numba` or :mod:`torch`,
 many operations of the package proceed at performances close to most compiled
 languages.
-For instance, a simple Laplace operator applied to fields defined on a Cartesian
+For a simple test case, consider the plot on the right, which shows how much real time
+passed until a certain simulation time was reached.
+Here, the slope of the curve quantifies the raw speed of the solver, whereas the
+intercept with the y-axis indicates the start-up time, which is mainly dominated by the
+compilation of the code.
+The trade-off between compilation time and run time varies between backends and will
+also depend on details of the simulation.
+
+A more microscopic performance measurement concerns the actual operators, which can also
+be compiled using various backends.
+Generally, a simple Laplace operator applied to fields defined on a Cartesian
 grid has performance that is similar to the operators supplied by the
 `OpenCV <https://opencv.org>`_ package.
 The following figures illustrate this by showing the duration of evaluating the

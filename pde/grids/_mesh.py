@@ -772,6 +772,22 @@ class GridMesh:
 
         return COMM_WORLD.gather(data, root=0)
 
+    def scatter(self, data: list[TData] | None) -> TData:
+        """Scatter a value form the main node to all nodes.
+
+        Args:
+            data:
+                The list of data that will be sent from the main node to all others
+
+        Returns:
+            Each node receives one item from the main node.
+        """
+        from mpi4py.MPI import COMM_WORLD
+
+        if data:
+            assert len(data) == len(self)
+        return COMM_WORLD.scatter(data, root=0)  # type: ignore
+
     def allgather(self, data: TData) -> list[TData]:
         """Gather a value from reach node and sends them to all nodes.
 

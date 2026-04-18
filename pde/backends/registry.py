@@ -15,8 +15,8 @@ import importlib
 import logging
 from typing import TYPE_CHECKING
 
-from .. import config
-from ..tools.config import Config
+from .. import config as global_config
+from ..tools.config import Config, ConfigLike
 from .base import _RESERVED_BACKEND_NAMES, BackendBase
 
 if TYPE_CHECKING:
@@ -31,23 +31,35 @@ _logger = logging.getLogger(__name__)
 
 
 class BackendRegistry:
-    """Class handling all backends and their configurations."""
+    """Class handling all backends and their configurations.
 
-    _backends: dict[str, str | BackendBase]
-    """dict: all backends, either as a reference to a package or as an object"""
+    Backends can exist in three different states in registry:
+    * Registered meta-information on how to load a backend package
+    * Loaded backend module, so the class is available
+    * Fully instantiated :class:`~pde.backends.base.BackendBase` classes
+    """
+
+    _packages: dict[str, str]
+    """dict: backends whose packages have been registered"""
     _configs: dict[str, Config]
-    """dict: configurations of all backends"""
+    """dict: configurations of backend classes"""
+    _classes: dict[str, type[BackendBase]]
+    """dict: backends whose classes have been defined"""
+    _backends: dict[str, BackendBase]
+    """dict: backends that have been instantiated"""
 
     def __init__(self):
-        self._backends = {}
+        self._packages = {}
         self._configs = {}
+        self._classes = {}
+        self._backends = {}
 
     def register_package(
         self,
         name: str,
         package_path: str,
         *,
-        config: list[Parameter] | None = None,
+        config: ConfigLike | None = None,
     ) -> None:
         """Register a backend python package (without loading it yet)
 
@@ -61,15 +73,51 @@ class BackendRegistry:
         """
         if name in _RESERVED_BACKEND_NAMES:
             _logger.warning("Reserved backend name `%s` should not be used.", name)
-        if name in self._backends:
-            if isinstance(self._backends[name], str):
-                _logger.info("Redefining backend `%s`", name)
-            else:
-                msg = "Cannot register package for loaded backend"
-                raise RuntimeError(msg)
-
-        self._backends[name] = package_path
+        if name in self._packages:
+            _logger.info("Redefining backend `%s`", name)
+        self._packages[name] = package_path
         self._configs[name] = Config(config)
+
+    def register_class(self, name: str, cls: type[BackendBase]):
+        """Register a backend class.
+
+        Args:
+            name (str):
+                Name of the backend
+            cls (subclass of :class:`~pde.backend.base.BackendBase`):
+                The class for creating a backend
+        """
+        if name in _RESERVED_BACKEND_NAMES:
+            _logger.warning("Reserved backend name `%s` should not be used.", name)
+        if name in self._classes:
+            _logger.info("Redefining backend `%s`", name)
+        self._classes[name] = cls
+
+    def register_backend(
+        self, backend: BackendBase, *, link_config: bool = False
+    ) -> None:
+        """Register a loaded backend object.
+
+        Args:
+            backend (:class:`~pde.backends.base.BackendBase`):
+                Implementation of the backend
+            link_config (bool):
+                If True, the configuration of `backend` is linked with the global
+                configuration, so that both show consistent values.
+        """
+        if backend.name in _RESERVED_BACKEND_NAMES:
+            _logger.warning(
+                "Reserved backend name `%s` should not be used.", backend.name
+            )
+        if backend.name in self._backends:
+            if isinstance(self._backends[backend.name], str):
+                _logger.info("Loading backend `%s`", backend.name)
+            else:
+                _logger.info("Reloading backend `%s`", backend.name)
+        self._backends[backend.name] = backend
+
+        if link_config:
+            self._configs[backend.name] = backend.config
 
     def get_config(self, name: str) -> Config:
         """Get configuration of a particular backend.
@@ -88,52 +136,77 @@ class BackendRegistry:
         except KeyError:
             return Config()
 
-    def add(self, backend: BackendBase, *, link_config: bool = True) -> None:
-        """Add a loaded backend object.
-
-        This object can replace a previously registered python package.
+    def _get_class(self, name: str) -> type[BackendBase]:
+        """Get the class associated with a particular backend.
 
         Args:
-            backend (:class:`~pde.backends.base.BackendBase`):
-                Implementation of the backend
-            link_config (bool):
-                If True, the configuration of `backend` is linked with the global
-                configuration, so that both show consistent values
+            name (str):
+                The name of the backend class to load
         """
-        if backend.name in _RESERVED_BACKEND_NAMES:
-            _logger.warning(
-                "Reserved backend name `%s` should not be used.", backend.name
-            )
-        if backend.name in self._backends:
-            if isinstance(self._backends[backend.name], str):
-                _logger.info("Loading backend `%s`", backend.name)
-            else:
-                _logger.info("Reloading backend `%s`", backend.name)
-        self._backends[backend.name] = backend
+        if name not in self._classes:
+            # determine the backend information to load it
+            try:
+                package_path = self._packages[name]
+            except KeyError as err:
+                backends = ", ".join(self._packages.keys())
+                msg = f"Backend `{name}` not in [{backends}]"
+                raise KeyError(msg) from err
 
-        if link_config:
-            self._configs[backend.name] = backend.config
+            # load the backend from a python package, which should register its class
+            importlib.import_module(package_path)
+            if name not in self._classes:
+                msg = f"Backend `{name}` was loaded, but did not register its class."
+                raise RuntimeError(msg)
+
+        return self._classes[name]
+
+    def get_backend(
+        self, name: str, *, config: ConfigLike | None = None, **kwargs
+    ) -> BackendBase:
+        """Return backend object, potentially loading the respective package.
+
+        Args:
+            name (str):
+                Name of the backend to be loaded.
+            config (dict):
+                Configuration options for this specific backend
+            **kwargs:
+                Additional options of the backend
+
+        Returns:
+            :class:`~pde.backends.base.BackendBase`: An instance of the backend with
+            the particular configuration
+        """
+        # handle special names
+        if name == "default":
+            name = global_config["default_backend"]
+
+        # check whether the precise backend has been instantiated already
+        if name not in self._backends:
+            # create backend from the class definition
+            parts = name.split(":", 1)
+            if len(parts) == 2:
+                cls_name, args = parts
+            elif len(parts) == 1:
+                cls_name, args = parts[0], None
+            else:
+                raise RuntimeError
+            cls = self._get_class(cls_name)
+            if config is None:
+                config = self.get_config(name)
+
+            if args:
+                backend_obj = cls.from_args(config, args, name=name, **kwargs)
+                self.register_backend(backend_obj, link_config=False)
+            else:
+                backend_obj = cls(config, name=name, **kwargs)
+                self.register_backend(backend_obj, link_config=True)
+
+        return self._backends[name]
 
     def __getitem__(self, name: str) -> BackendBase:
         """Return backend object, potentially loading the respective package."""
-        # handle special names
-        if name == "default":
-            name = config["default_backend"]
-
-        # get the backend from the registry
-        backend_obj = self._backends.get(name, None)
-        if backend_obj is None:
-            backends = ", ".join(self._backends.keys())
-            msg = f"Backend `{name}` not in [{backends}]"
-            raise KeyError(msg)
-
-        # load the backend from a python package if necessary
-        if isinstance(backend_obj, str):
-            importlib.import_module(backend_obj)
-            backend_obj = self._backends[name]
-
-        assert isinstance(backend_obj, BackendBase)
-        return backend_obj
+        return self.get_backend(name)
 
     def __contains__(self, name: str) -> bool:
         return name == "default" or name in self._backends
@@ -184,17 +257,25 @@ def get_backend(backend: str | BackendBase) -> BackendBase:
 
     Args:
         backend (str or :class:`~pde.backends.base.BackendBase`):
-            Backend specified by name given as a string. As a special case, we also
-            allow full backend objects, which are simply returned. This is a simple
-            way to allow providing full backend objects in places where we otherwise
-            would expect a backend name.
+            Backend specified by name given as a string. If the string contains a colon,
+            the first part determines the backend, whereas the second part can be used
+            to convey additional information. For example, :code:`torch:cuda` may load a
+            torch backend an use a cuda device. As a special case, we also allow full
+            backend objects, which are simply returned. This is a simple way to allow
+            providing full backend objects in places where we otherwise would expect a
+            backend name.
     """
     if isinstance(backend, BackendBase):
+        # backend is already initialized
         return backend
-    # if it's not a class, it needs to be a backend name
-    return backend_registry[str(backend)]
+
+    if isinstance(backend, str):
+        # backend is given by name
+        return backend_registry.get_backend(backend)
+
+    raise TypeError
 
 
 def registered_backends() -> list[str]:
     """Returns all registered backends."""
-    return sorted(backend_registry._backends)
+    return sorted(set(backend_registry._packages) | set(backend_registry._classes))

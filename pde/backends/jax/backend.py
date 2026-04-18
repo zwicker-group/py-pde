@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import numbers
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import jax
 import jax.numpy as jnp
@@ -17,7 +17,7 @@ from ...fields import VectorField
 from ...grids import GridBase
 from ...grids.boundaries.axes import BoundariesList
 from ...tools.cache import cached_method
-from ..base import BackendBase, TFunc
+from ..base import BackendBase
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from ...grids.boundaries.axes import BoundariesBase
     from ...grids.boundaries.local import BCBase
     from ...pdes import PDEBase
-    from ...solvers.base import SolverBase
+    from ...solvers import SolverBase
     from ...tools.config import Config
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
@@ -38,14 +38,14 @@ if TYPE_CHECKING:
         OperatorImplType,
         OperatorInfo,
         OperatorType,
+        StepperType,
         TField,
-        TNativeArray,
+        TFunc,
     )
-    from ..base import TFunc
     from .typing import JaxDataSetter, JaxGhostCellSetter
 
 
-class JaxBackend(BackendBase):
+class JaxBackend(BackendBase[jax.Array]):
     """Defines :mod:`jax` backend."""
 
     implementation = "jax"
@@ -86,6 +86,14 @@ class JaxBackend(BackendBase):
             f"{self.__class__.__name__}(name={self.name!r}, "
             f"device={str(self.device)!r})"
         )
+
+    @property
+    def info(self) -> dict[str, Any]:
+        """dict: relevant information about the backend"""
+        info = super().info
+        info["device"] = self.device.device_kind
+        info["compile"] = self.config["compile"]
+        return info
 
     @property
     def device(self) -> jax.Device:
@@ -136,7 +144,7 @@ class JaxBackend(BackendBase):
         type_cache[np_dtype] = jax_dtype
         return jax_dtype
 
-    def from_numpy(self, value: Any) -> Any:
+    def numpy_to_native(self, value: Any) -> Any:
         """Convert values from numpy to jax representation.
 
         This method also ensures that the value is copied to the selected device.
@@ -150,7 +158,7 @@ class JaxBackend(BackendBase):
         msg = f"Unsupported type `{type(value).__name__}"
         raise TypeError(msg)
 
-    def to_numpy(self, value: Any) -> Any:
+    def native_to_numpy(self, value: Any) -> Any:
         """Convert native values to numpy representation."""
         if isinstance(value, jax.Array):
             return np.asarray(value)
@@ -167,6 +175,25 @@ class JaxBackend(BackendBase):
             return func
 
         return jax.jit(func)  # type: ignore
+
+    def _apply_operator(
+        self, func: Callable, *values: NumericArray, out: NumericArray, **kwargs
+    ) -> None:
+        r"""Apply a native operator to numpy data.
+
+        Args:
+            func (callable):
+                The operator defined in the native space of the backend
+            values (:class:`~numpy.ndarray`):
+                The array data that is fed to the function
+            out (:class:`~numpy.ndarray`):
+                The array to which the results are written
+            *args, **kwargs:
+                Additional arguments that are forwarded to the function call
+        """
+        values_native = [self.numpy_to_native(value) for value in values]
+        out_native = func(*values_native, **kwargs)
+        out[...] = self.native_to_numpy(out_native)
 
     def _make_local_ghost_cell_setter(self, bc: BCBase) -> JaxGhostCellSetter:
         """Return function that sets the ghost cells for a particular side of an axis.
@@ -371,7 +398,7 @@ class JaxBackend(BackendBase):
 
         return get_full_with_bcs
 
-    def make_integrator(self, grid: GridBase) -> Callable[[jax.Array], jax.Array]:  # type: ignore
+    def make_integrator(self, grid: GridBase) -> Callable[[jax.Array], jax.Array]:
         """Return function that integrates discretized data over a grid.
 
         Args:
@@ -383,7 +410,7 @@ class JaxBackend(BackendBase):
             correct weights given by the cell volumes.
         """
         spatial_dims = tuple(range(-grid.num_axes, 0))
-        cell_volumes = self.from_numpy(
+        cell_volumes = self.numpy_to_native(
             np.broadcast_to(grid.cell_volumes, grid.shape).astype(np.float64)
         )
 
@@ -400,7 +427,6 @@ class JaxBackend(BackendBase):
         operator: str | OperatorInfo,
         *,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> OperatorImplType:
         """Return a compiled function applying an operator without boundary conditions.
@@ -424,10 +450,6 @@ class JaxBackend(BackendBase):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -444,17 +466,7 @@ class JaxBackend(BackendBase):
         jax_operator = operator_info.factory(grid, **kwargs)
 
         # compile the function and move it to the device
-        jax_operator_jitted = self.compile_function(jax_operator)
-
-        if native:
-            return jax_operator_jitted
-
-        def operator_no_bc(arr: NumericArray, out: NumericArray) -> None:
-            arr_jax = self.from_numpy(arr)
-            out_jax = jax_operator_jitted(arr_jax)  # type: ignore
-            out[...] = self.to_numpy(out_jax)
-
-        return operator_no_bc
+        return self.compile_function(jax_operator)
 
     @cached_method()
     def make_operator(
@@ -464,7 +476,6 @@ class JaxBackend(BackendBase):
         *,
         bcs: BoundariesBase,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
@@ -480,10 +491,6 @@ class JaxBackend(BackendBase):
                 The boundary conditions used before the operator is applied
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -529,43 +536,9 @@ class JaxBackend(BackendBase):
             # apply operator
             return operator_raw(arr_full)  # type: ignore
 
-        if native:
-            return apply_op_jax  # type: ignore
+        return apply_op_jax  # type: ignore
 
-        # calculate shapes of the full data
-        shape_in_valid = (grid.dim,) * operator_info.rank_in + grid.shape
-        shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
-
-        # define numpy version of the operator
-        def apply_op(
-            arr: NumericArray, out: NumericArray | None = None, args=None
-        ) -> NumericArray:
-            """Set boundary conditions and apply operator."""
-            # check input array
-            if arr.shape != shape_in_valid:
-                msg = f"Incompatible shapes {arr.shape} != {shape_in_valid}"
-                raise ValueError(msg)
-            # ensure `out` array is allocated and has the right shape
-            if out is not None and out.shape != shape_out:
-                msg = f"Incompatible shapes {out.shape} != {shape_out}"
-                raise ValueError(msg)
-
-            # convert data to jax and apply operator
-            arr_jax = self.from_numpy(arr)
-            out_jax = apply_op_jax(arr_jax, args=args)
-
-            # return result
-            if out is None:
-                out = self.to_numpy(out_jax)
-            else:
-                out[:] = self.to_numpy(out_jax)
-
-            # return valid part of the output
-            return out
-
-        return apply_op  # type: ignore
-
-    def make_inner_prod_operator(  # type: ignore
+    def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
     ) -> Callable[[jax.Array, jax.Array, jax.Array | None], jax.Array]:
         """Return operator calculating the dot product between two fields.
@@ -620,7 +593,7 @@ class JaxBackend(BackendBase):
 
         return dot
 
-    def make_outer_prod_operator(  # type: ignore
+    def make_outer_prod_operator(
         self, field: DataFieldBase
     ) -> Callable[[jax.Array, jax.Array, jax.Array | None], jax.Array]:
         """Return operator calculating the outer product between two fields.
@@ -721,7 +694,7 @@ class JaxBackend(BackendBase):
         # directly since sympy does not work well with numpy arrays.
         if constants:
             const_values = tuple(
-                self.from_numpy(expression.consts[c]) for c in constants
+                self.numpy_to_native(expression.consts[c]) for c in constants
             )
 
             func = self.compile_function(func)
@@ -734,8 +707,8 @@ class JaxBackend(BackendBase):
         return self.compile_function(result)
 
     def make_pde_rhs(
-        self, eq: PDEBase, state: TField, *, native: bool = False
-    ) -> Callable[[TNativeArray, float], TNativeArray]:
+        self, eq: PDEBase, state: TField
+    ) -> Callable[[jax.Array, float], jax.Array]:
         """Return a function for evaluating the right hand side of the PDE.
 
         Args:
@@ -743,10 +716,6 @@ class JaxBackend(BackendBase):
                 The object describing the differential equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which information can be extracted
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
 
         Returns:
             Function returning deterministic part of the right hand side of the PDE.
@@ -765,32 +734,14 @@ class JaxBackend(BackendBase):
             rhs_native = make_rhs(state, backend=self)
 
         # get the compiled right hand side
-        rhs_jax = self.compile_function(rhs_native)
-        if native:
-            return rhs_jax
+        return self.compile_function(rhs_native)
 
-        def rhs(arr: NumericArray, t: float = 0) -> NumericArray:
-            """Helper wrapping function working with jax arrays."""
-            arr_jax = self.from_numpy(arr)
-            res_jax = rhs_jax(arr_jax, t)
-            return self.to_numpy(res_jax)  # type: ignore
-
-        return rhs  # type: ignore
-
-    def make_inner_stepper(
-        self,
-        solver: SolverBase,
-        stepper_style: Literal["fixed", "adaptive"],
-        state: TField,
-        dt: float,
-    ) -> Callable:
+    def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
         """Return a stepper function using an explicit scheme.
 
         Args:
             solver (:class:`~pde.solvers.base.SolverBase`):
                 The solver instance, which determines how the stepper is constructed
-            stepper_style (str):
-                The style of the stepper, either "fixed" or "adaptive"
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
@@ -802,6 +753,21 @@ class JaxBackend(BackendBase):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
-        solver.info["backend"]["device"] = self.device.device_kind
-        solver.info["backend"]["compile"] = self.config["compile"]
-        return super().make_inner_stepper(solver, stepper_style, state, dt)
+        from ._solvers import make_inner_stepper
+
+        assert solver.backend == self
+
+        # create the Torch module that calculates the right hand side
+        inner_stepper = make_inner_stepper(solver, state)
+
+        def stepper(state: TField, t_start: float, t_end: float) -> float:
+            """Advance `state` from `t_start` to `t_end` using fixed steps."""
+            # push state data to native backend
+            state_tensor: jax.Array = solver.backend.numpy_to_native(state.data)  # type: ignore
+            # call the stepper with fixed time steps
+            state_tensor, t_last = inner_stepper(state_tensor, t_start, t_end)
+            # retrieve data from native backend
+            state.data[:] = solver.backend.native_to_numpy(state_tensor)
+            return t_last
+
+        return stepper  # type: ignore

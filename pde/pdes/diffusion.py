@@ -113,11 +113,7 @@ class DiffusionPDE(SDEBase):
         """
         diffusivity_value = self.diffusivity
         laplace = state.grid.make_operator(
-            operator="laplace",
-            bc=self.bc,
-            backend=backend,
-            native=True,
-            dtype=state.dtype,
+            operator="laplace", bc=self.bc, backend=backend, dtype=state.dtype
         )
 
         def pde_rhs(state_data, t=0):

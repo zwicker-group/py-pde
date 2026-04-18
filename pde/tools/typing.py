@@ -36,10 +36,11 @@ Real = int | float  # a real number (no complex number allowed)
 Number = Real | complex | np.number  # any number, including complex numbers
 
 # array types:
-NumericArray = np.ndarray[Any, np.dtype[np.number]]  # array of numbers (incl complex)
+NumericArray = np.ndarray[Any, np.dtype[np.number]]  # array of int, real, or complex
 NumberOrArray = Number | NumericArray  # number or array of numbers (incl complex)
+InexactArray = np.ndarray[Any, np.dtype[np.inexact]]  # array of real or complex numbers
 # a floating number or an array of floating (no integers and no complex numbers)
-FloatingArray = np.ndarray[Any, np.dtype[np.floating]]
+FloatingArray = np.ndarray[Any, np.dtype[np.floating]]  # array of real numbers
 FloatOrArray = float | np.ndarray[Any, np.dtype[np.floating]]
 
 # generic array types that work for various fields or arrays
@@ -47,6 +48,9 @@ TField = TypeVar("TField", "FieldCollection", "DataFieldBase")
 # the following generic array type also supports torch.Tensor and jax.Array
 NativeArray = Union[NumericArray, "Tensor", "Array"]
 TNativeArray = TypeVar("TNativeArray", NumericArray, "Tensor", "Array")
+
+# generic array types that work for various fields or arrays
+TFunc = TypeVar("TFunc", bound=Callable)
 
 
 class OperatorInfo(NamedTuple):
@@ -61,8 +65,11 @@ class OperatorInfo(NamedTuple):
 # operators act on an array and either return result or write it into supplied array
 OperatorImplType = (
     Callable[[TNativeArray], TNativeArray]
-    | Callable[[TNativeArray, TNativeArray], None]
+    | Callable[[TNativeArray, TNativeArray], TNativeArray]
 )
+BinaryOperatorImplType = Callable[
+    [TNativeArray, TNativeArray, TNativeArray | None], TNativeArray
+]
 
 
 class OperatorFactory(Protocol):
@@ -138,10 +145,23 @@ class DataSetter(Protocol):
         """
 
 
+class PostStepHook(Protocol):
+    def __call__(self, state_data: TNativeArray, t: float) -> TNativeArray:
+        """Function analyzing and potentially modifying the current state.
+
+        Args:
+            state_data: Current state data
+            t: Current time
+
+        Returns:
+            state_data: Can be the same arrays as the input
+        """
+
+
 class StepperHook(Protocol):
     def __call__(
-        self, state_data: NumericArray, t: float, post_step_data: NumericArray
-    ) -> tuple[NumericArray, NumericArray]:
+        self, state_data: TNativeArray, t: float, post_step_data: Any
+    ) -> tuple[TNativeArray, Any]:
         """Function analyzing and potentially modifying the current state.
 
         Args:
@@ -151,4 +171,42 @@ class StepperHook(Protocol):
 
         Returns:
             tuple(state_data, post_step_data): Can be the same arrays as the input
+        """
+
+
+class StepperType(Protocol):
+    """General stepper type working with py-pde fields."""
+
+    def __call__(self, state: TField, t_start: float, t_end: float) -> float:
+        """General stepper that advances the state given as a field.
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                The state, which will be updated in-place
+            t_start (float):
+                Initial time point
+            t_end (float):
+                Desired final time point
+
+        Returns:
+            float: the actual final time point
+        """
+
+
+class InnerStepperType(Protocol):
+    """General stepper type working with numpy arrays."""
+
+    def __call__(self, state_data: NumericArray, t_start: float, t_end: float) -> float:
+        """General stepper that advances the state given as a numpy array.
+
+        Args:
+            state_data (:class:`~numpy.ndarray`):
+                The state, which will be updated in-place
+            t_start (float):
+                Initial time point
+            t_end (float):
+                Desired final time point
+
+        Returns:
+            float: the actual final time point
         """

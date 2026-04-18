@@ -88,7 +88,7 @@ def torch_2d_periodic(field, periodic, dx=1):
     else:
         device = torch.device("cpu")
 
-    torch_field = torch.from_numpy(field)
+    torch_field = torch.numpy_to_native(field)
     torch_field.to(device)
 
     laplace = CartesianLaplacian(field.shape, dx, periodic=periodic)

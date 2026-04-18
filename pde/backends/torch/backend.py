@@ -6,17 +6,18 @@
 from __future__ import annotations
 
 import numbers
-import warnings
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import torch
 
 from ...fields import VectorField
 from ...grids import GridBase
-from ..base import BackendBase, OperatorInfo, TFunc
-from .utils import NUMPY_TO_TORCH_DTYPE, TORCH_TO_NUMPY_DTYPE
+from ...pdes import PDEBase, SDEBase
+from ...solvers.scipy import ScipySolver
+from ..base import BackendBase, OperatorInfo
+from .typing import NUMPY_TO_TORCH_DTYPE, TORCH_TO_NUMPY_DTYPE, TorchRHSType
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -26,17 +27,15 @@ if TYPE_CHECKING:
     from ...fields import DataFieldBase
     from ...grids import GridBase
     from ...grids.boundaries.axes import BoundariesBase
-    from ...pdes import PDEBase
-    from ...solvers.base import SolverBase
-    from ...tools.config import Config
+    from ...solvers import SolverBase
+    from ...tools.config import ConfigLike
     from ...tools.expressions import ExpressionBase
-    from ...tools.typing import NumberOrArray, NumericArray, TField, TNativeArray
-    from ..base import TFunc
+    from ...tools.typing import NumberOrArray, NumericArray, StepperType, TField, TFunc
     from ..numpy.backend import OperatorInfo
     from .operators.common import TorchDifferentialOperator
 
 
-class TorchBackend(BackendBase):
+class TorchBackend(BackendBase[torch.Tensor]):
     """Defines :mod:`torch` backend."""
 
     implementation = "torch"
@@ -56,7 +55,7 @@ class TorchBackend(BackendBase):
 
     def __init__(
         self,
-        config: Config | None = None,
+        config: ConfigLike | None = None,
         *,
         name: str | None = None,
         device: str = "config",
@@ -73,10 +72,26 @@ class TorchBackend(BackendBase):
                 configuration) and "auto" (use CUDA if available, otherwise CPU)
         """
         if config is None:
-            from .config import DEFAULT_CONFIG as config  # type: ignore
+            from .config import DEFAULT_CONFIG as config
 
         super().__init__(config, name=name)
         self.device = device
+
+    @classmethod
+    def from_args(
+        cls, config: ConfigLike | None, args: str = "", *, name: str | None = None
+    ):
+        """Initialize backend with extra arguments.
+
+        Args:
+            config (:class:`~pde.tools.config.Config`):
+                Configuration data for the backend
+            args (str):
+                Additional arguments that determine how the backend is initialized
+            name (str):
+                The name of the backend
+        """
+        return cls(config, name=name, device=args)
 
     def __repr__(self) -> str:
         """Return concise string representation of this backend."""
@@ -84,6 +99,14 @@ class TorchBackend(BackendBase):
             f"{self.__class__.__name__}(name={self.name!r}, "
             f"device={str(self.device)!r})"
         )
+
+    @property
+    def info(self) -> dict[str, Any]:
+        """dict: relevant information about the backend"""
+        info = super().info
+        info["device"] = self.device.type
+        info["compile"] = self.config["compile"]
+        return info
 
     @property
     def device(self) -> torch.device:
@@ -171,7 +194,7 @@ class TorchBackend(BackendBase):
         # only supports narrower types
         return TORCH_TO_NUMPY_DTYPE[self.get_torch_dtype(dtype)]
 
-    def from_numpy(self, value: Any) -> Any:
+    def numpy_to_native(self, value: Any) -> torch.Tensor:  # type: ignore
         """Convert values from numpy to torch representation.
 
         This method also ensures that the value is copied to the selected device.
@@ -188,7 +211,7 @@ class TorchBackend(BackendBase):
         msg = f"Unsupported type `{type(value).__name__}"
         raise TypeError(msg)
 
-    def to_numpy(self, value: Any) -> Any:
+    def native_to_numpy(self, value: Any) -> Any:
         """Convert native values to numpy representation."""
         if isinstance(value, torch.Tensor):
             return value.cpu().numpy()
@@ -210,13 +233,31 @@ class TorchBackend(BackendBase):
         opts = self.compile_options | compile_options
         return torch.compile(func, **opts)  # type: ignore
 
+    def _apply_operator(
+        self, func: Callable, *values: NumericArray, out: NumericArray, **kwargs
+    ) -> None:
+        r"""Apply a native operator to numpy data.
+
+        Args:
+            func (callable):
+                The operator defined in the native space of the backend
+            values (:class:`~numpy.ndarray`):
+                The array data that is fed to the function
+            out (:class:`~numpy.ndarray`):
+                The array to which the results are written
+            *args, **kwargs:
+                Additional arguments that are forwarded to the function call
+        """
+        values_native = [self.numpy_to_native(value) for value in values]
+        out_native = func(*values_native, **kwargs)
+        out[...] = self.native_to_numpy(out_native)
+
     def make_operator_no_bc(
         self,
         grid: GridBase,
         operator: str | OperatorInfo,
         *,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> TorchDifferentialOperator:
         """Return a compiled function applying an operator without boundary conditions.
@@ -240,10 +281,6 @@ class TorchBackend(BackendBase):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -263,16 +300,7 @@ class TorchBackend(BackendBase):
         # compile the function and move it to the device
         torch_operator_jitted = self.compile_function(torch_operator)
         torch_operator_jitted.to(self.device)  # type: ignore
-
-        if native:
-            return torch_operator_jitted  # type: ignore
-
-        def operator_no_bc(arr: NumericArray, out: NumericArray) -> None:
-            arr_torch = self.from_numpy(arr)
-            out_torch = torch_operator_jitted(arr_torch)  # type: ignore
-            out[...] = self.to_numpy(out_torch)
-
-        return operator_no_bc  # type: ignore
+        return torch_operator_jitted  # type: ignore
 
     def make_operator(
         self,
@@ -281,7 +309,6 @@ class TorchBackend(BackendBase):
         *,
         bcs: BoundariesBase,
         dtype: DTypeLike | None = None,
-        native: bool = False,
         **kwargs,
     ) -> TorchDifferentialOperator:
         """Return a torch function applying an operator with boundary conditions.
@@ -297,10 +324,6 @@ class TorchBackend(BackendBase):
                 The boundary conditions used before the operator is applied
             dtype (numpy dtype):
                 The data type of the field.
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -327,34 +350,9 @@ class TorchBackend(BackendBase):
         # compile the function and move it to the device
         torch_operator_jitted = self.compile_function(torch_operator)
         torch_operator_jitted.to(self.device)  # type: ignore
+        return torch_operator_jitted  # type: ignore
 
-        if native:
-            # return the native representation if requested
-            return torch_operator_jitted  # type: ignore
-
-        # wrap the operator such that it can be called from numpy
-        shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
-
-        # define numpy version of the operator
-        def apply_op(
-            arr: NumericArray, out: NumericArray | None = None, args=None
-        ) -> NumericArray:
-            """Set boundary conditions and apply operator."""
-            arr_torch = self.from_numpy(arr)
-
-            if out is None:
-                out = np.empty(shape_out, dtype=arr.dtype)
-            elif out.shape != shape_out:
-                msg = f"Incompatible shapes {out.shape} != {shape_out}"
-                raise ValueError(msg)
-            out_torch = torch_operator_jitted(arr_torch)  # type: ignore
-            out[:] = self.to_numpy(out_torch)
-            return out
-
-        # return the compiled versions of the operator
-        return apply_op  # type: ignore
-
-    def make_integrator(  # type: ignore
+    def make_integrator(
         self, grid: GridBase, *, dtype: DTypeLike = np.double
     ) -> Callable[[torch.Tensor], torch.Tensor]:
         """Return function that integrates discretized data over a grid.
@@ -379,7 +377,7 @@ class TorchBackend(BackendBase):
 
         return integrate_torch
 
-    def make_inner_prod_operator(  # type: ignore
+    def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
     ) -> Callable[[torch.Tensor, torch.Tensor, torch.Tensor | None], torch.Tensor]:
         """Return operator calculating the dot product between two fields.
@@ -436,7 +434,7 @@ class TorchBackend(BackendBase):
 
         return dot
 
-    def make_outer_prod_operator(  # type: ignore
+    def make_outer_prod_operator(
         self, field: DataFieldBase
     ) -> Callable[[torch.Tensor, torch.Tensor, torch.Tensor | None], torch.Tensor]:
         """Return operator calculating the outer product between two fields.
@@ -467,9 +465,7 @@ class TorchBackend(BackendBase):
 
         return outer
 
-    def make_pde_rhs(
-        self, eq: PDEBase, state: TField, *, native: bool = False
-    ) -> Callable[[TNativeArray, float], TNativeArray]:
+    def make_pde_rhs(self, eq: PDEBase, state: TField) -> TorchRHSType:  # type: ignore
         """Return a function for evaluating the right hand side of the PDE.
 
         Args:
@@ -477,87 +473,42 @@ class TorchBackend(BackendBase):
                 The object describing the differential equation
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which information can be extracted
-            native (bool):
-                If True, the returned functions expects the native data representation
-                of the backend. Otherwise, the input and output are expected to be
-                :class:`~numpy.ndarray`.
 
         Returns:
             Function returning deterministic part of the right hand side of the PDE.
         """
-        # the following method is deprecated since 2026-03-02
         try:
-            make_rhs = eq.make_pde_rhs_torch  # type: ignore
-        except AttributeError:
-            # method is not implemented, which should be the default
-            rhs_native = None
-        else:
-            warnings.warn(
-                "`eq.make_pde_rhs_torch` method is deprecated. Implement "
-                "`eq.make_evolution_rate` instead.",
-                DeprecationWarning,
-                stacklevel=2,
+            make_rhs = eq.make_evolution_rate
+        except AttributeError as err:
+            msg = (
+                "The right-hand side of the PDE is not implemented using the "
+                f"`{self.name}` backend. To add the implementation, provide the "
+                "method `make_evolution_rate`, which should return a compilable "
+                "function calculating the evolution rate."
             )
-            rhs_native = make_rhs(state)
-
-        if rhs_native is None:
-            try:
-                make_rhs = eq.make_evolution_rate
-            except AttributeError as err:
-                msg = (
-                    "The right-hand side of the PDE is not implemented using the "
-                    f"`{self.name}` backend. To add the implementation, provide the "
-                    "method `make_evolution_rate`, which should return a compilable "
-                    "function calculating the evolution rate."
-                )
-                raise NotImplementedError(msg) from err
-            else:
-                rhs_native = make_rhs(state, backend=self)
+            raise NotImplementedError(msg) from err
+        else:
+            rhs_native = make_rhs(state, backend=self)
 
         # get the compiled right hand side
-        rhs_torch = self.compile_function(rhs_native)
-        if native:
-            return rhs_torch
+        return self.compile_function(rhs_native)  # type: ignore
 
-        def rhs(arr: NumericArray, t: float = 0) -> NumericArray:
-            """Helper wrapping function working with torch tensors."""
-            arr_torch = self.from_numpy(arr)
-            # We wrap the scalar time into a tensor, so torch correctly identifies it as
-            # a value that is modified each time we call the function.
-            t_torch = self.from_numpy(t)
-            res_torch = rhs_torch(arr_torch, t_torch)
-            return self.to_numpy(res_torch)  # type: ignore
-
-        return rhs  # type: ignore
-
-    def make_inner_stepper(
-        self,
-        solver: SolverBase,
-        stepper_style: Literal["fixed", "adaptive"],
-        state: TField,
-        dt: float,
-    ) -> Callable:
-        """Return a stepper function using an explicit scheme.
+    def _make_pde_rhs_noise(self, eq: PDEBase, state: TField) -> TorchRHSType:
+        """Return a function for evaluating the noise of the PDE.
 
         Args:
-            solver (:class:`~pde.solvers.base.SolverBase`):
-                The solver instance, which determines how the stepper is constructed
-            stepper_style (str):
-                The style of the stepper, either "fixed" or "adaptive"
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-            dt (float):
-                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+            eq (:class:`~pde.pdes.base.PDEBase`):
+                The object describing the differential equation
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which information can be extracted
 
         Returns:
-            Function that can be called to advance the `state` from time `t_start` to
-            time `t_end`. The function call signature is `(state: numpy.ndarray,
-            t_start: float, t_end: float)`
+            Function returning deterministic part of the right hand side of the PDE.
         """
-        solver.info["backend"]["device"] = self.device.type
-        solver.info["backend"]["compile"] = self.config["compile"]
-        return super().make_inner_stepper(solver, stepper_style, state, dt)
+        assert isinstance(eq, SDEBase)
+        rhs_noise_native = eq.make_noise_realization(state, backend=self)
+        # get the compiled right hand side
+        return self.compile_function(rhs_noise_native)  # type: ignore
 
     def make_expression_function(
         self,
@@ -632,7 +583,7 @@ class TorchBackend(BackendBase):
         # directly since sympy does not work well with numpy arrays.
         if constants:
             const_values = tuple(
-                self.from_numpy(expression.consts[c]) for c in constants
+                self.numpy_to_native(expression.consts[c]) for c in constants
             )
 
             func = self.compile_function(func)
@@ -643,3 +594,42 @@ class TorchBackend(BackendBase):
         else:
             result = func
         return self.compile_function(result)
+
+    def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
+        """Return a stepper function using an explicit scheme.
+
+        Args:
+            solver (:class:`~pde.solvers.base.SolverBase`):
+                The solver instance, which determines how the stepper is constructed
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        from ._solvers import make_inner_stepper
+
+        assert solver.backend == self
+        if isinstance(solver, ScipySolver):
+            msg = "Torch backend does not support Scipy solver"
+            raise NotImplementedError(msg)
+
+        # create the Torch module that calculates the right hand side
+        inner_stepper = make_inner_stepper(solver, state)
+
+        def stepper(state: TField, t_start: float, t_end: float) -> float:
+            """Advance `state` from `t_start` to `t_end` using fixed steps."""
+            # push state data to native backend
+            state_tensor: torch.Tensor = solver.backend.numpy_to_native(state.data)  # type: ignore
+            # call the stepper with fixed time steps
+            state_tensor, t_last = inner_stepper(state_tensor, t_start, t_end)
+            # retrieve data from native backend
+            state.data[:] = solver.backend.native_to_numpy(state_tensor)
+            return t_last
+
+        return stepper  # type: ignore

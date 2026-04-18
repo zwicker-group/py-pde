@@ -397,12 +397,17 @@ class PDEBase(metaclass=ABCMeta):
     ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Return function evaluating right hand side of the PDE using given backend.
 
+        Note:
+            This factory function must return a function that processes fields stored
+            in the native format of the backend. For instance, a function returned for
+            the `jax` backend must deal with :class:`jax.Array` objects.
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted.
             backend (str):
-                Determines the backend
+                Determines the backend.
 
         Returns:
             callable: Function determining the right hand side of the PDE
@@ -746,6 +751,15 @@ class SDEBase(PDEBase):
                     """Helper function returning a noise realization."""
                     key = rng.key()
                     return scale * jrandom.normal(key, shape=data_shape)  # type: ignore
+
+            elif backend.implementation == "torch":
+                from ..backends.torch import TorchBackend
+                from ..backends.torch.utils import TorchGaussianNoise
+
+                assert isinstance(backend, TorchBackend)
+                noise_realization = TorchGaussianNoise(
+                    data_shape, dtype=backend.get_numpy_dtype(state.dtype), scale=scale
+                )
 
             else:
                 # assume that other backends support the numpy random number interface

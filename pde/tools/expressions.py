@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import sympy
+from scipy import special
 from sympy.core import basic
 
 from ..fields.base import FieldBase
@@ -90,6 +91,7 @@ def parse_number(
 SPECIAL_FUNCTIONS: dict[str, Callable] = {
     "Heaviside": np.heaviside,
     "hypot": np.hypot,
+    "erf": special.erf,
 }
 
 
@@ -1012,9 +1014,7 @@ def evaluate(
             # create the function evaluating the operator
             op_backend = "numba" if backend.implementation == "numpy" else backend
             try:
-                ops[func] = grid.make_operator(
-                    func, bc=bc, native=True, backend=op_backend
-                )
+                ops[func] = grid.make_operator(func, bc=bc, backend=op_backend)
             except BCDataError:
                 # wrong data was supplied for the boundary condition
                 raise
@@ -1043,7 +1043,8 @@ def evaluate(
         signature += tuple(grid.axes)
         # inject the spatial coordinates into the expression for the rhs
         extra_args = tuple(
-            backend.from_numpy(grid.cell_coords[..., i]) for i in range(grid.num_axes)
+            backend.numpy_to_native(grid.cell_coords[..., i])
+            for i in range(grid.num_axes)
         )
 
     else:
@@ -1061,14 +1062,14 @@ def evaluate(
     _base_logger.info("Expression has signature %s", signature)
 
     # extract input field data and calculate result
-    field_data = [backend.from_numpy(field.data) for field in fields_values]
+    field_data = [backend.numpy_to_native(field.data) for field in fields_values]
 
     # calculate the result of the expression
     func = expr.get_function(single_arg=False, user_funcs=ops, backend=backend)
     result_data: NumericArray = func(*field_data, None, {}, *extra_args)  # type: ignore
 
     # turn result into a proper field
-    result_data = backend.to_numpy(result_data)
+    result_data = backend.native_to_numpy(result_data)
     if np.isscalar(result_data) or result_data.shape == ():
         result_data = np.broadcast_to(result_data, grid.shape)
     result_rank = result_data.ndim - grid.num_axes

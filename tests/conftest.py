@@ -53,7 +53,9 @@ def init_random_number_generators():
 
 # try registering specific torch backends for various devices
 if module_available("torch"):
-    from pde.backends.torch import TorchBackend, torch_backend
+    from pde.backends.torch import TorchBackend
+
+    torch_backend = get_backend("torch")
 
     # TODO: Test mps device once torch-mps works well again
     for device in ["cpu", "cuda"]:  # , "mps"]:
@@ -64,7 +66,7 @@ if module_available("torch"):
         except RuntimeError:
             _logger.info("Torch device `%s` is unavailable", device)
         else:
-            backend_registry.add(backend)
+            backend_registry.register_backend(backend)
 
 
 @pytest.fixture

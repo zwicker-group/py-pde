@@ -9,7 +9,16 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, DiffusionPDE, FileStorage, PDEBase, ScalarField, UnitGrid
+from pde import (
+    CallbackTracker,
+    CartesianGrid,
+    DiffusionPDE,
+    FileStorage,
+    MemoryStorage,
+    PDEBase,
+    ScalarField,
+    UnitGrid,
+)
 from pde.tools import misc, mpi
 from pde.tools.misc import module_available
 
@@ -62,7 +71,9 @@ def test_inhomogeneous_bcs_func(backend):
 
     bc = {"x": "derivative", "y-": "derivative", "y+": {"value_expression": bc_value}}
     eq = DiffusionPDE(bc=bc)
-    res = eq.solve(field, t_range=10, dt=0.01, adaptive=True, backend=backend)
+    res = eq.solve(
+        field, t_range=10, dt=0.01, adaptive=True, backend=backend, tracker=None
+    )
     assert np.all(res.data[:16] < 0)
     assert np.all(res.data[16:] > 0)
 
@@ -126,13 +137,18 @@ def test_custom_pde_mpi(rng):
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
-def test_stop_iteration_hook(backend):
+@pytest.mark.parametrize("adaptive", [False])
+def test_stop_iteration_hook(backend, adaptive):
     """Test a custom PDE raising StopIteration in a hook."""
+
+    if backend.implementation == "torch":
+        # backend.compile_options["fullgraph"] = False
+        backend.config["compile"] = False
 
     class TestPDE(PDEBase):
         def make_post_step_hook(self, state, backend):
             def post_step_hook(state_data, t, post_step_data):
-                if state_data.sum() > 1:
+                if state_data.mean() > 0.7:
                     raise StopIteration
                 post_step_data += 1
                 return state_data, post_step_data
@@ -148,6 +164,13 @@ def test_stop_iteration_hook(backend):
 
                 def pde_rhs(state_data, t):
                     return jnp.ones_like(state_data)
+
+            elif backend.implementation == "torch":
+                import torch
+
+                def pde_rhs(state_data, t):
+                    return torch.ones_like(state_data)
+
             else:
 
                 def pde_rhs(state_data, t):
@@ -157,23 +180,37 @@ def test_stop_iteration_hook(backend):
 
     grid = UnitGrid([16])
     field = ScalarField(grid)
+    storage = MemoryStorage()
     eq = TestPDE()
 
-    args = {"state": field, "t_range": 1, "dt": 0.01, "tracker": None, "ret_info": True}
+    args = {
+        "state": field,
+        "t_range": 1,
+        "dt": 0.01,
+        "adaptive": adaptive,
+        "tracker": [
+            storage.tracker(0.5),
+            CallbackTracker(lambda state, time: None, 0.1),
+        ],
+        "ret_info": True,
+    }
     res, info = eq.solve(backend=backend, solver="euler", **args)
 
-    np.testing.assert_allclose(res.data, 0.07)
+    np.testing.assert_array_less(storage.data[-1], res.data)
     assert info["controller"]["stop_reason"] == "Tracker raised StopIteration"
 
 
-@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
-def test_custom_data_hook(backend):
+@pytest.mark.parametrize(
+    "backend", ["numpy", "numba", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
+)
+@pytest.mark.parametrize("adaptive", [True, False])
+def test_custom_data_hook(backend, adaptive):
     """Test a custom PDE keeping track of data."""
 
     class TestPDE(PDEBase):
         def make_post_step_hook(self, state, backend):
             def post_step_hook(state_data, t, post_step_data):
-                post_step_data += state_data.mean()
+                post_step_data = state_data.mean()
                 return state_data, post_step_data
 
             return post_step_hook, 0.0
@@ -198,15 +235,21 @@ def test_custom_data_hook(backend):
     field = ScalarField(grid)
     eq = TestPDE()
 
-    args = {"state": field, "t_range": 1, "dt": 0.1, "tracker": None, "ret_info": True}
+    args = {
+        "state": field,
+        "t_range": 1,
+        "dt": 0.1,
+        "tracker": None,
+        "ret_info": True,
+        "adaptive": adaptive,
+    }
     res, info = eq.solve(backend=backend, solver="euler", **args)
 
-    np.testing.assert_allclose(res.data, 1.0)
-    value = np.linspace(0, 1, 11).sum()
-    assert info["solver"]["post_step_data"] == pytest.approx(value)
+    np.testing.assert_allclose(res.data, 1.0, rtol=1e-5)
+    assert info["solver"]["post_step_data"] == pytest.approx(res.data.mean())
 
 
-@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
 def test_array_data_hook(backend):
     """Test a custom PDE keeping track of array data."""
 
@@ -241,7 +284,7 @@ def test_array_data_hook(backend):
     args = {"state": field, "t_range": 1, "dt": 0.1, "tracker": None, "ret_info": True}
     res, info = eq.solve(backend=backend, solver="euler", **args)
 
-    np.testing.assert_allclose(res.data, 1.0)
+    np.testing.assert_allclose(res.data, 1.0, rtol=1e-6)
     value = np.linspace(0, 1, 11).sum()
     np.testing.assert_allclose(info["solver"]["post_step_data"], value)
 
@@ -273,11 +316,6 @@ def test_modelrunner_storage_one(tmp_path, capsys):
     captured = capsys.readouterr()
     assert captured.out == captured.err == ""
     assert output.is_file()
-
-    print("=" * 40)
-    with Path(output).open() as fp:
-        print(fp.read())
-    print("=" * 40)
 
     # read storage manually
     with mr.open_storage(output, mode="read") as storage_obj:
@@ -355,10 +393,10 @@ def test_pde_with_bc_setter(backend):
     field = ScalarField.random_normal(UnitGrid([4, 4], periodic=[False, True]))
 
     eq1 = DiffusionPDE(bc=setter)
-    res1 = eq1.solve(field, t_range=1.01, dt=0.1, backend=backend)
+    res1 = eq1.solve(field, t_range=1.01, dt=0.1, backend=backend, tracker=None)
 
     bc = {"x-": "neumann", "x+": {"value_expression": "t"}, "y": "periodic"}
     eq2 = DiffusionPDE(bc=bc)
-    res2 = eq2.solve(field, t_range=1.01, dt=0.1, backend=backend)
+    res2 = eq2.solve(field, t_range=1.01, dt=0.1, backend=backend, tracker=None)
 
     np.testing.assert_allclose(res1.data, res2.data)

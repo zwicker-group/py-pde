@@ -595,7 +595,7 @@ def test_expression_bc_user_func_nojit(dim):
     # simulate a simple PDE
     field = ScalarField(grid, 1)
     eq = DiffusionPDE(bc=bc)
-    res = eq.solve(field, 1)
+    res = eq.solve(field, 1, tracker=None)
     np.testing.assert_allclose(res.data, 1)
 
 
@@ -637,7 +637,7 @@ def test_expression_bc_user_expr_nojit(dim):
     # simulate a simple PDE
     field = ScalarField(grid, 1)
     eq = DiffusionPDE(bc=bc)
-    res = eq.solve(field, 1)
+    res = eq.solve(field, 1, tracker=None)
     np.testing.assert_allclose(res.data, 1)
 
 

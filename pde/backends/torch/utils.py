@@ -9,27 +9,6 @@ import numpy as np
 import torch
 from numpy.typing import DTypeLike
 
-AnyDType = DTypeLike | torch.dtype
-
-NUMPY_TO_TORCH_DTYPE: dict[DTypeLike, torch.dtype] = {
-    np.bool: torch.bool,
-    np.uint8: torch.uint8,
-    np.int8: torch.int8,
-    np.int16: torch.int16,
-    np.int32: torch.int32,
-    np.int64: torch.int64,
-    np.float16: torch.float16,
-    np.float32: torch.float32,
-    np.float64: torch.float64,
-    np.double: torch.double,
-    np.complex64: torch.complex64,
-    np.complex128: torch.complex128,
-}
-# also define inverse mapping to proper numpy dtypes
-TORCH_TO_NUMPY_DTYPE = {v: np.dtype(k) for k, v in NUMPY_TO_TORCH_DTYPE.items()}
-# add the proper numpy dtype as an alternative
-NUMPY_TO_TORCH_DTYPE |= {np.dtype(k): v for k, v in NUMPY_TO_TORCH_DTYPE.items()}
-
 
 class TorchOperatorBase(torch.nn.Module):
     """Base class for operators implemented in torch."""
@@ -63,6 +42,27 @@ class TorchOperatorBase(torch.nn.Module):
             raise TypeError(msg)
 
         self.register_buffer(name, tensor)
+
+
+class TorchGaussianNoise(TorchOperatorBase):
+    """Operator that returns uncorrelated Gaussian random field."""
+
+    def __init__(self, data_shape, dtype, scale):
+        """
+        Args:
+            data_shape (tuple of ints):
+                Shape of the output array
+            dtype:
+                Dtype of the
+            scale (_type_): _description_
+        """
+        super().__init__(dtype=dtype)
+        self.data_shape = data_shape
+        self.register_array("scale", scale)
+
+    def forward(self, state_data: torch.Tensor, t: float):
+        # TODO: use torch.Generator(device=device).manual_seed(1) as argument to randn
+        return self.scale * torch.randn(self.data_shape, device=state_data.device)  # type: ignore
 
 
 def torch_heaviside(x1: torch.Tensor, x2: torch.Tensor | None = None) -> torch.Tensor:

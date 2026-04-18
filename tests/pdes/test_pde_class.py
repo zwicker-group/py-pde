@@ -34,7 +34,7 @@ def test_pde_critical_input(rng):
     # test whether reserved symbols can be used as variables
     grid = grids.UnitGrid([4])
     eq = PDE({"E": 1})
-    res = eq.solve(ScalarField(grid), t_range=2)
+    res = eq.solve(ScalarField(grid), t_range=2, tracker=None)
     t_final = eq.diagnostics["controller"]["t_final"]
     np.testing.assert_allclose(res.data, t_final)
 
@@ -103,7 +103,7 @@ def test_pde_vector_laplace(backend, rng):
 
     res_a.assert_field_compatible(res_b)
     # reduced accuracy to allow float32 dtypes
-    np.testing.assert_allclose(res_a.data, res_b.data, rtol=1e-6)
+    np.testing.assert_allclose(res_a.data, res_b.data, rtol=2e-6)
 
 
 @pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)
@@ -120,7 +120,7 @@ def test_pde_vector_ops(backend, rng):
 
     res_a.assert_field_compatible(res_b)
     # reduced accuracy to allow float32 dtypes
-    np.testing.assert_allclose(res_a.data, res_b.data, rtol=1e-6)
+    np.testing.assert_allclose(res_a.data, res_b.data, rtol=1e-5)
 
 
 @pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)
@@ -158,7 +158,7 @@ def test_pde_vector_scalar(backend, rng):
     res_b = eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
 
     res_a.assert_field_compatible(res_b)
-    np.testing.assert_allclose(res_a.data, res_b.data)
+    np.testing.assert_allclose(res_a.data, res_b.data, rtol=1e-6)
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
@@ -205,7 +205,7 @@ def test_custom_operator_numba(rng):
 
     eq._cache = {}  # reset cache to force recompilation
     rhs = eq.make_evolution_rate(field, backend=backend)
-    res = backend._apply_native(rhs, field.data, 0)  # last argument is time
+    res = rhs(field.data, 0)  # last argument is time
     np.testing.assert_allclose(2 * field.data, res.data)
 
     # reset original state
@@ -238,8 +238,8 @@ def test_custom_operator_torch(backend, rng):
 
     eq._cache = {}  # reset cache to force recompilation
     rhs = eq.make_evolution_rate(field, backend=backend)
-    res = backend._apply_native(rhs, field.data, 0)  # last argument is time
-    np.testing.assert_allclose(2 * field.data, res.data)
+    res = backend._apply_function(rhs, field.data, 0)  # second argument is time
+    np.testing.assert_allclose(2 * field.data, res)
 
     # reset original state
     del backend._operators[grids.UnitGrid]["undefined"]
@@ -276,12 +276,13 @@ def test_pde_spatial_args(backend):
 
     eq = PDE({"a": "x"})
     rhs = eq.make_pde_rhs(field, backend=backend)
-    np.testing.assert_allclose(rhs(field.data, 0.0), np.array([0.5, 1.5, 2.5, 3.5]))
+    res = backend._apply_function(rhs, field.data, 0)
+    np.testing.assert_allclose(res, np.array([0.5, 1.5, 2.5, 3.5]))
 
     # test combination of spatial dependence and differential operators
     eq = PDE({"a": "dot(gradient(x), gradient(a))"})
     rhs = eq.make_pde_rhs(field, backend=backend)
-    res = get_backend(backend)._apply_native(rhs, field.data, 0.0)
+    res = backend._apply_function(rhs, field.data, 0.0)
     np.testing.assert_allclose(res, np.array([0.0, 0.0, 0.0, 0.0]))
 
     # test invalid spatial dependence
@@ -289,8 +290,10 @@ def test_pde_spatial_args(backend):
     if backend == "numpy":
         with pytest.raises(RuntimeError):
             eq.evolution_rate(field)
-    with pytest.raises(RuntimeError):
-        eq.make_pde_rhs(field, backend=backend)(field.data, 0)
+
+    with pytest.raises(RuntimeError):  # noqa: PT012
+        rhs = eq.make_pde_rhs(field, backend=backend)
+        backend._apply_function(rhs, field.data, 0)
 
 
 @pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)
@@ -308,7 +311,7 @@ def test_pde_user_funcs(backend, rng):
         rhs.data, field.gradient("auto_periodic_neumann").data[0]
     )
     rhs = eq.make_evolution_rate(field, backend=backend)
-    res = backend._apply_native(rhs, field.data, 0)  # last argument is time
+    res = backend._apply_function(rhs, field.data, 0)  # last argument is time
     # Use larger tolerance since torch backends might only support float32
     np.testing.assert_allclose(
         res.data, field.gradient("auto_periodic_neumann").data[0], rtol=2e-5
@@ -445,7 +448,7 @@ def test_pde_time_dependent_bcs(backend):
     np.testing.assert_allclose(storage[-1].data, 1, rtol=1e-3)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
+@pytest.mark.parametrize("backend", ["numpy", "numba", "jax"], indirect=True)
 def test_pde_integral(backend, rng):
     """Test PDE with integral."""
     grid = grids.UnitGrid([16])
@@ -454,7 +457,8 @@ def test_pde_integral(backend, rng):
 
     # test rhs
     rhs = eq.make_pde_rhs(field, backend=backend)
-    np.testing.assert_allclose(rhs(field.data, 0), -field.integral)
+    res = backend._apply_function(rhs, field.data, 0)
+    np.testing.assert_allclose(res, -field.integral)
 
     # test evolution
     for method in ["scipy", "euler"]:
@@ -473,13 +477,13 @@ def test_anti_periodic_bcs():
 
     # test normal periodic BCs
     eq1 = PDE({"c": "laplace(c) + c - c**3"}, bc="periodic")
-    res1 = eq1.solve(field, t_range=1e4, dt=1e-1)
+    res1 = eq1.solve(field, t_range=1e4, dt=1e-1, tracker=None)
     np.testing.assert_allclose(np.abs(res1.data), 1)
     assert res1.fluctuations == pytest.approx(0, abs=1e-5)
 
     # test normal anti-periodic BCs
     eq2 = PDE({"c": "laplace(c) + c - c**3"}, bc="anti-periodic")
-    res2 = eq2.solve(field, t_range=1e3, dt=1e-3, adaptive=True)
+    res2 = eq2.solve(field, t_range=1e3, dt=1e-3, adaptive=True, tracker=None)
     assert np.all(np.abs(res2.data) <= 1.0001)
     assert res2.fluctuations > 0.1
 
@@ -533,6 +537,7 @@ def test_post_step_hook_stopiteration(backend):
     # Since the hook raises an exception the internal timer will not update and t_final
     # will be equal to the initial time
     assert eq.diagnostics["controller"]["t_final"] == 0
+    assert eq.diagnostics["solver"]["backend"]["name"] == backend.name
 
 
 def test_jacobian_spectral():

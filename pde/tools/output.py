@@ -41,7 +41,7 @@ def get_progress_bar_class(fancy: bool = True):
             progress_bar_class = tqdm.tqdm
         else:
             # use the fancier version of the progress bar in jupyter
-            from tqdm.auto import tqdm as progress_bar_class
+            from tqdm.auto import tqdm as progress_bar_class  # type: ignore
     else:
         # only import text progress bar
         progress_bar_class = tqdm.tqdm

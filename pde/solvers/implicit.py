@@ -7,8 +7,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
+from ..tools.misc import get_array_namespace
 from .base import ConvergenceError, SolverBase
 
 if TYPE_CHECKING:
@@ -64,7 +63,6 @@ class ImplicitSolver(SolverBase):
             raise RuntimeError(msg)
 
         self.info["function_evaluations"] = 0
-        self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
 
         rhs = self.backend.make_pde_rhs(self.pde, state)
@@ -74,6 +72,9 @@ class ImplicitSolver(SolverBase):
         # handle deterministic version of the pde
         def implicit_step(state_data: NumericArray, t: float) -> NumericArray:
             """Compiled inner loop for speed."""
+            # support any backend following Python Array API
+            nx = get_array_namespace(state_data)
+
             nfev = 0  # count function evaluations
 
             # save state at current time point t for stepping
@@ -81,7 +82,7 @@ class ImplicitSolver(SolverBase):
 
             # estimate state at next time point
             state_data[:] = state_t + dt * rhs(state_data, t)
-            state_prev = np.empty_like(state_data)
+            state_prev = nx.empty_like(state_data)
 
             # fixed point iteration for improving state after dt
             for n in range(maxiter):
@@ -93,7 +94,7 @@ class ImplicitSolver(SolverBase):
                 err = 0.0
                 for j in range(state_data.size):
                     diff: NumericArray = state_data.flat[j] - state_prev.flat[j]
-                    err += (np.conj(diff) * diff).real  # type: ignore
+                    err += (nx.conj(diff) * diff).real
                 err /= state_data.size
 
                 if err < maxerror2:
@@ -121,12 +122,12 @@ class ImplicitSolver(SolverBase):
                 Time step of the implicit step
         """
         self.info["function_evaluations"] = 0
-        self.info["scheme"] = "implicit-euler-maruyama"
         self.info["stochastic"] = True
 
         # get the function that calculates the noise
         rhs = self.backend.make_pde_rhs(self.pde, state)
-        rhs_noise = self._make_noise_realization(state)
+        rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
+        rhs_noise = self.backend.compile_function(rhs_noise)
 
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
@@ -134,11 +135,12 @@ class ImplicitSolver(SolverBase):
         # handle deterministic version of the pde
         def implicit_step(state_data: NumericArray, t: float) -> NumericArray:
             """Compiled inner loop for speed."""
+            nx = get_array_namespace(state_data)
             nfev = 0  # count function evaluations
 
             # save state at current time point t for stepping
             state_t = state_data.copy()
-            state_prev = np.empty_like(state_data)
+            state_prev = nx.empty_like(state_data)
 
             # estimate state at next time point
             evolution_rate = rhs(state_data, t)
@@ -146,7 +148,7 @@ class ImplicitSolver(SolverBase):
             if noise_realization is not None:
                 # add the noise to the reference state at the current time point and
                 # adept the state at the next time point iteratively below
-                state_t += np.sqrt(dt) * noise_realization
+                state_t += nx.sqrt(dt) * noise_realization
             state_data[:] = state_t + dt * evolution_rate  # estimated new state
 
             # fixed point iteration for improving state after dt
@@ -159,7 +161,7 @@ class ImplicitSolver(SolverBase):
                 err = 0.0
                 for j in range(state_data.size):
                     diff: NumericArray = state_data.flat[j] - state_prev.flat[j]
-                    err += (np.conj(diff) * diff).real  # type: ignore
+                    err += (nx.conj(diff) * diff).real
                 err /= state_data.size
 
                 if err < maxerror2:

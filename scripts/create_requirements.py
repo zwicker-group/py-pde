@@ -67,7 +67,7 @@ REQUIREMENTS = [
     ),
     Requirement(
         name="numpy",
-        version_min="1.22",
+        version_min="2.0",
         usage="Handling numerical data",
         groups={"essential"},
     ),

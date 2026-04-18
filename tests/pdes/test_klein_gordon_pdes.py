@@ -7,7 +7,7 @@ import platform
 import numpy as np
 import pytest
 
-from pde import PDE, KleinGordonPDE, ScalarField, UnitGrid
+from pde import PDE, KleinGordonPDE, ScalarField, UnitGrid, get_backend
 from pde.tools.misc import module_available
 
 
@@ -32,8 +32,9 @@ def test_klein_gordon_consistency(dim, rng):
     # compare torch to numpy implementation
     if module_available("torch") and platform.system() != "Windows":
         rhs = eq.make_pde_rhs(state, backend="torch")
+        res = get_backend("torch")._apply_function(rhs, state.data, 0)
         # use reduced tolerance to support potential float32 devices
-        np.testing.assert_allclose(field.data, rhs(state.data, 0), rtol=1e-6)
+        np.testing.assert_allclose(field.data, res, rtol=1e-6)
 
     # compare to generic implementation
     assert isinstance(eq.expressions, dict)

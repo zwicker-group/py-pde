@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Literal
 import jax.numpy as jnp
 
 from ....grids.cartesian import CartesianGrid
-from .. import jax_backend
+from ..backend import JaxBackend
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -92,7 +92,7 @@ def _make_laplace_jax_3d(grid: CartesianGrid) -> OperatorImplType:
     return laplace
 
 
-@jax_backend.register_operator(CartesianGrid, "laplace", rank_in=0, rank_out=0)
+@JaxBackend.register_operator(CartesianGrid, "laplace", rank_in=0, rank_out=0)
 def make_laplace(grid: CartesianGrid, **kwargs) -> OperatorImplType:
     """Make a Laplace operator on a Cartesian grid.
 
@@ -235,7 +235,7 @@ def _make_gradient_jax_3d(
     return gradient
 
 
-@jax_backend.register_operator(CartesianGrid, "gradient", rank_in=0, rank_out=1)
+@JaxBackend.register_operator(CartesianGrid, "gradient", rank_in=0, rank_out=1)
 def make_gradient(
     grid: CartesianGrid,
     *,
@@ -400,7 +400,7 @@ def _make_gradient_squared_jax_3d(
     return gradient_squared
 
 
-@jax_backend.register_operator(CartesianGrid, "gradient_squared", rank_in=0, rank_out=0)
+@JaxBackend.register_operator(CartesianGrid, "gradient_squared", rank_in=0, rank_out=0)
 def make_gradient_squared(
     grid: CartesianGrid, *, central: bool = True
 ) -> OperatorImplType:
@@ -545,7 +545,7 @@ def _make_divergence_jax_3d(
     return divergence
 
 
-@jax_backend.register_operator(CartesianGrid, "divergence", rank_in=1, rank_out=0)
+@JaxBackend.register_operator(CartesianGrid, "divergence", rank_in=1, rank_out=0)
 def make_divergence(
     grid: CartesianGrid,
     *,
@@ -601,7 +601,7 @@ def _vectorize_operator(
     return vectorized_operator
 
 
-@jax_backend.register_operator(CartesianGrid, "vector_gradient", rank_in=1, rank_out=2)
+@JaxBackend.register_operator(CartesianGrid, "vector_gradient", rank_in=1, rank_out=2)
 def make_vector_gradient(
     grid: CartesianGrid,
     *,
@@ -622,7 +622,7 @@ def make_vector_gradient(
     return _vectorize_operator(make_gradient, grid, method=method)
 
 
-@jax_backend.register_operator(CartesianGrid, "vector_laplace", rank_in=1, rank_out=1)
+@JaxBackend.register_operator(CartesianGrid, "vector_laplace", rank_in=1, rank_out=1)
 def make_vector_laplace(grid: CartesianGrid) -> OperatorImplType:
     """Make a vector Laplacian on a Cartesian grid.
 
@@ -636,9 +636,7 @@ def make_vector_laplace(grid: CartesianGrid) -> OperatorImplType:
     return _vectorize_operator(make_laplace, grid)
 
 
-@jax_backend.register_operator(
-    CartesianGrid, "tensor_divergence", rank_in=2, rank_out=1
-)
+@JaxBackend.register_operator(CartesianGrid, "tensor_divergence", rank_in=2, rank_out=1)
 def make_tensor_divergence(
     grid: CartesianGrid,
     *,

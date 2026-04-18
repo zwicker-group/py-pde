@@ -34,6 +34,7 @@ if TYPE_CHECKING:
         ArrayLike,
         NumberOrArray,
         NumericArray,
+        PostStepHook,
         StepperHook,
         TField,
         TNativeArray,
@@ -78,7 +79,7 @@ class PDE(SDEBase):
         *,
         bc: BoundariesData | None = None,
         bc_ops: dict[str, BoundariesData] | None = None,
-        post_step_hook: Callable[[NumericArray, float], None] | None = None,
+        post_step_hook: PostStepHook | None = None,
         user_funcs: dict[str, Callable] | None = None,
         consts: dict[str, NumberOrArray] | None = None,
         noise: ArrayLike | dict[str, NumberOrArray] = 0,
@@ -325,7 +326,7 @@ class PDE(SDEBase):
             op_backend = "numba" if backend.implementation == "numpy" else backend
             try:
                 ops[func] = state.grid.make_operator(
-                    func, bc=bc, backend=op_backend, native=True, dtype=dtype
+                    func, bc=bc, backend=op_backend, dtype=dtype
                 )
             except BCDataError:
                 # wrong data was supplied for the boundary condition
@@ -409,7 +410,7 @@ class PDE(SDEBase):
             signature += tuple(state.grid.axes)
             # inject the spatial coordinates into the expression for the rhs
             extra_args = tuple(
-                backend.from_numpy(state.grid.cell_coords[..., i])
+                backend.numpy_to_native(state.grid.cell_coords[..., i])
                 for i in range(state.grid.num_axes)
             )
 
@@ -663,11 +664,13 @@ class PDE(SDEBase):
         post_step_hook = get_backend(backend).compile_function(self.post_step_hook)
 
         @get_backend(backend).compile_function
-        def post_step_hook_impl(state_data, t, post_step_data):
+        def post_step_hook_impl(
+            state_data: TNativeArray, t: float, post_step_data: Any
+        ) -> tuple[TNativeArray, Any]:
             state_data = post_step_hook(state_data, t)
-            return state_data, None  # None indicates lack of `post_step_data`
+            return state_data, None  # `None` indicates lack of `post_step_data`
 
-        return post_step_hook_impl, 0  # hook function and initial value
+        return post_step_hook_impl, None  # hook function and initial value
 
     def _make_pde_rhs_collection_numba(
         self, state: FieldCollection, *, backend: BackendBase, cache: dict[str, Any]
@@ -772,7 +775,7 @@ class PDE(SDEBase):
         # this is the outermost function
         def evolution_rate(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
             data_tpl = get_data_tuple(state_data)
-            out = torch.empty(data_shape, dtype=dtype)
+            out = torch.empty(data_shape, dtype=dtype, device=state_data.device)
             for i, rhs in enumerate(rhs_list):
                 out[starts[i] : stops[i]] = rhs(*data_tpl, t)
             return out
