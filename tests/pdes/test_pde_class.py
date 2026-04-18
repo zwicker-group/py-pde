@@ -34,7 +34,7 @@ def test_pde_critical_input(rng):
     # test whether reserved symbols can be used as variables
     grid = grids.UnitGrid([4])
     eq = PDE({"E": 1})
-    res = eq.solve(ScalarField(grid), t_range=2)
+    res = eq.solve(ScalarField(grid), t_range=2, tracker=None)
     t_final = eq.diagnostics["controller"]["t_final"]
     np.testing.assert_allclose(res.data, t_final)
 
@@ -477,13 +477,13 @@ def test_anti_periodic_bcs():
 
     # test normal periodic BCs
     eq1 = PDE({"c": "laplace(c) + c - c**3"}, bc="periodic")
-    res1 = eq1.solve(field, t_range=1e4, dt=1e-1)
+    res1 = eq1.solve(field, t_range=1e4, dt=1e-1, tracker=None)
     np.testing.assert_allclose(np.abs(res1.data), 1)
     assert res1.fluctuations == pytest.approx(0, abs=1e-5)
 
     # test normal anti-periodic BCs
     eq2 = PDE({"c": "laplace(c) + c - c**3"}, bc="anti-periodic")
-    res2 = eq2.solve(field, t_range=1e3, dt=1e-3, adaptive=True)
+    res2 = eq2.solve(field, t_range=1e3, dt=1e-3, adaptive=True, tracker=None)
     assert np.all(np.abs(res2.data) <= 1.0001)
     assert res2.fluctuations > 0.1
 

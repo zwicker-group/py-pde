@@ -71,7 +71,9 @@ def test_inhomogeneous_bcs_func(backend):
 
     bc = {"x": "derivative", "y-": "derivative", "y+": {"value_expression": bc_value}}
     eq = DiffusionPDE(bc=bc)
-    res = eq.solve(field, t_range=10, dt=0.01, adaptive=True, backend=backend)
+    res = eq.solve(
+        field, t_range=10, dt=0.01, adaptive=True, backend=backend, tracker=None
+    )
     assert np.all(res.data[:16] < 0)
     assert np.all(res.data[16:] > 0)
 
@@ -314,11 +316,6 @@ def test_modelrunner_storage_one(tmp_path, capsys):
     captured = capsys.readouterr()
     assert captured.out == captured.err == ""
     assert output.is_file()
-
-    print("=" * 40)
-    with Path(output).open() as fp:
-        print(fp.read())
-    print("=" * 40)
 
     # read storage manually
     with mr.open_storage(output, mode="read") as storage_obj:

@@ -72,6 +72,25 @@ Consequently, data is laid out in memory such that spatial indices are last.
 For instance, the data of a vector field ``field`` defined on a 2d Cartesian grid will
 have three dimensions and can be accessed as ``field.data[vector_component, x, y]``,
 where ``vector_component`` is either 0 or 1.
+Note that :class:`~pde.fields.collection.FieldCollection` linearizes all vector- and
+tensor-components, to force all data in a unified array format.
+How this works is shown in the following example:
+
+.. code-block:: python
+
+    grid = pde.UnitGrid([7, 9])
+    scalar = pde.ScalarField.random_uniform(grid)
+    assert scalar.data.shape == (7, 9)
+    tensor = pde.Tensor2Field.random_uniform(grid)
+    assert tensor.data.shape == (2, 2, 7, 9)
+    collection = pde.FieldCollection([scalar, tensor])
+    assert collection.data.shape == (5, 7, 9)
+
+    assert np.all(collection.data[0] == scalar.data)
+    assert np.all(collection.data[1] == tensor.data[0, 0])
+    assert np.all(collection.data[2] == tensor.data[0, 1])
+    assert np.all(collection.data[3] == tensor.data[1, 0])
+    assert np.all(collection.data[4] == tensor.data[1, 1])
 
 
 Coding style

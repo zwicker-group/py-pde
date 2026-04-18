@@ -32,7 +32,7 @@ def test_backend_selection(backend, rng):
     # it is important that we use a PDE of sufficient complexity here, so that we test
     # that operators are created for the correct backend.
     eq = CahnHilliardPDE()
-    eq.solve(state, t_range=1, backend=new_backend)
+    eq.solve(state, t_range=1, backend=new_backend, tracker=None)
 
     assert eq.diagnostics["solver"]["backend"]["name"] == f"my-torch-{device}"
     assert eq.diagnostics["solver"]["backend"]["device"] == device

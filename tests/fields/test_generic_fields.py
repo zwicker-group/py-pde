@@ -497,7 +497,7 @@ def test_smoothing(rng):
         np.testing.assert_allclose(out.data, expected)
 
         out.data = 0  # reset data
-        print(f1.smooth(sigma, out=out).data)
+        f1.smooth(sigma, out=out)
         np.testing.assert_allclose(out.data, expected)
 
     # test one simple higher order smoothing
