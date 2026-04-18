@@ -1454,8 +1454,6 @@ class NumbaBackend(NumpyBackend):
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            dt (float):
-                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to

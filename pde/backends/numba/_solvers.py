@@ -73,8 +73,6 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> InnerStepperType:
         state (:class:`~pde.fields.base.FieldBase`):
             An example for the state from which the grid and other information can
             be extracted
-        dt (float):
-            Time step of the explicit stepping.
     """
     dt = float(solver.info["dt"])
 
@@ -131,8 +129,6 @@ def _make_adams_bashforth_stepper(
         state (:class:`~pde.fields.base.FieldBase`):
             An example for the state from which the grid and other information can
             be extracted
-        dt (float):
-            Time step of the explicit stepping.
     """
     if solver.pde.is_sde:
         msg = "Deterministic Adams-Bashforth does not support stochastic equations"

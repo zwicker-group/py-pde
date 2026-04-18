@@ -27,8 +27,6 @@ class AdamsBashforthSolver(SolverBase):
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            dt (float):
-                Time step of the explicit stepping
         """
         if self.pde.is_sde:
             msg = "Deterministic Adams-Bashforth does not support stochastic equations"
