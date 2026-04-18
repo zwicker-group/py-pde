@@ -20,15 +20,18 @@ from typing import TYPE_CHECKING, Literal
 from ....grids.spherical import PolarSymGrid
 from ....tools.docstrings import fill_in_docstring
 from .. import numba_backend
+from ..backend import NumbaBackend
 from ..utils import jit
 
 if TYPE_CHECKING:
     from ....tools.typing import NumericArray, OperatorImplType
 
 
-@numba_backend.register_operator(PolarSymGrid, "laplace", rank_in=0, rank_out=0)
+@NumbaBackend.register_operator(PolarSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_laplace(grid: PolarSymGrid) -> OperatorImplType:
+def make_laplace(
+    grid: PolarSymGrid, *, backend: NumbaBackend = numba_backend
+) -> OperatorImplType:
     """Make a discretized laplace operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -36,6 +39,8 @@ def make_laplace(grid: PolarSymGrid) -> OperatorImplType:
     Args:
         grid (:class:`~pde.grids.spherical.PolarSymGrid`):
             The polar grid for which this operator will be defined
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
@@ -58,10 +63,13 @@ def make_laplace(grid: PolarSymGrid) -> OperatorImplType:
     return laplace
 
 
-@numba_backend.register_operator(PolarSymGrid, "gradient", rank_in=0, rank_out=1)
+@NumbaBackend.register_operator(PolarSymGrid, "gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(
-    grid: PolarSymGrid, *, method: Literal["central", "forward", "backward"] = "central"
+    grid: PolarSymGrid,
+    *,
+    backend: NumbaBackend = numba_backend,
+    method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorImplType:
     """Make a discretized gradient operator for a polar grid.
 
@@ -70,6 +78,8 @@ def make_gradient(
     Args:
         grid (:class:`~pde.grids.spherical.PolarSymGrid`):
             The polar grid for which this operator will be defined
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
         method (str):
             The method for calculating the derivative. Possible values are 'central',
             'forward', and 'backward'.
@@ -104,12 +114,13 @@ def make_gradient(
     return gradient
 
 
-@numba_backend.register_operator(
-    PolarSymGrid, "gradient_squared", rank_in=0, rank_out=0
-)
+@NumbaBackend.register_operator(PolarSymGrid, "gradient_squared", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_gradient_squared(
-    grid: PolarSymGrid, *, central: bool = True
+    grid: PolarSymGrid,
+    *,
+    backend: NumbaBackend = numba_backend,
+    central: bool = True,
 ) -> OperatorImplType:
     """Make a discretized gradient squared operator for a polar grid.
 
@@ -118,6 +129,8 @@ def make_gradient_squared(
     Args:
         grid (:class:`~pde.grids.spherical.PolarSymGrid`):
             The polar grid for which this operator will be defined
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
         central (bool):
             Whether a central difference approximation is used for the gradient
             operator. If this is False, the squared gradient is calculated as
@@ -157,9 +170,11 @@ def make_gradient_squared(
     return gradient_squared
 
 
-@numba_backend.register_operator(PolarSymGrid, "divergence", rank_in=1, rank_out=0)
+@NumbaBackend.register_operator(PolarSymGrid, "divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
-def make_divergence(grid: PolarSymGrid) -> OperatorImplType:
+def make_divergence(
+    grid: PolarSymGrid, *, backend: NumbaBackend = numba_backend
+) -> OperatorImplType:
     """Make a discretized divergence operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -167,6 +182,8 @@ def make_divergence(grid: PolarSymGrid) -> OperatorImplType:
     Args:
         grid (:class:`~pde.grids.spherical.PolarSymGrid`):
             The polar grid for which this operator will be defined
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
@@ -190,9 +207,11 @@ def make_divergence(grid: PolarSymGrid) -> OperatorImplType:
     return divergence
 
 
-@numba_backend.register_operator(PolarSymGrid, "vector_gradient", rank_in=1, rank_out=2)
+@NumbaBackend.register_operator(PolarSymGrid, "vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
-def make_vector_gradient(grid: PolarSymGrid) -> OperatorImplType:
+def make_vector_gradient(
+    grid: PolarSymGrid, *, backend: NumbaBackend = numba_backend
+) -> OperatorImplType:
     """Make a discretized vector gradient operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -200,6 +219,8 @@ def make_vector_gradient(grid: PolarSymGrid) -> OperatorImplType:
     Args:
         grid (:class:`~pde.grids.spherical.PolarSymGrid`):
             The polar grid for which this operator will be defined
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
@@ -229,11 +250,13 @@ def make_vector_gradient(grid: PolarSymGrid) -> OperatorImplType:
     return vector_gradient
 
 
-@numba_backend.register_operator(
+@NumbaBackend.register_operator(
     PolarSymGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
 @fill_in_docstring
-def make_tensor_divergence(grid: PolarSymGrid) -> OperatorImplType:
+def make_tensor_divergence(
+    grid: PolarSymGrid, *, backend: NumbaBackend = numba_backend
+) -> OperatorImplType:
     """Make a discretized tensor divergence operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -241,6 +264,8 @@ def make_tensor_divergence(grid: PolarSymGrid) -> OperatorImplType:
     Args:
         grid (:class:`~pde.grids.spherical.PolarSymGrid`):
             The polar grid for which this operator will be defined
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values

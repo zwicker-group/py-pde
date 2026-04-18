@@ -22,15 +22,18 @@ import numba as nb
 from ....grids.cylindrical import CylindricalSymGrid
 from ....tools.docstrings import fill_in_docstring
 from .. import numba_backend
+from ..backend import NumbaBackend
 from ..utils import jit
 
 if TYPE_CHECKING:
     from ....tools.typing import NumericArray, OperatorImplType
 
 
-@numba_backend.register_operator(CylindricalSymGrid, "laplace", rank_in=0, rank_out=0)
+@NumbaBackend.register_operator(CylindricalSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
+def make_laplace(
+    grid: CylindricalSymGrid, *, backend: NumbaBackend = numba_backend
+) -> OperatorImplType:
     """Make a discretized laplace operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -38,6 +41,8 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
     Args:
         grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
@@ -49,7 +54,7 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
     factor_r = 1 / (2 * grid.axes_coords[0] * dr)
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= numba_backend.config["multithreading_threshold"]
+    parallel = dim_r * dim_z >= backend.config["multithreading_threshold"]
 
     @jit(parallel=parallel)
     def laplace(arr: NumericArray, out: NumericArray) -> None:
@@ -67,9 +72,11 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
     return laplace
 
 
-@numba_backend.register_operator(CylindricalSymGrid, "gradient", rank_in=0, rank_out=1)
+@NumbaBackend.register_operator(CylindricalSymGrid, "gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
-def make_gradient(grid: CylindricalSymGrid) -> OperatorImplType:
+def make_gradient(
+    grid: CylindricalSymGrid, *, backend: NumbaBackend = numba_backend
+) -> OperatorImplType:
     """Make a discretized gradient operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -77,6 +84,8 @@ def make_gradient(grid: CylindricalSymGrid) -> OperatorImplType:
     Args:
         grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
@@ -100,12 +109,15 @@ def make_gradient(grid: CylindricalSymGrid) -> OperatorImplType:
     return gradient
 
 
-@numba_backend.register_operator(
+@NumbaBackend.register_operator(
     CylindricalSymGrid, "gradient_squared", rank_in=0, rank_out=0
 )
 @fill_in_docstring
 def make_gradient_squared(
-    grid: CylindricalSymGrid, central: bool = True
+    grid: CylindricalSymGrid,
+    *,
+    backend: NumbaBackend = numba_backend,
+    central: bool = True,
 ) -> OperatorImplType:
     """Make a discretized gradient squared operator for a cylindrical grid.
 
@@ -114,6 +126,8 @@ def make_gradient_squared(
     Args:
         grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
         central (bool):
             Whether a central difference approximation is used for the gradient
             operator. If this is False, the squared gradient is calculated as
@@ -157,11 +171,11 @@ def make_gradient_squared(
     return gradient_squared
 
 
-@numba_backend.register_operator(
-    CylindricalSymGrid, "divergence", rank_in=1, rank_out=0
-)
+@NumbaBackend.register_operator(CylindricalSymGrid, "divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
-def make_divergence(grid: CylindricalSymGrid) -> OperatorImplType:
+def make_divergence(
+    grid: CylindricalSymGrid, *, backend: NumbaBackend = numba_backend
+) -> OperatorImplType:
     """Make a discretized divergence operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -169,6 +183,8 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorImplType:
     Args:
         grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
@@ -197,11 +213,13 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorImplType:
     return divergence
 
 
-@numba_backend.register_operator(
+@NumbaBackend.register_operator(
     CylindricalSymGrid, "vector_gradient", rank_in=1, rank_out=2
 )
 @fill_in_docstring
-def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorImplType:
+def make_vector_gradient(
+    grid: CylindricalSymGrid, *, backend: NumbaBackend = numba_backend
+) -> OperatorImplType:
     """Make a discretized vector gradient operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -209,6 +227,8 @@ def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorImplType:
     Args:
         grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
@@ -247,11 +267,13 @@ def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorImplType:
     return vector_gradient
 
 
-@numba_backend.register_operator(
+@NumbaBackend.register_operator(
     CylindricalSymGrid, "vector_laplace", rank_in=1, rank_out=1
 )
 @fill_in_docstring
-def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
+def make_vector_laplace(
+    grid: CylindricalSymGrid, *, backend: NumbaBackend = numba_backend
+) -> OperatorImplType:
     """Make a discretized vector laplace operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -259,6 +281,8 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
     Args:
         grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
@@ -309,11 +333,13 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
     return vector_laplace
 
 
-@numba_backend.register_operator(
+@NumbaBackend.register_operator(
     CylindricalSymGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
 @fill_in_docstring
-def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorImplType:
+def make_tensor_divergence(
+    grid: CylindricalSymGrid, *, backend: NumbaBackend = numba_backend
+) -> OperatorImplType:
     """Make a discretized tensor divergence operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -321,6 +347,8 @@ def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorImplType:
     Args:
         grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values

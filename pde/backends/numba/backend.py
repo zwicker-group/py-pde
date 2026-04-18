@@ -517,7 +517,7 @@ class NumbaBackend(NumpyBackend):
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
-        operator_raw = operator_info.factory(grid, **kwargs)
+        operator_raw = operator_info.factory(grid, backend=self, **kwargs)
 
         # calculate shapes of the full data
         shape_in_valid = (grid.dim,) * operator_info.rank_in + grid.shape
