@@ -112,7 +112,7 @@ def mpi_recv(data, source, tag) -> None:
 
     Args:
         data: A buffer into which the received data is written
-        dest (int): The ID of the sending node
+        source (int): The ID of the sending node
         tag (int): A numeric tag identifying the message
     """
     data[...] = MPI.COMM_WORLD.recv(source=source, tag=tag)

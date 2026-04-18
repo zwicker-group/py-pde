@@ -692,8 +692,6 @@ def make_inner_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperTy
             The solver instance, which determines how the stepper is constructed
         state (:class:`~pde.fields.base.FieldBase`):
             Example field from which grid and other information is read
-        backend (:class:`~pde.backends.torch.TorchBackend):
-            The specific backend used to create the stepper
 
     Returns:
         callable:

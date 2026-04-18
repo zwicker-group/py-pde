@@ -46,6 +46,10 @@ NUMBA_VERSION = [int(v) for v in nb.__version__.split(".")[:2]]
 def make_get_valid(grid: GridBase) -> Callable[[NumericArray], NumericArray]:
     """Create a function to extract the valid part of a full data array.
 
+    Args:
+        grid (:class:`~pde.grids.base.GridBase`):
+            The grid for which the function is created
+
     Returns:
         callable: Mapping a numpy array containing the full data of the grid to a
             numpy array of only the valid data

@@ -247,8 +247,6 @@ class SolverBase:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            dt (float):
-                Time step of the explicit stepping.
         """
         dt = float(self.info["dt"])
         single_step = self._make_single_step_fixed_dt(state, dt)
@@ -477,8 +475,6 @@ class AdaptiveSolverBase(SolverBase):
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            adjust_dt (callable, optional):
-                Function to adjust time step based on error with signature (dt, error)
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to

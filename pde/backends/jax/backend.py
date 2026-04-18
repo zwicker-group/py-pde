@@ -345,10 +345,8 @@ class JaxBackend(BackendBase[jax.Array]):
             """Set valid part of the data (without ghost cells)
 
             Args:
-                data_full (:class:`~numpy.ndarray`):
-                    The full array with ghost cells that the data is written to
                 data_valid (:class:`~numpy.ndarray`):
-                    The valid data that is written to `data_full`
+                    The valid data that is written to the full array
                 args:
                     Additional arguments (not used in this function)
             """
@@ -383,10 +381,8 @@ class JaxBackend(BackendBase[jax.Array]):
             """Set valid part of the data and the ghost cells using BCs.
 
             Args:
-                data_full (:class:`~numpy.ndarray`):
-                    The full array with ghost cells that the data is written to
                 data_valid (:class:`~numpy.ndarray`):
-                    The valid data that is written to `data_full`
+                    The valid data that is written to the full array
                 args (dict):
                     Extra arguments affecting the boundary conditions
             """
@@ -745,8 +741,6 @@ class JaxBackend(BackendBase[jax.Array]):
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            dt (float):
-                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
