@@ -190,9 +190,10 @@ def get_backend(backend: str | BackendBase) -> BackendBase:
             would expect a backend name.
     """
     if isinstance(backend, BackendBase):
-        return backend
-    # if it's not a class, it needs to be a backend name
-    return backend_registry[str(backend)]
+        return backend  # backend is already initialized
+    if isinstance(backend, str):
+        return backend_registry[backend]  # backend is given by name
+    raise TypeError
 
 
 def registered_backends() -> list[str]:
