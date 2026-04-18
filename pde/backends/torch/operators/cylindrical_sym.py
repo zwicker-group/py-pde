@@ -22,7 +22,7 @@ import torch
 
 from ....grids import CylindricalSymGrid, GridBase
 from ....tools.docstrings import fill_in_docstring
-from .. import torch_backend
+from ..backend import TorchBackend
 from .common import TorchDifferentialOperator
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from ....grids.boundaries import BoundariesList
 
 
-@torch_backend.register_operator(CylindricalSymGrid, "laplace", rank_in=0, rank_out=0)
+@TorchBackend.register_operator(CylindricalSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 class CylindricalLaplacian(TorchDifferentialOperator):
     """Cylindrical Laplace using torch.
@@ -76,7 +76,7 @@ class CylindricalLaplacian(TorchDifferentialOperator):
         )
 
 
-@torch_backend.register_operator(CylindricalSymGrid, "gradient", rank_in=0, rank_out=1)
+@TorchBackend.register_operator(CylindricalSymGrid, "gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
 class CylindricalGradient(TorchDifferentialOperator):
     """Cylindrical gradient operator using torch.
@@ -119,7 +119,7 @@ class CylindricalGradient(TorchDifferentialOperator):
         return torch.stack((r, z, phi))
 
 
-@torch_backend.register_operator(
+@TorchBackend.register_operator(
     CylindricalSymGrid, "gradient_squared", rank_in=0, rank_out=0
 )
 @fill_in_docstring
@@ -178,9 +178,7 @@ class CylindricalGradientSquared(TorchDifferentialOperator):
         return term_r * self.scale_r + term_z * self.scale_z  # type: ignore
 
 
-@torch_backend.register_operator(
-    CylindricalSymGrid, "divergence", rank_in=1, rank_out=0
-)
+@TorchBackend.register_operator(CylindricalSymGrid, "divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
 class CylindricalDivergence(TorchDifferentialOperator):
     """Cylindrical divergence operator using torch.
@@ -219,7 +217,7 @@ class CylindricalDivergence(TorchDifferentialOperator):
         )
 
 
-@torch_backend.register_operator(
+@TorchBackend.register_operator(
     CylindricalSymGrid, "vector_gradient", rank_in=1, rank_out=2
 )
 @fill_in_docstring
@@ -285,7 +283,7 @@ class CylindricalVectorGradient(TorchDifferentialOperator):
         )
 
 
-@torch_backend.register_operator(
+@TorchBackend.register_operator(
     CylindricalSymGrid, "vector_laplace", rank_in=1, rank_out=1
 )
 @fill_in_docstring
@@ -362,7 +360,7 @@ class CylindricalVectorLaplacian(TorchDifferentialOperator):
         return torch.stack((out_r, out_z, out_φ))
 
 
-@torch_backend.register_operator(
+@TorchBackend.register_operator(
     CylindricalSymGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
 @fill_in_docstring

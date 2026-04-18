@@ -22,10 +22,8 @@ else:
 from .. import backend_registry
 from .backend import NumbaMPIBackend
 
-# add the loaded numba-mpi backend to the registry
-backend_registry.add(
-    NumbaMPIBackend(backend_registry.get_config("numba_mpi"), name="numba_mpi")
-)
+# add the numba-mpi backend class to the registry
+backend_registry.register_class("numba_mpi", NumbaMPIBackend)
 
 # register some numba overloads
 from . import overloads

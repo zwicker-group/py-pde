@@ -144,7 +144,7 @@ class JaxBackend(BackendBase[jax.Array]):
         type_cache[np_dtype] = jax_dtype
         return jax_dtype
 
-    def from_numpy(self, value: Any) -> Any:
+    def numpy_to_native(self, value: Any) -> Any:
         """Convert values from numpy to jax representation.
 
         This method also ensures that the value is copied to the selected device.
@@ -158,7 +158,7 @@ class JaxBackend(BackendBase[jax.Array]):
         msg = f"Unsupported type `{type(value).__name__}"
         raise TypeError(msg)
 
-    def to_numpy(self, value: Any) -> Any:
+    def native_to_numpy(self, value: Any) -> Any:
         """Convert native values to numpy representation."""
         if isinstance(value, jax.Array):
             return np.asarray(value)
@@ -191,9 +191,9 @@ class JaxBackend(BackendBase[jax.Array]):
             *args, **kwargs:
                 Additional arguments that are forwarded to the function call
         """
-        values_native = [self.from_numpy(value) for value in values]
+        values_native = [self.numpy_to_native(value) for value in values]
         out_native = func(*values_native, **kwargs)
-        out[...] = self.to_numpy(out_native)
+        out[...] = self.native_to_numpy(out_native)
 
     def _make_local_ghost_cell_setter(self, bc: BCBase) -> JaxGhostCellSetter:
         """Return function that sets the ghost cells for a particular side of an axis.
@@ -410,7 +410,7 @@ class JaxBackend(BackendBase[jax.Array]):
             correct weights given by the cell volumes.
         """
         spatial_dims = tuple(range(-grid.num_axes, 0))
-        cell_volumes = self.from_numpy(
+        cell_volumes = self.numpy_to_native(
             np.broadcast_to(grid.cell_volumes, grid.shape).astype(np.float64)
         )
 
@@ -694,7 +694,7 @@ class JaxBackend(BackendBase[jax.Array]):
         # directly since sympy does not work well with numpy arrays.
         if constants:
             const_values = tuple(
-                self.from_numpy(expression.consts[c]) for c in constants
+                self.numpy_to_native(expression.consts[c]) for c in constants
             )
 
             func = self.compile_function(func)
@@ -763,11 +763,11 @@ class JaxBackend(BackendBase[jax.Array]):
         def stepper(state: TField, t_start: float, t_end: float) -> float:
             """Advance `state` from `t_start` to `t_end` using fixed steps."""
             # push state data to native backend
-            state_tensor: jax.Array = solver.backend.from_numpy(state.data)  # type: ignore
+            state_tensor: jax.Array = solver.backend.numpy_to_native(state.data)  # type: ignore
             # call the stepper with fixed time steps
             state_tensor, t_last = inner_stepper(state_tensor, t_start, t_end)
             # retrieve data from native backend
-            state.data[:] = solver.backend.to_numpy(state_tensor)
+            state.data[:] = solver.backend.native_to_numpy(state_tensor)
             return t_last
 
         return stepper  # type: ignore

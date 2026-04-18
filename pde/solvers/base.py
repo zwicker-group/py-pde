@@ -325,9 +325,9 @@ class SolverBase:
         if self.backend.copy_data:
 
             def rhs_numpy(state_data: NumericArray, t: float) -> NumericArray:
-                state_native = self.backend.from_numpy(state_data)
+                state_native = self.backend.numpy_to_native(state_data)
                 noise_native = rhs_compiled(state_native, t)
-                return self.backend.to_numpy(noise_native)
+                return self.backend.native_to_numpy(noise_native)
 
             return rhs_numpy
 

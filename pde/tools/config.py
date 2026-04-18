@@ -27,15 +27,13 @@ import re
 import subprocess as sp
 import sys
 import warnings
+from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any, Union
 
 import numpy as np
 
 from .misc import module_available
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
 
 
 class Parameter:
@@ -188,6 +186,7 @@ DEFAULT_CONFIG: list[Parameter] = [
 
 
 ConfigValueType = str | float | int | bool | None
+ConfigLike = Union[Sequence[Parameter], dict[str, Any], "Config"]
 
 
 class Config(collections.UserDict):
@@ -200,11 +199,7 @@ class Config(collections.UserDict):
 
     data: dict[str, ConfigValueType | Parameter]
 
-    def __init__(
-        self,
-        items: Sequence[Parameter] | dict[str, Any] | Config | None = None,
-        mode: str = "update",
-    ):
+    def __init__(self, items: ConfigLike | None = None, mode: str = "update"):
         """
         Args:
             items (dict, optional):
@@ -330,7 +325,7 @@ class GlobalConfig:
 
     def __init__(
         self,
-        items: Sequence[Parameter] | dict[str, Any] | None = None,
+        items: ConfigLike | None = None,
         mode: str = "update",
     ):
         """
@@ -367,10 +362,10 @@ class GlobalConfig:
         """
         if key.startswith("backend."):
             # use configurations of backend
-            from ..backends import get_backend
+            from ..backends import backend_registry
 
             _, backend, config_key = key.split(".", 2)
-            return get_backend(backend).config, config_key
+            return backend_registry.get_config(backend), config_key
 
         if key.startswith("numba."):
             # legacy location for numba related configurations; deprecated on 2025-12-22
@@ -379,10 +374,10 @@ class GlobalConfig:
                 DeprecationWarning,
                 stacklevel=2,
             )
-            from ..backends import get_backend
+            from ..backends import backend_registry
 
             backend, config_key = key.split(".", 1)
-            return get_backend(backend).config, config_key
+            return backend_registry.get_config(backend), config_key
 
         # use global configuration
         return self._config, key

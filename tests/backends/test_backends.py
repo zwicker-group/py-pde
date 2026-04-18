@@ -38,12 +38,13 @@ def test_backend_selection(backend, rng):
     assert eq.diagnostics["solver"]["backend"]["device"] == device
 
 
-def test_backend_configuration():
-    """Test some aspects of configuration options."""
-    # test modification of known backend
+def test_backend_configuration_known():
+    """Test some aspects of configuration options of known backends."""
+    # test different ways to access the config
     assert config["backend.numba.fastmath"]
     assert backend_registry.get_config("numba")["fastmath"]
     assert get_backend("numba").config["fastmath"]
+    assert backend_registry.get_config("numba") is get_backend("numba").config
 
     get_backend("numba").config["fastmath"] = False
     assert not config["backend.numba.fastmath"]
@@ -55,11 +56,38 @@ def test_backend_configuration():
     assert backend_registry.get_config("numba")["fastmath"]
     assert get_backend("numba").config["fastmath"]
 
-    # test configuration of new backend
+
+def test_backend_configuration_special():
+    """Test some aspects of configuration options with specialized backends."""
+    # test different ways to access the config
+    assert backend_registry.get_config("torch")["dtype_downcasting"]
+
+    # standard backend must modify global config
+    get_backend("torch").config["dtype_downcasting"] = False
+    assert not backend_registry.get_config("torch")["dtype_downcasting"]
+
+    # global config must change standard backend
+    backend_registry.get_config("torch")["dtype_downcasting"] = True
+    assert get_backend("torch").config["dtype_downcasting"]
+
+    # special backend behaves differently
+    special_backend = backend_registry.get_backend(
+        "torch:cpu", config={"dtype_downcasting": False}
+    )
+    assert not special_backend.config["dtype_downcasting"]
+    assert not get_backend("torch:cpu").config["dtype_downcasting"]
+    assert isinstance(special_backend, TorchBackend)
+    assert get_backend("torch").config["dtype_downcasting"]
+    assert backend_registry.get_config("torch")["dtype_downcasting"]
+
+
+def test_backend_configuration_new():
+    """Test configuration of new backend."""
+
     class MyBackend(BackendBase): ...
 
     backend = MyBackend({"option": 1}, name="test_config")
-    backend_registry.add(backend)
+    backend_registry.register_backend(backend, link_config=True)
 
     assert backend.config["option"] == 1
     assert backend_registry["test_config"].config["option"] == 1

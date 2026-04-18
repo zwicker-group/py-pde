@@ -1043,7 +1043,8 @@ def evaluate(
         signature += tuple(grid.axes)
         # inject the spatial coordinates into the expression for the rhs
         extra_args = tuple(
-            backend.from_numpy(grid.cell_coords[..., i]) for i in range(grid.num_axes)
+            backend.numpy_to_native(grid.cell_coords[..., i])
+            for i in range(grid.num_axes)
         )
 
     else:
@@ -1061,14 +1062,14 @@ def evaluate(
     _base_logger.info("Expression has signature %s", signature)
 
     # extract input field data and calculate result
-    field_data = [backend.from_numpy(field.data) for field in fields_values]
+    field_data = [backend.numpy_to_native(field.data) for field in fields_values]
 
     # calculate the result of the expression
     func = expr.get_function(single_arg=False, user_funcs=ops, backend=backend)
     result_data: NumericArray = func(*field_data, None, {}, *extra_args)  # type: ignore
 
     # turn result into a proper field
-    result_data = backend.to_numpy(result_data)
+    result_data = backend.native_to_numpy(result_data)
     if np.isscalar(result_data) or result_data.shape == ():
         result_data = np.broadcast_to(result_data, grid.shape)
     result_rank = result_data.ndim - grid.num_axes

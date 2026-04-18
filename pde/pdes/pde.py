@@ -410,7 +410,7 @@ class PDE(SDEBase):
             signature += tuple(state.grid.axes)
             # inject the spatial coordinates into the expression for the rhs
             extra_args = tuple(
-                backend.from_numpy(state.grid.cell_coords[..., i])
+                backend.numpy_to_native(state.grid.cell_coords[..., i])
                 for i in range(state.grid.num_axes)
             )
 

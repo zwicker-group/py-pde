@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pde import ScalarField, UnitGrid
+from pde import ScalarField, UnitGrid, get_backend
 
 ALL_BACKENDS = ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
 
@@ -20,9 +20,8 @@ def _apply_ghost_cells(backend, field: ScalarField, bcs):
     """
     f_copy = field.copy()
     if backend.name == "jax":
-        from pde.backends.jax import jax_backend as _jax_backend
-
-        setter = _jax_backend.make_data_setter(field.grid, rank=field.rank, bcs=bcs)
+        jax_backend = get_backend("jax")
+        setter = jax_backend.make_data_setter(field.grid, rank=field.rank, bcs=bcs)
         backend._apply_operator(setter, field.data, out=f_copy._data_full)
 
     elif backend.name.startswith("torch"):

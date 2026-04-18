@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 import jax.numpy as jnp
 
 from ....grids.cylindrical import CylindricalSymGrid
-from .. import jax_backend
+from ..backend import JaxBackend
 
 if TYPE_CHECKING:
     import jax
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from ....tools.typing import OperatorImplType
 
 
-@jax_backend.register_operator(CylindricalSymGrid, "laplace", rank_in=0, rank_out=0)
+@JaxBackend.register_operator(CylindricalSymGrid, "laplace", rank_in=0, rank_out=0)
 def make_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
     """Make a discretized laplace operator for a cylindrical grid.
 
@@ -59,7 +59,7 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
     return laplace
 
 
-@jax_backend.register_operator(CylindricalSymGrid, "gradient", rank_in=0, rank_out=1)
+@JaxBackend.register_operator(CylindricalSymGrid, "gradient", rank_in=0, rank_out=1)
 def make_gradient(grid: CylindricalSymGrid) -> OperatorImplType:
     """Make a discretized gradient operator for a cylindrical grid.
 
@@ -83,7 +83,7 @@ def make_gradient(grid: CylindricalSymGrid) -> OperatorImplType:
     return gradient
 
 
-@jax_backend.register_operator(
+@JaxBackend.register_operator(
     CylindricalSymGrid, "gradient_squared", rank_in=0, rank_out=0
 )
 def make_gradient_squared(
@@ -131,7 +131,7 @@ def make_gradient_squared(
     return gradient_squared
 
 
-@jax_backend.register_operator(CylindricalSymGrid, "divergence", rank_in=1, rank_out=0)
+@JaxBackend.register_operator(CylindricalSymGrid, "divergence", rank_in=1, rank_out=0)
 def make_divergence(grid: CylindricalSymGrid) -> OperatorImplType:
     """Make a discretized divergence operator for a cylindrical grid.
 
@@ -158,7 +158,7 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorImplType:
     return divergence
 
 
-@jax_backend.register_operator(
+@JaxBackend.register_operator(
     CylindricalSymGrid, "vector_gradient", rank_in=1, rank_out=2
 )
 def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorImplType:
@@ -205,7 +205,7 @@ def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorImplType:
     return vector_gradient
 
 
-@jax_backend.register_operator(
+@JaxBackend.register_operator(
     CylindricalSymGrid, "vector_laplace", rank_in=1, rank_out=1
 )
 def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
@@ -262,7 +262,7 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorImplType:
     return vector_laplace
 
 
-@jax_backend.register_operator(
+@JaxBackend.register_operator(
     CylindricalSymGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
 def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorImplType:

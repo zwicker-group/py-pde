@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from ...grids import GridBase
     from ...grids.boundaries.axes import BoundariesBase
     from ...solvers import SolverBase
-    from ...tools.config import Config
+    from ...tools.config import ConfigLike
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import NumberOrArray, NumericArray, StepperType, TField, TFunc
     from ..numpy.backend import OperatorInfo
@@ -54,7 +54,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
 
     def __init__(
         self,
-        config: Config | None = None,
+        config: ConfigLike | None = None,
         *,
         name: str | None = None,
         device: str = "config",
@@ -71,10 +71,26 @@ class TorchBackend(BackendBase[torch.Tensor]):
                 configuration) and "auto" (use CUDA if available, otherwise CPU)
         """
         if config is None:
-            from .config import DEFAULT_CONFIG as config  # type: ignore
+            from .config import DEFAULT_CONFIG as config
 
         super().__init__(config, name=name)
         self.device = device
+
+    @classmethod
+    def from_args(
+        cls, config: ConfigLike | None, args: str = "", *, name: str | None = None
+    ):
+        """Initialize backend with extra arguments.
+
+        Args:
+            config (:class:`~pde.tools.config.Config`):
+                Configuration data for the backend
+            args (str):
+                Additional arguments that determine how the backend is initialized
+            name (str):
+                The name of the backend
+        """
+        return cls(config, name=name, device=args)
 
     def __repr__(self) -> str:
         """Return concise string representation of this backend."""
@@ -177,7 +193,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         # only supports narrower types
         return TORCH_TO_NUMPY_DTYPE[self.get_torch_dtype(dtype)]
 
-    def from_numpy(self, value: Any) -> torch.Tensor:  # type: ignore
+    def numpy_to_native(self, value: Any) -> torch.Tensor:  # type: ignore
         """Convert values from numpy to torch representation.
 
         This method also ensures that the value is copied to the selected device.
@@ -194,7 +210,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         msg = f"Unsupported type `{type(value).__name__}"
         raise TypeError(msg)
 
-    def to_numpy(self, value: Any) -> Any:
+    def native_to_numpy(self, value: Any) -> Any:
         """Convert native values to numpy representation."""
         if isinstance(value, torch.Tensor):
             return value.cpu().numpy()
@@ -231,9 +247,9 @@ class TorchBackend(BackendBase[torch.Tensor]):
             *args, **kwargs:
                 Additional arguments that are forwarded to the function call
         """
-        values_native = [self.from_numpy(value) for value in values]
+        values_native = [self.numpy_to_native(value) for value in values]
         out_native = func(*values_native, **kwargs)
-        out[...] = self.to_numpy(out_native)
+        out[...] = self.native_to_numpy(out_native)
 
     def make_operator_no_bc(
         self,
@@ -566,7 +582,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         # directly since sympy does not work well with numpy arrays.
         if constants:
             const_values = tuple(
-                self.from_numpy(expression.consts[c]) for c in constants
+                self.numpy_to_native(expression.consts[c]) for c in constants
             )
 
             func = self.compile_function(func)
@@ -605,11 +621,11 @@ class TorchBackend(BackendBase[torch.Tensor]):
         def stepper(state: TField, t_start: float, t_end: float) -> float:
             """Advance `state` from `t_start` to `t_end` using fixed steps."""
             # push state data to native backend
-            state_tensor: torch.Tensor = solver.backend.from_numpy(state.data)  # type: ignore
+            state_tensor: torch.Tensor = solver.backend.numpy_to_native(state.data)  # type: ignore
             # call the stepper with fixed time steps
             state_tensor, t_last = inner_stepper(state_tensor, t_start, t_end)
             # retrieve data from native backend
-            state.data[:] = solver.backend.to_numpy(state_tensor)
+            state.data[:] = solver.backend.native_to_numpy(state_tensor)
             return t_last
 
         return stepper  # type: ignore

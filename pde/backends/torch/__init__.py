@@ -12,8 +12,7 @@ from .. import backend_registry
 from .backend import TorchBackend
 
 # add the loaded torch backend to the registry
-torch_backend = TorchBackend(backend_registry.get_config("torch"), name="torch")
-backend_registry.add(torch_backend)
+backend_registry.register_class("torch", TorchBackend)
 
 # register all the standard operators
 from . import operators

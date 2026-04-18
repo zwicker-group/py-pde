@@ -23,7 +23,7 @@ import numpy as np
 
 from .... import config
 from ....grids.spherical import SphericalSymGrid
-from .. import jax_backend
+from ..backend import JaxBackend
 
 if TYPE_CHECKING:
     import jax
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from ....tools.typing import OperatorImplType
 
 
-@jax_backend.register_operator(SphericalSymGrid, "laplace", rank_in=0, rank_out=0)
+@JaxBackend.register_operator(SphericalSymGrid, "laplace", rank_in=0, rank_out=0)
 def make_laplace(
     grid: SphericalSymGrid, *, conservative: bool | None = None
 ) -> OperatorImplType:
@@ -87,7 +87,7 @@ def make_laplace(
     return laplace
 
 
-@jax_backend.register_operator(SphericalSymGrid, "gradient", rank_in=0, rank_out=1)
+@JaxBackend.register_operator(SphericalSymGrid, "gradient", rank_in=0, rank_out=1)
 def make_gradient(
     grid: SphericalSymGrid,
     *,
@@ -130,7 +130,7 @@ def make_gradient(
     return gradient
 
 
-@jax_backend.register_operator(
+@JaxBackend.register_operator(
     SphericalSymGrid, "gradient_squared", rank_in=0, rank_out=0
 )
 def make_gradient_squared(
@@ -174,7 +174,7 @@ def make_gradient_squared(
     return gradient_squared
 
 
-@jax_backend.register_operator(SphericalSymGrid, "divergence", rank_in=1, rank_out=0)
+@JaxBackend.register_operator(SphericalSymGrid, "divergence", rank_in=1, rank_out=0)
 def make_divergence(
     grid: SphericalSymGrid,
     *,
@@ -251,7 +251,7 @@ def make_divergence(
     return divergence
 
 
-@jax_backend.register_operator(
+@JaxBackend.register_operator(
     SphericalSymGrid, "vector_gradient", rank_in=1, rank_out=2
 )
 def make_vector_gradient(
@@ -313,7 +313,7 @@ def make_vector_gradient(
     return vector_gradient
 
 
-@jax_backend.register_operator(
+@JaxBackend.register_operator(
     SphericalSymGrid, "tensor_divergence", rank_in=2, rank_out=1
 )
 def make_tensor_divergence(
@@ -389,7 +389,7 @@ def make_tensor_divergence(
     return tensor_divergence
 
 
-@jax_backend.register_operator(
+@JaxBackend.register_operator(
     SphericalSymGrid, "tensor_double_divergence", rank_in=2, rank_out=0
 )
 def make_tensor_double_divergence(

@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Literal
 import jax.numpy as jnp
 
 from ....grids.spherical import PolarSymGrid
-from .. import jax_backend
+from ..backend import JaxBackend
 
 if TYPE_CHECKING:
     import jax
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from ....tools.typing import OperatorImplType
 
 
-@jax_backend.register_operator(PolarSymGrid, "laplace", rank_in=0, rank_out=0)
+@JaxBackend.register_operator(PolarSymGrid, "laplace", rank_in=0, rank_out=0)
 def make_laplace(grid: PolarSymGrid) -> OperatorImplType:
     """Make a discretized laplace operator for a polar grid.
 
@@ -55,7 +55,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorImplType:
     return laplace
 
 
-@jax_backend.register_operator(PolarSymGrid, "gradient", rank_in=0, rank_out=1)
+@JaxBackend.register_operator(PolarSymGrid, "gradient", rank_in=0, rank_out=1)
 def make_gradient(
     grid: PolarSymGrid,
     *,
@@ -98,7 +98,7 @@ def make_gradient(
     return gradient
 
 
-@jax_backend.register_operator(PolarSymGrid, "gradient_squared", rank_in=0, rank_out=0)
+@JaxBackend.register_operator(PolarSymGrid, "gradient_squared", rank_in=0, rank_out=0)
 def make_gradient_squared(
     grid: PolarSymGrid, *, central: bool = True
 ) -> OperatorImplType:
@@ -140,7 +140,7 @@ def make_gradient_squared(
     return gradient_squared
 
 
-@jax_backend.register_operator(PolarSymGrid, "divergence", rank_in=1, rank_out=0)
+@JaxBackend.register_operator(PolarSymGrid, "divergence", rank_in=1, rank_out=0)
 def make_divergence(grid: PolarSymGrid) -> OperatorImplType:
     """Make a discretized divergence operator for a polar grid.
 
@@ -165,7 +165,7 @@ def make_divergence(grid: PolarSymGrid) -> OperatorImplType:
     return divergence
 
 
-@jax_backend.register_operator(PolarSymGrid, "vector_gradient", rank_in=1, rank_out=2)
+@JaxBackend.register_operator(PolarSymGrid, "vector_gradient", rank_in=1, rank_out=2)
 def make_vector_gradient(grid: PolarSymGrid) -> OperatorImplType:
     """Make a discretized vector gradient operator for a polar grid.
 
@@ -197,7 +197,7 @@ def make_vector_gradient(grid: PolarSymGrid) -> OperatorImplType:
     return vector_gradient
 
 
-@jax_backend.register_operator(PolarSymGrid, "tensor_divergence", rank_in=2, rank_out=1)
+@JaxBackend.register_operator(PolarSymGrid, "tensor_divergence", rank_in=2, rank_out=1)
 def make_tensor_divergence(grid: PolarSymGrid) -> OperatorImplType:
     """Make a discretized tensor divergence operator for a polar grid.
 

@@ -10,7 +10,7 @@ import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, overload
 
-from ..tools.config import Config, Parameter
+from ..tools.config import Config, ConfigLike
 from ..tools.typing import (
     DataSetter,
     FloatingArray,
@@ -27,7 +27,7 @@ from ..tools.typing import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable
 
     from numpy.typing import DTypeLike
 
@@ -85,12 +85,7 @@ class BackendBase(Generic[TNativeArray]):
     defined on parent classes.
     """
 
-    def __init__(
-        self,
-        config: Sequence[Parameter] | dict[str, Any] | Config | None,
-        *,
-        name: str | None = None,
-    ):
+    def __init__(self, config: ConfigLike | None, *, name: str | None = None):
         """Initialize the backend.
 
         Args:
@@ -108,6 +103,22 @@ class BackendBase(Generic[TNativeArray]):
         if name in _RESERVED_BACKEND_NAMES:
             self._logger.warning("Backend uses reserved name.")
         self.name = name
+
+    @classmethod
+    def from_args(
+        cls, config: ConfigLike | None, args: str = "", *, name: str | None = None
+    ):
+        """Initialize backend with extra arguments.
+
+        Args:
+            config (:class:`~pde.tools.config.Config`):
+                Configuration data for the backend
+            args (str):
+                Additional arguments that determine how the backend is initialized
+            name (str):
+                The name of the backend
+        """
+        raise NotImplementedError
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Initialize class-level attributes of subclasses.
@@ -130,11 +141,11 @@ class BackendBase(Generic[TNativeArray]):
         return {"name": self.name, "implementation": self.implementation}
 
     @overload
-    def from_numpy(self, value: NumericArray) -> NativeArray: ...
+    def numpy_to_native(self, value: NumericArray) -> NativeArray: ...
     @overload
-    def from_numpy(self, value: TValue) -> TValue: ...
+    def numpy_to_native(self, value: TValue) -> TValue: ...
 
-    def from_numpy(self, value: Any) -> Any:
+    def numpy_to_native(self, value: Any) -> Any:
         """Convert values from numpy to native representation.
 
         Args:
@@ -143,11 +154,11 @@ class BackendBase(Generic[TNativeArray]):
         return value
 
     @overload
-    def to_numpy(self, value: NativeArray) -> NumericArray: ...
+    def native_to_numpy(self, value: NativeArray) -> NumericArray: ...
     @overload
-    def to_numpy(self, value: TValue) -> TValue: ...
+    def native_to_numpy(self, value: TValue) -> TValue: ...
 
-    def to_numpy(self, value: Any) -> Any:
+    def native_to_numpy(self, value: Any) -> Any:
         """Convert native values to numpy representation.
 
         Args:
@@ -181,9 +192,9 @@ class BackendBase(Generic[TNativeArray]):
         Returns:
             :class:`~numpy.ndarray`: The result as a numpy array
         """
-        values_native = [self.from_numpy(value) for value in values]
+        values_native = [self.numpy_to_native(value) for value in values]
         res_native = func(*values_native, **kwargs)
-        return self.to_numpy(res_native)
+        return self.native_to_numpy(res_native)
 
     def _apply_operator(
         self, func: Callable, *values: NumericArray, out: NumericArray, **kwargs
@@ -202,8 +213,9 @@ class BackendBase(Generic[TNativeArray]):
         """
         raise NotImplementedError
 
+    @classmethod
     def register_operator(
-        self,
+        cls,
         grid_cls: type[GridBase],
         name: str,
         factory_func: OperatorFactory | None = None,
@@ -252,7 +264,7 @@ class BackendBase(Generic[TNativeArray]):
                 factor_func_arg (OperatorFactory):
                     The operator factory function to register
             """
-            self._operators[grid_cls][name] = OperatorInfo(
+            cls._operators[grid_cls][name] = OperatorInfo(
                 factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out, name=name
             )
             return factor_func_arg
