@@ -23,6 +23,7 @@ from __future__ import annotations
 import errno
 import functools
 import importlib
+import importlib.util
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, overload

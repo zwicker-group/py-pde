@@ -186,7 +186,6 @@ REQUIREMENTS = [
     Requirement(
         name="jupyter_contrib_nbextensions", version_min="0.5", groups={"tests"}
     ),
-    Requirement(name="importlib-metadata", version_min="5", groups={"tests"}),
     Requirement(name="notebook", version_min="7", groups={"tests"}),
     Requirement(name="pytest", version_min="5.4", groups={"tests"}),
     Requirement(name="pytest-cov", version_min="2.8", groups={"tests"}),
