@@ -670,7 +670,7 @@ class PDE(SDEBase):
             state_data = post_step_hook(state_data, t)
             return state_data, None  # `None` indicates lack of `post_step_data`
 
-        return post_step_hook_impl, 0  # hook function and initial value
+        return post_step_hook_impl, None  # hook function and initial value
 
     def _make_pde_rhs_collection_numba(
         self, state: FieldCollection, *, backend: BackendBase, cache: dict[str, Any]

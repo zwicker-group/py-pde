@@ -537,6 +537,7 @@ def test_post_step_hook_stopiteration(backend):
     # Since the hook raises an exception the internal timer will not update and t_final
     # will be equal to the initial time
     assert eq.diagnostics["controller"]["t_final"] == 0
+    assert eq.diagnostics["solver"]["backend"]["name"] == backend.name
 
 
 def test_jacobian_spectral():
