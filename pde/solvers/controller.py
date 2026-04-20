@@ -189,30 +189,38 @@ class Controller:
             dt = self.diagnostics["solver"].get("dt")
         # add absolute tolerance for time to account for inaccurate float point math
         if dt is None:  # self.solver.info['dt'] might be None
-            atol = 1e-12
+            # use conservative default values if time step is unknown
+            stepper_atol = 1e-12
+            tracker_atol = 1e-8
         else:
-            atol = 1e-9 * dt
+            # adapt tolerances to time step
+            stepper_atol = 1e-6 * dt  # control loop termination and min advance
+            tracker_atol = 0.5 * dt  # allow firing within half a step of the interrupt
 
         # evolve the system from t_start to t_end
         t = t_start
         _logger.debug("Start simulation at t=%g", t)
         try:
-            while t < t_end - atol:
+            while t < t_end - stepper_atol:
                 # determine next time point with an action
-                t_next_action = self.trackers.handle(state, t, atol=atol)
-                t_next_action = max(t_next_action, t + atol)
-                t_break = min(t_next_action, t_end)
+                t_next_action = self.trackers.handle(state, t, atol=tracker_atol)
+                t_next_action = min(t_next_action, t_end)  # stop at t_end
 
                 # track runtime of trackers and solver
                 prof_start_solve = get_time()
                 profiler["tracker"] += prof_start_solve - prof_start_tracker
 
-                # advance the system to the new time point
-                t = stepper(state, t, t_break)
+                # advance system to next time point with an action
+                t = stepper(state, t, t_next_action)
 
                 # track runtime of trackers and solver
                 prof_start_tracker = get_time()
                 profiler["solver"] += prof_start_tracker - prof_start_solve
+
+                # update the tolerances to reflect changes in time step `dt`
+                if dt := self.diagnostics["solver"].get("dt"):
+                    stepper_atol = 1e-6 * dt
+                    tracker_atol = 0.5 * dt
 
         except StopIteration as err:
             # iteration has been interrupted by a tracker
@@ -245,7 +253,11 @@ class Controller:
 
             # handle trackers one more time when t_end is reached
             try:
-                self.trackers.handle(state, t, atol=atol)
+                # We here use stepper_atol to make sure the final time point is only
+                # added when it the tracker actually requested exactly this time point.
+                # If we used tracker_atol, many trackers would analyze an additional
+                # time point.
+                self.trackers.handle(state, t, atol=stepper_atol)
             except StopIteration as err:
                 # error detected in the final handling of the tracker
                 msg_level, msg = handle_stop_iteration(err, t)
