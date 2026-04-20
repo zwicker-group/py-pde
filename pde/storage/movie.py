@@ -159,6 +159,10 @@ class MovieStorage(StorageBase):
                 default only emits warnings and errors, but setting this to `"info"` can
                 be useful to get additional information about the encoding.
         """
+        # We need to define some quantities early to ensure a graceful cleanup since
+        # the `close` method may be called in case of errors in __init__.
+        self._ffmpeg: Any = None
+        self._times_file: io.TextIOBase | None = None
         if not module_available("ffmpeg"):
             msg = "`MovieStorage` needs `ffmpeg-python` package"
             raise ModuleNotFoundError(msg)
@@ -173,8 +177,6 @@ class MovieStorage(StorageBase):
         self.loglevel = loglevel
         self.write_times = write_times
 
-        self._ffmpeg: Any = None
-        self._times_file: io.TextIOBase | None = None
         self._state: Literal["closed", "reading", "writing"] = "closed"
         self._norms: list[Normalize] | None = None
         self._is_writing = False
