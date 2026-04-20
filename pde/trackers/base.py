@@ -20,6 +20,8 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Sequence
 from typing import Any, Union
 
+import numpy as np
+
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
@@ -311,7 +313,7 @@ class TrackerCollection:
         # check each tracker to see whether we need to handle it
         stop_iteration_err = None
         for i, t_next in enumerate(self.tracker_action_times):
-            if t > t_next - atol:
+            if np.isclose(t, t_next, atol=atol):
                 try:
                     self.trackers[i].handle(state, t)
                 except StopIteration as err:

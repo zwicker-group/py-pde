@@ -196,3 +196,20 @@ def test_interrupt_integrated(t_start, adaptive):
     assert storage.times[0] == pytest.approx(t_start)
     assert storage.times[1] == pytest.approx(t_start + 0.1)
     assert len(storage) == 3
+
+
+def test_fixed_interrupt_accuracy():
+    """Test special case mentioned in issue #808."""
+    dt_storage = 0.01
+    t_range = [0, 300]
+    t_storage = np.arange(t_range[0], t_range[1] + dt_storage, dt_storage)
+
+    grid = pde.CartesianGrid([[0, 1]], 10)
+    state0 = pde.ScalarField(grid, data=1.0)
+    eq = pde.DiffusionPDE()
+    storage = pde.MemoryStorage()
+    eq.solve(
+        state=state0, t_range=t_range, dt=0.001, tracker=storage.tracker(t_storage)
+    )
+
+    np.testing.assert_allclose(storage.times, t_storage)
