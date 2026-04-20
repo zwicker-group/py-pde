@@ -230,13 +230,13 @@ class BackendBase(Generic[TNativeArray]):
 
             .. code-block:: python
 
-                backend.register_operator(grid_class, "operator", make_operator)
+                BackendClass.register_operator(grid_class, "operator", make_operator)
 
             or as a decorator for the factory function:
 
             .. code-block:: python
 
-                @backend.register_operator(grid_class, "operator")
+                @BackendClass.register_operator(grid_class, "operator")
                 def make_operator(grid: GridBase): ...
 
         Args:
