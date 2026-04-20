@@ -4,6 +4,9 @@
    :nosignatures:
 
    BackendRegistry
+   load_default_config
+   get_backend
+   registered_backends
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -261,19 +264,15 @@ def get_backend(backend: str | BackendBase) -> BackendBase:
             Backend specified by name given as a string. If the string contains a colon,
             the first part determines the backend, whereas the second part can be used
             to convey additional information. For example, :code:`torch:cuda` may load a
-            torch backend an use a cuda device. As a special case, we also allow full
+            torch backend and use a cuda device. As a special case, we also allow full
             backend objects, which are simply returned. This is a simple way to allow
             providing full backend objects in places where we otherwise would expect a
             backend name.
     """
     if isinstance(backend, BackendBase):
-        # backend is already initialized
-        return backend
-
+        return backend  # backend already initialized
     if isinstance(backend, str):
-        # backend is given by name
-        return backend_registry.get_backend(backend)
-
+        return backend_registry.get_backend(backend)  # backend given by name
     raise TypeError
 
 
