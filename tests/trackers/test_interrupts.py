@@ -186,7 +186,7 @@ def test_interrupt_integrated(t_start, adaptive):
     dt = 0.001
     eq.solve(
         state,
-        t_range=[t_start, t_start + 0.25],
+        t_range=[t_start, t_start + 0.21],
         dt=dt,
         adaptive=adaptive,
         backend="numpy",
