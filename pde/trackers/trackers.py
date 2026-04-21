@@ -120,6 +120,7 @@ class ProgressTracker(TrackerBase):
     """Tracker showing the progress of the simulation."""
 
     name = "progress"
+    atol: float = 1e-6  # tolerance for determining whether we reached the final time
 
     @fill_in_docstring
     def __init__(
@@ -212,7 +213,7 @@ class ProgressTracker(TrackerBase):
         controller_info = {} if info is None else info.get("controller", {})
         t_final = controller_info.get("t_final", -math.inf)
         t_end = controller_info.get("t_end", -math.inf)
-        if t_final >= t_end and self.progress_bar.total:
+        if t_final >= t_end - self.atol and self.progress_bar.total:
             self.progress_bar.n = self.progress_bar.total
             self.progress_bar.refresh()
 
