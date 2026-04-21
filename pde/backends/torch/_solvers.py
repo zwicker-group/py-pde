@@ -72,7 +72,7 @@ def _make_post_step_hook(
 
 
 class TorchStepper(torch.nn.Module):
-    """Basic stepper module."""
+    """Basic single-step integrator module."""
 
     def single_step(
         self, state_data: torch.Tensor, t: float, dt: float
@@ -126,7 +126,7 @@ class TorchStepper(torch.nn.Module):
 
 class EulerStepper(TorchStepper):
     def __init__(self, rhs: TorchRHSType):
-        """Initialize the explicit Euler stepper.
+        """Initialize the explicit Euler single-step module.
 
         Args:
             rhs (callable):
@@ -146,7 +146,7 @@ class EulerStepper(TorchStepper):
 
 class EulerMaruyamaStepper(TorchStepper):
     def __init__(self, rhs: TorchRHSType, rhs_noise: TorchRHSType):
-        """Initialize the Euler-Maruyama stepper.
+        """Initialize the Euler-Maruyama single-step module.
 
         Args:
             rhs (callable):
@@ -187,7 +187,7 @@ class FixedSolver(torch.nn.Module):
 
         Args:
             stepper (:class:`TorchStepper`):
-                Object performing individual time steps.
+                Compiled single-step module performing individual updates.
             dt (float):
                 Constant time-step size.
             post_step_hook (callable):
@@ -231,7 +231,7 @@ class FixedSolver(torch.nn.Module):
 
 
 def _make_fixed_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperType:
-    """Return a stepper function using an explicit scheme with fixed time steps.
+    """Return a backend-level stepping function for fixed time stepping.
 
     Args:
         solver (:class:`~pde.solvers.base.SolverBase`):
@@ -263,7 +263,7 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperT
     stepper = solver.backend.compile_function(stepper)
     stepper.to(solver.backend.device)
 
-    # define the actual solver
+    # define the executable fixed-step integrator module
     inner_solver = FixedSolver(
         stepper,
         dt,
@@ -278,7 +278,7 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperT
         """Advance `state` from `t_start` to `t_end` using fixed steps."""
         # calculate number of steps that lead to an end time closest to t_end
         steps = max(1, round((t_end - t_start) / dt))
-        # call the stepper with fixed time steps
+        # execute the fixed-step integrator module
         state_data = inner_solver(state_data, t_start, steps)
         solver.info["steps"] += steps
         if post_step_hook is not None:
@@ -413,7 +413,7 @@ class TorchAdaptiveGeneralSolver(TorchAdaptiveSolverBase):
 
         Args:
             stepper (:class:`TorchStepper`):
-                Object performing individual time steps.
+                Compiled single-step module performing individual updates.
             dt_init (float):
                 Initial time-step size.
             post_step_hook (callable):
@@ -609,7 +609,7 @@ class TorchAdaptiveEulerSolver(TorchAdaptiveSolverBase):
 def _make_adaptive_stepper_general(
     solver: AdaptiveSolverBase, state: TField
 ) -> TorchInnerStepperType:
-    """Return a stepper function using an explicit scheme with adaptive stepping.
+    """Return a backend-level stepping function for adaptive time stepping.
 
     Args:
         solver (:class:`~pde.solvers.base.AdaptiveSolverBase`):
@@ -625,7 +625,7 @@ def _make_adaptive_stepper_general(
     assert isinstance(solver.backend, TorchBackend)
 
     if solver.pde.is_sde:
-        msg = "Adaptive stepper does not support stochastic equations"
+        msg = "Adaptive stepping does not support stochastic equations"
         raise RuntimeError(msg)
 
     # create subfunctions
@@ -634,7 +634,7 @@ def _make_adaptive_stepper_general(
     post_step_hook = _make_post_step_hook(solver, state, backend=solver.backend)
 
     if isinstance(solver, EulerSolver):
-        # define the an optimized solver for the case euler stepper
+        # define an optimized integrator for the Euler single-step module
         inner_solver: TorchAdaptiveSolverBase = TorchAdaptiveEulerSolver(
             rhs,
             dt_init=float(solver.info["dt"]),
@@ -645,7 +645,7 @@ def _make_adaptive_stepper_general(
             dt_max=float(solver.dt_max),
         )
     else:
-        # get compiled version of a single step
+        # get a compiled single-step module
         if isinstance(solver, EulerSolver):
             stepper = solver.backend.compile_function(EulerStepper(rhs))
         else:
@@ -653,7 +653,7 @@ def _make_adaptive_stepper_general(
             raise NotImplementedError(msg)
         stepper.to(solver.backend.device)
 
-        # define the actual solver
+        # define the adaptive integrator module
         inner_solver = TorchAdaptiveGeneralSolver(
             stepper,
             dt_init=float(solver.info["dt"]),
@@ -685,7 +685,7 @@ def _make_adaptive_stepper_general(
 
 
 def make_inner_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperType:
-    """Return a stepper torch module.
+    """Return the backend-level stepping function for the torch backend.
 
     Args:
         solver (:class:`~pde.solvers.base.SolverBase`):
@@ -698,11 +698,11 @@ def make_inner_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperTy
             Function that can be called to advance the state from ``t_start`` to
             ``t_end``.
     """
-    # get the actual inner stepper
+    # get the backend-level stepping function
     if isinstance(solver, AdaptiveSolverBase) and solver.adaptive:
         return _make_adaptive_stepper_general(solver, state)
 
-    # dealing with an fixed stepper
+    # dealing with a solver configured for fixed time stepping
     if isinstance(solver, AdamsBashforthSolver):
         raise NotImplementedError
     return _make_fixed_stepper(solver, state)

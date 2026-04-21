@@ -75,7 +75,7 @@ def solve_poisson_equation(
     operator = get_backend("scipy").get_operator_info(rhs.grid, "poisson_solver")
     # get the boundary conditions
     bcs = rhs.grid.get_boundary_conditions(bc)
-    # get the actual solver
+    # get the executable linear solve routine
     solver = operator.factory(bcs=bcs, **kwargs)
 
     # solve the poisson problem

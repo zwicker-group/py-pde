@@ -28,8 +28,8 @@ def _make_post_step_hook(solver: SolverBase, state: TField) -> StepperHook:
     for the hook's mutable data by calling
     `post_step_hook, post_step_data_init = self.pde.make_post_step_hook(state, backend)`
     The initial data is stored on the solver instance as `solver.info["post_step_data"]`
-    (copied to ensure mutability) and will be passed to the hook when the stepper
-    is executed.
+    (copied to ensure mutability) and will be passed to the hook when the stepping
+    function is executed.
 
     If no hook is provided by the PDE (i.e., `make_post_step_hook` raises
     :class:`NotImplementedError`) or if the solver's `_use_post_step_hook` flag
@@ -65,7 +65,7 @@ def _make_post_step_hook(solver: SolverBase, state: TField) -> StepperHook:
 
 
 def _make_fixed_stepper(solver: SolverBase, state: TField) -> InnerStepperType:
-    """Return a stepper function using an explicit scheme with fixed time steps.
+    """Return a backend-level stepping function for fixed time stepping.
 
     Args:
         solver (:class:`~pde.solvers.base.SolverBase`):
@@ -107,7 +107,7 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> InnerStepperType:
         """Advance `state` from `t_start` to `t_end` using fixed steps."""
         steps = max(1, round((t_end - t_start) / dt))
         post_step_data = solver.info["post_step_data"]
-        # call the stepper with fixed time steps
+        # call the stepping function with fixed time steps
         t_last: float
         t_last, solver.info["post_step_data"] = compiled_stepper(
             state_data, t_start, steps, post_step_data
@@ -121,7 +121,7 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> InnerStepperType:
 def _make_adams_bashforth_stepper(
     solver: AdamsBashforthSolver, state: TField
 ) -> InnerStepperType:
-    """Return a stepper function using an explicit scheme with fixed time steps.
+    """Return a backend-level Adams-Bashforth stepping function.
 
     Args:
         solver (:class:`~pde.solvers.adams_bashforth.AdamsBashforthSolver`):
@@ -190,14 +190,16 @@ def _make_adams_bashforth_stepper(
         solver.info["steps"] += steps
         return t_final
 
-    solver._logger.info("Initialize explicit Adams-Bashforth stepper with dt=%g", dt)
+    solver._logger.info(
+        "Initialize explicit Adams-Bashforth stepping function with dt=%g", dt
+    )
     return fixed_stepper
 
 
 def _make_adaptive_stepper_general(
     solver: AdaptiveSolverBase, state: TField
 ) -> InnerStepperType:
-    """Return a stepper function using an explicit scheme.
+    """Return a backend-level stepping function for adaptive time stepping.
 
     Args:
         solver (:class:`~pde.solvers.base.AdaptiveSolverBase`):
@@ -237,7 +239,7 @@ def _make_adaptive_stepper_general(
         dt_stats: OnlineStatistics_np | None = None,
         post_step_data=None,
     ) -> tuple[float, float, int, Any]:
-        """Adaptive stepper that advances the state in time."""
+        """Adaptive stepping function that advances the state in time."""
         dt_opt = dt_init
         t = t_start
         steps = 0
@@ -273,7 +275,7 @@ def _make_adaptive_stepper_general(
         return t, dt_opt, steps, post_step_data
 
     if not nb.config.DISABLE_JIT:
-        # compile the stepper if enabled for numba
+        # compile the stepping function if enabled for numba
         compiled_stepper_signature = (
             nb.typeof(state.data),
             nb.double,
@@ -287,7 +289,7 @@ def _make_adaptive_stepper_general(
     def adaptive_stepper(
         state_data: NumericArray, t_start: float, t_end: float
     ) -> float:
-        """Adaptive stepper that advances the state in time."""
+        """Adaptive stepping function that advances the state in time."""
         dt_opt = solver.info["dt"]  # time step from last step
 
         # call compiled stepper
@@ -305,14 +307,14 @@ def _make_adaptive_stepper_general(
         solver.info["steps"] += steps
         return t_final
 
-    solver._logger.info("Initialized adaptive stepper")
+    solver._logger.info("Initialized adaptive stepping function")
     return adaptive_stepper
 
 
 def _make_adaptive_stepper_euler(
     solver: AdaptiveSolverBase, state: TField
 ) -> InnerStepperType:
-    """Return a stepper function using an explicit scheme.
+    """Return a backend-level stepping function for adaptive Euler stepping.
 
     Args:
         solver (:class:`~pde.solvers.explicit.EulerSolver`):
@@ -352,7 +354,7 @@ def _make_adaptive_stepper_euler(
         dt_stats: OnlineStatistics_np | None = None,
         post_step_data=None,
     ) -> tuple[float, float, int, Any]:
-        """Adaptive stepper that advances the state in time."""
+        """Adaptive stepping function that advances the state in time."""
         state_cur = state_data
         dt_opt = dt_init
         rate = rhs_pde(state_data, t_start)  # calculate initial rate
@@ -412,7 +414,7 @@ def _make_adaptive_stepper_euler(
         return t, dt_opt, steps, post_step_data
 
     if not nb.config.DISABLE_JIT:
-        # compile the stepper if enabled for numba
+        # compile the stepping function if enabled for numba
         compiled_stepper_signature = (
             nb.typeof(state.data),
             nb.double,
@@ -426,7 +428,7 @@ def _make_adaptive_stepper_euler(
     def adaptive_stepper(
         state_data: NumericArray, t_start: float, t_end: float
     ) -> float:
-        """Adaptive stepper that advances the state in time."""
+        """Adaptive stepping function that advances the state in time."""
         dt_opt = solver.info["dt"]  # time step from last step
 
         # call compiled stepper
@@ -444,12 +446,12 @@ def _make_adaptive_stepper_euler(
         solver.info["steps"] += steps
         return t_final
 
-    solver._logger.info("Initialized adaptive stepper")
+    solver._logger.info("Initialized adaptive stepping function")
     return adaptive_stepper
 
 
 def make_inner_stepper(solver: SolverBase, state: TField) -> InnerStepperType:
-    """Return a stepper function using an explicit scheme.
+    """Return the backend-level stepping function for the numba backend.
 
     Args:
         solver (:class:`~pde.solvers.base.AdaptiveSolverBase`):
@@ -463,14 +465,14 @@ def make_inner_stepper(solver: SolverBase, state: TField) -> InnerStepperType:
         time `t_end`. The function call signature is `(state: numpy.ndarray,
         t_start: float, t_end: float)`
     """
-    # get the actual inner stepper
+    # get the backend-level stepping function
     if isinstance(solver, AdaptiveSolverBase) and solver.adaptive:
-        # dealing with an adaptive stepper
+        # dealing with a solver configured for adaptive stepping
         if isinstance(solver, EulerSolver) and solver.adaptive:
             return _make_adaptive_stepper_euler(solver, state)
         return _make_adaptive_stepper_general(solver, state)
 
-    # dealing with an fixed stepper
+    # dealing with a solver configured for fixed time stepping
     if isinstance(solver, AdamsBashforthSolver):
         return _make_adams_bashforth_stepper(solver, state)
     return _make_fixed_stepper(solver, state)

@@ -1446,7 +1446,7 @@ class NumbaBackend(NumpyBackend):
         return register_jitable(super().make_mpi_synchronizer(operator=operator))  # type: ignore
 
     def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
-        """Return a stepper function using an explicit scheme.
+        """Create a field-based stepping function for a given solver.
 
         Args:
             solver (:class:`~pde.solvers.base.SolverBase`):
@@ -1470,8 +1470,8 @@ class NumbaBackend(NumpyBackend):
         # infrastructure for more general cases where a PDE is not defined.
 
         def stepper(state: TField, t_start: float, t_end: float) -> float:
-            """Advance `state` from `t_start` to `t_end` using fixed steps."""
-            # call the stepper with field data directly
+            """Advance `state` by executing the backend-level stepping function."""
+            # call the backend-level stepping function with field data directly
             return inner_stepper(state.data, t_start, t_end)
 
         return stepper  # type: ignore

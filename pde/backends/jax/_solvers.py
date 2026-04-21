@@ -55,7 +55,7 @@ def _make_post_step_hook(solver: SolverBase, state: TField) -> StepperHook:
 
 
 def _make_fixed_stepper(solver: SolverBase, state: TField) -> JaxInnerStepperType:
-    """Return a stepper function using an explicit scheme with fixed time steps.
+    """Return a backend-level stepping function for fixed time stepping.
 
     Args:
         solver (:class:`~pde.solvers.base.SolverBase`):
@@ -90,14 +90,14 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> JaxInnerStepperTyp
         solver.info["steps"] += steps
         return state_data, t_start + steps * dt
 
-    solver._logger.info("Initialized fixed stepper with dt=%g", dt)
+    solver._logger.info("Initialized fixed stepping function with dt=%g", dt)
     return fixed_stepper
 
 
 def _make_adams_bashforth_stepper(
     solver: AdamsBashforthSolver, state: TField
 ) -> JaxInnerStepperType:
-    """Return a stepper function using the Adams-Bashforth scheme with fixed time steps.
+    """Return a backend-level Adams-Bashforth stepping function.
 
     Args:
         solver (:class:`~pde.solvers.adams_bashforth.AdamsBashforthSolver`):
@@ -148,14 +148,16 @@ def _make_adams_bashforth_stepper(
         solver.info["steps"] += steps
         return state_data, t_start + steps * dt
 
-    solver._logger.info("Initialized explicit Adams-Bashforth stepper with dt=%g", dt)
+    solver._logger.info(
+        "Initialized explicit Adams-Bashforth stepping function with dt=%g", dt
+    )
     return fixed_stepper
 
 
 def _make_adaptive_stepper_general(
     solver: AdaptiveSolverBase, state: TField
 ) -> JaxInnerStepperType:
-    """Return a stepper function using an explicit adaptive scheme.
+    """Return a backend-level stepping function for adaptive time stepping.
 
     Args:
         solver (:class:`~pde.solvers.base.AdaptiveSolverBase`):
@@ -186,7 +188,7 @@ def _make_adaptive_stepper_general(
     def adaptive_stepper(
         state_data: Array, t_start: float, t_end: float
     ) -> tuple[Array, float]:
-        """Adaptive stepper that advances the state in time."""
+        """Adaptive stepping function that advances the state in time."""
         dt_opt = float(solver.info["dt"])
         t = t_start
         steps = 0
@@ -216,14 +218,14 @@ def _make_adaptive_stepper_general(
         solver.info["steps"] += steps
         return state_data, t
 
-    solver._logger.info("Initialized adaptive stepper")
+    solver._logger.info("Initialized adaptive stepping function")
     return adaptive_stepper
 
 
 def _make_adaptive_stepper_euler(
     solver: AdaptiveSolverBase, state: TField
 ) -> JaxInnerStepperType:
-    """Return a stepper function using the adaptive Euler scheme.
+    """Return a backend-level stepping function for adaptive Euler stepping.
 
     Args:
         solver (:class:`~pde.solvers.explicit.EulerSolver`):
@@ -254,7 +256,7 @@ def _make_adaptive_stepper_euler(
     def adaptive_stepper(
         state_data: Array, t_start: float, t_end: float
     ) -> tuple[Array, float]:
-        """Adaptive Euler stepper that advances the state in time."""
+        """Adaptive Euler stepping function that advances the state in time."""
         dt_opt = float(solver.info["dt"])
         rate = rhs_pde(state_data, t_start)  # calculate initial rate
         t = t_start
@@ -309,12 +311,12 @@ def _make_adaptive_stepper_euler(
         solver.info["steps"] += steps
         return state_data, t
 
-    solver._logger.info("Initialized adaptive Euler stepper")
+    solver._logger.info("Initialized adaptive Euler stepping function")
     return adaptive_stepper
 
 
 def make_inner_stepper(solver: SolverBase, state: TField) -> JaxInnerStepperType:
-    """Return a stepper function for the JAX backend.
+    """Return the backend-level stepping function for the JAX backend.
 
     Args:
         solver (:class:`~pde.solvers.base.SolverBase`):
@@ -332,14 +334,14 @@ def make_inner_stepper(solver: SolverBase, state: TField) -> JaxInnerStepperType
             "Solver %s not supported by backend %s", solver, solver.backend
         )
 
-    # get the actual inner stepper
+    # get the backend-level stepping function
     if isinstance(solver, AdaptiveSolverBase) and solver.adaptive:
-        # dealing with an adaptive stepper
+        # dealing with a solver configured for adaptive stepping
         if isinstance(solver, EulerSolver):
             return _make_adaptive_stepper_euler(solver, state)
         return _make_adaptive_stepper_general(solver, state)
 
-    # dealing with a fixed stepper
+    # dealing with a solver configured for fixed time stepping
     if isinstance(solver, AdamsBashforthSolver):
         return _make_adams_bashforth_stepper(solver, state)
     return _make_fixed_stepper(solver, state)

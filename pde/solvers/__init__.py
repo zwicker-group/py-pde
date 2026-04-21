@@ -1,4 +1,7 @@
-"""Solvers define how a PDE is solved, i.e., how the initial state is advanced in time.
+"""Solver classes define the strategy for evolving PDE states in time.
+
+A solver object stores the numerical method and configuration and is used to construct
+an executable stepping function that advances the current state.
 
 .. autosummary::
    :nosignatures:

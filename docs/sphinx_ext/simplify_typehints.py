@@ -51,6 +51,16 @@ REPLACEMENTS_REGEX = {
 }
 
 
+# restore module-qualified names for symbols that are exported from multiple modules
+# and thus become ambiguous when package prefixes are removed.
+DISAMBIGUATE_TYPES = {
+    r"(?<!\.)\bBackendBase\b": "pde.backends.base.BackendBase",
+    r"(?<!\.)\bScalarField\b": "pde.fields.scalar.ScalarField",
+    r"(?<!\.)\bVectorField\b": "pde.fields.vectorial.VectorField",
+    r"(?<!\.)\bTensor2Field\b": "pde.fields.tensorial.Tensor2Field",
+}
+
+
 def process_signature(
     app, what: str, name: str, obj, options, signature, return_annotation
 ):
@@ -63,6 +73,8 @@ def process_signature(
                 sig_obj = re.sub(key, value, sig_obj)
             for key, value in REPLACEMENTS:
                 sig_obj = sig_obj.replace(key, value)
+            for key, value in DISAMBIGUATE_TYPES.items():
+                sig_obj = re.sub(key, value, sig_obj)
         return sig_obj
 
     signature = process(signature)
@@ -76,6 +88,8 @@ def process_docstring(app, what: str, name: str, obj, options, lines):
     for i, line in enumerate(lines):
         for key, value in REPLACEMENTS:
             line = line.replace(key, value)
+        for key, value in DISAMBIGUATE_TYPES.items():
+            line = re.sub(key, value, line)
         lines[i] = line
 
 

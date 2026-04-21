@@ -154,8 +154,8 @@ class Controller:
             state:
                 The initial state, which will be updated during the simulation.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen.
+                Initial time step of the chosen stepping scheme. If `None`, a default
+                value based on the solver configuration will be chosen.
         """
         # gather basic information
         t_start, t_end = self.t_range
@@ -175,7 +175,7 @@ class Controller:
         self.trackers.initialize(state, info=self.diagnostics)
         handle_stop_iteration = self._get_stop_handler()
 
-        # initialize the stepper
+        # build the executable stepping function from the solver
         stepper = self.solver.make_stepper(state=state, dt=dt)
 
         # store intermediate profiling information before starting simulation
@@ -286,26 +286,28 @@ class Controller:
     def _run_client_process(self, state: TField, dt: float | None = None) -> None:
         """Run the simulation on client nodes during an MPI run.
 
-        This function just loops the stepper advancing the sub field of the current node
-        in time. All other logic, including trackers, are done in the main node.
+        This function just calls the stepping function to advance the sub field of the
+        current node in time. All other logic, including trackers, is handled in the
+        main node.
 
         Args:
             state:
                 The initial state, which will be updated during the simulation.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen.
+                Initial time step of the chosen stepping scheme. If `None`, a default
+                value based on the solver configuration will be chosen.
 
         Returns:
             The state at the final time point.
         """
-        # get stepper function
+        # build the executable stepping function from the solver
         stepper = self.solver.make_stepper(state=state, dt=dt)
 
         if not self.solver.info.get("use_mpi", False):
             _logger.warning(
-                "Started multiprocessing run without a stepper that supports it. Use "
-                "`ExplicitMPISolver` to profit from multiple cores"
+                "Started multiprocessing run without a solver/backend combination "
+                "that supports MPI stepping. Use `ExplicitMPISolver` to profit from "
+                "multiple cores"
             )
 
         # evolve the system from t_start to t_end
@@ -324,8 +326,8 @@ class Controller:
             state (:class:`~pde.fields.base.FieldBase`):
                 The initial state of the simulation.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen.
+                Initial time step of the chosen stepping scheme. If `None`, a default
+                value based on the solver configuration will be chosen.
 
         Returns:
             The state at the final time point. If multiprocessing is used, only the main
@@ -345,8 +347,8 @@ class Controller:
             state (:class:`~pde.fields.base.FieldBase`):
                 The initial state of the simulation.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen.
+                Initial time step of the chosen stepping scheme. If `None`, a default
+                value based on the solver configuration will be chosen.
 
         Returns:
             The state at the final time point. If multiprocessing is used, only the main
@@ -398,8 +400,8 @@ class Controller:
                 not modified by the simulation. Instead, the final state will be
                 returned and trackers can be used to record intermediate states.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen.
+                Initial time step of the chosen stepping scheme. If `None`, a default
+                value based on the solver configuration will be chosen.
 
         Returns:
             The state at the final time point. If multiprocessing is used, only the main

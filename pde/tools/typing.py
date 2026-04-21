@@ -175,10 +175,13 @@ class StepperHook(Protocol):
 
 
 class StepperType(Protocol):
-    """General stepper type working with py-pde fields."""
+    """General stepping-function type working with py-pde fields.
+
+    Instances of this protocol are typically created by solver objects.
+    """
 
     def __call__(self, state: TField, t_start: float, t_end: float) -> float:
-        """General stepper that advances the state given as a field.
+        """Advance the state given as a field.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -194,10 +197,10 @@ class StepperType(Protocol):
 
 
 class InnerStepperType(Protocol):
-    """General stepper type working with numpy arrays."""
+    """General backend-level stepping-function type working with numpy arrays."""
 
     def __call__(self, state_data: NumericArray, t_start: float, t_end: float) -> float:
-        """General stepper that advances the state given as a numpy array.
+        """Advance the state given as a numpy array.
 
         Args:
             state_data (:class:`~numpy.ndarray`):

@@ -156,6 +156,9 @@ The `py-pde` package implements the simple Euler scheme in the
 :class:`~pde.solvers.explicit.EulerSolver` class, and a more advanced
 `Runge-Kutta scheme <https://en.wikipedia.org/wiki/Runge–Kutta_methods>`_ scheme in 
 the :class:`~pde.solvers.explicit.RungeKuttaSolver` class.
+Conceptually, solver objects store the strategy and configuration, while the
+actual state updates are performed by stepping functions created from these
+solver objects.
 For the simple implementations of these explicit methods, the user typically specifies
 a fixed time step, although adaptive methods, which adjust the time step automatically,
 are also often used and available in the package.
