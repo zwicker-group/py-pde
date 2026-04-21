@@ -44,7 +44,7 @@ class ScipySolver(SolverBase):
         self.solver_params = kwargs
 
     def make_stepper(self, state: TField, dt: float | None = None) -> StepperType:
-        """Return a stepper function.
+        """Create the executable stepping function produced by this solver.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -61,7 +61,7 @@ class ScipySolver(SolverBase):
         from scipy import integrate
 
         if self.pde.is_sde:
-            msg = "Deterministic scipy stepper does not support stochastic equations"
+            msg = "Deterministic SciPy solver does not support stochastic equations"
             raise RuntimeError(msg)
 
         shape = state.data.shape
@@ -113,8 +113,12 @@ class ScipySolver(SolverBase):
 
         if dt:
             self._logger.info(
-                "Initialize %s stepper with dt=%g", self.__class__.__name__, dt
+                "Initialize stepping function for %s with dt=%g",
+                self.__class__.__name__,
+                dt,
             )
         else:
-            self._logger.info("Initialize %s stepper", self.__class__.__name__)
+            self._logger.info(
+                "Initialize stepping function for %s", self.__class__.__name__
+            )
         return stepper  # type: ignore

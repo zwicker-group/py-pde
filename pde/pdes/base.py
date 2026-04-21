@@ -443,10 +443,10 @@ class PDEBase(metaclass=ABCMeta):
                 and final time of the simulation. If only a single value is given, it is
                 interpreted as `t_end` and the time range is `(0, t_end)`.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen. If an adaptive stepper is used
-                (e.g., supported by :class:`~pde.solvers.EulerSolver`), `dt` sets the
-                initial time step.
+                Time step of the chosen stepping scheme. If `None`, the solver chooses
+                a default value when constructing the stepping function. If adaptive
+                stepping is enabled (e.g., supported by
+                :class:`~pde.solvers.EulerSolver`), `dt` sets the initial time step.
             tracker:
                 Defines trackers that process the state of the simulation at specified
                 times. A tracker is either an instance of
@@ -463,19 +463,19 @@ class PDEBase(metaclass=ABCMeta):
                 Determines how the function is created. Accepted values are 'numpy' and
                 'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
             solver (:class:`~pde.solvers.base.SolverBase` or str):
-                Specifies the method for solving the differential equation. This can
-                either be an instance of :class:`~pde.solvers.base.SolverBase` or a
+                Specifies the persistent numerical strategy used for solving the
+                differential equation. This can either be a solver factory or a
                 descriptive name like 'explicit' or 'scipy'. The valid names are given
-                by :meth:`pde.solvers.registered_solvers`. Details of the solvers and
-                additional features (like adaptive time steps) are explained in
-                :mod:`~pde.solvers`.
+                by :meth:`pde.solvers.registered_solvers`. Details of the solver
+                classes and additional features (like adaptive stepping) are explained
+                in :mod:`~pde.solvers`.
             ret_info (bool):
-                Flag determining whether diagnostic information about the solver process
-                should be returned. Note that the same information is also available
-                as the :attr:`~PDEBase.diagnostics` attribute.
+                Flag determining whether diagnostic information about the solver and
+                stepping process should be returned. Note that the same information is
+                also available as the :attr:`~PDEBase.diagnostics` attribute.
             **kwargs:
-                Additional keyword arguments are forwarded to the solver class chosen
-                with the `solver` argument. In particular, adaptive stepper can often be
+                Additional keyword arguments are forwarded to the solver chosen with
+                the `solver` argument. In particular, adaptive stepping can often be
                 enabled using :code:`adaptive=True`.
 
         Returns:

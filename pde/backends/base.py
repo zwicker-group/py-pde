@@ -605,7 +605,7 @@ class BackendBase(Generic[TNativeArray]):
         return synchronize_value
 
     def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
-        """Return a stepper function using an explicit scheme.
+        """Create a field-based stepping function for a given solver.
 
         Args:
             solver (:class:`~pde.solvers.base.SolverBase`):
@@ -616,8 +616,7 @@ class BackendBase(Generic[TNativeArray]):
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
-            time `t_end`. The function call signature is `(state: numpy.ndarray,
-            t_start: float, t_end: float)`
+            time `t_end`.
         """
         if self.copy_data:
             self._logger.warning(
@@ -628,8 +627,8 @@ class BackendBase(Generic[TNativeArray]):
         inner_stepper = solver._make_inner_stepper(state)
 
         def stepper(state: TField, t_start: float, t_end: float) -> float:
-            """Advance `state` from `t_start` to `t_end` using fixed steps."""
-            # call the stepper with field data directly
+            """Advance `state` by executing the backend-level stepping function."""
+            # call the backend-level stepping function with field data directly
             return inner_stepper(state.data, t_start, t_end)
 
         return stepper  # type: ignore

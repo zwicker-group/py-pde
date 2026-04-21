@@ -106,7 +106,7 @@ class ImplicitSolver(SolverBase):
             nfev += n + 1
             return state_data
 
-        self._logger.info("Initialize implicit Euler stepper with dt=%g", dt)
+        self._logger.info("Initialize implicit Euler single-step update with dt=%g", dt)
         return implicit_step
 
     def _make_single_step_fixed_dt_stochastic(
@@ -174,7 +174,8 @@ class ImplicitSolver(SolverBase):
             return state_data
 
         self._logger.info(
-            "Initialize semi-implicit Euler-Maruyama stepper with dt=%g", dt
+            "Initialize semi-implicit Euler-Maruyama single-step update with dt=%g",
+            dt,
         )
         return implicit_step
 

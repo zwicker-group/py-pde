@@ -35,7 +35,7 @@ class EulerSolver(AdaptiveSolverBase):
     def _make_single_step_fixed_dt(
         self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], NumericArray]:
-        """Make a simple Euler stepper with fixed time step.
+        """Make a simple Euler single-step update with fixed time step.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -45,9 +45,8 @@ class EulerSolver(AdaptiveSolverBase):
                 Time step of the explicit stepping.
 
         Returns:
-            Function that can be called to advance the `state` from time `t_start` to
-            time `t_end`. The function call signature is `(state: numpy.ndarray,
-            t_start: float, steps: int)`
+            Function that updates the state by one time step. The function call
+            signature is `(state_data: numpy.ndarray, t: float)`.
         """
         if self.pde.is_sde:
             # handle stochastic version of the pde
@@ -55,7 +54,7 @@ class EulerSolver(AdaptiveSolverBase):
             rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
             rhs_noise = self.backend.compile_function(rhs_noise)
 
-            def stepper(state_data: NumericArray, t: float) -> NumericArray:
+            def single_step(state_data: NumericArray, t: float) -> NumericArray:
                 """Perform a single Euler-Maruyama step."""
                 evolution_rate = rhs_pde(state_data, t)
                 noise_realization = rhs_noise(state_data, t)
@@ -65,24 +64,26 @@ class EulerSolver(AdaptiveSolverBase):
                 return state_data
 
             self._logger.info(
-                "Initialize explicit Euler-Maruyama stepper with dt=%g", dt
+                "Initialize explicit Euler-Maruyama single-step update with dt=%g", dt
             )
 
         else:
             # handle deterministic version of the pde
             rhs_pde = self.backend.make_pde_rhs(self.pde, state)
 
-            def stepper(state_data: NumericArray, t: float) -> NumericArray:
+            def single_step(state_data: NumericArray, t: float) -> NumericArray:
                 """Perform a single Euler step."""
                 state_data += dt * rhs_pde(state_data, t)
                 return state_data
 
-            self._logger.info("Initialize explicit Euler stepper with dt=%g", dt)
+            self._logger.info(
+                "Initialize explicit Euler single-step update with dt=%g", dt
+            )
 
-        return stepper
+        return single_step
 
     def _make_inner_stepper(self, state: TField) -> InnerStepperType:
-        """Make an (adaptive) Euler stepper.
+        """Create the executable Euler stepping function for this solver.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -95,7 +96,7 @@ class EulerSolver(AdaptiveSolverBase):
             t_start: float, t_end: float)`
         """
         if not self.adaptive:
-            # create stepper with fixed steps
+            # create a stepping function with fixed steps
             return super()._make_inner_stepper(state)
 
         # General comment: We implement the full adaptive scheme here instead of just
@@ -103,7 +104,7 @@ class EulerSolver(AdaptiveSolverBase):
         # particular, we reuse the calculated right hand side in cases where the step
         # was not successful.
         if getattr(self.pde, "is_sde", False):
-            msg = "Cannot use adaptive stepper with stochastic equation"
+            msg = "Cannot use adaptive stepping with stochastic equation"
             raise RuntimeError(msg)
 
         # obtain functions determining how the PDE is evolved
@@ -125,7 +126,7 @@ class EulerSolver(AdaptiveSolverBase):
         def adaptive_stepper(
             state_data: NumericArray, t_start: float, t_end: float
         ) -> float:
-            """Adaptive stepper that advances the state in time."""
+            """Adaptive stepping function that advances the state in time."""
             state_cur = state_data
             dt_opt = self.info["dt"]  # time step from last step
             rate = rhs_pde(state_cur, t_start)  # calculate initial rate
@@ -186,7 +187,7 @@ class EulerSolver(AdaptiveSolverBase):
             state_data[:] = state_cur
             return t
 
-        self._logger.info("Initialize adaptive Euler stepper")
+        self._logger.info("Initialize adaptive Euler stepping function")
         return adaptive_stepper
 
 

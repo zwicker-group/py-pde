@@ -21,7 +21,7 @@ class AdamsBashforthSolver(SolverBase):
     name = "adams-bashforth"
 
     def _make_inner_stepper(self, state: TField) -> InnerStepperType:
-        """Return a stepper function using an explicit scheme with fixed time steps.
+        """Create the executable Adams-Bashforth stepping function.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -74,6 +74,8 @@ class AdamsBashforthSolver(SolverBase):
             self.info["steps"] += steps
             return t + dt
 
-        self._logger.info("Initialize explicit Adams-Bashforth stepper with dt=%g", dt)
+        self._logger.info(
+            "Initialize explicit Adams-Bashforth stepping function with dt=%g", dt
+        )
 
         return fixed_stepper

@@ -48,10 +48,10 @@ class ConvergenceError(RuntimeError):
 
 
 class SolverBase:
-    """Base class for PDE solvers."""
+    """Base class for persistent PDE solver strategy objects."""
 
     dt_default: float = 1e-3
-    """float: default time step used if no time step was specified"""
+    """float: default time step used when no initial value was specified"""
 
     _use_post_step_hook: bool = True
     """bool: flag choosing whether the post-step hook of the PDE is called"""
@@ -105,7 +105,7 @@ class SolverBase:
 
     @classmethod
     def from_name(cls, name: str, pde: PDEBase, **kwargs) -> SolverBase:
-        r"""Create solver class based on its name.
+        r"""Create a solver object from its registered name.
 
         Solver classes are automatically registered when they inherit from
         :class:`SolverBase`. Note that this also requires that the respective python
@@ -228,20 +228,20 @@ class SolverBase:
     def _make_single_step_fixed_dt(
         self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], NumericArray]:
-        """Return a function doing a single step with a fixed time step.
+        """Return a callable performing one fixed-size update step.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
-                Time step of the explicit stepping.
+                Time step of the update.
         """
-        msg = "Fixed stepper has not been defined"
+        msg = "A fixed-step update rule has not been defined"
         raise NotImplementedError(msg)
 
     def _make_inner_stepper(self, state: TField) -> InnerStepperType:
-        """Return a stepper function using an explicit scheme with fixed time steps.
+        """Create the backend-level stepping function for fixed time stepping.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -338,14 +338,14 @@ class SolverBase:
         self.info["backend"] = self.backend.info
 
     def make_stepper(self, state: TField, dt: float | None = None) -> StepperType:
-        """Return a stepper function using an explicit scheme.
+        """Create the executable stepping function produced by this solver.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
-                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+                Initial time step used (Uses :attr:`SolverBase.dt_default` if `None`)
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
@@ -357,24 +357,25 @@ class SolverBase:
         if dt is None:
             dt = self.dt_default
             self._logger.warning(
-                "Stepper did not receive any initial value for `dt`. Using dt=%g, but "
-                "specifying a value or enabling adaptive stepping is advisable.",
+                "Solver did not receive any initial value for `dt` when constructing "
+                "the stepping function. Using dt=%g, but specifying a value or "
+                "enabling adaptive stepping is advisable.",
                 dt,
             )
 
-        # initialize some data (which might be changed by the stepper)
+        # initialize data used by the solver and the stepping function it creates
         self.info["dt"] = float(dt)  # explicit casting to help type checking
         self.info["steps"] = 0
         self.info["dt_adaptive"] = False
         self.info["stochastic"] = getattr(self.pde, "is_sde", False)
 
-        # create stepper for a particular backend
+        # create the backend-specific stepping function
         self._select_backend(state)
         return self.backend.make_stepper(self, state)
 
 
 class AdaptiveSolverBase(SolverBase):
-    """Base class for adaptive time steppers."""
+    """Base class for solvers that can produce adaptive stepping functions."""
 
     dt_min: float = 1e-10
     """float: minimal time step that the adaptive solver will use"""
@@ -420,7 +421,7 @@ class AdaptiveSolverBase(SolverBase):
             `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
         if self.pde.is_sde:
-            msg = "Adaptive stepper does not support stochastic equations"
+            msg = "Adaptive stepping does not support stochastic equations"
             raise RuntimeError(msg)
 
         rhs_pde = self.backend.make_pde_rhs(self.pde, state)
@@ -434,7 +435,7 @@ class AdaptiveSolverBase(SolverBase):
     def _make_single_step_error_estimate(
         self, state: TField
     ) -> Callable[[NumericArray, float, float], tuple[NumericArray, float]]:
-        """Make a stepper that also estimates the error.
+        """Make a helper that advances the state and estimates the local error.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -442,7 +443,7 @@ class AdaptiveSolverBase(SolverBase):
                 be extracted
         """
         if getattr(self.pde, "is_sde", False):
-            msg = "Cannot use adaptive stepper with stochastic equation"
+            msg = "Cannot use adaptive stepping with stochastic equation"
             raise RuntimeError(msg)
 
         single_step = self._make_single_step_variable_dt(state)
@@ -450,7 +451,7 @@ class AdaptiveSolverBase(SolverBase):
         def single_step_error_estimate(
             state_data: NumericArray, t: float, dt: float
         ) -> tuple[NumericArray, float]:
-            """Basic stepper to estimate error."""
+            """Basic helper used to estimate the local truncation error."""
             # single step with dt
             k1 = single_step(state_data, t, dt)
 
@@ -469,7 +470,7 @@ class AdaptiveSolverBase(SolverBase):
         self,
         state: TField,  # , *, adjust_dt: Callable[[float, float], float] | None = None
     ) -> InnerStepperType:
-        """Make an adaptive Euler stepper.
+        """Create the backend-level stepping function for adaptive time stepping.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -482,11 +483,11 @@ class AdaptiveSolverBase(SolverBase):
             t_start: float, t_end: float)`
         """
         if not self.adaptive:
-            # create stepper with fixed steps
+            # create a stepping function with fixed steps
             return super()._make_inner_stepper(state)
         if getattr(self.pde, "is_sde", False):
-            # adaptive steppers cannot deal with stochastic PDEs
-            msg = "Cannot use adaptive stepper with stochastic equation"
+            # adaptive stepping functions cannot deal with stochastic PDEs
+            msg = "Cannot use adaptive stepping with stochastic equation"
             raise RuntimeError(msg)
 
         # obtain functions determining how the PDE is evolved
@@ -507,7 +508,7 @@ class AdaptiveSolverBase(SolverBase):
         def adaptive_stepper(
             state_data: NumericArray, t_start: float, t_end: float
         ) -> float:
-            """Adaptive stepper that advances the state in time."""
+            """Adaptive stepping function that advances the state in time."""
             dt_opt = self.info["dt"]  # time step from last step
             t = t_start
             steps = 0
@@ -544,11 +545,11 @@ class AdaptiveSolverBase(SolverBase):
             self.info["steps"] += steps
             return t
 
-        self._logger.info("Initialized adaptive stepper")
+        self._logger.info("Initialized adaptive stepping function")
         return adaptive_stepper
 
     def make_stepper(self, state: TField, dt: float | None = None) -> StepperType:
-        """Return a stepper function using an explicit scheme.
+        """Create the executable stepping function produced by this solver.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -564,7 +565,8 @@ class AdaptiveSolverBase(SolverBase):
             t_start: float, t_end: float)`
         """
         if dt is None and self.adaptive:
-            dt = self.dt_default  # always set a default time step for adaptive stepper
+            # always set a default initial step for adaptive stepping
+            dt = self.dt_default
         return super().make_stepper(state, dt=dt)
 
 

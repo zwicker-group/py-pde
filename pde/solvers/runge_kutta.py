@@ -31,7 +31,7 @@ class RungeKuttaSolver(AdaptiveSolverBase):
     def _make_single_step_fixed_dt(
         self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], NumericArray]:
-        """Make function doing a single explicit Runge-Kutta step of order 5(4)
+        """Make a function performing one explicit Runge-Kutta step of order 5(4).
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -41,9 +41,8 @@ class RungeKuttaSolver(AdaptiveSolverBase):
                 Time step of the explicit stepping.
 
         Returns:
-            Function that can be called to advance the `state` from time `t_start` to
-            time `t_end`. The function call signature is `(state: numpy.ndarray,
-            t_start: float, steps: int)`
+            Function that updates the state by one time step. The function call
+            signature is `(state_data: numpy.ndarray, t: float)`.
         """
         if self.pde.is_sde:
             msg = "Deterministic Runge-Kutta does not support stochastic equations"
@@ -52,7 +51,7 @@ class RungeKuttaSolver(AdaptiveSolverBase):
         # obtain functions determining how the PDE is evolved
         rhs = self.backend.make_pde_rhs(self.pde, state)
 
-        def stepper(state_data: NumericArray, t: float) -> NumericArray:
+        def single_step(state_data: NumericArray, t: float) -> NumericArray:
             """Compiled inner loop for speed."""
             # calculate the intermediate values in Runge-Kutta
             k1 = dt * rhs(state_data, t)
@@ -63,13 +62,15 @@ class RungeKuttaSolver(AdaptiveSolverBase):
             state_data += (k1 + 2 * k2 + 2 * k3 + k4) / 6
             return state_data
 
-        self._logger.info("Initialize explicit Runge-Kutta-45 stepper with dt=%g", dt)
-        return stepper
+        self._logger.info(
+            "Initialize explicit Runge-Kutta-45 single-step update with dt=%g", dt
+        )
+        return single_step
 
     def _make_single_step_error_estimate(
         self, state: TField
     ) -> Callable[[NumericArray, float, float], tuple[NumericArray, float]]:
-        """Make an adaptive stepper using the explicit Runge-Kutta-Fehlberg method.
+        """Make a single-step error estimator using Runge-Kutta-Fehlberg.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -125,10 +126,10 @@ class RungeKuttaSolver(AdaptiveSolverBase):
         c4 = 2197 / 4104
         c5 = -1 / 5
 
-        def stepper(
+        def single_step_error_estimate(
             state_data: NumericArray, t: float, dt: float
         ) -> tuple[NumericArray, float]:
-            """Basic stepper to estimate error."""
+            """Basic helper used to estimate the local truncation error."""
             # support any backend following Python Array API
             nx = get_array_namespace(state_data)
 
@@ -153,5 +154,5 @@ class RungeKuttaSolver(AdaptiveSolverBase):
             state_new = state_data + c1 * k1 + c3 * k3 + c4 * k4 + c5 * k5
             return state_new, error
 
-        self._logger.info("Initialize adaptive Runge-Kutta-Fehlberg stepper")
-        return stepper
+        self._logger.info("Initialize adaptive Runge-Kutta-Fehlberg error estimator")
+        return single_step_error_estimate

@@ -172,9 +172,12 @@ Most notably, PDEs can be specified by their expression using the convenient
 
 The PDEs are solved using solver classes, where a simple explicit solver is
 implemented by :class:`~pde.solvers.explicit.EulerSolver`, but more advanced
-implementations can be done. 
-To obtain more details during the simulation, trackers can be attached to the
-solver instance, which analyze intermediate states periodically. Typical
+implementations are available.
+Each solver object represents the integration strategy and configuration; during
+simulation it constructs an executable stepping function that advances the state
+in time.
+To obtain more details during the simulation, trackers can be supplied to the
+controller, which analyze intermediate states periodically. Typical
 trackers include
 :class:`~pde.trackers.trackers.ProgressTracker` (display simulation progress),
 :class:`~pde.trackers.trackers.PlotTracker` (display images of the simulation),
@@ -183,4 +186,4 @@ a stationary state is reached).
 Others can be found in the :mod:`~pde.trackers.trackers` module.
 Moreover, we provide :class:`~pde.storage.memory.MemoryStorage` and
 :class:`~pde.storage.file.FileStorage`, which can be used as trackers
-to store the intermediate state to memory and to a file, respectively. 
+to store intermediate states in memory and in files, respectively.

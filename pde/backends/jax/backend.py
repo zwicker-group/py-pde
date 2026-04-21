@@ -733,7 +733,7 @@ class JaxBackend(BackendBase[jax.Array]):
         return self.compile_function(rhs_native)
 
     def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
-        """Return a stepper function using an explicit scheme.
+        """Create a field-based stepping function for a given solver.
 
         Args:
             solver (:class:`~pde.solvers.base.SolverBase`):
@@ -751,14 +751,14 @@ class JaxBackend(BackendBase[jax.Array]):
 
         assert solver.backend == self
 
-        # create the Torch module that calculates the right hand side
+        # create the backend-level stepping function
         inner_stepper = make_inner_stepper(solver, state)
 
         def stepper(state: TField, t_start: float, t_end: float) -> float:
-            """Advance `state` from `t_start` to `t_end` using fixed steps."""
+            """Advance `state` by executing the backend-level stepping function."""
             # push state data to native backend
             state_tensor: jax.Array = solver.backend.numpy_to_native(state.data)  # type: ignore
-            # call the stepper with fixed time steps
+            # execute the backend-level stepping function
             state_tensor, t_last = inner_stepper(state_tensor, t_start, t_end)
             # retrieve data from native backend
             state.data[:] = solver.backend.native_to_numpy(state_tensor)

@@ -130,15 +130,15 @@ class ExplicitMPISolver(EulerSolver):
             self.info["post_step_data_list"] = None
 
     def make_stepper(self, state: TField, dt=None) -> StepperType:
-        """Return a stepper function using an explicit scheme.
+        """Create the executable stepping function produced by this solver.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
-                Time step of the explicit stepping. If `None`, this solver specifies
-                1e-3 as a default value.
+                Initial time step. If `None`, this solver specifies 1e-3 as a default
+                value.
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
@@ -160,9 +160,9 @@ class ExplicitMPISolver(EulerSolver):
             dt = 1e-3
             if not self.adaptive:
                 self._logger.warning(
-                    "Explicit stepper with a fixed time step did not receive any "
-                    "initial value for `dt`. Using dt=%g, but specifying a value or "
-                    "enabling adaptive stepping is advisable.",
+                    "Explicit solver configured for fixed time stepping did not "
+                    "receive any initial value for `dt`. Using dt=%g, but specifying "
+                    "a value or enabling adaptive stepping is advisable.",
                     dt,
                 )
 
@@ -179,13 +179,13 @@ class ExplicitMPISolver(EulerSolver):
         sub_state = self.mesh.extract_subfield(state)
         self.info["grid_decomposition"] = self.mesh.shape
 
-        # create inner stepper adaptive steps
+        # create the inner stepping function
         # TODO: Use backend compilation
         inner_stepper = self._make_inner_stepper(sub_state)
         self._init_post_step_data()
 
         def wrapped_stepper(state: TField, t_start: float, t_end: float) -> float:
-            """Advance `state` from `t_start` to `t_end` using adaptive steps."""
+            """Advance `state` from `t_start` to `t_end` using the stepping function."""
             nonlocal dt  # `dt` stores value for the next call
 
             # retrieve last post_step_data and continue with this

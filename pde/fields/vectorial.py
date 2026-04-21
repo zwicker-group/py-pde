@@ -218,7 +218,7 @@ class VectorField(DataFieldBase):
         scalar or vector, respectively.
 
         Args:
-            other (VectorField or Tensor2Field):
+            other (:class:`~pde.VectorField` or :class:`~pde.Tensor2Field`):
                 the second field
             out (ScalarField or VectorField, optional):
                 Optional field to which the result is written.
