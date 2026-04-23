@@ -229,7 +229,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         if not self.config["compile"]:
             return func
 
-        # compile the function using the torch backend
+        # compile the function using the torch backend and move it to correct device
         opts = self.compile_options | compile_options
         return torch.compile(func, **opts)  # type: ignore
 
@@ -298,9 +298,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         torch_operator.eval()  # type: ignore
 
         # compile the function and move it to the device
-        torch_operator_jitted = self.compile_function(torch_operator)
-        torch_operator_jitted.to(self.device)  # type: ignore
-        return torch_operator_jitted  # type: ignore
+        return self.compile_function(torch_operator)  # type: ignore
 
     def make_operator(
         self,
@@ -348,9 +346,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         torch_operator.eval()  # type: ignore
 
         # compile the function and move it to the device
-        torch_operator_jitted = self.compile_function(torch_operator)
-        torch_operator_jitted.to(self.device)  # type: ignore
-        return torch_operator_jitted  # type: ignore
+        return self.compile_function(torch_operator)  # type: ignore
 
     def make_integrator(
         self, grid: GridBase, *, dtype: DTypeLike = np.double
@@ -370,12 +366,9 @@ class TorchBackend(BackendBase[torch.Tensor]):
         from .operators.common import TorchIntegralOperator
 
         # create the torch operator
-        integrate_torch = self.compile_function(
+        return self.compile_function(
             TorchIntegralOperator(grid, dtype=self.get_numpy_dtype(dtype))
         )
-        integrate_torch.to(self.device)
-
-        return integrate_torch
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
@@ -600,14 +593,12 @@ class TorchBackend(BackendBase[torch.Tensor]):
         generator = torch.Generator(device=self.device)
         generator.manual_seed(int(rng.integers(0, 2**32)))
 
-        gaussian_noise = TorchGaussianNoise(
+        return TorchGaussianNoise(
             data_shape,
             dtype=self.get_numpy_dtype(field.dtype),
             scale=scale,
             generator=generator,
-        )
-        gaussian_noise.to(self.device)
-        return gaussian_noise
+        ).to(self.device)
 
     def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
         """Create a field-based stepping function for a given solver.
