@@ -33,6 +33,11 @@ class MilsteinSolver(EulerSolver):
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Make a Euler-Milstein single-step update with fixed time step.
 
+        Info:
+            This solver should only be used for problems with multiplicative noise.
+            While the solver works for additive noise, the extra corrections might slow
+            down calculations.
+
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
@@ -48,6 +53,7 @@ class MilsteinSolver(EulerSolver):
         rhs_pde = self.backend.make_pde_rhs(self.pde, state)
 
         # handle with first noise interface based on supplying the noise variance
+        noise_drift_factor = self._noise_drift_factor
         fn = self.pde.make_noise_variance(state, backend=self.backend, ret_diff=True)  # type: ignore
         noise_var = self.backend.compile_function(fn)
         gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)
@@ -74,7 +80,7 @@ class MilsteinSolver(EulerSolver):
 
             # evaluate deterministic part and variance without modifying field, yet
             evolution_rate = rhs_pde(state_data, t)
-            noise_var_field, noise_var_prime_field = noise_var(state_data, t)
+            noise_var_field, noise_var_diff_field = noise_var(state_data, t)
 
             # handle second noise interface
             if custom_noise:
@@ -86,8 +92,9 @@ class MilsteinSolver(EulerSolver):
             dW = dt_sqrt * gaussian_noise()
             state_data += (
                 dt * evolution_rate
+                + 0.5 * dt * noise_drift_factor * noise_var_diff_field
                 + nx.sqrt(noise_var_field) * dW
-                + 0.25 * noise_var_prime_field * (dW**2 - dt)
+                + 0.25 * noise_var_diff_field * (dW**2 - dt)
             )
 
             return state_data

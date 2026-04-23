@@ -1,4 +1,4 @@
-"""Defines an explicit solver using a Runge-Kutta method
+"""Defines an explicit solver using a Runge-Kutta method.
 
 .. autosummary::
    :nosignatures:

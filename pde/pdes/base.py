@@ -538,7 +538,13 @@ class SDEBase(PDEBase):
     to support all backends.
     """
 
-    def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator | None = None):
+    def __init__(
+        self,
+        *,
+        noise: ArrayLike = 0,
+        noise_interpretation: str = "ito",
+        rng: np.random.Generator | None = None,
+    ):
         """
         Args:
             noise (float or :class:`~numpy.ndarray`):
@@ -546,6 +552,13 @@ class SDEBase(PDEBase):
                 PDEs by default. If set to zero, a deterministic partial differential
                 equation will be solved. Different noise magnitudes can be supplied for
                 each field in coupled PDEs.
+            noise_interpretation (str):
+                Interpretation of the stochastic differential equation. Possible values
+                are `ito`, `stratonovich`, and `anit-ito`. Solvers can use this
+                information to implement drift terms that appear for multiplicative
+                noise, which typically only works when
+                :meth:`~pde.pdes.base.SDEBase.make_noise_variance` also returns the
+                derivative of the variance.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
                 used for stochastic simulations. Note that this random number generator
@@ -561,6 +574,7 @@ class SDEBase(PDEBase):
         """
         super().__init__(rng=rng)
         self.noise = np.asanyarray(noise)
+        self.noise_interpretation = noise_interpretation
 
     @property
     def is_sde(self) -> bool:
@@ -644,6 +658,12 @@ class SDEBase(PDEBase):
 
         if ret_diff:
             noise_vars_diff_native = backend.numpy_to_native(np.zeros_like(noise_vars))
+            self._logger.warning(
+                "Requesting derivative of noise variance in case of additive noise. "
+                "This might signal a misconfigured problem, where for instance a "
+                "Milstein solver or an interpretation different from Itô is used in "
+                "the simple case of additive noise, where it is not necessary."
+            )
 
             def noise_variance_diff(
                 state_data: TNativeArray, t: float
