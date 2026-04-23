@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..tools.misc import get_array_namespace
 from .base import ConvergenceError, SolverBase
+from .euler import _check_deprecated_noise_realization
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -121,6 +122,7 @@ class ImplicitSolver(SolverBase):
             dt (float):
                 Time step of the implicit step
         """
+        _check_deprecated_noise_realization(self.pde)
         if hasattr(self.pde, "_make_noise_realization"):
             msg = "Implicit stepper cannot handle `_make_noise_realization` interface"
             raise NotImplementedError(msg)

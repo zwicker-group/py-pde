@@ -28,6 +28,19 @@ if TYPE_CHECKING:
     from ..tools.typing import InnerStepperType, NumericArray, TField
 
 
+def _check_deprecated_noise_realization(pde: PDEBase) -> None:
+    """Do a quick check for a deprecated method."""
+    if hasattr(pde, "make_noise_realization"):
+        # Deprecated since 2026-04-23
+        warnings.warn(
+            "`make_noise_realiziation` is deprecated. Use `make_noise_variance` or "
+            "`_make_noise_realiziation` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        pde._make_noise_realization = pde.make_noise_realization  # type: ignore
+
+
 class EulerSolver(AdaptiveSolverBase):
     """Explicit Euler solver."""
 
@@ -58,6 +71,7 @@ class EulerSolver(AdaptiveSolverBase):
         gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)
 
         # handle with second noise interface based on supplying a realization
+        _check_deprecated_noise_realization(self.pde)
         custom_noise = hasattr(self.pde, "_make_noise_realization")
         if custom_noise:
             rhs_noise = self.pde._make_noise_realization(state, backend=self.backend)  # type: ignore

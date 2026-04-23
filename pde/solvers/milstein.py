@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ..tools.misc import get_array_namespace
-from .euler import EulerSolver
+from .euler import EulerSolver, _check_deprecated_noise_realization
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -53,6 +53,7 @@ class MilsteinSolver(EulerSolver):
         gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)
 
         # handle with second noise interface based on supplying a realization
+        _check_deprecated_noise_realization(self.pde)
         custom_noise = hasattr(self.pde, "_make_noise_realization")
         if custom_noise:
             rhs_noise = self.pde._make_noise_realization(state, backend=self.backend)  # type: ignore
