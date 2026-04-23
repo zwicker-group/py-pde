@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..tools.misc import get_array_namespace
 from .base import ConvergenceError, SolverBase
-from .euler import _check_deprecated_noise_realization
+from .euler import _DUMMY_FUNCTION, _DUMMY_FUNCTION_2ARGS
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -122,9 +122,8 @@ class ImplicitSolver(SolverBase):
             dt (float):
                 Time step of the implicit step
         """
-        _check_deprecated_noise_realization(self.pde)
-        if hasattr(self.pde, "_make_noise_realization"):
-            msg = "Implicit stepper cannot handle `_make_noise_realization` interface"
+        if self.pde.use_noise_realization:
+            msg = "Implicit stepper cannot handle `make_noise_realization` interface"
             raise NotImplementedError(msg)
 
         self.info["function_evaluations"] = 0
@@ -132,9 +131,15 @@ class ImplicitSolver(SolverBase):
 
         # get the function that calculates the noise
         rhs = self.backend.make_pde_rhs(self.pde, state)
-        fn = self.pde.make_noise_variance(state, backend=self.backend, ret_diff=False)  # type: ignore
-        noise_var = self.backend.compile_function(fn)
-        gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)
+        if use_noise_variance := self.pde.use_noise_variance:
+            noise_var = self.pde.make_noise_variance(  # type: ignore
+                state, backend=self.backend, ret_diff=False
+            )
+            gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)
+        else:
+            noise_var = _DUMMY_FUNCTION_2ARGS
+            gaussian_noise = self.backend.compile_function(_DUMMY_FUNCTION)
+        noise_var = self.backend.compile_function(noise_var)
 
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
@@ -151,11 +156,12 @@ class ImplicitSolver(SolverBase):
 
             # evaluate deterministic part and variance without modifying field, yet
             evolution_rate = rhs(state_data, t)
-            noise_std_field = noise_var(state_data, t)
 
             # add the noise to the reference state at the current time point and
             # adept the state at the next time point iteratively below
-            state_t += nx.sqrt(dt) * noise_std_field * gaussian_noise()
+            if use_noise_variance:
+                noise_std_field = noise_var(state_data, t)
+                state_t += nx.sqrt(dt) * noise_std_field * gaussian_noise()
             state_data[:] = state_t + dt * evolution_rate  # estimated new state
 
             # fixed point iteration for improving state after dt

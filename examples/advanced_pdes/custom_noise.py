@@ -11,6 +11,8 @@ from pde import DiffusionPDE, ScalarField, UnitGrid
 class DiffusionCustomNoisePDE(DiffusionPDE):
     """Diffusion PDE with custom noise implementation."""
 
+    use_noise_variance = True
+
     def make_noise_variance(self, state, *, backend, ret_diff=False):
         """Make function that calculates noise variance."""
         noise = float(self.noise)

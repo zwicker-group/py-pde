@@ -279,3 +279,17 @@ autodoc_typehints = "description"
 from run_autodoc import main
 
 main()
+
+# skip documentation of overloads
+from sphinx.pycode import ModuleAnalyzer
+
+analyze_fn = ModuleAnalyzer.analyze
+
+
+def analyze_but_skip_overloads(self):
+    result = analyze_fn(self)
+    self.overloads = {}  # Clear overloads after analysis
+    return result
+
+
+ModuleAnalyzer.analyze = analyze_but_skip_overloads

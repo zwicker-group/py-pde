@@ -15,18 +15,45 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ..tools.misc import get_array_namespace
-from .euler import EulerSolver, _check_deprecated_noise_realization
+from .euler import _DUMMY_FUNCTION_2ARGS, EulerSolver
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from pde.tools.typing import NumericArray, TField
 
+    from ..backends.base import BackendBase
+    from ..pdes.base import PDEBase
+
 
 class MilsteinSolver(EulerSolver):
     """Milstein method for stochastic differential equations."""
 
     name = "milstein"
+
+    def __init__(
+        self,
+        pde: PDEBase,
+        *,
+        backend: str | BackendBase = "auto",
+        adaptive: bool = False,
+        tolerance: float = 1e-4,
+    ):
+        """
+        Args:
+            pde (:class:`~pde.pdes.base.PDEBase`):
+                The partial differential equation that should be solved
+            backend (str):
+                The backend used for numerical operations
+            adaptive (bool):
+                Whether to use adaptive time stepping
+            tolerance (float):
+                Error tolerance for adaptive time stepping
+        """
+        super().__init__(pde, backend=backend, adaptive=adaptive, tolerance=tolerance)
+        if not pde.use_noise_variance:
+            msg = "Milstein solver requires `use_noise_variance` enabled."
+            raise RuntimeError(msg)
 
     def _make_single_step_fixed_dt_stochastic(
         self, state: TField, dt: float
@@ -53,22 +80,20 @@ class MilsteinSolver(EulerSolver):
         rhs_pde = self.backend.make_pde_rhs(self.pde, state)
 
         # handle with first noise interface based on supplying the noise variance
+        assert self.pde.use_noise_variance
         noise_drift_factor = self._noise_drift_factor
-        fn = self.pde.make_noise_variance(state, backend=self.backend, ret_diff=True)  # type: ignore
+        fn = self.pde.make_noise_variance(  # type: ignore
+            state, backend=self.backend, ret_diff=True
+        )
         noise_var = self.backend.compile_function(fn)
         gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)
 
         # handle with second noise interface based on supplying a realization
-        _check_deprecated_noise_realization(self.pde)
-        custom_noise = hasattr(self.pde, "_make_noise_realization")
-        if custom_noise:
-            rhs_noise = self.pde._make_noise_realization(state, backend=self.backend)  # type: ignore
-            rhs_noise = self.backend.compile_function(rhs_noise)
+        if use_noise_realization := self.pde.use_noise_realization:
+            rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
         else:
-            # define dummy function to make compilers work
-
-            def rhs_noise(state_data, t):
-                return state_data
+            rhs_noise = _DUMMY_FUNCTION_2ARGS
+        rhs_noise = self.backend.compile_function(rhs_noise)
 
         # noise increment scales with square root of time step
         dt_sqrt = np.sqrt(dt)
@@ -83,7 +108,7 @@ class MilsteinSolver(EulerSolver):
             noise_var_field, noise_var_diff_field = noise_var(state_data, t)
 
             # handle second noise interface
-            if custom_noise:
+            if use_noise_realization:
                 noise_realization = rhs_noise(state_data, t)
                 if noise_realization is not None:
                     state_data += dt_sqrt * noise_realization
