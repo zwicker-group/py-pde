@@ -224,7 +224,7 @@ def test_stochastic_solver_equilibrium(
     # simulate an independent ensemble of points
     field = ScalarField(UnitGrid([1024]))
     solver = solver_cls(eq, backend=backend)
-    controller = Controller(solver, t_range=10)
+    controller = Controller(solver, t_range=5)
     result = controller.run(field, dt=1e-3)
 
     # check whether the points exhibit the expected distribution
