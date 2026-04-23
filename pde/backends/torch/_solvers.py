@@ -308,7 +308,6 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperT
         msg = f"Torch backend does not support {solver}"
         raise NotImplementedError(msg)
     stepper = solver.backend.compile_function(stepper)
-    stepper.to(solver.backend.device)
 
     # define the executable fixed-step integrator module
     inner_solver = FixedSolver(
@@ -316,8 +315,7 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperT
         dt,
         post_step_hook=post_step_hook,
         post_step_data=solver.info["post_step_data"],
-    )
-    inner_solver.to(solver.backend.device)
+    ).to(solver.backend.device)
 
     def fixed_stepper(
         state_data: torch.Tensor, t_start: float, t_end: float
