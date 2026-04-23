@@ -39,6 +39,7 @@ NOISE_INTERPRETATIONS: dict[str, float] = {
 """dict: dictionary translating noise interpretations to the respective fraction."""
 
 
+<<<<<<< noise
 def _DUMMY_FUNCTION():
     """Dummy function that we need to define so numba can determine types correctly."""
     return 0
@@ -47,6 +48,19 @@ def _DUMMY_FUNCTION():
 def _DUMMY_FUNCTION_2ARGS(state_data, t):
     """Dummy function that we need to define so numba can determine types correctly."""
     return state_data
+=======
+def _check_deprecated_noise_realization(pde: PDEBase) -> None:
+    """Do a quick check for a deprecated method."""
+    if hasattr(pde, "make_noise_realization"):
+        # Deprecated since 2026-04-23
+        warnings.warn(
+            "`make_noise_realiziation` is deprecated. Use `make_noise_variance` or "
+            "`_make_noise_realiziation` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        pde._make_noise_realization = pde.make_noise_realization  # type: ignore
+>>>>>>> master
 
 
 class EulerSolver(AdaptiveSolverBase):
@@ -103,6 +117,7 @@ class EulerSolver(AdaptiveSolverBase):
         # handle with first noise interface based on supplying the noise variance
         noise_drift_factor = self._noise_drift_factor
         has_noise_drift_term = noise_drift_factor != 0
+<<<<<<< noise
         if use_noise_variance := self.pde.use_noise_variance:
             noise_var = self.pde.make_noise_variance(  # type: ignore
                 state, backend=self.backend, ret_diff=has_noise_drift_term
@@ -112,6 +127,13 @@ class EulerSolver(AdaptiveSolverBase):
             noise_var = _DUMMY_FUNCTION_2ARGS
             gaussian_noise = self.backend.compile_function(_DUMMY_FUNCTION)
         noise_var = self.backend.compile_function(noise_var)
+=======
+        fn = self.pde.make_noise_variance(  # type: ignore
+            state, backend=self.backend, ret_diff=has_noise_drift_term
+        )
+        noise_var = self.backend.compile_function(fn)
+        gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)
+>>>>>>> master
 
         # handle with second noise interface based on supplying a realization
         if use_noise_realization := self.pde.use_noise_realization:
@@ -130,6 +152,7 @@ class EulerSolver(AdaptiveSolverBase):
 
             # evaluate field-dependent terms first without modifying fields
             evolution_rate = rhs_pde(state_data, t)
+<<<<<<< noise
             if use_noise_variance:
                 if has_noise_drift_term:
                     noise_var_field, noise_var_diff_field = noise_var(state_data, t)
@@ -138,11 +161,21 @@ class EulerSolver(AdaptiveSolverBase):
 
             # handle second noise interface first so it uses the unchanged field
             if use_noise_realization:
+=======
+            if has_noise_drift_term:
+                noise_var_field, noise_var_diff_field = noise_var(state_data, t)
+            else:
+                noise_var_field = noise_var(state_data, t)
+
+            # handle second noise interface first so it uses the unchanged field
+            if custom_noise:
+>>>>>>> master
                 noise_realization = rhs_noise(state_data, t)
                 if noise_realization is not None:
                     state_data += dt_sqrt * noise_realization
 
             # apply the deterministic part and the additive noise
+<<<<<<< noise
             state_data += dt * evolution_rate
 
             if use_noise_variance:
@@ -152,6 +185,14 @@ class EulerSolver(AdaptiveSolverBase):
                 # add a drift term if the interpretation is not Itô
                 if has_noise_drift_term:
                     state_data += 0.5 * dt * noise_drift_factor * noise_var_diff_field
+=======
+            dW = gaussian_noise()
+            state_data += dt * evolution_rate + dt_sqrt * nx.sqrt(noise_var_field) * dW
+
+            # add a drift term if the interpretation is not Itô
+            if has_noise_drift_term:
+                state_data += 0.5 * dt * noise_drift_factor * noise_var_diff_field
+>>>>>>> master
 
             return state_data
 
