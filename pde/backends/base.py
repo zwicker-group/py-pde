@@ -15,7 +15,6 @@ from ..tools.typing import (
     DataSetter,
     FloatingArray,
     GhostCellSetter,
-    NativeArray,
     Number,
     NumberOrArray,
     NumericArray,
@@ -29,6 +28,7 @@ from ..tools.typing import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    import numpy as np
     from numpy.typing import DTypeLike
 
     from ..fields import DataFieldBase
@@ -141,7 +141,7 @@ class BackendBase(Generic[TNativeArray]):
         return {"name": self.name, "implementation": self.implementation}
 
     @overload
-    def numpy_to_native(self, value: NumericArray) -> NativeArray: ...
+    def numpy_to_native(self, value: NumericArray) -> TNativeArray: ...
     @overload
     def numpy_to_native(self, value: TValue) -> TValue: ...
 
@@ -154,7 +154,7 @@ class BackendBase(Generic[TNativeArray]):
         return value
 
     @overload
-    def native_to_numpy(self, value: NativeArray) -> NumericArray: ...
+    def native_to_numpy(self, value: TNativeArray) -> NumericArray: ...
     @overload
     def native_to_numpy(self, value: TValue) -> TValue: ...
 
@@ -603,6 +603,22 @@ class BackendBase(Generic[TNativeArray]):
             return value
 
         return synchronize_value
+
+    def make_gaussian_noise(
+        self, field: TField, *, rng: np.random.Generator
+    ) -> Callable[[], TNativeArray]:
+        """Create a function generating Gaussian white noise.
+
+        This noise is already scaled to respect different cell volumes of the grid.
+
+        Args:
+            field (:class:`~pde.fields.base.FieldBase`):
+                An example for the field from which the grid and other information can
+                be extracted
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`).
+        """
+        raise NotImplementedError
 
     def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
         """Create a field-based stepping function for a given solver.

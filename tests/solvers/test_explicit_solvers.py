@@ -10,9 +10,11 @@ from pde.pdes import PDEBase
 from pde.solvers import Controller, EulerSolver, ExplicitMPISolver, RungeKuttaSolver
 from pde.tools import mpi
 
+ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_solvers_simple_fixed(backend):
     """Test explicit solvers."""
     grid = UnitGrid([4])
@@ -88,7 +90,7 @@ def test_solvers_time_dependent(solver, adaptive):
     assert solver.info.get("dt_adaptive", False) == adaptive
 
 
-@pytest.mark.parametrize("backend", ["numba", "numpy"])
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_stochastic_solvers(backend, rng):
     """Test simple version of the stochastic solver."""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
@@ -120,6 +122,49 @@ def test_stochastic_adaptive_solver(caplog, rng):
     c = Controller(solver, t_range=1, tracker=None)
     with pytest.raises(RuntimeError):
         c.run(field, dt=1e-2)
+
+
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_stochastic_solvers_two_interfaces(backend, rng):
+    """Compare the two noise interfaces of stochastic solvers."""
+
+    class DiffusionNoisePDE(DiffusionPDE):
+        custom_noise = 0.1
+
+        def _make_noise_realization(self, state, backend):
+            data_shape = state.data.shape
+            scale = np.sqrt(float(self.custom_noise) / state.grid.cell_volumes)
+
+            def noise_realization(state_data, t):
+                """Helper function returning a noise realization."""
+                return scale * np.random.randn(*data_shape)
+
+            return noise_realization
+
+    eq1 = DiffusionNoisePDE(noise=0, rng=rng)
+    eq2 = DiffusionPDE(noise=0.1, rng=rng)
+
+    field = ScalarField(UnitGrid([16]))
+    args = {
+        "t_range": 1,
+        "dt": 1e-2,
+        "solver": "euler",
+        "backend": backend,
+        "tracker": None,
+    }
+    if backend.implementation == "torch":
+        with pytest.raises(NotImplementedError):
+            eq1.solve(field, **args)
+        return
+
+    res1 = eq1.solve(field, **args)
+    res2 = eq2.solve(field, **args)
+
+    assert res1.fluctuations > 0.1
+    assert res2.fluctuations > 0.1
+
+    assert eq1.diagnostics["solver"]["stochastic"]
+    assert eq2.diagnostics["solver"]["stochastic"]
 
 
 def test_unsupported_stochastic_solvers(rng):

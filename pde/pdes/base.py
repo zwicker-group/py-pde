@@ -15,7 +15,7 @@ import copy
 import logging
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
 
@@ -25,8 +25,6 @@ from ..fields.datafield_base import DataFieldBase
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    import jax
 
     from ..fields.base import FieldBase
     from ..solvers.base import SolverBase
@@ -536,7 +534,7 @@ class SDEBase(PDEBase):
 
     Custom PDEs can be implemented by subclassing :class:`SDEBase` to specify the
     evolution rate and an associated noise realization. Overwrite
-    :meth:`make_noise_realization` (together with :meth:`PDEBase.make_evolution_rate`)
+    :meth:`_make_noise_realization` (together with :meth:`PDEBase.make_evolution_rate`)
     to support all backends.
     """
 
@@ -558,8 +556,8 @@ class SDEBase(PDEBase):
 
         Note:
             If more complicated noise structures are required, overwrite
-            :meth:`SDEBase.make_noise_realization` to provide a custom noise realization
-            for all backends.
+            :meth:`SDEBase.make_noise_variance` to provide a custom noise variance for
+            all backends.
         """
         super().__init__(rng=rng)
         self.noise = np.asanyarray(noise)
@@ -575,207 +573,91 @@ class SDEBase(PDEBase):
         # check for self.noise, but do not assume it is defined in case __init__ is not
         # called in a subclass
         noise = getattr(self, "noise", 0)
-        return not np.allclose(noise, 0, atol=1e-14)
+        has_noise_var = not np.allclose(noise, 0, atol=1e-14)
+        return has_noise_var or hasattr(self, "_make_noise_realization")
 
-    def noise_realization(
-        self, state: TField, t: float = 0, *, label: str = "Noise realization"
-    ) -> TField:
-        """Returns a realization for the noise.
+    @overload
+    def make_noise_variance(
+        self, state: TField, *, backend: BackendBase[TNativeArray]
+    ) -> Callable[[TNativeArray, float], TNativeArray]: ...
 
-        Args:
-            state (:class:`~pde.fields.ScalarField`):
-                The scalar field describing the concentration distribution
-            t (float):
-                The current time point
-            label (str):
-                The label for the returned field
+    @overload
+    def make_noise_variance(
+        self,
+        state: TField,
+        *,
+        backend: BackendBase[TNativeArray],
+        ret_diff: Literal[False],
+    ) -> Callable[[TNativeArray, float], TNativeArray]: ...
 
-        Returns:
-            :class:`~pde.fields.ScalarField`:
-            Scalar field describing the evolution rate of the PDE
-        """
-        result: TField
-        if self.is_sde:
-            if isinstance(state, FieldCollection):
-                # multiple fields with potentially different noise strengths
-                result = state.copy(label=label)
-                noises_var = np.broadcast_to(self.noise, len(state))
+    @overload
+    def make_noise_variance(
+        self,
+        state: TField,
+        *,
+        backend: BackendBase[TNativeArray],
+        ret_diff: Literal[True],
+    ) -> Callable[[TNativeArray, float], tuple[TNativeArray, TNativeArray]]: ...
 
-                for field, noise_var in zip(result, noises_var, strict=False):
-                    if noise_var == 0:
-                        field.data.fill(0)
-                    else:
-                        field.data = field.random_normal(  # type: ignore
-                            state.grid,
-                            std=np.sqrt(noise_var),
-                            scaling="physical",
-                            dtype=state.dtype,
-                            rng=self.rng,
-                        )
-
-            elif isinstance(state, DataFieldBase):
-                # a single field
-                noise_var = self.noise
-                result = state.random_normal(
-                    state.grid,
-                    std=np.sqrt(self.noise),
-                    scaling="physical",
-                    dtype=state.dtype,
-                    rng=self.rng,
-                )
-
-            else:
-                raise TypeError
-
-        else:
-            # no noise
-            result = state.from_state(state.attributes.copy(), data="zeros")
-
-        if label:
-            result.label = label
-        return result
-
-    def _make_noise_realization_collection(
-        self, state: FieldCollection, backend: BackendBase
-    ) -> Callable[[NumericArray, float], NumericArray | None]:
-        """Return a function for determining the noise for a field collection.
-
-        Args:
-            state (:class:`~pde.fields.collections.FieldCollection`):
-                An example for the state from which the grid and other information can
-                be extracted.
-            backend (:class:`~pde.backends.base.BackendBase`):
-                The backend used to build the function.
-
-        Returns:
-            callable: Function calculating the noise realization
-        """
-        data_shape: tuple[int, ...] = state.data.shape
-        cell_volumes = state.grid.cell_volumes
-
-        # determine the noise variance of each individual spatial slice
-        noise_vars_field = np.broadcast_to(self.noise, len(state))
-        noise_var: NumericArray = np.empty(data_shape[0])
-        for n, var in enumerate(noise_vars_field):
-            noise_var[state._slices[n]] = var
-
-        if backend.implementation in {"numba", "numpy", "jax"}:
-            # TODO: Implement noise determination on jax backend. This will likely only
-            # be necessary once we move more of the simulation loop to the device, so
-            # the whole time step is calculated on the device
-
-            # determine noise realization for slices with non-zero variance
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-                out = np.empty(data_shape)
-                for n in range(data_shape[0]):
-                    if noise_var[n] == 0:
-                        out[n].fill(0)
-                    else:
-                        scale = np.sqrt(noise_var[n] / cell_volumes)
-                        out[n] = scale * np.random.randn(*data_shape[1:])
-                return out
-
-            if backend.implementation == "numba":
-                noise_realization = backend.compile_function(noise_realization)
-
-        else:
-            # Determine noise realization for all slices. This implementation is mainly
-            # for `torch`, which does not support the `if` construct above.
-
-            @backend.compile_function
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-                out = np.empty(data_shape)
-                for n in range(len(state_data)):
-                    # Note that this evaluates the noise even if the variance is zero
-                    scale = np.sqrt(noise_var[n] / cell_volumes)
-                    out[n] = scale * np.random.randn(*state_data[n].shape)
-                return out
-
-        return noise_realization
-
-    def make_noise_realization(
-        self, state: TField, backend: BackendBase
-    ) -> Callable[[TNativeArray, float], TNativeArray | None]:
-        """Return a function for determining one realization of the noise term.
-
-        These functions generally assume that the field data is provided in the native
-        form of the backend.
+    def make_noise_variance(
+        self,
+        state: TField,
+        *,
+        backend: BackendBase[TNativeArray],
+        ret_diff: bool = False,
+    ) -> Callable[
+        [TNativeArray, float], TNativeArray | tuple[TNativeArray, TNativeArray]
+    ]:
+        """Make function that calculates noise variance.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted.
-            backend (:class:`~pde.backends.base.BackendBase`):
-                The backend used to build the function. Note that the torch backend
-                seems to have weak random number generators that might lead to
-                spurious correlations.
+            backend (str):
+                Determines the backend.
+            ret_diff (bool):
+                Determines whether only the noise variance or also its derivative with
+                respect to the field at this position is returned.
 
         Returns:
-            callable: Function calculating the noise realization
+            A function with signature (state_data, t) that either returns just the noise
+            variance or also its derivative, depending on `ret_diff`.
         """
-        if getattr(self, "noise", None) is None or not self.is_sde:
-
-            def noise_realization(
-                state_data: NumericArray, t: float
-            ) -> NumericArray | None:
-                """Helper function returning a noise realization."""
-                return None
-
-            return noise_realization  # type: ignore
-
-        if state.dtype != float:
-            msg = "Noise is only supported for float types"
-            raise TypeError(msg)
-
+        grid = state.grid
         if isinstance(state, DataFieldBase):
-            # standard case of just one field
+            # support different variance for each element in potential tensor
+            noise_vars = np.broadcast_to(self.noise, state.data_shape)
 
-            data_shape: tuple[int, ...] = state.data.shape
-            scale = np.sqrt(float(self.noise) / state.grid.cell_volumes)
+        elif isinstance(state, FieldCollection):
+            # support different variance for each field
+            noise_var = np.broadcast_to(self.noise, len(state))
+            noise_vars = np.empty(state.data.shape[0])
+            for i, var in enumerate(noise_var):
+                noise_vars[state._slices[i]] = var
 
-            if backend.implementation == "jax":
-                from jax import random as jrandom
-                from jax.experimental.random import stateful_rng
+        else:
+            raise TypeError
 
-                # initialize jax random number generator with numpy random number
-                seed = self.rng.integers(0, np.iinfo(np.uint32).max + 1)
-                rng = stateful_rng(seed)
+        noise_vars = noise_vars.reshape(state.data_shape + (1,) * grid.num_axes)
+        noise_vars_native: TNativeArray = backend.numpy_to_native(noise_vars)
 
-                def noise_realization(state_data: jax.Array, t: float) -> jax.Array:  # type: ignore
-                    """Helper function returning a noise realization."""
-                    key = rng.key()
-                    return scale * jrandom.normal(key, shape=data_shape)  # type: ignore
+        if ret_diff:
+            noise_vars_diff_native = backend.numpy_to_native(np.zeros_like(noise_vars))
 
-            elif backend.implementation == "torch":
-                from ..backends.torch import TorchBackend
-                from ..backends.torch.utils import TorchGaussianNoise
+            def noise_variance_diff(
+                state_data: TNativeArray, t: float
+            ) -> tuple[TNativeArray, TNativeArray]:
+                """Calculates noise variance and its derivative."""
+                return noise_vars_native, noise_vars_diff_native
 
-                assert isinstance(backend, TorchBackend)
-                noise_realization = TorchGaussianNoise(
-                    data_shape, dtype=backend.get_numpy_dtype(state.dtype), scale=scale
-                )
+            return noise_variance_diff
 
-            else:
-                # assume that other backends support the numpy random number interface
+        def noise_variance(state_data: TNativeArray, t: float) -> TNativeArray:
+            """Calculates noise variance."""
+            return noise_vars_native
 
-                def noise_realization(
-                    state_data: NumericArray, t: float
-                ) -> NumericArray | None:
-                    """Helper function returning a noise realization."""
-                    return scale * np.random.randn(*data_shape)  # type: ignore
-
-            return noise_realization  # type: ignore
-
-        # Deal with the more complicated case of collections next, where we assume
-        # different noise strengths for each field
-        assert isinstance(state, FieldCollection)
-        return self._make_noise_realization_collection(state, backend)  # type: ignore
+        return noise_variance
 
 
 def expr_prod(factor: float, expression: str) -> str:

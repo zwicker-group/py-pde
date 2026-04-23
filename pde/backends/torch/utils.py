@@ -47,22 +47,29 @@ class TorchOperatorBase(torch.nn.Module):
 class TorchGaussianNoise(TorchOperatorBase):
     """Operator that returns uncorrelated Gaussian random field."""
 
-    def __init__(self, data_shape, dtype, scale):
+    def __init__(
+        self, data_shape, dtype, scale=1, generator: torch.Generator | None = None
+    ):
         """
         Args:
             data_shape (tuple of ints):
                 Shape of the output array
             dtype:
                 Dtype of the
-            scale (_type_): _description_
+            scale (float or array):
+                Scaling of each entry in the field
+            generator (:class:`torch.Generator` or None):
+                Random number generator
         """
         super().__init__(dtype=dtype)
         self.data_shape = data_shape
-        self.register_array("scale", scale)
+        self.register_array("scale", np.asarray(scale))
+        self.generator = generator
 
-    def forward(self, state_data: torch.Tensor, t: float):
-        # TODO: use torch.Generator(device=device).manual_seed(1) as argument to randn
-        return self.scale * torch.randn(self.data_shape, device=state_data.device)  # type: ignore
+    def forward(self):
+        return self.scale * torch.randn(
+            self.data_shape, device=self.scale.device, generator=self.generator
+        )
 
 
 def torch_heaviside(x1: torch.Tensor, x2: torch.Tensor | None = None) -> torch.Tensor:

@@ -115,6 +115,7 @@ class FieldCollection(FieldBase):
 
         # initialize the data from the individual fields
         data_arr = number_array(fields_data, dtype=dtype, copy=None)
+        self.data_shape = (len(data_arr),)
 
         # initialize the class
         super().__init__(grid, data_arr, label=label)

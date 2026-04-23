@@ -732,6 +732,39 @@ class JaxBackend(BackendBase[jax.Array]):
         # get the compiled right hand side
         return self.compile_function(rhs_native)
 
+    def make_gaussian_noise(
+        self, field: TField, *, rng: np.random.Generator
+    ) -> Callable[[], jax.Array]:
+        """Create a function generating Gaussian white noise.
+
+        This noise is already scaled to respect different cell volumes of the grid.
+
+        Args:
+            field (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
+                used to initialize the seed.
+        """
+        from jax import random as jrandom
+        from jax.experimental.random import stateful_rng
+
+        data_shape: tuple[int, ...] = field.data.shape
+        scale = np.sqrt(1 / field.grid.cell_volumes)
+
+        # initialize jax random number generator with numpy random number
+        seed = rng.integers(0, np.iinfo(np.uint32).max + 1)
+        jax_rng = stateful_rng(seed)
+
+        @self.compile_function
+        def gaussian_noise() -> jax.Array:
+            """Helper function returning a noise realization."""
+            key = jax_rng.key()
+            return scale * jrandom.normal(key, shape=data_shape)  # type: ignore
+
+        return gaussian_noise
+
     def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
         """Create a field-based stepping function for a given solver.
 
@@ -757,7 +790,7 @@ class JaxBackend(BackendBase[jax.Array]):
         def stepper(state: TField, t_start: float, t_end: float) -> float:
             """Advance `state` by executing the backend-level stepping function."""
             # push state data to native backend
-            state_tensor: jax.Array = solver.backend.numpy_to_native(state.data)  # type: ignore
+            state_tensor: jax.Array = solver.backend.numpy_to_native(state.data)
             # execute the backend-level stepping function
             state_tensor, t_last = inner_stepper(state_tensor, t_start, t_end)
             # retrieve data from native backend

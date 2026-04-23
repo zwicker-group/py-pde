@@ -145,18 +145,26 @@ class EulerStepper(TorchStepper):
 
 
 class EulerMaruyamaStepper(TorchStepper):
-    def __init__(self, rhs: TorchRHSType, rhs_noise: TorchRHSType):
+    def __init__(
+        self,
+        rhs: TorchRHSType,
+        noise_var: TorchRHSType,
+        gaussian_noise: torch.nn.Module,
+    ):
         """Initialize the Euler-Maruyama single-step module.
 
         Args:
             rhs (callable):
                 Function evaluating the deterministic time derivative.
-            rhs_noise (callable):
-                Function evaluating the stochastic contribution.
+            noise_var (callable):
+                Function evaluating the noise_variance
+            gaussian_noise (callable):
+                Function providing Gaussian random field
         """
         super().__init__()
         self.rhs = rhs
-        self.rhs_noise = rhs_noise
+        self.noise_var = noise_var
+        self.gaussian_noise = gaussian_noise
 
     def single_step(
         self, state_data: torch.Tensor, t: float, dt: float
@@ -165,14 +173,13 @@ class EulerMaruyamaStepper(TorchStepper):
         # we need to wrap time in a tensor to prevent re-compilation of RHS
         t_device = torch.tensor(t, device=state_data.device)
 
-        # deterministic step
+        # evaluate deterministic part and variance without modifying field, yet
         evolution_rate = self.rhs(state_data, t_device)
-        state_data = state_data + dt * evolution_rate
+        noise_var = self.noise_var(state_data, t_device)
 
-        # add noise
-        noise_realization = self.rhs_noise(state_data, t_device)
-        state_data = state_data + torch.sqrt(torch.tensor(dt)) * noise_realization
-        return state_data
+        # change the state
+        scale = torch.sqrt(torch.tensor(dt) * noise_var)
+        return state_data + dt * evolution_rate + scale * self.gaussian_noise()  # type: ignore
 
 
 class FixedSolver(torch.nn.Module):
@@ -253,8 +260,16 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperT
     # get compiled version of a single step
     if isinstance(solver, EulerSolver):
         if solver.pde.is_sde:
-            rhs_noise = solver.backend._make_pde_rhs_noise(solver.pde, state)
-            stepper: TorchStepper = EulerMaruyamaStepper(rhs, rhs_noise)
+            if hasattr(solver.pde, "_make_noise_realization"):
+                msg = "_make_noise_realization interface not supported by torch backend"
+                raise NotImplementedError(msg)
+            noise_var = solver.pde.make_noise_variance(  # type: ignore
+                state, backend=solver.backend, ret_diff=False
+            )
+            gaussian_noise = solver.backend.make_gaussian_noise(
+                state, rng=solver.pde.rng
+            )
+            stepper: TorchStepper = EulerMaruyamaStepper(rhs, noise_var, gaussian_noise)  # type: ignore
         else:
             stepper = EulerStepper(rhs)
     else:

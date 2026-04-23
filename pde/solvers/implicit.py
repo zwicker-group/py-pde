@@ -121,13 +121,18 @@ class ImplicitSolver(SolverBase):
             dt (float):
                 Time step of the implicit step
         """
+        if hasattr(self.pde, "_make_noise_realization"):
+            msg = "Implicit stepper cannot handle `_make_noise_realization` interface"
+            raise NotImplementedError(msg)
+
         self.info["function_evaluations"] = 0
         self.info["stochastic"] = True
 
         # get the function that calculates the noise
         rhs = self.backend.make_pde_rhs(self.pde, state)
-        rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
-        rhs_noise = self.backend.compile_function(rhs_noise)
+        fn = self.pde.make_noise_variance(state, backend=self.backend, ret_diff=False)  # type: ignore
+        noise_var = self.backend.compile_function(fn)
+        gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)
 
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
@@ -142,13 +147,13 @@ class ImplicitSolver(SolverBase):
             state_t = state_data.copy()
             state_prev = nx.empty_like(state_data)
 
-            # estimate state at next time point
+            # evaluate deterministic part and variance without modifying field, yet
             evolution_rate = rhs(state_data, t)
-            noise_realization = rhs_noise(state_data, t)
-            if noise_realization is not None:
-                # add the noise to the reference state at the current time point and
-                # adept the state at the next time point iteratively below
-                state_t += nx.sqrt(dt) * noise_realization
+            noise_std_field = noise_var(state_data, t)
+
+            # add the noise to the reference state at the current time point and
+            # adept the state at the next time point iteratively below
+            state_t += nx.sqrt(dt) * noise_std_field * gaussian_noise()
             state_data[:] = state_t + dt * evolution_rate  # estimated new state
 
             # fixed point iteration for improving state after dt

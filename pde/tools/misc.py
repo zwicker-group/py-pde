@@ -367,7 +367,8 @@ def get_array_namespace(arr: TNativeArray) -> types.ModuleType:
     """Get the namespace associated with an array.
 
     This function should be used to write general functions that can work with many
-    backends, such as :mod:`jax`.
+    backends, such as :mod:`jax`. We define this as a function, so we can overload this
+    function for the `numba` backend, which does not yet support __array_namespace__.
 
     Args:
         arr (:class:`~numpy.ndarray` or another array type):
