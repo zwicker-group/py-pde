@@ -153,7 +153,7 @@ class JaxBackend(BackendBase[jax.Array]):
             return jax.device_put(value, self.device)
         if isinstance(value, np.ndarray):
             dtype = self.get_jax_dtype(value.dtype)
-            with np.errstate(under="ignore", over="ignore"):
+            with np.errstate(all="ignore"):  # ghost cells might have arbitrary values
                 return jax.numpy.asarray(value, dtype=dtype, device=self.device)  # type: ignore
         msg = f"Unsupported type `{type(value).__name__}"
         raise TypeError(msg)
