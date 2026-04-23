@@ -11,6 +11,8 @@ from pde import PDE, ScalarField, UnitGrid
 class AllenCahnNoisePDE(PDE):
     """Allen–Cahn PDE with custom noise implementation."""
 
+    use_noise_variance = True
+
     def make_noise_variance(self, state, *, backend, ret_diff=False):
         """Make function that calculates noise variance."""
         noise = float(self.noise)

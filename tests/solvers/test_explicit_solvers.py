@@ -253,6 +253,8 @@ def test_stochastic_solvers_two_interfaces(backend, rng):
 
     class DiffusionNoisePDE(DiffusionPDE):
         custom_noise = 0.1
+        use_noise_variance = False
+        use_noise_realization = True
 
         def _make_noise_realization(self, state, backend):
             data_shape = state.data.shape
@@ -264,7 +266,7 @@ def test_stochastic_solvers_two_interfaces(backend, rng):
 
             return noise_realization
 
-    eq1 = DiffusionNoisePDE(noise=0, rng=rng)
+    eq1 = DiffusionNoisePDE(rng=rng)
     eq2 = DiffusionPDE(noise=0.1, rng=rng)
 
     field = ScalarField(UnitGrid([16]))

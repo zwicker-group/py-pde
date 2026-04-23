@@ -90,6 +90,13 @@ class PDEBase(metaclass=ABCMeta):
     many cases, PDEs are defined locally and no such synchronization is necessary. Note
     that the virtual points at the boundaries are synchronized automatically."""
 
+    use_noise_variance: bool = False
+    """bool: Flag indicating that a stochastic differential equation should be solved
+    with noise given via :meth:`~pde.pdes.base.SDEBase.make_noise_variance`."""
+    use_noise_realization: bool = False
+    """bool: Flag indicating that a stochastic differential equation should be solved
+    with noise given via :meth:`~pde.pdes.base.SDEBase._make_noise_realization`."""
+
     _logger: logging.Logger
 
     def __init__(self, *, rng: np.random.Generator | None = None):
@@ -538,6 +545,9 @@ class SDEBase(PDEBase):
     to support all backends.
     """
 
+    use_noise_variance: bool = True
+    use_noise_realization: bool = False
+
     def __init__(
         self,
         *,
@@ -554,7 +564,7 @@ class SDEBase(PDEBase):
                 each field in coupled PDEs.
             noise_interpretation (str):
                 Interpretation of the stochastic differential equation. Possible values
-                are `ito`, `stratonovich`, and `anit-ito`. Solvers can use this
+                are `ito`, `stratonovich`, and `anti-ito`. Solvers can use this
                 information to implement drift terms that appear for multiplicative
                 noise, which typically only works when
                 :meth:`~pde.pdes.base.SDEBase.make_noise_variance` also returns the
@@ -582,13 +592,14 @@ class SDEBase(PDEBase):
 
         The :class:`SDEBase` class supports additive Gaussian white noise, whose
         magnitude is controlled by the `noise` property. In this case, `is_sde` is
-        `True` if `self.noise != 0`.
+        `True` if `self.noise != 0`. Sub-classes might need to set `is_sde` explicitly
+        to signal that they define a stochastic partial differential equation.
         """
         # check for self.noise, but do not assume it is defined in case __init__ is not
         # called in a subclass
         noise = getattr(self, "noise", 0)
         has_noise_var = not np.allclose(noise, 0, atol=1e-14)
-        return has_noise_var or hasattr(self, "_make_noise_realization")
+        return (self.use_noise_variance and has_noise_var) or self.use_noise_realization
 
     @overload
     def make_noise_variance(

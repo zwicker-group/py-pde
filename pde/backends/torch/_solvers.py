@@ -150,6 +150,7 @@ class EulerMaruyamaStepper(EulerStepper):
     def __init__(self, solver: EulerSolver, state: TField):
         """Initialize the Euler-Maruyama single-step module."""
         super().__init__(solver, state)
+        assert solver.pde.use_noise_variance
         self.noise_drift_factor = solver._noise_drift_factor
         self.has_noise_drift_term = self.noise_drift_factor != 0
         self.noise_var = solver.pde.make_noise_variance(  # type: ignore
@@ -188,6 +189,7 @@ class EulerMilsteinStepper(EulerStepper):
     def __init__(self, solver: MilsteinSolver, state: TField):
         """Initialize the Euler-Milstein single-step module."""
         super().__init__(solver, state)
+        assert solver.pde.use_noise_variance
         self.noise_drift_factor = solver._noise_drift_factor
         self.noise_var = solver.pde.make_noise_variance(  # type: ignore
             state, backend=solver.backend, ret_diff=True
@@ -294,7 +296,7 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperT
     post_step_hook = _make_post_step_hook(solver, state, backend=solver.backend)
 
     # get compiled version of a single step
-    if solver.pde.is_sde and hasattr(solver.pde, "_make_noise_realization"):
+    if solver.pde.is_sde and solver.pde.use_noise_realization:
         msg = "_make_noise_realization interface not supported by torch backend"
         raise NotImplementedError(msg)
     if isinstance(solver, MilsteinSolver):
