@@ -7,7 +7,13 @@ import pytest
 
 from pde import PDE, DiffusionPDE, MemoryStorage, ScalarField, UnitGrid
 from pde.pdes import PDEBase
-from pde.solvers import Controller, EulerSolver, ExplicitMPISolver, RungeKuttaSolver
+from pde.solvers import (
+    Controller,
+    EulerSolver,
+    ExplicitMPISolver,
+    MilsteinSolver,
+    RungeKuttaSolver,
+)
 from pde.tools import mpi
 
 ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
@@ -91,17 +97,18 @@ def test_solvers_time_dependent(solver, adaptive):
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
-def test_stochastic_solvers(backend, rng):
+@pytest.mark.parametrize("solver", [EulerSolver, MilsteinSolver])
+def test_stochastic_solvers(backend, solver, rng):
     """Test simple version of the stochastic solver."""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
     eq = DiffusionPDE()
     seq = DiffusionPDE(noise=1e-10)
 
-    solver1 = EulerSolver(eq, backend=backend)
+    solver1 = solver(eq, backend=backend)
     c1 = Controller(solver1, t_range=1, tracker=None)
     s1 = c1.run(field, dt=1e-3)
 
-    solver2 = EulerSolver(seq, backend=backend)
+    solver2 = solver(seq, backend=backend)
     c2 = Controller(solver2, t_range=1, tracker=None)
     s2 = c2.run(field, dt=1e-3)
 
@@ -111,6 +118,65 @@ def test_stochastic_solvers(backend, rng):
 
     assert not solver1.info["dt_adaptive"]
     assert not solver2.info["dt_adaptive"]
+
+
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+@pytest.mark.parametrize("solver", [EulerSolver, MilsteinSolver])
+def test_stochastic_solvers_geometric_brownian_motion(backend, solver, rng):
+    """Compare stochastic solvers to the analytical GBM moments."""
+
+    class GeometricBrownianMotion(PDE):
+        """Simple geometric Brownian motion with multiplicative noise."""
+
+        def __init__(self, mu: float, sigma: float, *, rng):
+            # Use a non-zero noise flag so the stochastic solver path is enabled.
+            super().__init__({"c": f"{mu} * c"}, noise=1, rng=rng)
+            self.mu = float(mu)
+            self.sigma = float(sigma)
+
+        def make_noise_variance(self, state, *, backend, ret_diff=False):
+            sigma2 = self.sigma**2
+
+            if ret_diff:
+
+                def noise_variance(state_data, t):
+                    variance = sigma2 * state_data**2
+                    return variance, 2 * sigma2 * state_data
+
+                return noise_variance
+
+            def noise_variance(state_data, t):
+                return sigma2 * state_data**2
+
+            return noise_variance
+
+    mu = 0.35
+    sigma = 0.25
+    initial_value = 1.4
+    t_range = 0.5
+    dt = 5e-4
+    num_realizations = 8192
+
+    eq = GeometricBrownianMotion(mu, sigma, rng=rng)
+    field = ScalarField(UnitGrid([num_realizations]), data=initial_value)
+    result = eq.solve(
+        field,
+        t_range=t_range,
+        dt=dt,
+        solver=solver,
+        backend=backend,
+        tracker=None,
+    )
+
+    data = np.ravel(result.data)
+    mean_expected = initial_value * np.exp(mu * t_range)
+    var_expected = (
+        initial_value**2 * np.exp(2 * mu * t_range) * (np.exp(sigma**2 * t_range) - 1)
+    )
+
+    np.testing.assert_allclose(data.mean(), mean_expected, rtol=0.03)
+    np.testing.assert_allclose(data.var(), var_expected, rtol=0.1)
+    assert eq.diagnostics["solver"]["stochastic"]
 
 
 def test_stochastic_adaptive_solver(caplog, rng):
@@ -167,15 +233,16 @@ def test_stochastic_solvers_two_interfaces(backend, rng):
     assert eq2.diagnostics["solver"]["stochastic"]
 
 
-def test_unsupported_stochastic_solvers(rng):
+@pytest.mark.parametrize(
+    "solver", ["adams-bashforth", "crank-nicolson", "runge-kutta", "scipy"]
+)
+def test_unsupported_stochastic_solvers(solver, rng):
     """Test some solvers that do not support stochasticity."""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
     eq = DiffusionPDE(noise=1)
 
     with pytest.raises(RuntimeError):
-        eq.solve(field, 1, solver="runge-kutta", tracker=None)
-    with pytest.raises(RuntimeError):
-        eq.solve(field, 1, solver="scipy", scheme="runge-kutta", tracker=None)
+        eq.solve(field, 1, solver=solver, tracker=None)
 
 
 @pytest.mark.parametrize("solver", ["euler", "runge-kutta"])

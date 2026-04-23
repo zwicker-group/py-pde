@@ -6,16 +6,16 @@ an executable stepping function that advances the current state.
 .. autosummary::
    :nosignatures:
 
-   ~base.SolverBase
+   ~adams_bashforth.AdamsBashforthSolver
    ~base.AdaptiveSolverBase
+   ~base.SolverBase
    ~controller.Controller
-   ~euler.ExplicitSolver
+   ~crank_nicolson.CrankNicolsonSolver
    ~euler.EulerSolver
-   ~runge_kutta.RungeKuttaSolver
    ~explicit_mpi.ExplicitMPISolver
    ~implicit.ImplicitSolver
-   ~crank_nicolson.CrankNicolsonSolver
-   ~adams_bashforth.AdamsBashforthSolver
+   ~milstein.MilsteinSolver
+   ~runge_kutta.RungeKuttaSolver
    ~scipy.ScipySolver
    ~base.registered_solvers
 
@@ -26,11 +26,13 @@ Inheritance structure of the classes:
 .. inheritance-diagram::
         adams_bashforth.AdamsBashforthSolver
         crank_nicolson.CrankNicolsonSolver
-        explicit.EulerSolver
-        explicit.RungeKuttaSolver
-        implicit.ImplicitSolver
-        scipy.ScipySolver
+        euler.EulerSolver
+        euler.MilsteinSolver
         explicit_mpi.ExplicitMPISolver
+        implicit.ImplicitSolver
+        milstein.MilsteinSolver
+        runge_kutta.RungeKuttaSolver
+        scipy.ScipySolver
    :parts: 1
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
@@ -42,6 +44,7 @@ from .controller import Controller  # noqa: F401
 from .crank_nicolson import CrankNicolsonSolver  # noqa: F401
 from .euler import EulerSolver, ExplicitSolver  # noqa: F401
 from .implicit import ImplicitSolver  # noqa: F401
+from .milstein import MilsteinSolver  # noqa: F401
 from .runge_kutta import RungeKuttaSolver  # noqa: F401
 from .scipy import ScipySolver  # noqa: F401
 

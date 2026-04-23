@@ -22,6 +22,7 @@ from pde.solvers import (
     CrankNicolsonSolver,
     EulerSolver,
     ImplicitSolver,
+    MilsteinSolver,
     RungeKuttaSolver,
     ScipySolver,
     registered_solvers,
@@ -32,6 +33,7 @@ SOLVER_CLASSES = [
     CrankNicolsonSolver,
     EulerSolver,
     ImplicitSolver,
+    MilsteinSolver,
     RungeKuttaSolver,
     ScipySolver,
 ]
@@ -172,7 +174,7 @@ def test_adaptive_solver_backend_support(solver, backend, caplog):
         np.testing.assert_allclose(result.data, expect.data, atol=1e-2, rtol=1e-2)
 
 
-@pytest.mark.parametrize("solver", [EulerSolver, ImplicitSolver])
+@pytest.mark.parametrize("solver", [EulerSolver, MilsteinSolver, ImplicitSolver])
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_stochastic_solver_backend_support(solver, backend, caplog, rng):
     """Test all backends for all deterministic solvers with fixed dt."""
