@@ -1,4 +1,4 @@
-"""Defines an explicit solver for the Euler scheme
+"""Defines an explicit solver for the Euler scheme.
 
 .. autosummary::
    :nosignatures:
