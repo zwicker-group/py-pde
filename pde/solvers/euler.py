@@ -22,8 +22,21 @@ from .base import AdaptiveSolverBase, _make_dt_adjuster
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from ..backends.base import BackendBase
     from ..pdes.base import PDEBase
     from ..tools.typing import InnerStepperType, NumericArray, TField
+
+
+NOISE_INTERPRETATIONS: dict[str, float] = {
+    "ito": 0.0,
+    "itô": 0.0,
+    "stratonovich": 0.5,
+    "anti-ito": 1.0,
+    "anti-itô": 1.0,
+    "hänggi-klimontovich": 1.0,
+    "hanggi-klimontovich": 1.0,
+}
+"""dict: dictionary translating noise interpretations to the respective fraction."""
 
 
 def _check_deprecated_noise_realization(pde: PDEBase) -> None:
@@ -43,6 +56,33 @@ class EulerSolver(AdaptiveSolverBase):
     """Explicit Euler solver."""
 
     name = "euler"
+
+    def __init__(
+        self,
+        pde: PDEBase,
+        *,
+        backend: str | BackendBase = "auto",
+        adaptive: bool = False,
+        tolerance: float = 1e-4,
+    ):
+        """
+        Args:
+            pde (:class:`~pde.pdes.base.PDEBase`):
+                The partial differential equation that should be solved
+            backend (str):
+                The backend used for numerical operations
+            adaptive (bool):
+                Whether to use adaptive time stepping
+            tolerance (float):
+                Error tolerance for adaptive time stepping
+        """
+        super().__init__(pde, backend=backend, adaptive=adaptive, tolerance=tolerance)
+
+    @property
+    def _noise_drift_factor(self) -> float:
+        """float: alpha-parameter of the noise interpretation"""
+        interpretation = getattr(self.pde, "noise_interpretation", "ito")
+        return NOISE_INTERPRETATIONS[interpretation]
 
     def _make_single_step_fixed_dt_stochastic(
         self, state: TField, dt: float
@@ -64,7 +104,11 @@ class EulerSolver(AdaptiveSolverBase):
         rhs_pde = self.backend.make_pde_rhs(self.pde, state)
 
         # handle with first noise interface based on supplying the noise variance
-        fn = self.pde.make_noise_variance(state, backend=self.backend, ret_diff=False)  # type: ignore
+        noise_drift_factor = self._noise_drift_factor
+        has_noise_drift_term = noise_drift_factor != 0
+        fn = self.pde.make_noise_variance(  # type: ignore
+            state, backend=self.backend, ret_diff=has_noise_drift_term
+        )
         noise_var = self.backend.compile_function(fn)
         gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)
 
@@ -88,11 +132,14 @@ class EulerSolver(AdaptiveSolverBase):
             # support any backend following Python Array API
             nx = get_array_namespace(state_data)
 
-            # evaluate deterministic part and variance without modifying field, yet
+            # evaluate field-dependent terms first without modifying fields
             evolution_rate = rhs_pde(state_data, t)
-            noise_std_field = nx.sqrt(noise_var(state_data, t))
+            if has_noise_drift_term:
+                noise_var_field, noise_var_diff_field = noise_var(state_data, t)
+            else:
+                noise_var_field = noise_var(state_data, t)
 
-            # handle second noise interface
+            # handle second noise interface first so it uses the unchanged field
             if custom_noise:
                 noise_realization = rhs_noise(state_data, t)
                 if noise_realization is not None:
@@ -100,7 +147,11 @@ class EulerSolver(AdaptiveSolverBase):
 
             # apply the deterministic part and the additive noise
             dW = gaussian_noise()
-            state_data += dt * evolution_rate + dt_sqrt * noise_std_field * dW
+            state_data += dt * evolution_rate + dt_sqrt * nx.sqrt(noise_var_field) * dW
+
+            # add a drift term if the interpretation is not Itô
+            if has_noise_drift_term:
+                state_data += 0.5 * dt * noise_drift_factor * noise_var_diff_field
 
             return state_data
 

@@ -83,6 +83,7 @@ class PDE(SDEBase):
         user_funcs: dict[str, Callable] | None = None,
         consts: dict[str, NumberOrArray] | None = None,
         noise: ArrayLike | dict[str, NumberOrArray] = 0,
+        noise_interpretation: str = "ito",
         rng: np.random.Generator | None = None,
     ):
         r"""
@@ -137,6 +138,13 @@ class PDE(SDEBase):
                 Different noise magnitudes can be supplied for each field in coupled
                 PDEs by either specifying a sequence of numbers or a dictionary with
                 values for each field.
+            noise_interpretation (str):
+                Interpretation of the stochastic differential equation. Possible values
+                are `ito`, `stratonovich`, and `anit-ito`. Solvers can use this
+                information to implement drift terms that appear for multiplicative
+                noise, which typically only works when
+                :meth:`~pde.pdes.base.SDEBase.make_noise_variance` also returns the
+                derivative of the variance.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
                 used for stochastic simulations. Note that this random number generator
@@ -164,7 +172,9 @@ class PDE(SDEBase):
             msg = "Number of noise strengths does not match field count"
             raise ValueError(msg)
 
-        super().__init__(noise=noise_arr, rng=rng)
+        super().__init__(
+            noise=noise_arr, noise_interpretation=noise_interpretation, rng=rng
+        )
 
         # validate input
         if not isinstance(rhs, dict):

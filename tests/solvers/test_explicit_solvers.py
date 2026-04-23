@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+from scipy import stats
 
 from pde import PDE, DiffusionPDE, MemoryStorage, ScalarField, UnitGrid
 from pde.pdes import PDEBase
@@ -177,6 +178,62 @@ def test_stochastic_solvers_geometric_brownian_motion(backend, solver, rng):
     np.testing.assert_allclose(data.mean(), mean_expected, rtol=0.03)
     np.testing.assert_allclose(data.var(), var_expected, rtol=0.1)
     assert eq.diagnostics["solver"]["stochastic"]
+
+
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+@pytest.mark.parametrize("solver_cls", [EulerSolver, MilsteinSolver])
+@pytest.mark.parametrize("mobility_factor", [0.0, 1.0])
+@pytest.mark.parametrize("interpretation", ["ito", "anti-ito"])
+def test_stochastic_solver_equilibrium(
+    backend, solver_cls, mobility_factor, interpretation, rng
+):
+    """Test wether conversion to Itô representation is correct."""
+    k_val = 0.5  # stiffness of the potential
+
+    class MultiplicativeNoise(PDE):
+        """Simple example with potential multiplicative noise."""
+
+        def __init__(self, k: float, *, rng, noise_interpretation):
+            # Use a non-zero noise flag so the stochastic solver path is enabled.
+            super().__init__(
+                {"c": f"-(1 + {mobility_factor} * c**2) * {k} * c"},
+                noise=1,
+                rng=rng,
+                noise_interpretation=noise_interpretation,
+            )
+
+        def make_noise_variance(self, state, *, backend, ret_diff=False):
+            if ret_diff:
+
+                def noise_variance(state_data, t):
+                    mobility = 1 + mobility_factor * state_data**2
+                    mobility_diff = 2 * mobility_factor * state_data
+                    return 2 * mobility, 2 * mobility_diff  # kBT=1
+
+                return noise_variance
+
+            def noise_variance(state_data, t):
+                mobility = 1 + mobility_factor * state_data**2
+                return 2 * mobility  # kBT=1
+
+            return noise_variance
+
+    # define a simple test case without spatial diffusivity
+    eq = MultiplicativeNoise(k=k_val, rng=rng, noise_interpretation=interpretation)
+
+    # simulate an independent ensemble of points
+    field = ScalarField(UnitGrid([1024]))
+    solver = solver_cls(eq, backend=backend)
+    controller = Controller(solver, t_range=10)
+    result = controller.run(field, dt=1e-3)
+
+    # check whether the points exhibit the expected distribution
+    sigma = 1 / np.sqrt(k_val)
+    test_res = stats.kstest(result.data, "norm", args=(0, sigma))
+    if interpretation == "ito" and mobility_factor != 0:
+        assert test_res.pvalue < 0.05  # expect different distribution
+    else:
+        assert test_res.pvalue > 0.05  # expect Gaussian distribution
 
 
 def test_stochastic_adaptive_solver(caplog, rng):

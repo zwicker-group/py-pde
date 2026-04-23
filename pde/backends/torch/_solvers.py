@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 
-from ...solvers import AdamsBashforthSolver, EulerSolver
+from ...solvers import AdamsBashforthSolver, EulerSolver, MilsteinSolver
 from ...solvers.base import AdaptiveSolverBase, SolverBase
 from ...tools.math import OnlineStatistics
 from .backend import TorchBackend
@@ -125,15 +125,17 @@ class TorchStepper(torch.nn.Module):
 
 
 class EulerStepper(TorchStepper):
-    def __init__(self, rhs: TorchRHSType):
+    def __init__(self, solver: EulerSolver, state: TField):
         """Initialize the explicit Euler single-step module.
 
         Args:
-            rhs (callable):
-                Function evaluating the deterministic time derivative.
+            solver (:class:`~pde.solvers.base.SolverBase`):
+                The solver instance, which determines how the stepper is constructed
+            state (:class:`~pde.fields.base.FieldBase`):
+                Example field from which grid and other information is read
         """
         super().__init__()
-        self.rhs = rhs
+        self.rhs = solver.backend.make_pde_rhs(solver.pde, state)
 
     def single_step(
         self, state_data: torch.Tensor, t: float, dt: float
@@ -141,30 +143,21 @@ class EulerStepper(TorchStepper):
         """Basic implementation of Euler scheme."""
         # we need to wrap time in a tensor to prevent re-compilation of RHS
         t_device = torch.tensor(t, device=state_data.device)
-        return state_data + dt * self.rhs(state_data, t_device)
+        return state_data + dt * self.rhs(state_data, t_device)  # type: ignore
 
 
-class EulerMaruyamaStepper(TorchStepper):
-    def __init__(
-        self,
-        rhs: TorchRHSType,
-        noise_var: TorchRHSType,
-        gaussian_noise: torch.nn.Module,
-    ):
-        """Initialize the Euler-Maruyama single-step module.
-
-        Args:
-            rhs (callable):
-                Function evaluating the deterministic time derivative.
-            noise_var (callable):
-                Function evaluating the noise_variance
-            gaussian_noise (callable):
-                Function providing Gaussian random field
-        """
-        super().__init__()
-        self.rhs = rhs
-        self.noise_var = noise_var
-        self.gaussian_noise = gaussian_noise
+class EulerMaruyamaStepper(EulerStepper):
+    def __init__(self, solver: EulerSolver, state: TField):
+        """Initialize the Euler-Maruyama single-step module."""
+        super().__init__(solver, state)
+        self.noise_drift_factor = solver._noise_drift_factor
+        self.has_noise_drift_term = self.noise_drift_factor != 0
+        self.noise_var = solver.pde.make_noise_variance(  # type: ignore
+            state, backend=solver.backend, ret_diff=self.has_noise_drift_term
+        )
+        self.gaussian_noise = solver.backend.make_gaussian_noise(
+            state, rng=solver.pde.rng
+        )
 
     def single_step(
         self, state_data: torch.Tensor, t: float, dt: float
@@ -174,12 +167,55 @@ class EulerMaruyamaStepper(TorchStepper):
         t_device = torch.tensor(t, device=state_data.device)
 
         # evaluate deterministic part and variance without modifying field, yet
-        evolution_rate = self.rhs(state_data, t_device)
-        noise_var = self.noise_var(state_data, t_device)
+        evolution_rate = self.rhs(state_data, t_device)  # type: ignore
+        if self.has_noise_drift_term:
+            noise_var, noise_var_diff = self.noise_var(state_data, t_device)
+        else:
+            noise_var = self.noise_var(state_data, t_device)
 
         # change the state
         scale = torch.sqrt(torch.tensor(dt) * noise_var)
-        return state_data + dt * evolution_rate + scale * self.gaussian_noise()  # type: ignore
+        state_data = state_data + dt * evolution_rate + scale * self.gaussian_noise()
+
+        # add a drift term if the interpretation is not Itô
+        if self.has_noise_drift_term:
+            state_data += 0.5 * dt * self.noise_drift_factor * noise_var_diff
+
+        return state_data
+
+
+class EulerMilsteinStepper(EulerStepper):
+    def __init__(self, solver: MilsteinSolver, state: TField):
+        """Initialize the Euler-Milstein single-step module."""
+        super().__init__(solver, state)
+        self.noise_drift_factor = solver._noise_drift_factor
+        self.noise_var = solver.pde.make_noise_variance(  # type: ignore
+            state, backend=solver.backend, ret_diff=True
+        )
+        self.gaussian_noise = solver.backend.make_gaussian_noise(
+            state, rng=solver.pde.rng
+        )
+
+    def single_step(
+        self, state_data: torch.Tensor, t: float, dt: float
+    ) -> torch.Tensor:
+        """Basic implementation of Euler-Maruyama scheme."""
+        # we need to wrap time in a tensor to prevent re-compilation of RHS
+        t_device = torch.tensor(t, device=state_data.device)
+
+        # evaluate deterministic part and variance without modifying field, yet
+        evolution_rate = self.rhs(state_data, t_device)  # type: ignore
+        noise_var, noise_var_diff = self.noise_var(state_data, t_device)
+
+        # change the state
+        dW = torch.sqrt(torch.tensor(dt)) * self.gaussian_noise()
+        return (  # type: ignore
+            state_data
+            + dt * evolution_rate
+            + 0.5 * dt * self.noise_drift_factor * noise_var_diff
+            + torch.sqrt(noise_var) * dW
+            + 0.25 * noise_var_diff * (dW**2 - dt)
+        )
 
 
 class FixedSolver(torch.nn.Module):
@@ -254,24 +290,20 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperT
 
     dt = float(solver.info["dt"])
     # create subfunctions
-    rhs = solver.backend.make_pde_rhs(solver.pde, state)
+    solver.backend.make_pde_rhs(solver.pde, state)
     post_step_hook = _make_post_step_hook(solver, state, backend=solver.backend)
 
     # get compiled version of a single step
-    if isinstance(solver, EulerSolver):
+    if solver.pde.is_sde and hasattr(solver.pde, "_make_noise_realization"):
+        msg = "_make_noise_realization interface not supported by torch backend"
+        raise NotImplementedError(msg)
+    if isinstance(solver, MilsteinSolver):
+        stepper: TorchStepper = EulerMilsteinStepper(solver, state)
+    elif isinstance(solver, EulerSolver):
         if solver.pde.is_sde:
-            if hasattr(solver.pde, "_make_noise_realization"):
-                msg = "_make_noise_realization interface not supported by torch backend"
-                raise NotImplementedError(msg)
-            noise_var = solver.pde.make_noise_variance(  # type: ignore
-                state, backend=solver.backend, ret_diff=False
-            )
-            gaussian_noise = solver.backend.make_gaussian_noise(
-                state, rng=solver.pde.rng
-            )
-            stepper: TorchStepper = EulerMaruyamaStepper(rhs, noise_var, gaussian_noise)  # type: ignore
+            stepper = EulerMaruyamaStepper(solver, state)
         else:
-            stepper = EulerStepper(rhs)
+            stepper = EulerStepper(solver, state)
     else:
         msg = f"Torch backend does not support {solver}"
         raise NotImplementedError(msg)
@@ -659,22 +691,20 @@ def _make_adaptive_stepper_general(
         )
     else:
         # get a compiled single-step module
-        if isinstance(solver, EulerSolver):
-            stepper = solver.backend.compile_function(EulerStepper(rhs))
-        else:
-            msg = f"Solver {solver} is not supported by torch backend."
-            raise NotImplementedError(msg)
+        msg = f"Solver {solver} is not supported by torch backend."
+        raise NotImplementedError(msg)
+        # stepper.to(solver.backend.device)
 
-        # define the adaptive integrator module
-        inner_solver = TorchAdaptiveGeneralSolver(
-            stepper,
-            dt_init=float(solver.info["dt"]),
-            post_step_hook=post_step_hook,
-            post_step_data=solver.info["post_step_data"],
-            tolerance=float(solver.tolerance),
-            dt_min=float(solver.dt_min),
-            dt_max=float(solver.dt_max),
-        )
+        # # define the adaptive integrator module
+        # inner_solver = TorchAdaptiveGeneralSolver(
+        #     stepper,
+        #     dt_init=float(solver.info["dt"]),
+        #     post_step_hook=post_step_hook,
+        #     post_step_data=solver.info["post_step_data"],
+        #     tolerance=float(solver.tolerance),
+        #     dt_min=float(solver.dt_min),
+        #     dt_max=float(solver.dt_max),
+        # )
     inner_solver.to(solver.backend.device)
 
     # add extra information
