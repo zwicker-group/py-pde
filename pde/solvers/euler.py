@@ -115,7 +115,7 @@ class EulerSolver(AdaptiveSolverBase):
 
         # handle with second noise interface based on supplying a realization
         if use_noise_realization := self.pde.use_noise_realization:
-            rhs_noise = self.pde._make_noise_realization(state, backend=self.backend)  # type: ignore
+            rhs_noise = self.pde.make_noise_realization(state, backend=self.backend)  # type: ignore
         else:
             rhs_noise = _DUMMY_FUNCTION_2ARGS
         rhs_noise = self.backend.compile_function(rhs_noise)

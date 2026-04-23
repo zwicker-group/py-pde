@@ -47,19 +47,6 @@ class ConvergenceError(RuntimeError):
     """Indicates that an implicit step did not converge."""
 
 
-def _check_deprecated_noise_realization(pde: PDEBase) -> None:
-    """Do a quick check for a deprecated method."""
-    if hasattr(pde, "make_noise_realization"):
-        # Deprecated since 2026-04-23
-        warnings.warn(
-            "`make_noise_realiziation` is deprecated. Use `make_noise_variance` or "
-            "`_make_noise_realiziation` instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        pde._make_noise_realization = pde.make_noise_realization  # type: ignore
-
-
 class SolverBase:
     """Base class for persistent PDE solver strategy objects."""
 
@@ -93,7 +80,6 @@ class SolverBase:
             backend (str or :class:`~pde.backends.base.BackendBase`):
                 The backend used for numerical operations
         """
-        _check_deprecated_noise_realization(pde)
         self.pde = pde
         self.info: dict[str, Any] = {"class": self.__class__.__name__}
         if self.pde:

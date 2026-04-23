@@ -95,7 +95,7 @@ class PDEBase(metaclass=ABCMeta):
     with noise given via :meth:`~pde.pdes.base.SDEBase.make_noise_variance`."""
     use_noise_realization: bool = False
     """bool: Flag indicating that a stochastic differential equation should be solved
-    with noise given via :meth:`~pde.pdes.base.SDEBase._make_noise_realization`."""
+    with noise given via :meth:`~pde.pdes.base.SDEBase.make_noise_realization`."""
 
     _logger: logging.Logger
 
@@ -540,8 +540,8 @@ class SDEBase(PDEBase):
     """Base class for defining stochastic partial differential equations (SDEs)
 
     Custom PDEs can be implemented by subclassing :class:`SDEBase` to specify the
-    evolution rate and an associated noise realization. Overwrite
-    :meth:`_make_noise_realization` (together with :meth:`PDEBase.make_evolution_rate`)
+    evolution rate and an associated noise variance (or realization). Overwrite
+    :meth:`make_noise_variance` (together with :meth:`PDEBase.make_evolution_rate`)
     to support all backends.
     """
 

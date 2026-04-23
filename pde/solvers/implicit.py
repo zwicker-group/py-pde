@@ -123,7 +123,7 @@ class ImplicitSolver(SolverBase):
                 Time step of the implicit step
         """
         if self.pde.use_noise_realization:
-            msg = "Implicit stepper cannot handle `_make_noise_realization` interface"
+            msg = "Implicit stepper cannot handle `make_noise_realization` interface"
             raise NotImplementedError(msg)
 
         self.info["function_evaluations"] = 0

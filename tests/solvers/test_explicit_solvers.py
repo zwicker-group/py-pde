@@ -256,7 +256,7 @@ def test_stochastic_solvers_two_interfaces(backend, rng):
         use_noise_variance = False
         use_noise_realization = True
 
-        def _make_noise_realization(self, state, backend):
+        def make_noise_realization(self, state, backend):
             data_shape = state.data.shape
             scale = np.sqrt(float(self.custom_noise) / state.grid.cell_volumes)
 

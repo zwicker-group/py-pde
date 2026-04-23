@@ -297,7 +297,7 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperT
 
     # get compiled version of a single step
     if solver.pde.is_sde and solver.pde.use_noise_realization:
-        msg = "_make_noise_realization interface not supported by torch backend"
+        msg = "make_noise_realization interface not supported by torch backend"
         raise NotImplementedError(msg)
     if isinstance(solver, MilsteinSolver):
         stepper: TorchStepper = EulerMilsteinStepper(solver, state)

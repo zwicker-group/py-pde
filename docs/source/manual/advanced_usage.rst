@@ -481,6 +481,122 @@ In the last step, we define the actual implementation of the evolution rate as
 a local function, which is returned and can be compiled by the backend.
 
 
+Stochastic partial differential equation
+""""""""""""""""""""""""""""""""""""""""
+We also support stochastic differential equations, which can be a lot trickier to deal
+with then their deterministic counterparts.
+To support the most common use cases, we offer two different interfaces to define the
+noise that affects the evolution.
+In the simplest case, one inherits from :class:`~pde.pdes.base.SDEBase`, which already
+implements additive Gaussian white noise.
+The following listing is thus sufficient to enable noise
+
+.. code-block:: python
+
+    class NoisyPDE(SDEBase):
+
+        def evolution_rate(self, state, t=0):
+            ...
+
+
+    eq = NoisyPDE(noise=1)
+
+In this case, the `noise` argument controls the variance of the additive noise.
+
+In many situations, more complex multiplicative noise is needed.
+Multiplicative noise implies that the noise variance depends on the value of the field
+itself.
+To allow such field-dependent noise, one can overwrite the method
+:meth:`~pde.pdes.base.SDEBase.make_noise_variance`, which implements the additive noise
+described above.
+In the simplest case, we thus have
+
+.. code-block:: python
+
+    class NoisyPDE(PDEBase):
+
+        use_noise_variance = True
+
+        def evolution_rate(self, state, t=0):
+            ...
+
+        def make_noise_variance(self, state, backend, ret_diff=False):
+            def noise_variance(state_data, t):
+                return state_data**2
+            return noise_variance
+
+    eq = NoisyPDE()
+
+Here, the factory method returns a function that can be evaluated to determine the noise
+variance depending on the field (and time).
+
+Stochastic differential equations with `multiplicative noise <https://en.wikipedia.org/wiki/Multiplicative_noise>`_
+are much more difficult to analyze and simulate.
+For instance, it is not sufficient to just give the evolution equation, but it needs to
+be accompanied with an *interpretation*.
+By default, we use the standard Itô interpretation, but it is possible to simulate other
+interpretations by supplying the argument ``noise_interpretation`` to subclasses of
+:class:`~pde.pdes.base.SDEBase`.
+If another interpretation, such as ``stratonovich`` or ``anti-ito``, is specified, the
+standard solvers automatically add the corresponding drift terms to convert the equation
+to the standard Itô form.
+To make this possible, the :meth:`~pde.pdes.base.SDEBase.make_noise_variance` now also
+needs to return the derivative of the noise variance with respect to the field values:
+
+.. code-block:: python
+
+    class NoisyPDE(SDEBase):
+
+        use_noise_variance = True
+
+        def evolution_rate(self, state, t=0):
+            ...
+
+        def make_noise_variance(self, state, backend, ret_diff=False):
+            if ret_diff:
+                def noise_variance(state_data, t):
+                    return state_data**2, 2 * state_data
+            else:
+                def noise_variance(state_data, t):
+                    return state_data**2
+            return noise_variance
+
+    eq = NoisyPDE(noise_interpretation="stratonovich")
+
+Note that supplying the derivative is also required to use
+:class:`~pde.solvers.milstein.MilsteinSolver`, which has better convergence properties.
+
+Finally, we offer a completely different way of implementing noises, which is a bit more
+low-level.
+Enabling the :attr:`use_noise_realization` of the PDE, the solvers look for
+:meth:`~pde.pdes.base.SDEBase.make_noise_realization`, which should return a function
+that can be called to determine a realization of the noise, which will be directly used
+during time stepping.
+In this setup, simple additive noise can be implemented as
+
+.. code-block:: python
+
+    class NoisyPDE(SDEBase):
+
+        use_noise_variance = False
+        use_noise_realization = True
+
+        def make_noise_realization(self, state, backend):
+            data_shape = state.data.shape
+            scale = np.sqrt(1 / state.grid.cell_volumes)
+
+            def noise_realization(state_data, t):
+                return scale * np.random.randn(*data_shape)
+
+            return noise_realization
+
+This complex approach is more versatile.
+For example, it allows implementing non-Gaussian or conserved noise, if this is needed.
+However, this approach does not benefit from the automatic evaluation of derivatives,
+which is required to use the :class:`~pde.solvers.milstein.MilsteinSolver` and to
+change the interpretation of the equation.
+
+
 .. _configuration:
 
 Configuration parameters
