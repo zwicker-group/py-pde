@@ -140,11 +140,7 @@ class PDE(SDEBase):
                 values for each field.
             noise_interpretation (str):
                 Interpretation of the stochastic differential equation. Possible values
-<<<<<<< noise
                 are `ito`, `stratonovich`, and `anti-ito`. Solvers can use this
-=======
-                are `ito`, `stratonovich`, and `anit-ito`. Solvers can use this
->>>>>>> master
                 information to implement drift terms that appear for multiplicative
                 noise, which typically only works when
                 :meth:`~pde.pdes.base.SDEBase.make_noise_variance` also returns the
