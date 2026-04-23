@@ -5,28 +5,21 @@ Custom noise
 This example solves a diffusion equation with a custom noise.
 """
 
-import numpy as np
-
 from pde import DiffusionPDE, ScalarField, UnitGrid
 
 
 class DiffusionCustomNoisePDE(DiffusionPDE):
     """Diffusion PDE with custom noise implementation."""
 
-    def noise_realization(self, state, t):
-        """Numpy implementation of spatially dependent noise."""
-        noise_field = ScalarField.random_uniform(state.grid, -self.noise, self.noise)
-        return state.grid.cell_coords[..., 0] * noise_field
-
-    def make_noise_realization(self, state, backend):
-        """Compilable implementation of spatially dependent noise."""
+    def make_noise_variance(self, state, *, backend, ret_diff=False):
+        """Make function that calculates noise variance."""
         noise = float(self.noise)
         x_values = state.grid.cell_coords[..., 0]
 
-        def noise_realization(state_data, t):
-            return x_values * np.random.uniform(-noise, noise, size=state_data.shape)
+        def noise_variance(state_data, t):
+            return noise * x_values**2
 
-        return noise_realization
+        return noise_variance
 
 
 eq = DiffusionCustomNoisePDE(diffusivity=0.1, noise=0.1)  # define the pde

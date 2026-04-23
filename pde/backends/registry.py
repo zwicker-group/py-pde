@@ -217,7 +217,8 @@ class BackendRegistry:
 
     def __iter__(self) -> Iterator[str]:
         """Iterate over the names of the defined backends."""
-        return self._backends.keys().__iter__()
+        backends = self._packages.keys() | self._classes.keys() | self._backends.keys()
+        return sorted(backends).__iter__()
 
     def values(self) -> Iterator[BackendBase]:
         """Iterate over all backends that can be imported."""

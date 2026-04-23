@@ -578,7 +578,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         )
 
     @property
-    def data_shape(self) -> tuple[int, ...]:
+    def data_shape(self) -> tuple[int, ...]:  # type: ignore
         """tuple: the shape of the data at each grid point"""
         return (self.grid.dim,) * self.rank
 

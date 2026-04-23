@@ -44,6 +44,9 @@ class RankError(TypeError):
 class FieldBase(metaclass=ABCMeta):
     """Abstract base class for describing (discretized) fields."""
 
+    data_shape: tuple[int, ...]
+    """tuple: the shape of the data at each grid point"""
+
     _subclasses: dict[str, type[FieldBase]] = {}  # all classes inheriting from this
     _grid: GridBase  # the grid on which the field is defined
     __data_full: NumericArray  # the data on the grid including ghost points

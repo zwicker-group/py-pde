@@ -14,7 +14,6 @@ import torch
 
 from ...fields import VectorField
 from ...grids import GridBase
-from ...pdes import PDEBase, SDEBase
 from ...solvers.scipy import ScipySolver
 from ..base import BackendBase, OperatorInfo
 from .typing import NUMPY_TO_TORCH_DTYPE, TORCH_TO_NUMPY_DTYPE, TorchRHSType
@@ -27,6 +26,7 @@ if TYPE_CHECKING:
     from ...fields import DataFieldBase
     from ...grids import GridBase
     from ...grids.boundaries.axes import BoundariesBase
+    from ...pdes import PDEBase
     from ...solvers import SolverBase
     from ...tools.config import ConfigLike
     from ...tools.expressions import ExpressionBase
@@ -493,23 +493,6 @@ class TorchBackend(BackendBase[torch.Tensor]):
         # get the compiled right hand side
         return self.compile_function(rhs_native)  # type: ignore
 
-    def _make_pde_rhs_noise(self, eq: PDEBase, state: TField) -> TorchRHSType:
-        """Return a function for evaluating the noise of the PDE.
-
-        Args:
-            eq (:class:`~pde.pdes.base.PDEBase`):
-                The object describing the differential equation
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which information can be extracted
-
-        Returns:
-            Function returning deterministic part of the right hand side of the PDE.
-        """
-        assert isinstance(eq, SDEBase)
-        rhs_noise_native = eq.make_noise_realization(state, backend=self)
-        # get the compiled right hand side
-        return self.compile_function(rhs_noise_native)  # type: ignore
-
     def make_expression_function(
         self,
         expression: ExpressionBase,
@@ -595,6 +578,37 @@ class TorchBackend(BackendBase[torch.Tensor]):
             result = func
         return self.compile_function(result)
 
+    def make_gaussian_noise(
+        self, field: TField, *, rng: np.random.Generator
+    ) -> Callable[[], torch.Tensor]:
+        """Create a function generating Gaussian white noise.
+
+        This noise is already scaled to respect different cell volumes of the grid.
+
+        Args:
+            field (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
+                used to initialize the seed.
+        """
+        from .utils import TorchGaussianNoise
+
+        data_shape: tuple[int, ...] = field.data.shape
+        scale = np.sqrt(1 / field.grid.cell_volumes)
+        generator = torch.Generator(device=self.device)
+        generator.manual_seed(int(rng.integers(0, 2**32)))
+
+        gaussian_noise = TorchGaussianNoise(
+            data_shape,
+            dtype=self.get_numpy_dtype(field.dtype),
+            scale=scale,
+            generator=generator,
+        )
+        gaussian_noise.to(self.device)
+        return gaussian_noise
+
     def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:
         """Create a field-based stepping function for a given solver.
 
@@ -623,7 +637,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         def stepper(state: TField, t_start: float, t_end: float) -> float:
             """Advance `state` by executing the backend-level stepping function."""
             # push state data to native backend
-            state_tensor: torch.Tensor = solver.backend.numpy_to_native(state.data)  # type: ignore
+            state_tensor: torch.Tensor = solver.backend.numpy_to_native(state.data)
             # execute the backend-level stepping function
             state_tensor, t_last = inner_stepper(state_tensor, t_start, t_end)
             # retrieve data from native backend
