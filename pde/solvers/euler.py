@@ -1,11 +1,9 @@
-"""Defines an explicit solver supporting various methods.
+"""Defines an explicit solver for the Euler scheme
 
 .. autosummary::
    :nosignatures:
 
-   ExplicitSolver
    EulerSolver
-   RungeKuttaSolver
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """

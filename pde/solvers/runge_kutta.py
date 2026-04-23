@@ -1,10 +1,8 @@
-"""Defines an explicit solver supporting various methods.
+"""Defines an explicit solver using a Runge-Kutta method
 
 .. autosummary::
    :nosignatures:
 
-   ExplicitSolver
-   EulerSolver
    RungeKuttaSolver
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
