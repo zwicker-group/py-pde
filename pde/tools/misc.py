@@ -378,4 +378,9 @@ def get_array_namespace(arr: TNativeArray) -> types.ModuleType:
         A python module defining typical functions that can be applied to arrays. In
         many cases this will be :mod:`numpy`.
     """
+    if arr.__class__.__name__ == "Tensor":
+        # likely a torch Tensor
+        import torch
+
+        return torch
     return arr.__array_namespace__()  # type: ignore

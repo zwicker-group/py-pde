@@ -20,6 +20,15 @@ plt.switch_backend("agg")
 _logger = logging.getLogger(__name__)
 
 
+@pytest.fixture(scope="session")
+def create_clean_session():
+    """Run some initial commands"""
+    if module_available("torch"):
+        import torch
+
+        torch._dynamo.reset()
+
+
 @pytest.fixture(autouse=True)
 def _setup_and_teardown():
     """Helper function adjusting environment before and after tests."""
