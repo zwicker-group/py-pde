@@ -65,7 +65,7 @@ def _make_post_step_hook(
         solver.info["post_step_data"] = None
     else:
         # compile post_step_hook
-        post_step_hook = backend.compile_function(post_step_hook)
+        post_step_hook = backend.compile_function(post_step_hook, to_device=True)
         solver._logger.debug("Compiled post-step hook")
 
     return post_step_hook
@@ -309,7 +309,7 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> TorchInnerStepperT
     else:
         msg = f"Torch backend does not support {solver}"
         raise NotImplementedError(msg)
-    stepper = solver.backend.compile_function(stepper)
+    stepper = solver.backend.compile_function(stepper, to_device=True)
 
     # define the executable fixed-step integrator module
     inner_solver = FixedSolver(

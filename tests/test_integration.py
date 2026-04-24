@@ -20,7 +20,7 @@ from pde import (
     UnitGrid,
 )
 from pde.tools import misc, mpi
-from pde.tools.misc import module_available
+from pde.tools.misc import get_array_namespace, module_available
 
 ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
 
@@ -159,22 +159,9 @@ def test_stop_iteration_hook(backend, adaptive):
             return ScalarField(state.grid, 1)
 
         def make_evolution_rate(self, state, backend):
-            if backend.implementation == "jax":
-                from jax import numpy as jnp
-
-                def pde_rhs(state_data, t):
-                    return jnp.ones_like(state_data)
-
-            elif backend.implementation == "torch":
-                import torch
-
-                def pde_rhs(state_data, t):
-                    return torch.ones_like(state_data)
-
-            else:
-
-                def pde_rhs(state_data, t):
-                    return np.ones_like(state_data)
+            def pde_rhs(state_data, t):
+                nx = get_array_namespace(state_data)
+                return nx.ones_like(state_data)
 
             return pde_rhs
 
@@ -219,15 +206,9 @@ def test_custom_data_hook(backend, adaptive):
             return ScalarField(state.grid, 1)
 
         def make_evolution_rate(self, state, backend):
-            if backend.implementation == "jax":
-                from jax import numpy as jnp
-
-                def pde_rhs(state_data, t):
-                    return jnp.ones_like(state_data)
-            else:
-
-                def pde_rhs(state_data, t):
-                    return np.ones_like(state_data)
+            def pde_rhs(state_data, t):
+                nx = get_array_namespace(state_data)
+                return nx.ones_like(state_data)
 
             return pde_rhs
 
@@ -265,15 +246,9 @@ def test_array_data_hook(backend):
             return ScalarField(state.grid, 1)
 
         def make_evolution_rate(self, state, backend):
-            if backend.implementation == "jax":
-                from jax import numpy as jnp
-
-                def pde_rhs(state_data, t):
-                    return jnp.ones_like(state_data)
-            else:
-
-                def pde_rhs(state_data, t):
-                    return np.ones_like(state_data)
+            def pde_rhs(state_data, t):
+                nx = get_array_namespace(state_data)
+                return nx.ones_like(state_data)
 
             return pde_rhs
 

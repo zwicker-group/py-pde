@@ -217,21 +217,26 @@ class TorchBackend(BackendBase[torch.Tensor]):
             return value.cpu().numpy()
         return value
 
-    def compile_function(self, func: TFunc, **compile_options) -> TFunc:
+    def compile_function(
+        self, func: TFunc, *, to_device: bool = False, **compile_options
+    ) -> TFunc:
         r"""General method that compiles a user function.
 
         Args:
             func (callable):
                 The function that needs to be compiled for this backend
+            to_device (bool):
+                Moves (compiled) function to device
             **compile_options:
                 Additional keyword arguments will be forwarded to :func:`torch.compile`
         """
-        if not self.config["compile"]:
-            return func
-
-        # compile the function using the torch backend and move it to correct device
-        opts = self.compile_options | compile_options
-        return torch.compile(func, **opts)  # type: ignore
+        if self.config["compile"]:
+            # compile the function using the torch backend
+            opts = self.compile_options | compile_options
+            func = torch.compile(func, **opts)  # type: ignore
+        if to_device and isinstance(func, torch.nn.Module):
+            func.to(self.device)  # move module to correct device
+        return func
 
     def _apply_operator(
         self, func: Callable, *values: NumericArray, out: NumericArray, **kwargs
@@ -294,11 +299,13 @@ class TorchBackend(BackendBase[torch.Tensor]):
         dtype = self.get_numpy_dtype(dtype or np.double)
 
         # create an operator with or without BCs
-        torch_operator = operator_info.factory(grid, bcs=None, dtype=dtype, **kwargs)
-        torch_operator.eval()  # type: ignore
+        torch_operator: torch.nn.Module = operator_info.factory(  # type: ignore
+            grid, bcs=None, dtype=dtype, **kwargs
+        )
+        torch_operator.eval()
 
         # compile the function and move it to the device
-        return self.compile_function(torch_operator)  # type: ignore
+        return self.compile_function(torch_operator, to_device=True)  # type: ignore
 
     def make_operator(
         self,
@@ -342,11 +349,13 @@ class TorchBackend(BackendBase[torch.Tensor]):
         bcs = grid.get_boundary_conditions(bcs, rank=operator_info.rank_in)
 
         # create an operator with or without BCs
-        torch_operator = operator_info.factory(grid, bcs, dtype=dtype, **kwargs)  # type: ignore
-        torch_operator.eval()  # type: ignore
+        torch_operator: torch.nn.Module = operator_info.factory(  # type: ignore
+            grid, bcs, dtype=dtype, **kwargs
+        )
+        torch_operator.eval()
 
         # compile the function and move it to the device
-        return self.compile_function(torch_operator)  # type: ignore
+        return self.compile_function(torch_operator, to_device=True)  # type: ignore
 
     def make_integrator(
         self, grid: GridBase, *, dtype: DTypeLike = np.double
@@ -367,7 +376,8 @@ class TorchBackend(BackendBase[torch.Tensor]):
 
         # create the torch operator
         return self.compile_function(
-            TorchIntegralOperator(grid, dtype=self.get_numpy_dtype(dtype))
+            TorchIntegralOperator(grid, dtype=self.get_numpy_dtype(dtype)),
+            to_device=True,
         )
 
     def make_inner_prod_operator(
@@ -569,7 +579,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
 
         else:
             result = func
-        return self.compile_function(result)
+        return self.compile_function(result, to_device=True)
 
     def make_gaussian_noise(
         self, field: TField, *, rng: np.random.Generator
