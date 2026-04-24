@@ -151,7 +151,7 @@ class EulerMaruyamaStepper(EulerStepper):
         """Initialize the Euler-Maruyama single-step module."""
         super().__init__(solver, state)
         assert solver.pde.use_noise_variance
-        self.noise_drift_factor = solver._noise_drift_factor
+        self.noise_drift_factor = solver.pde._noise_drift_factor
         self.has_noise_drift_term = self.noise_drift_factor != 0
         self.noise_var = solver.pde.make_noise_variance(  # type: ignore
             state, backend=solver.backend, ret_diff=self.has_noise_drift_term
@@ -190,7 +190,7 @@ class EulerMilsteinStepper(EulerStepper):
         """Initialize the Euler-Milstein single-step module."""
         super().__init__(solver, state)
         assert solver.pde.use_noise_variance
-        self.noise_drift_factor = solver._noise_drift_factor
+        self.noise_drift_factor = solver.pde._noise_drift_factor
         self.noise_var = solver.pde.make_noise_variance(  # type: ignore
             state, backend=solver.backend, ret_diff=True
         )

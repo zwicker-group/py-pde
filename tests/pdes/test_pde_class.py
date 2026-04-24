@@ -124,13 +124,13 @@ def test_pde_vector_ops(backend, rng):
 
 
 @pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)
-def test_pde_2scalar(backend):
+def test_pde_2scalar(backend, rng):
     """Test PDE with two scalar fields."""
     eq = PDE({"u": "laplace(u) - u", "v": "- u * v"})
     assert not eq.explicit_time_dependence
     assert not eq.complex_valued
     grid = grids.UnitGrid([8])
-    field = FieldCollection.scalar_random_uniform(2, grid)
+    field = FieldCollection.scalar_random_uniform(2, grid, rng=rng)
 
     res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
     res_b = eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
