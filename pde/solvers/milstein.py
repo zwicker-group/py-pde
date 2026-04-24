@@ -81,7 +81,7 @@ class MilsteinSolver(EulerSolver):
 
         # handle with first noise interface based on supplying the noise variance
         assert self.pde.use_noise_variance
-        noise_drift_factor = self._noise_drift_factor
+        noise_drift_factor = self.pde._noise_drift_factor
         fn = self.pde.make_noise_variance(  # type: ignore
             state, backend=self.backend, ret_diff=True
         )

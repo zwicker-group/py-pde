@@ -42,6 +42,18 @@ _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for PDEs."""
 
 
+NOISE_INTERPRETATIONS: dict[str, float] = {
+    "ito": 0.0,
+    "itô": 0.0,
+    "stratonovich": 0.5,
+    "anti-ito": 1.0,
+    "anti-itô": 1.0,
+    "hänggi-klimontovich": 1.0,
+    "hanggi-klimontovich": 1.0,
+}
+"""dict: dictionary translating noise interpretations to the respective fraction."""
+
+
 class PDEBase(metaclass=ABCMeta):
     """Base class for defining deterministic partial differential equations (PDEs)
 
@@ -138,6 +150,12 @@ class PDEBase(metaclass=ABCMeta):
     def is_sde(self) -> bool:
         """bool: flag indicating whether this is a stochastic differential equation"""
         return False
+
+    @property
+    def _noise_drift_factor(self) -> float:
+        """float: alpha-parameter of the noise interpretation"""
+        interpretation = getattr(self, "noise_interpretation", "ito")
+        return NOISE_INTERPRETATIONS[interpretation]
 
     def make_post_step_hook(
         self, state: FieldBase, backend: str | BackendBase = "numpy"

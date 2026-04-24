@@ -27,18 +27,6 @@ if TYPE_CHECKING:
     from ..tools.typing import InnerStepperType, NumericArray, TField
 
 
-NOISE_INTERPRETATIONS: dict[str, float] = {
-    "ito": 0.0,
-    "itô": 0.0,
-    "stratonovich": 0.5,
-    "anti-ito": 1.0,
-    "anti-itô": 1.0,
-    "hänggi-klimontovich": 1.0,
-    "hanggi-klimontovich": 1.0,
-}
-"""dict: dictionary translating noise interpretations to the respective fraction."""
-
-
 def _DUMMY_FUNCTION():
     """Dummy function that we need to define so numba can determine types correctly."""
     return 0
@@ -75,12 +63,6 @@ class EulerSolver(AdaptiveSolverBase):
         """
         super().__init__(pde, backend=backend, adaptive=adaptive, tolerance=tolerance)
 
-    @property
-    def _noise_drift_factor(self) -> float:
-        """float: alpha-parameter of the noise interpretation"""
-        interpretation = getattr(self.pde, "noise_interpretation", "ito")
-        return NOISE_INTERPRETATIONS[interpretation]
-
     def _make_single_step_fixed_dt_stochastic(
         self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], NumericArray]:
@@ -101,7 +83,7 @@ class EulerSolver(AdaptiveSolverBase):
         rhs_pde = self.backend.make_pde_rhs(self.pde, state)
 
         # handle with first noise interface based on supplying the noise variance
-        noise_drift_factor = self._noise_drift_factor
+        noise_drift_factor = self.pde._noise_drift_factor
         has_noise_drift_term = noise_drift_factor != 0
         if use_noise_variance := self.pde.use_noise_variance:
             noise_var = self.pde.make_noise_variance(  # type: ignore
