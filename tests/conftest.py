@@ -22,7 +22,7 @@ _logger = logging.getLogger(__name__)
 
 @pytest.fixture(scope="session")
 def create_clean_session():
-    """Run some initial commands"""
+    """Run some initial commands."""
     if module_available("torch"):
         import torch
 
@@ -70,7 +70,7 @@ if module_available("torch"):
     for device in ["cpu", "cuda"]:  # , "mps"]:
         try:
             backend = TorchBackend(
-                torch_backend.config, name=f"torch-{device}", device=device
+                torch_backend.config.copy(), name=f"torch-{device}", device=device
             )
         except RuntimeError:
             _logger.info("Torch device `%s` is unavailable", device)

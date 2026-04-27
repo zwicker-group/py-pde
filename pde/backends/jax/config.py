@@ -10,28 +10,26 @@ references to other modules and not import anything from the backend.
 from pde.tools.config import Parameter
 
 # define default parameter values
-DEFAULT_CONFIG: list[Parameter] = [
-    Parameter(
-        "device",
-        "cpu",
-        str,
-        "Determines the torch device that is used for the torch backend. Common "
-        "options include `cpu`, `cuda`, and more specific choices, like `gpu:0`. The "
-        "special value `auto` chooses `gpu` if it is available, and falls back to "
-        "`cpu` if not.",
+DEFAULT_CONFIG: dict[str, Parameter] = {
+    "device": Parameter(
+        value="cpu",
+        cls=str,
+        description="Determines the torch device that is used for the torch backend. "
+        "Common options include `cpu`, `cuda`, and more specific choices, like "
+        "`gpu:0`. The special value `auto` chooses `gpu` if it is available, and falls "
+        "back to `cpu` if not.",
     ),
-    Parameter(
-        "dtype_downcasting",
-        True,
-        bool,
-        "Determines whether dtype downcasting is used automatically. A typical example "
-        "are jax devices that only support float32, so the numpy arrays using float64 "
-        "need to be converted. If enabled, this happens automatically.",
+    "dtype_downcasting": Parameter(
+        value=True,
+        cls=bool,
+        description="Determines whether dtype downcasting is used automatically. A "
+        "typical example are jax devices that only support float32, so the numpy "
+        "arrays using float64 need to be converted. If enabled, this happens "
+        "automatically.",
     ),
-    Parameter(
-        "compile",
-        True,
-        bool,
-        "Enables compilation in the `jax` backend.",
+    "compile": Parameter(
+        value=True,
+        cls=bool,
+        description="Enables compilation in the `jax` backend.",
     ),
-]
+}

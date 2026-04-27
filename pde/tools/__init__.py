@@ -11,7 +11,9 @@
    ffmpeg
    math
    misc
+   modelrunner
    mpi
+   nested_dict
    output
    parse_duration
    plotting

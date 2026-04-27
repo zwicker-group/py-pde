@@ -603,9 +603,28 @@ Configuration parameters
 """"""""""""""""""""""""
 
 Configuration parameters affect how the package behaves.
-They can be set using a dictionary-like interface of the configuration
-:data:`~pde.config`, which can be imported from the base package.
-Here is a list of all configuration options that can be adjusted in the package:
+Parameters can generally be set using a dictionary-like interface in either the global
+configuration :data:`~pde.config` or in backend-specific settings at
+:data:`~pde.backends.base.BackendBase.config`.
+To provide flexibility, the default backends (whose name is identical to the backend 
+package, e.g. `numba`) have a special behavior such that their configuration is linked
+with the global configuration. Consequently, the following commands all yield identical
+results:
+
+.. code-block:: python
+
+    from pde import config, get_backend
+
+    get_backend("numba").config["debug"] = True
+    config["backend"]["numba"]["debug"] = True
+    config["backend.numba.debug"] = True
+
+In contrast, custom backends (example: :code:`get_backend("torch:cuda")`) inherit the
+global configuration, but modifying their configuration would not influence the global
+configuration.
+
+Here is a list of all global configuration options, which includes the backend-specific
+parameters
 
 .. package_configuration ::
 

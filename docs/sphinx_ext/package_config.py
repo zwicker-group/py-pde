@@ -15,7 +15,7 @@ class PackageConfigDirective(SphinxDirective):
 
         items = []
 
-        for name, p in config.to_dict(ret_values=False).items():
+        for name, p in sorted(config.to_dict(flatten=True, values=False).items()):
             if p.__class__.__name__ == "Parameter":
                 description = nodes.paragraph(text=p.description + " ")
                 description += nodes.strong(text=f"(Default value: {config[name]!r})")

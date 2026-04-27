@@ -164,7 +164,7 @@ def test_pde_vector_scalar(backend, rng):
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize("grid", iter_grids())
 def test_compare_swift_hohenberg(backend, grid, rng):
-    """Compare custom class to swift-Hohenberg."""
+    """Compare custom class to Swift-Hohenberg class."""
     rate, kc2, delta = rng.uniform(0.5, 2, size=3)
     eq1 = SwiftHohenbergPDE(rate=rate, kc2=kc2, delta=delta)
     eq2 = PDE(
