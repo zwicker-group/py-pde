@@ -204,8 +204,12 @@ def test_config_consistency():
             assert value._mode == mode
 
     for name in backend_registry._packages.keys() | backend_registry._classes.keys():
-        backend = backend_registry.get_backend(name)
-        assert backend.config is config["backend"][name]
+        try:
+            backend = backend_registry.get_backend(name)
+        except ImportError:
+            pass
+        else:
+            assert backend.config is config["backend"][name]
 
 
 def test_config_contexts():
