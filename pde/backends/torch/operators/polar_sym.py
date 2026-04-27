@@ -261,23 +261,21 @@ class PolarVectorGradient(TorchDifferentialOperator):
         super().__init__(grid, bcs, dtype=dtype)
 
         dr = self.grid.discretization[0]
+        self.result_shape = (2, 2, *grid.shape)
         self.register_array("rs", self.grid.axes_coords[0])
         self.scale_r = 1 / (2 * dr)
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
+        result = torch.empty(self.result_shape, dtype=arr.dtype, device=arr.device)
 
         arr_r, arr_φ = data_full[0], data_full[1]
-
-        out_rr = (arr_r[2:] - arr_r[:-2]) * self.scale_r
-        out_rφ = -arr_φ[1:-1] / self.rs  # type: ignore
-        out_φr = (arr_φ[2:] - arr_φ[:-2]) * self.scale_r
-        out_φφ = arr_r[1:-1] / self.rs  # type: ignore
-
-        return torch.stack(
-            [torch.stack([out_rr, out_rφ]), torch.stack([out_φr, out_φφ])]
-        )
+        result[0, 0] = (arr_r[2:] - arr_r[:-2]) * self.scale_r  # rr component
+        result[0, 1] = -arr_φ[1:-1] / self.rs  # type: ignore  # rφ component
+        result[1, 0] = (arr_φ[2:] - arr_φ[:-2]) * self.scale_r  # φr component
+        result[1, 1] = arr_r[1:-1] / self.rs  # type: ignore  # φφ component
+        return result
 
 
 @TorchBackend.register_operator(

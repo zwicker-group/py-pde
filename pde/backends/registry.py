@@ -20,14 +20,13 @@ import logging
 from typing import TYPE_CHECKING
 
 from .. import config as global_config
-from ..tools.config import Config, ConfigLike
 from .base import _RESERVED_BACKEND_NAMES, BackendBase
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-    from ..tools.config import Parameter
+    from ..tools.config import ConfigLike, Parameter
 
 
 _logger = logging.getLogger(__name__)
@@ -45,8 +44,6 @@ class BackendRegistry:
 
     _packages: dict[str, str]
     """dict: backends whose packages have been registered"""
-    _configs: dict[str, Config]
-    """dict: configurations of backend classes"""
     _classes: dict[str, type[BackendBase]]
     """dict: backends whose classes have been defined"""
     _backends: dict[str, BackendBase]
@@ -54,7 +51,6 @@ class BackendRegistry:
 
     def __init__(self):
         self._packages = {}
-        self._configs = {}
         self._classes = {}
         self._backends = {}
 
@@ -78,9 +74,14 @@ class BackendRegistry:
         if name in _RESERVED_BACKEND_NAMES:
             _logger.warning("Reserved backend name `%s` should not be used.", name)
         if name in self._packages:
-            _logger.info("Redefining backend `%s`", name)
+            msg = f"Cannot redefine backend `{name}`"
+            raise RuntimeError(msg)
         self._packages[name] = package_path
-        self._configs[name] = Config(config)
+        with global_config.changed_mode(node="insert", leaf="insert"):
+            if config is None:
+                global_config["backend"].create_node(name)
+            else:
+                global_config["backend"][name] = config
 
     def register_class(self, name: str, cls: type[BackendBase]):
         """Register a backend class.
@@ -97,17 +98,12 @@ class BackendRegistry:
             _logger.info("Redefining backend `%s`", name)
         self._classes[name] = cls
 
-    def register_backend(
-        self, backend: BackendBase, *, link_config: bool = False
-    ) -> None:
+    def register_backend(self, backend: BackendBase) -> None:
         """Register a loaded backend object.
 
         Args:
             backend (:class:`~pde.backends.base.BackendBase`):
                 Implementation of the backend
-            link_config (bool):
-                If True, the configuration of `backend` is linked with the global
-                configuration, so that both show consistent values.
         """
         if backend.name in _RESERVED_BACKEND_NAMES:
             _logger.warning(
@@ -119,26 +115,6 @@ class BackendRegistry:
             else:
                 _logger.info("Reloading backend `%s`", backend.name)
         self._backends[backend.name] = backend
-
-        if link_config:
-            self._configs[backend.name] = backend.config
-
-    def get_config(self, name: str) -> Config:
-        """Get configuration of a particular backend.
-
-        An empty configuration is returned if nothing was found.
-
-        Args:
-            name (str):
-                Name of the backend
-
-        Returns:
-            :class:`~pde.tools.config.Config`: the configuration
-        """
-        try:
-            return self._configs[name]
-        except KeyError:
-            return Config()
 
     def _get_class(self, name: str) -> type[BackendBase]:
         """Get the class associated with a particular backend.
@@ -173,7 +149,9 @@ class BackendRegistry:
             name (str):
                 Name of the backend to be loaded.
             config (dict):
-                Configuration options for this specific backend
+                Additional configuration options for this specific backend. The full
+                configuration will be taken from the global configuration and merged
+                with the given options here.
             **kwargs:
                 Additional options of the backend
 
@@ -196,24 +174,33 @@ class BackendRegistry:
             else:
                 raise RuntimeError
             cls = self._get_class(cls_name)
-            if config is None:
-                config = self.get_config(name)
 
-            if args:
-                backend_obj = cls.from_args(config, args, name=name, **kwargs)
-                self.register_backend(backend_obj, link_config=False)
+            # determine the configuration of the backend
+            backend_config = global_config["backend"][cls_name]
+            if name != cls_name:
+                # detach config of specific backend from general backend
+                backend_config = backend_config.copy()
+            if config is not None:
+                backend_config.update_recursive(config)
+
+            if name == cls_name:
+                assert global_config["backend"][cls_name] is backend_config
             else:
-                backend_obj = cls(config, name=name, **kwargs)
-                self.register_backend(backend_obj, link_config=True)
+                assert global_config["backend"][cls_name] is not backend_config
+
+            # create the backend
+            if args:
+                backend_obj = cls.from_args(backend_config, args, name=name, **kwargs)
+                self.register_backend(backend_obj)
+            else:
+                backend_obj = cls(backend_config, name=name, **kwargs)
+                self.register_backend(backend_obj)
 
         return self._backends[name]
 
-    def __getitem__(self, name: str) -> BackendBase:
-        """Return backend object, potentially loading the respective package."""
-        return self.get_backend(name)
-
     def __contains__(self, name: str) -> bool:
-        return name == "default" or name in self._backends
+        backends = self._packages.keys() | self._classes.keys() | self._backends.keys()
+        return name == "default" or name in backends
 
     def __iter__(self) -> Iterator[str]:
         """Iterate over the names of the defined backends."""
@@ -224,7 +211,7 @@ class BackendRegistry:
         """Iterate over all backends that can be imported."""
         for name in self:
             with contextlib.suppress(ImportError):
-                yield self[name]
+                yield self.get_backend(name)
 
 
 # initiate the backend registry - there should only be one instance of this class

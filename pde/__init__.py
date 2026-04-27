@@ -31,16 +31,8 @@ except ImportError:
         __version__ = "unknown"
     del PackageNotFoundError, version  # clean name space
 
-# initialize the configuration
-from .tools.config import (  # noqa: F401
-    DEFAULT_CONFIG,
-    GlobalConfig,
-    Parameter,
-    environment,
-)
-
-# initialize the default configuration
-config = GlobalConfig(DEFAULT_CONFIG)
+# initialize the configuration before doing anything else
+from .tools.config import Parameter, config, environment  # noqa
 
 import contextlib
 
@@ -58,4 +50,4 @@ from .visualization import *  # noqa: F403
 with contextlib.suppress(ImportError):
     from .tools.modelrunner import *  # noqa: F403
 
-del contextlib, GlobalConfig, DEFAULT_CONFIG  # clean name space
+del contextlib  # clean name space

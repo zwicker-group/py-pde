@@ -7,12 +7,8 @@ import itertools
 import pytest
 
 from pde import UnitGrid, config
-from pde.grids.boundaries.axes import (
-    BCDataError,
-    BoundariesBase,
-    BoundariesList,
-)
-from pde.grids.boundaries.axis import get_boundary_axis
+from pde.grids.boundaries import BoundariesBase, BoundariesList
+from pde.grids.boundaries.axis import BCDataError, get_boundary_axis
 from pde.grids.boundaries.local import NeumannBC
 
 

@@ -18,100 +18,96 @@
 
 from __future__ import annotations
 
-import collections
 import contextlib
+import copy
 import importlib
-import logging
 import os
 import re
 import subprocess as sp
 import sys
 import warnings
-from collections.abc import Sequence
+from collections.abc import Iterable, MutableMapping, Sequence
+from dataclasses import KW_ONLY, dataclass
+from enum import Enum
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Literal, Union
 
-import numpy as np
+from typing_extensions import Self
 
 from .misc import module_available
+from .nested_dict import NestedDict
+
+ParameterTypes = str | float | int | bool | None
 
 
+class _DEFAULT_TYPE:
+    """Sentinel type indicating that the default value should be inferred."""
+
+
+_DEFAULT = _DEFAULT_TYPE()  # signals that the default value should be used
+
+
+class _OMITTED_TYPE:
+    """Sentinel type indicating that an argument was not supplied."""
+
+
+_OMITTED = _OMITTED_TYPE()  # signals that the default value should be used
+
+
+@dataclass
 class Parameter:
-    """Class representing a single parameter."""
+    """Class representing a single parameter.
 
-    def __init__(
-        self,
-        name: str,
-        default_value=None,
-        cls=object,
-        description: str = "",
-        hidden: bool = False,
-        extra: dict[str, Any] | None = None,
-    ):
-        """Initialize a parameter.
+    Args:
+        value:
+            The current value of the parameter.
+        default_value:
+            The fallback value used when the parameter is reset. If omitted, the
+            current value is used.
+        cls:
+            Type used to convert assigned values.
+        description:
+            Human-readable explanation of the parameter.
+        hidden:
+            Flag indicating whether the parameter should be hidden in summaries.
+        extra:
+            Optional metadata stored alongside the parameter.
+    """
 
-        Args:
-            name (str):
-                The name of the parameter
-            default_value:
-                The default value
-            cls:
-                The type of the parameter, which is used for conversion
-            description (str):
-                A string describing the impact of this parameter. This
-                description appears in the parameter help
-            hidden (bool):
-                Whether the parameter is hidden in the description summary
-            extra (dict):
-                Extra arguments that are stored with the parameter
+    value: ParameterTypes
+    _: KW_ONLY
+    default_value: ParameterTypes | _OMITTED_TYPE = _OMITTED
+    cls: object | _OMITTED_TYPE = _OMITTED
+    description: str = ""
+    hidden: bool = False
+    extra: dict[str, Any] | None = None
+
+    def __post_init__(self):
+        """Normalize omitted defaults and inferred conversion types.
+
+        The method fills in omitted constructor arguments and ensures that
+        :attr:`extra` is always a dictionary.
         """
-        self.name = name
-        self.default_value = default_value
-        self.cls = cls
-        self.description = description
-        self.hidden = hidden
-        self.extra = {} if extra is None else extra
-
-        if cls is not object:
-            # check whether the default value is of the correct type
-            converted_value = cls(default_value)
-            if isinstance(converted_value, np.ndarray):
-                # numpy arrays are checked for each individual value
-                valid_default = np.allclose(
-                    converted_value, default_value, equal_nan=True
-                )
-
+        # determine a suitable default value for the parameter
+        if self.default_value is _OMITTED:
+            self.default_value = None if self.value is _DEFAULT else self.value
+        if self.cls is _OMITTED:
+            if self.default_value is None:
+                self.cls = object
+            elif isinstance(self.default_value, int):
+                self.cls = float
             else:
-                # other values are compared directly. Note that we also check identity
-                # to capture the case where the value is `math.nan`, where the direct
-                # comparison (nan == nan) would evaluate to False
-                valid_default = (
-                    converted_value is default_value or converted_value == default_value
-                )
+                self.cls = type(self.default_value)
+        # determine a suitable type for the parameter
+        if self.extra is None:
+            self.extra = {}
+        #     if extra is None else extra
 
-            if not valid_default:
-                if hasattr(self, "_logger"):
-                    logger: logging.Logger = self._logger
-                else:
-                    logger = logging.getLogger(self.__class__.__module__)
-                logger.warning(
-                    "Default value `%s` does not seem to be of type `%s`",
-                    name,
-                    cls.__name__,
-                )
-
-    def __repr__(self):
-        return (
-            f'{self.__class__.__name__}(name="{self.name}", default_value='
-            f'"{self.default_value}", cls="{self.cls.__name__}", '
-            f'description="{self.description}", hidden={self.hidden})'
-        )
-
-    __str__ = __repr__
-
-    def convert(self, value=None):
+    def convert(
+        self, value: ParameterTypes | _OMITTED_TYPE = _OMITTED
+    ) -> ParameterTypes:
         """Converts a `value` into the correct type for this parameter. If `value` is
-        not given, the default value is converted.
+        not given, the current value is converted.
 
         Note that this does not make a copy of the values, which could lead to
         unexpected effects where the default value is changed by an instance.
@@ -122,211 +118,283 @@ class Parameter:
         Returns:
             The converted value, which is of type `self.cls`
         """
-        if value is None:
-            value = self.default_value
+        if value is _OMITTED:
+            value = self.value
+        assert not isinstance(value, _OMITTED_TYPE)
+
+        if self.cls is _OMITTED:
+            if self.default_value is None:
+                self.cls = object
+            elif isinstance(self.default_value, int):
+                self.cls = float  # assume that numbers can in principle be floats
+            else:
+                self.cls = type(self.value)
 
         if self.cls is object:
             return value
         try:
-            return self.cls(value)
+            return self.cls(value)  # type: ignore
         except ValueError as err:
-            msg = (
-                f"Could not convert {value!r} to {self.cls.__name__} for parameter "
-                f"'{self.name}'"
-            )
+            msg = f"Could not convert {value!r} to {self.cls!r} for parameter."
             raise ValueError(msg) from err
 
-
-# define default parameter values
-DEFAULT_CONFIG: list[Parameter] = [
-    Parameter(
-        "operators.conservative_stencil",
-        True,
-        bool,
-        "Indicates whether conservative stencils should be used for differential "
-        "operators on curvilinear grids. Conservative operators ensure mass "
-        "conservation at slightly slower computation speed. "
-        "Note that some backends might ignore this option.",
-    ),
-    Parameter(
-        "operators.tensor_symmetry_check",
-        True,
-        bool,
-        "Indicates whether tensor fields are checked for having a suitable form for "
-        "evaluating differential operators in curvilinear coordinates where some axes "
-        "are assumed to be symmetric. In such cases, some tensor components might need "
-        "to vanish, so the result of the operator can be expressed. "
-        "Note that some backends might ignore this option.",
-    ),
-    Parameter(
-        "operators.cartesian.laplacian_2d_corner_weight",
-        0.0,
-        float,
-        "Weighting factor for the corner points of the 2d cartesian Laplacian stencil. "
-        "The standard value is zero, corresponding to the traditional 5-point stencil. "
-        "Alternative choices are 1/2 (Oono-Puri stencil) and 1/3 (Patra-Karttunen or "
-        "Mehrstellen stencil); see https://en.wikipedia.org/wiki/Nine-point_stencil. "
-        "Note that some backends might ignore this option.",
-    ),
-    Parameter(
-        "boundaries.accept_lists",
-        True,
-        bool,
-        "Indicate whether boundary conditions can be set using the deprecated legacy "
-        "format, where conditions for individual axes and sides where set using lists. "
-        "If disabled, only the new format using dicts is supported.",
-    ),
-    Parameter(
-        "default_backend",
-        "numba",
-        str,
-        "Indicate which backend is selected by default.",
-    ),
-]
+    def reset(self) -> None:
+        """Reset parameter to default value."""
+        if isinstance(self.default_value, _OMITTED_TYPE):
+            msg = "Default value is not set"
+            raise RuntimeError(msg)  # noqa: TRY004
+        self.value = self.default_value
 
 
-ConfigValueType = str | float | int | bool | None
-ConfigLike = Union[Sequence[Parameter], dict[str, Any], "Config"]
+ConfigValue = Union["Config", Parameter]
+ConfigLike = Union[Sequence[Parameter], MutableMapping[str, Any], "Config"]
 
 
-class Config(collections.UserDict):
-    """Class handling general configurations.
+class Modes(Enum):
+    """Access modes controlling how configuration entries can be modified."""
 
-    Configurations are basically dictionaries with string keys that hold
-    :class:`Parameter` values, which contain a value with some extra information. For
-    user-friendliness, we also allow basic values, like strings or numbers as values.
+    INSERT = "insert"
+    UPDATE = "update"
+    READONLY = "readonly"
+
+
+@dataclass
+class ConfigMode:
+    """Mutable object storing the current configuration mode.
+
+    Args:
+        mode:
+            Initial mode controlling whether items can be inserted, updated, or
+            modified at all.
     """
 
-    data: dict[str, ConfigValueType | Parameter]
+    node: Modes = Modes.UPDATE
+    leaf: Modes = Modes.INSERT
+    delete: bool = False
 
-    def __init__(self, items: ConfigLike | None = None, mode: str = "update"):
-        """
-        Args:
-            items (dict, optional):
-                Configuration values that should be added or overwritten to initialize
-                the configuration.
-            mode (str):
-                Defines the mode in which the configuration is used. Possible values are
-
-                * `insert`: any new configuration key can be inserted
-                * `update`: only the values of pre-existing items can be updated
-                * `locked`: no values can be changed
-
-                Note that the items specified by `items` will always be inserted,
-                independent of the `mode`.
-        """
-        super().__init__()
-        self.mode = "insert"  # temporarily allow inserting items
-        if isinstance(items, dict):
-            # use the parameters from the supplied dictionary
-            self.update(items)
-        elif isinstance(items, Config):
-            # use the underlying dictionary to copy the actual Parameter instances
-            self.update(items.data)
-        elif items:
-            # assume that this is a sequence of Parameter
-            self.update({p.name: p for p in items})
-        self.mode = mode
-
-    def __getitem__(self, key: str):
-        """Retrieve item `key`.
+    @classmethod
+    def from_str(cls, value: str):
+        """Create a mode descriptor from a textual mode name.
 
         Args:
-            key (str): The configuration key
-        """
-        parameter = self.data[key]
-
-        if isinstance(parameter, Parameter):
-            return parameter.convert()
-        return parameter
-
-    def __setitem__(self, key: str, value: ConfigValueType | Parameter):
-        """Update item `key` with `value`.
-
-        Args:
-            key (str): The configuration key
-            value: The value to set
-        """
-        # determine how to set the item
-        if self.mode == "insert":
-            self.data[key] = value
-
-        elif self.mode == "update":
-            try:
-                self[key]  # test whether the key already exist (including magic keys)
-            except KeyError as err:
-                msg = f"{key} is not present and config is not in `insert` mode"
-                raise KeyError(msg) from err
-            self.data[key] = value
-
-        elif self.mode == "locked":
-            msg = "Configuration is locked"
-            raise RuntimeError(msg)
-
-        else:
-            msg = f"Unsupported configuration mode `{self.mode}`"
-            raise ValueError(msg)
-
-    def __delitem__(self, key: str):
-        """Removes item `key`.
-
-        Args:
-            key (str): The configuration key
-        """
-        if self.mode == "insert":
-            del self.data[key]
-        else:
-            msg = "Configuration is not in `insert` mode"
-            raise RuntimeError(msg)
-
-    def to_dict(self, *, ret_values: bool = False) -> dict[str, Any]:
-        """Convert the configuration to a simple dictionary.
-
-        Args:
-            ret_values (bool):
-                Whether to return only values (and not :class:`Parameter` instances)
+            value:
+                Mode name. Supported values are ``"insert"``, ``"update"``, and
+                ``"locked"``.
 
         Returns:
-            dict: A representation of the configuration in a normal :class:`dict`.
+            ConfigMode:
+                Newly created mode descriptor.
+
+        Raises:
+            ValueError:
+                If `value` is not one of the supported mode names.
         """
-        if ret_values:
-            return dict(**self)
-        return self.data.copy()
+        if value == "update":
+            return cls(node=Modes.UPDATE, leaf=Modes.UPDATE)
+        if value == "insert":
+            return cls(node=Modes.INSERT, leaf=Modes.INSERT)
+        if value == "readonly":
+            return cls(node=Modes.READONLY, leaf=Modes.READONLY)
+        raise ValueError(value)
 
-    def __repr__(self) -> str:
-        """Represent the configuration as a string."""
-        return f"{self.__class__.__name__}({self.to_dict()!r})"
+    def _getstate(self):
+        """Return a serializable snapshot of the current mode settings."""
+        return self.__dict__.copy()
 
-    @contextlib.contextmanager
-    def __call__(self, values: dict[str, Any] | None = None, **kwargs):
-        """Context manager temporarily changing the configuration.
+    def _setstate(
+        self,
+        node: Modes | None = None,
+        leaf: Modes | None = None,
+        delete: bool | None = None,
+    ):
+        """Update selected mode flags in place.
 
         Args:
-            values (dict): New configuration parameters
-            **kwargs: New configuration parameters
+            node:
+                Optional replacement for the node-update mode.
+            leaf:
+                Optional replacement for the leaf-update mode.
+            delete:
+                Optional replacement for the deletion-permission flag.
         """
-        data_initial = self.data.copy()  # save old configuration
-        # set new configuration
-        if values is not None:
-            self.data.update(values)
-        self.data.update(kwargs)
-        yield  # return to caller
-        # restore old configuration
-        self.data = data_initial
+        if node is not None:
+            self.node = Modes(node)
+        if leaf is not None:
+            self.leaf = Modes(leaf)
+        if delete is not None:
+            self.delete = delete
 
 
-class GlobalConfig:
-    """Class handling the global package configuration.
+class AccessError(RuntimeError):
+    """Raised when a configuration change violates the active access mode."""
 
-    This class contains additional logic that allows managing multiple configurations,
-    e.g., including the ones defined in :mod:`pde.backends`. The class also contains
-    logic to deal with deprecated configuration options.
+
+class _ConfigDataDict(dict):
+    """Dictionary enforcing write-access restrictions through a shared mode object."""
+
+    _mode: ConfigMode
+
+    def __init__(self, mode: ConfigMode):
+        """Initialize the lock-aware dictionary.
+
+        Args:
+            mode:
+                Shared mode descriptor controlling which write operations are allowed.
+        """
+        self._mode = mode
+
+    def _allow(self, cat: Literal["node", "leaf"], modes: Iterable[Modes]) -> bool:
+        """Check whether a write category is permitted under the current mode.
+
+        Args:
+            cat:
+                Category to validate. Must be either ``"node"`` or ``"leaf"``.
+            modes:
+                Set of allowed :class:`Modes` values.
+
+        Returns:
+            bool:
+                `True` if the category is currently in one of the allowed modes.
+
+        Raises:
+            ValueError:
+                If `cat` is not a recognized category.
+        """
+        if cat == "node":
+            mode = self._mode.node
+        elif cat == "leaf":
+            mode = self._mode.leaf
+        else:
+            raise ValueError
+        return mode in modes
+
+    def _convert_value(self, value: Any) -> Parameter | Config:
+        """Convert user input to a valid configuration value.
+
+        Args:
+            value:
+                Value supplied for a configuration entry.
+
+        Returns:
+            Parameter | Config:
+                Normalized configuration object representing `value`.
+        """
+        if isinstance(value, (Parameter, Config)):
+            return value
+        if isinstance(value, dict):
+            return Config(value, mode=self._mode)
+
+        if value is None:
+            cls = object
+        elif isinstance(value, int):
+            cls = float  # assume that numbers can in principle be floats
+        else:
+            cls = type(value)
+        return Parameter(default_value=value, cls=cls, value=value)
+
+    def __getitem__(self, key: str) -> Config | Parameter:
+        """Returns an item using dictionary indexing syntax.
+
+        Args:
+            key (str):
+                Key or nested key path to resolve.
+
+        Returns:
+            Any:
+                Value associated with `key`.
+        """
+        value = super().__getitem__(key)
+        if not isinstance(value, (Config, Parameter)):
+            raise TypeError
+        return value
+
+    def __setitem__(self, key, value):
+        """Set an item while validating node/leaf write permissions.
+
+        Args:
+            key:
+                Item key to set.
+            value:
+                Value to write at `key`.
+
+        Raises:
+            AccessError:
+                If the active mode forbids the attempted insertion/update.
+        """
+        if isinstance(value, MutableMapping):
+            # deal with node
+            if key in self:
+                msg = "Cannot update whole subtrees"
+                raise RuntimeError(msg)
+            # insert node
+            if not self._allow("node", {Modes.INSERT}):
+                msg = f"Dictionary does not permit adding items for mode {self}"
+                raise AccessError(msg)
+            super().__setitem__(key, self._convert_value(value))
+
+        # deal with leaf item
+        elif key in self:
+            # update leaf
+            if not self._allow("leaf", {Modes.UPDATE, Modes.INSERT}):
+                msg = f"Dictionary is locked and cannot be updated for mode {self}"
+                raise AccessError(msg)
+            if isinstance(value, Parameter):
+                super().__setitem__(key, self._convert_value(value))
+            else:
+                super().__getitem__(key).value = value
+        else:
+            # insert leaf
+            if not self._allow("leaf", {Modes.INSERT}):
+                msg = f"Dictionary does not permit adding items for mode {self}"
+                raise AccessError(msg)
+            super().__setitem__(key, self._convert_value(value))
+
+    def __delitem__(self, key):
+        """Delete an item if deletions are enabled by the active mode.
+
+        Args:
+            key:
+                Item key to delete.
+
+        Raises:
+            AccessError:
+                If the active mode forbids deletions.
+        """
+        if hasattr(self, "_mode") and not self._mode.delete:
+            msg = "Cannot delete items from locked dictionary for mode {self}"
+            raise AccessError(msg)
+        super().__delitem__(key)
+
+    def clear(self):
+        """Delete all items if deletions are enabled by the active mode.
+
+        Args:
+            key:
+                Item key to delete.
+
+        Raises:
+            AccessError:
+                If the active mode forbids deletions.
+        """
+        if hasattr(self, "_mode") and not self._mode.delete:
+            msg = "Cannot delete items from locked dictionary for mode {self}"
+            raise AccessError(msg)
+        super().clear()
+
+
+class Config(NestedDict[Parameter]):
+    """Class handling general (nested) configurations.
+
+    Configurations are basically (nested) dictionaries with string keys that hold
+    :class:`Parameter` values, which contain a value with some extra information.
+    Moreover, configurations have a `mode` that controls whether the configuration is
+    writeable or not.
     """
 
+    _mode: ConfigMode
+
     def __init__(
-        self,
-        items: ConfigLike | None = None,
-        mode: str = "update",
+        self, items: ConfigLike | None = None, *, mode: ConfigMode | str = "update"
     ):
         """
         Args:
@@ -343,69 +411,76 @@ class GlobalConfig:
                 Note that the items specified by `items` will always be inserted,
                 independent of the `mode`.
         """
-        self._config = Config(items, mode=mode)
+        if isinstance(mode, ConfigMode):
+            self._mode = mode  # inherit mode from parent
+        elif isinstance(mode, str):
+            self._mode = ConfigMode.from_str(mode)  # generate initial mode object
+        else:
+            raise TypeError
 
-    def _get_sub_config(self, key: str) -> tuple[Config, str]:
-        """Determine the actual configuration where the data is stored.
+        # initialize empty configuration
+        super().__init__()
 
-        Some configuration items are stored in sub-configurations, e.g., those for the
-        backends.
+        if items:
+            # temporarily allow inserting items to add items
+            with self.changed_mode(node="insert", leaf="insert"):
+                if isinstance(items, Config):
+                    self.replace_recursive(
+                        items.to_dict(values=False), delete_extra=False
+                    )
+                elif isinstance(items, MutableMapping):
+                    self.replace_recursive(items, delete_extra=False)
+                else:
+                    raise TypeError
 
-        Args:
-            key (str):
-                Global key to the configuration option
+    def _make_dict(self):
+        """Create the backing dictionary enforcing the current config mode."""
+        return _ConfigDataDict(mode=self.mode)
 
-        Returns:
-            tuple of :class:`Config` and str:
-                The actual configuration where the configuration is stored and the key
-                into this configuration.
-        """
-        if key.startswith("backend."):
-            # use configurations of backend
-            from ..backends import backend_registry
+    def _make_node(self) -> Self:
+        """Create a child configuration node inheriting the current mode."""
+        return self.__class__(mode=self.mode)
 
-            _, backend, config_key = key.split(".", 2)
-            return backend_registry.get_config(backend), config_key
+    @property
+    def mode(self) -> ConfigMode:
+        """Current mutable mode descriptor shared across the whole config tree."""
+        return self._mode
 
-        if key.startswith("numba."):
-            # legacy location for numba related configurations; deprecated on 2025-12-22
-            warnings.warn(
-                f"Configuration `{key}` is deprecated. Use `backend.{key}` instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            from ..backends import backend_registry
-
-            backend, config_key = key.split(".", 1)
-            return backend_registry.get_config(backend), config_key
-
-        # use global configuration
-        return self._config, key
-
-    def _convert_value(self, key: str, value):
-        """Helper function converting certain values.
+    @mode.setter
+    def mode(self, mode: ConfigMode) -> None:
+        """Update the active configuration mode.
 
         Args:
-            key (str): The configuration key
-            value: The value to convert
-
-        Returns:
-            The converted value
+            mode:
+                New mode controlling whether inserts, updates, or deletions are
+                permitted.
         """
-        if key.endswith("numba.multithreading") and isinstance(value, bool):
-            value = "always" if value else "never"
-            # Deprecated on 2025-02-12
-            warnings.warn(
-                "Boolean options are deprecated for `numba.multithreading`. Use "
-                f"config['numba.multithreading'] = '{value}' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        return value
+        # keep the identify and rather update the values
+        self._mode._setstate(**mode._getstate())
 
-    def __contains__(self, key: str) -> bool:
-        config, data_key = self._get_sub_config(key)
-        return data_key in config
+    @contextlib.contextmanager
+    def changed_mode(self, **kwargs):
+        """Temporarily switch to `mode` and restore the previous mode afterwards.
+
+        Args:
+            **kwargs:
+                Keyword arguments forwarded to :meth:`ConfigMode._setstate`, such as
+                `node`, `leaf`, and `delete`.
+
+        Yields:
+            ConfigMode:
+                The mode controller with the temporary mode applied.
+        """
+        old_state = self.mode._getstate()
+        self.mode._setstate(**kwargs)
+        try:
+            yield self
+        finally:
+            self.mode._setstate(**old_state)
+
+    def _get_raw_item(self, key: str) -> Any:
+        """Retrieve an item without converting `Parameter` instances."""
+        return NestedDict.__getitem__(self, key)
 
     def __getitem__(self, key: str):
         """Retrieve item `key`.
@@ -413,124 +488,166 @@ class GlobalConfig:
         Args:
             key (str): The configuration key
         """
-        config, data_key = self._get_sub_config(key)
-        return config[data_key]
+        value = NestedDict.__getitem__(self, key)
+        if isinstance(value, NestedDict):
+            return value
+        if isinstance(value, Parameter):
+            return value.convert()
+        raise TypeError(value)
 
-    def __iter__(self):
-        from ..backends import backend_registry
-
-        yield from self._config
-
-        for backend, config in backend_registry._configs.items():
-            for subkey in config:
-                yield f"backend.{backend}.{subkey}"
-
-    def items(self, just_values: bool = True):
-        """Iterate over configuration items.
+    def replace_recursive(
+        self, other: MutableMapping[str, Any], delete_extra: bool = False
+    ) -> None:
+        """Recursively replaces data of the current instance by another mapping.
 
         Args:
-            just_values (bool):
-                Whether to yield converted parameter values (`True`) or raw
-                :class:`Parameter` objects (`False`)
-
-        Yields:
-            tuple: Key-value pairs of configuration items, including items from all
-                backend configurations with keys prefixed by `backend.<name>.`.
+            other (MutableMapping[str, Any]):
+                Mapping whose entries are will end up in this object.
         """
-        from ..backends import backend_registry
+        if not isinstance(other, MutableMapping):
+            raise TypeError
 
-        if just_values:
-            yield from self._config.items()
+        # update all values from `other`
+        seen: set[str] = set()
+        for k, v in other.items():
+            if isinstance(v, MutableMapping):
+                new_node = self.create_node(k)
+                assert isinstance(new_node, Config)
+                new_node.replace_recursive(v, delete_extra=delete_extra)
+            elif k in self and not isinstance(v, Parameter):
+                self._get_raw_item(k).value = v
+            else:
+                self[k] = v
+            seen.add(k)
 
-            for backend, config in backend_registry._configs.items():
-                for subkey, value in config.items():
-                    yield f"backend.{backend}.{subkey}", value
+        # delete all items that were not in the other mapping
+        if delete_extra:
+            for k in set(self.keys()) - seen:
+                del self[k]
 
-        else:
-            for key in self._config:
-                yield key, self._config.data[key]
-
-            for backend, config in backend_registry._configs.items():
-                for subkey in config:
-                    yield f"backend.{backend}.{subkey}", config.data[subkey]
-
-    def update(self, items: dict[str, Any]) -> None:
-        for k, v in items.items():
-            self[k] = v
-
-    def __setitem__(self, key: str, value):
-        """Update item `key` with `value`.
-
-        Args:
-            key (str): The configuration key
-            value: The value to set
-        """
-        config, data_key = self._get_sub_config(key)
-        config[data_key] = self._convert_value(key, value)
-
-    def __delitem__(self, key: str):
-        """Removes item `key`.
-
-        Args:
-            key (str): The configuration key
-        """
-        config, data_key = self._get_sub_config(key)
-        del config[data_key]
-
-    def to_dict(
-        self, *, ret_values: bool = False, incl_backends: bool = True
-    ) -> dict[str, Any]:
+    def to_dict(self, flatten: bool = False, values: bool = False) -> dict[str, Any]:
         """Convert the configuration to a simple dictionary.
 
         Args:
-            ret_values (bool):
+            flatten (bool):
+                Return flat or nested dictionary.
+            values (bool):
                 Whether to return only values (and not :class:`Parameter` instances)
-            incl_backends (bool):
-                Whether to include items from the backends
 
         Returns:
             dict: A representation of the configuration in a normal :class:`dict`.
         """
-        # return the global configuration
-        res = self._config.to_dict(ret_values=ret_values)
-
-        # add configurations of the actual backends
-        if incl_backends:
-            from ..backends import backend_registry
-
-            for backend, config in backend_registry._configs.items():
-                for name, p in config.to_dict(ret_values=ret_values).items():
-                    res[f"backend.{backend}.{name}"] = p
-        return res
+        if flatten:
+            res = dict(NestedDict.items(self, flatten=True))
+            if values:
+                return {k: v.value for k, v in res.items()}
+            return res
+        # return hierarchical dictionaries
+        return {
+            k: v.to_dict(values=values, flatten=False)
+            if isinstance(v, Config)
+            else (v.value if values else v)  # type: ignore
+            for k, v in self.data.items()
+        }
 
     def __repr__(self) -> str:
         """Represent the configuration as a string."""
-        return f"{self.__class__.__name__}({self.to_dict(incl_backends=False)!r})"
+        return f"{self.__class__.__name__}({self.to_dict()!r})"
+
+    def copy(self) -> Config:
+        """Creates a structural copy with copied nested mappings.
+
+        Child dictionaries and child `NestedDict` instances are copied, while
+        non-mapping leaf values are reused by reference.
+
+        Returns:
+            NestedDict:
+                New instance containing copied nested structure.
+        """
+        data: dict[str, Any] = {}
+        for key, value in self.data.items():
+            if isinstance(value, Config):
+                data[key] = value.copy()
+            elif isinstance(value, Parameter):
+                data[key] = copy.copy(value)
+            else:
+                data[key] = value
+        return self.__class__(data, mode=self.mode)
 
     @contextlib.contextmanager
     def __call__(self, values: dict[str, Any] | None = None, **kwargs):
         """Context manager temporarily changing the configuration.
 
         Args:
-            values (dict): New configuration parameters
-            **kwargs: New configuration parameters
+            values (dict):
+                Mapping with temporary configuration values.
+            **kwargs:
+                Additional temporary configuration values.
+
+        Yields:
+            None:
+                Control returns to the caller while the temporary configuration is
+                active.
         """
-        if values is None:
-            values = kwargs
-        else:
-            values.update(kwargs)
+        old_data = self.to_dict(values=True)  # save old values
+        # update configuration with new values
+        if values is not None:
+            self.replace_recursive(values, delete_extra=False)
+        self.replace_recursive(kwargs, delete_extra=False)
 
-        if not values:
-            # nothing to do
+        # return to caller to have the updated configuration
+        try:
             yield
-            return
+        finally:
+            # restore old configuration
+            with self.changed_mode(node="insert", leaf="insert", delete=True):
+                self.replace_recursive(old_data, delete_extra=True)
 
-        data_initial = {key: self[key] for key in values}  # save old configuration
-        # set new configuration
-        self.update(values)
-        yield  # return to caller
-        # restore old configuration
-        self.update(data_initial)
+
+config = Config({"backend": {}}, mode="update")
+
+with config.changed_mode(node="insert", leaf="insert"):
+    # define default parameter values
+    config["operators.conservative_stencil"] = Parameter(
+        value=True,
+        cls=bool,
+        description="Indicates whether conservative stencils should be used for "
+        "differential operators on curvilinear grids. Conservative operators ensure "
+        "mass conservation at slightly slower computation speed. Note that some "
+        "backends might ignore this option.",
+    )
+    config["operators.tensor_symmetry_check"] = Parameter(
+        value=True,
+        cls=bool,
+        description="Indicates whether tensor fields are checked for having a suitable "
+        "form for evaluating differential operators in curvilinear coordinates where "
+        "some axes are assumed to be symmetric. In such cases, some tensor components "
+        "might need to vanish, so the result of the operator can be expressed. Note "
+        "that some backends might ignore this option.",
+    )
+    config["operators.cartesian.laplacian_2d_corner_weight"] = Parameter(
+        value=0.0,
+        cls=float,
+        description="Weighting factor for the corner points of the 2d cartesian "
+        "Laplacian stencil. The standard value is zero, corresponding to the "
+        "traditional 5-point stencil. Alternative choices are 1/2 (Oono-Puri stencil) "
+        "and 1/3 (Patra-Karttunen or Mehrstellen stencil); see "
+        "https://en.wikipedia.org/wiki/Nine-point_stencil. Note that some backends "
+        "might ignore this option.",
+    )
+    config["boundaries.accept_lists"] = Parameter(
+        value=True,
+        cls=bool,
+        description="Indicate whether boundary conditions can be set using the "
+        "deprecated legacy format, where conditions for individual axes and sides "
+        "where set using lists. If disabled, only the new format using dicts is "
+        "supported.",
+    )
+    config["default_backend"] = Parameter(
+        value="numba",
+        cls=str,
+        description="Indicate which backend is selected by default.",
+    )
 
 
 def get_package_versions(
@@ -578,6 +695,9 @@ def check_package_version(package_name: str, min_version: str):
     Args:
         package_name (str): The name of the package to check
         min_version (str): The minimum required version
+
+    Returns:
+        None: The function only emits warnings and does not return a value.
     """
 
     msg = f"`{package_name}` version {min_version} required for py-pde"
@@ -621,7 +741,13 @@ def packages_from_requirements(requirements_file: Path | str) -> list[str]:
 
 
 def get_ffmpeg_version() -> str | None:
-    """Read version number of ffmpeg program."""
+    """Read version number of ffmpeg program.
+
+    Returns:
+        str | None:
+            Detected version string, or `None` if ffmpeg is unavailable or the
+            version could not be parsed.
+    """
     # run ffmpeg to get its version
     try:
         version_bytes = sp.check_output(["ffmpeg", "-version"])
@@ -676,7 +802,7 @@ def environment() -> dict[str, Any]:
         result["ffmpeg version"] = ffmpeg_version
 
     # add the package configuration
-    result["config"] = config.to_dict(ret_values=True)
+    result["config"] = config.to_dict(flatten=True, values=True)
 
     # add details for mandatory packages
     packages_min = packages_from_requirements(RESOURCE_PATH / "requirements_basic.txt")
@@ -703,8 +829,12 @@ def environment() -> dict[str, Any]:
     packages |= set(packages_from_requirements(RESOURCE_PATH / "requirements_mpi.txt"))
     packages -= set(packages_min)
     result["optional packages"] = get_package_versions(sorted(packages))
+
+    backend = {}
     if module_available("numba"):
-        result["numba environment"] = numba_environment()
+        backend["numba"] = numba_environment()
+    if backend:
+        result["backend"] = backend
 
     # add information about MPI environment
     if mpi.initialized:

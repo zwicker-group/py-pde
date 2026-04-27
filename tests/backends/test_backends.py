@@ -14,6 +14,7 @@ if platform.system() == "Windows":
 from pde import CahnHilliardPDE, ScalarField, UnitGrid, config, get_backend
 from pde.backends import BackendBase, backend_registry
 from pde.backends.torch import TorchBackend
+from pde.tools.misc import module_available
 
 
 @pytest.mark.parametrize(
@@ -40,45 +41,30 @@ def test_backend_selection(backend, rng):
 
 def test_backend_configuration_known():
     """Test some aspects of configuration options of known backends."""
+    # with config():  # ensure config will be reset after this
     # test different ways to access the config
     assert config["backend.numba.fastmath"]
-    assert backend_registry.get_config("numba")["fastmath"]
     assert get_backend("numba").config["fastmath"]
-    assert backend_registry.get_config("numba") is get_backend("numba").config
+    assert config["backend"]["numba"] is get_backend("numba").config
+    assert config["backend.numba"] is get_backend("numba").config
 
+    # # standard backend must be modifiable and change global config
     get_backend("numba").config["fastmath"] = False
     assert not config["backend.numba.fastmath"]
-    assert not backend_registry.get_config("numba")["fastmath"]
     assert not get_backend("numba").config["fastmath"]
 
-    config["backend.numba.fastmath"] = True
-    assert config["backend.numba.fastmath"]
-    assert backend_registry.get_config("numba")["fastmath"]
-    assert get_backend("numba").config["fastmath"]
-
-
-def test_backend_configuration_special():
-    """Test some aspects of configuration options with specialized backends."""
     # test different ways to access the config
-    assert backend_registry.get_config("torch")["dtype_downcasting"]
+    assert config["backend.torch.dtype_downcasting"]
+    assert get_backend("torch").config["dtype_downcasting"]
 
-    # standard backend must modify global config
+    # standard backend must be modifiable and change global config
     get_backend("torch").config["dtype_downcasting"] = False
-    assert not backend_registry.get_config("torch")["dtype_downcasting"]
+    assert not config["backend.torch.dtype_downcasting"]
+    assert not get_backend("torch").config["dtype_downcasting"]
 
-    # global config must change standard backend
-    backend_registry.get_config("torch")["dtype_downcasting"] = True
-    assert get_backend("torch").config["dtype_downcasting"]
-
-    # special backend behaves differently
-    special_backend = backend_registry.get_backend(
-        "torch:cpu", config={"dtype_downcasting": False}
-    )
-    assert not special_backend.config["dtype_downcasting"]
-    assert not get_backend("torch:cpu").config["dtype_downcasting"]
-    assert isinstance(special_backend, TorchBackend)
-    assert get_backend("torch").config["dtype_downcasting"]
-    assert backend_registry.get_config("torch")["dtype_downcasting"]
+    # check whether values were reset
+    get_backend("numba").config["fastmath"] = True
+    get_backend("torch").config["dtype_downcasting"] = True
 
 
 def test_backend_configuration_new():
@@ -87,9 +73,32 @@ def test_backend_configuration_new():
     class MyBackend(BackendBase): ...
 
     backend = MyBackend({"option": 1}, name="test_config")
-    backend_registry.register_backend(backend, link_config=True)
-
+    backend_registry.register_backend(backend)
     assert backend.config["option"] == 1
-    assert backend_registry["test_config"].config["option"] == 1
-    assert config["backend.test_config.option"] == 1
-    assert backend_registry.get_config("test_config")["option"] == 1
+    assert get_backend("test_config").config["option"] == 1
+
+
+@pytest.mark.skipif(not module_available("torch"), reason="requires `torch` module")
+def test_backend_configuration_subcase():
+    """Test configuration of sub-backends."""
+    b0 = backend_registry.get_backend("torch")
+    b1 = backend_registry.get_backend("torch:cpu")
+    assert config["backend.torch.dtype_downcasting"]
+    assert b0.config["dtype_downcasting"]
+    assert b1.config["dtype_downcasting"]
+
+    b1.config["dtype_downcasting"] = False
+    assert config["backend.torch.dtype_downcasting"]
+    assert b0.config["dtype_downcasting"]
+    assert not b1.config["dtype_downcasting"]
+
+    b0.config["dtype_downcasting"] = False
+    assert not config["backend.torch.dtype_downcasting"]
+    assert not b0.config["dtype_downcasting"]
+    assert not b1.config["dtype_downcasting"]
+
+    b0.config["dtype_downcasting"] = True
+    b1.config["dtype_downcasting"] = True
+    assert config["backend.torch.dtype_downcasting"]
+    assert b0.config["dtype_downcasting"]
+    assert b1.config["dtype_downcasting"]

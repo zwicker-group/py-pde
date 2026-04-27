@@ -134,6 +134,7 @@ class SphericalGradient(TorchDifferentialOperator):
                 'central', 'forward', and 'backward'.
         """
         super().__init__(grid, bcs, dtype=dtype)
+        self.result_shape = (3, *grid.shape)
 
         # calculate preliminary quantities
         self.method = method
@@ -148,15 +149,16 @@ class SphericalGradient(TorchDifferentialOperator):
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
+        result = torch.zeros(self.result_shape, dtype=arr.dtype, device=arr.device)
 
         if self.method == "central":
-            r = (data_full[2:] - data_full[:-2]) * self.scale_r
+            result[0] = (data_full[2:] - data_full[:-2]) * self.scale_r
         elif self.method == "forward":
-            r = (data_full[2:] - data_full[1:-1]) * self.scale_r
+            result[0] = (data_full[2:] - data_full[1:-1]) * self.scale_r
         elif self.method == "backward":
-            r = (data_full[1:-1] - data_full[:-2]) * self.scale_r
+            result[0] = (data_full[1:-1] - data_full[:-2]) * self.scale_r
         # no angular dependence by definition
-        return torch.stack((r, torch.zeros_like(r), torch.zeros_like(r)))
+        return result
 
 
 @TorchBackend.register_operator(
@@ -340,6 +342,7 @@ class SphericalVectorGradient(TorchDifferentialOperator):
 
         self.method = method
         rs = grid.axes_coords[0]
+        self.result_shape = (3, 3, *grid.shape)
         self.register_array("rs", rs)
         if method == "central":
             self.scale_r = 0.5 / grid.discretization[0]
@@ -352,26 +355,17 @@ class SphericalVectorGradient(TorchDifferentialOperator):
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
+        result = torch.zeros(self.result_shape, dtype=arr.dtype, device=arr.device)
 
         arr_r = data_full[0]
-
         if self.method == "central":
-            out_rr = (arr_r[2:] - arr_r[:-2]) * self.scale_r
+            result[0, 0] = (arr_r[2:] - arr_r[:-2]) * self.scale_r
         elif self.method == "forward":
-            out_rr = (arr_r[2:] - arr_r[1:-1]) * self.scale_r
+            result[0, 0] = (arr_r[2:] - arr_r[1:-1]) * self.scale_r
         elif self.method == "backward":
-            out_rr = (arr_r[1:-1] - arr_r[:-2]) * self.scale_r
-
-        out_diag = arr_r[1:-1] / self.rs  # type: ignore
-        zeros = torch.zeros_like(out_rr)
-
-        return torch.stack(
-            [
-                torch.stack([out_rr, zeros, zeros]),
-                torch.stack([zeros, out_diag, zeros]),
-                torch.stack([zeros, zeros, out_diag]),
-            ]
-        )
+            result[0, 0] = (arr_r[1:-1] - arr_r[:-2]) * self.scale_r
+        result[1, 1] = result[2, 2] = arr_r[1:-1] / self.rs  # type: ignore
+        return result
 
 
 @TorchBackend.register_operator(
@@ -420,6 +414,7 @@ class SphericalTensorDivergence(TorchDifferentialOperator):
         dr = grid.discretization[0]
         self.register_array("rs", rs)
         self.scale_r = 1 / (2 * dr)
+        self.result_shape = (3, *grid.shape)
 
         if self.conservative:
             rl = rs - dr / 2  # inner radii
@@ -434,15 +429,16 @@ class SphericalTensorDivergence(TorchDifferentialOperator):
         data_full = self.get_full_data(arr, args=args)
 
         if self.conservative:
+            result = torch.zeros(self.result_shape, dtype=arr.dtype, device=arr.device)
             arr_rr = data_full[0, 0]
             arr_φφ = data_full[2, 2]
 
             term_r_h = self.factor_h * (arr_rr[1:-1] + arr_rr[2:])  # type: ignore
             term_r_l = self.factor_l * (arr_rr[:-2] + arr_rr[1:-1])  # type: ignore
-            out_r = term_r_h - term_r_l - self.area_factor * arr_φφ[1:-1]  # type: ignore
-            zeros = torch.zeros_like(out_r)
-            return torch.stack([out_r, zeros, zeros])
+            result[0] = term_r_h - term_r_l - self.area_factor * arr_φφ[1:-1]  # type: ignore
+            return result
 
+        result = torch.empty(self.result_shape, dtype=arr.dtype, device=arr.device)
         # non-conservative implementation
         arr_rr = data_full[0, 0]
         arr_rφ = data_full[0, 2]
@@ -450,13 +446,16 @@ class SphericalTensorDivergence(TorchDifferentialOperator):
         arr_φr = data_full[2, 0]
         arr_φφ = data_full[2, 2]
 
-        out_r = (arr_rr[2:] - arr_rr[:-2]) * self.scale_r
-        out_r += 2 * (arr_rr[1:-1] - arr_φφ[1:-1]) / self.rs  # type: ignore
-        out_θ = (arr_θr[2:] - arr_θr[:-2]) * self.scale_r + 2 * arr_θr[1:-1] / self.rs  # type: ignore
-        out_φ = (arr_φr[2:] - arr_φr[:-2]) * self.scale_r
-        out_φ += (2 * arr_φr[1:-1] + arr_rφ[1:-1]) / self.rs  # type: ignore
-
-        return torch.stack([out_r, out_θ, out_φ])
+        # r component:
+        result[0] = (arr_rr[2:] - arr_rr[:-2]) * self.scale_r
+        result[0] += 2 * (arr_rr[1:-1] - arr_φφ[1:-1]) / self.rs  # type: ignore
+        # θ component:
+        result[1] = (arr_θr[2:] - arr_θr[:-2]) * self.scale_r
+        result[1] += 2 * arr_θr[1:-1] / self.rs  # type: ignore
+        # φ component:
+        result[2] = (arr_φr[2:] - arr_φr[:-2]) * self.scale_r
+        result[2] += (2 * arr_φr[1:-1] + arr_rφ[1:-1]) / self.rs  # type: ignore
+        return result
 
 
 __all__ = [

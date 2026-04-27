@@ -322,7 +322,7 @@ class BoundariesList(BoundariesBase):
             else:
                 raise BCDataError(
                     f"Got {len(data)} boundary conditions, but grid has "
-                    f"{grid.num_axes} axes." + cls.get_help()
+                    f"{grid.num_axes} axes. " + cls.get_help()
                 )
 
         else:

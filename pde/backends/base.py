@@ -96,6 +96,8 @@ class BackendBase(Generic[TNativeArray]):
         """
         if config is None:
             self.config = Config(mode="insert")
+        elif isinstance(config, Config):
+            self.config = config
         else:
             self.config = Config(config)
         if name is None:

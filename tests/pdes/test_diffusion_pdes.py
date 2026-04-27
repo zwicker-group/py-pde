@@ -12,7 +12,7 @@ from pde import (
     MemoryStorage,
     ScalarField,
     UnitGrid,
-    config,
+    get_backend,
 )
 from pde.tools.misc import module_available
 
@@ -106,16 +106,20 @@ def test_diffusion_sde(backend, rng):
 def test_diffusion_spectral(ndim, rng):
     """Test spectral operators for simple diffusion model."""
     eq = DiffusionPDE()
+    backend = get_backend("numba")
+    cur_value = backend.config["use_spectral"]
 
-    with config({"backend.numba.use_spectral": False}):
-        grid1 = CartesianGrid([[0, 1]] * ndim, 128, periodic=True)
-        state1 = ScalarField.random_normal(grid1, correlation="gaussian", rng=rng)
-        field1 = eq.evolution_rate(state1)
+    backend.config["use_spectral"] = False
+    grid1 = CartesianGrid([[0, 1]] * ndim, 128, periodic=True)
+    state1 = ScalarField.random_normal(grid1, correlation="gaussian", rng=rng)
+    field1 = eq.evolution_rate(state1)
 
-    with config({"backend.numba.use_spectral": True}):
-        grid2 = CartesianGrid([[0, 1]] * ndim, 128, periodic=True)
-        state2 = ScalarField(grid2, state1.data)
-        field2 = eq.evolution_rate(state2)
+    backend.config["use_spectral"] = True
+    grid2 = CartesianGrid([[0, 1]] * ndim, 128, periodic=True)
+    state2 = ScalarField(grid2, state1.data)
+    field2 = eq.evolution_rate(state2)
+
+    backend.config["use_spectral"] = cur_value
 
     # results should be close
     thresh = 0.1 * ndim

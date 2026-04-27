@@ -107,16 +107,18 @@ class CylindricalGradient(TorchDifferentialOperator):
         super().__init__(grid, bcs, dtype=dtype)
 
         # calculate preliminary quantities
+        self.result_shape = (3, *grid.shape)
         self.scale_r, self.scale_z = 1 / (2 * grid.discretization)
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
+        result = torch.zeros(self.result_shape, dtype=arr.dtype, device=arr.device)
 
-        r = (data_full[2:, 1:-1] - data_full[:-2, 1:-1]) * self.scale_r
-        z = (data_full[1:-1, 2:] - data_full[1:-1, :-2]) * self.scale_z
-        phi = torch.zeros_like(r)
-        return torch.stack((r, z, phi))
+        result[0] = (data_full[2:, 1:-1] - data_full[:-2, 1:-1]) * self.scale_r  # r
+        result[1] = (data_full[1:-1, 2:] - data_full[1:-1, :-2]) * self.scale_z  # z
+        # phi = torch.zeros_like(r)
+        return result
 
 
 @TorchBackend.register_operator(
@@ -250,37 +252,32 @@ class CylindricalVectorGradient(TorchDifferentialOperator):
         super().__init__(grid, bcs, dtype=dtype)
 
         self.scale_r, self.scale_z = 0.5 / grid.discretization
+        self.result_shape = (3, 3, *grid.shape)
         rs = grid.axes_coords[0]
         self.register_array("rs", rs[:, None])
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
+        result = torch.zeros(self.result_shape, dtype=arr.dtype, device=arr.device)
 
         arr_r, arr_z, arr_φ = data_full[0], data_full[1], data_full[2]
 
         # radial derivatives
-        out_rr = (arr_r[2:, 1:-1] - arr_r[:-2, 1:-1]) * self.scale_r
-        out_zr = (arr_z[2:, 1:-1] - arr_z[:-2, 1:-1]) * self.scale_r
-        out_φr = (arr_φ[2:, 1:-1] - arr_φ[:-2, 1:-1]) * self.scale_r
+        result[0, 0] = (arr_r[2:, 1:-1] - arr_r[:-2, 1:-1]) * self.scale_r  # rr
+        result[1, 0] = (arr_z[2:, 1:-1] - arr_z[:-2, 1:-1]) * self.scale_r  # zr
+        result[2, 0] = (arr_φ[2:, 1:-1] - arr_φ[:-2, 1:-1]) * self.scale_r  # φr
 
         # phi-curvature terms
-        out_rφ = -arr_φ[1:-1, 1:-1] / self.rs  # type: ignore
-        out_φφ = arr_r[1:-1, 1:-1] / self.rs  # type: ignore
-        out_zφ = torch.zeros_like(out_rr)
+        result[0, 2] = -arr_φ[1:-1, 1:-1] / self.rs  # type: ignore  # rφ
+        result[2, 2] = arr_r[1:-1, 1:-1] / self.rs  # type: ignore  # φφ
+        # out_zφ = torch.zeros_like(out_rr)
 
         # axial derivatives
-        out_rz = (arr_r[1:-1, 2:] - arr_r[1:-1, :-2]) * self.scale_z
-        out_φz = (arr_φ[1:-1, 2:] - arr_φ[1:-1, :-2]) * self.scale_z
-        out_zz = (arr_z[1:-1, 2:] - arr_z[1:-1, :-2]) * self.scale_z
-
-        return torch.stack(
-            [
-                torch.stack([out_rr, out_rz, out_rφ]),
-                torch.stack([out_zr, out_zz, out_zφ]),
-                torch.stack([out_φr, out_φz, out_φφ]),
-            ]
-        )
+        result[0, 1] = (arr_r[1:-1, 2:] - arr_r[1:-1, :-2]) * self.scale_z  # rz
+        result[2, 1] = (arr_φ[1:-1, 2:] - arr_φ[1:-1, :-2]) * self.scale_z  # φz
+        result[1, 1] = (arr_z[1:-1, 2:] - arr_z[1:-1, :-2]) * self.scale_z  # zz
+        return result
 
 
 @TorchBackend.register_operator(
@@ -316,6 +313,7 @@ class CylindricalVectorLaplacian(TorchDifferentialOperator):
         super().__init__(grid, bcs, dtype=dtype)
 
         rs = grid.axes_coords[0]
+        self.result_shape = (3, *grid.shape)
         self.register_array("rs", rs[:, None])
         dr, dz = grid.discretization
         self.s1 = 1 / (2 * dr)
@@ -325,13 +323,14 @@ class CylindricalVectorLaplacian(TorchDifferentialOperator):
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
+        result = torch.empty(self.result_shape, dtype=arr.dtype, device=arr.device)
 
         arr_r, arr_z, arr_φ = data_full[0], data_full[1], data_full[2]
 
         f_r_l = arr_r[:-2, 1:-1]
         f_r_m = arr_r[1:-1, 1:-1]
         f_r_h = arr_r[2:, 1:-1]
-        out_r = (
+        result[0] = (  # r component
             (arr_r[1:-1, 2:] - 2 * f_r_m + arr_r[1:-1, :-2]) * self.scale_z
             - f_r_m / self.rs**2  # type: ignore
             + (f_r_h - f_r_l) * self.s1 / self.rs
@@ -341,7 +340,7 @@ class CylindricalVectorLaplacian(TorchDifferentialOperator):
         f_φ_l = arr_φ[:-2, 1:-1]
         f_φ_m = arr_φ[1:-1, 1:-1]
         f_φ_h = arr_φ[2:, 1:-1]
-        out_φ = (
+        result[2] = (  # φ component
             (arr_φ[1:-1, 2:] - 2 * f_φ_m + arr_φ[1:-1, :-2]) * self.scale_z
             - f_φ_m / self.rs**2  # type: ignore
             + (f_φ_h - f_φ_l) * self.s1 / self.rs
@@ -351,13 +350,12 @@ class CylindricalVectorLaplacian(TorchDifferentialOperator):
         f_z_l = arr_z[:-2, 1:-1]
         f_z_m = arr_z[1:-1, 1:-1]
         f_z_h = arr_z[2:, 1:-1]
-        out_z = (
+        result[1] = (  # z component
             (arr_z[1:-1, 2:] - 2 * f_z_m + arr_z[1:-1, :-2]) * self.scale_z
             + (f_z_h - f_z_l) * self.s1 / self.rs
             + (f_z_h - 2 * f_z_m + f_z_l) * self.s2
         )
-
-        return torch.stack((out_r, out_z, out_φ))
+        return result
 
 
 @TorchBackend.register_operator(
@@ -393,36 +391,37 @@ class CylindricalTensorDivergence(TorchDifferentialOperator):
         super().__init__(grid, bcs, dtype=dtype)
 
         rs = grid.axes_coords[0]
+        self.result_shape = (3, *grid.shape)
         self.register_array("rs", rs[:, None])
         self.scale_r, self.scale_z = 0.5 / grid.discretization
 
     def forward(self, arr: Tensor, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
+        result = torch.empty(self.result_shape, dtype=arr.dtype, device=arr.device)
 
         arr_rr, arr_rz, arr_rφ = data_full[0, 0], data_full[0, 1], data_full[0, 2]
         arr_zr, arr_zz = data_full[1, 0], data_full[1, 1]
         arr_φr, arr_φz, arr_φφ = data_full[2, 0], data_full[2, 1], data_full[2, 2]
 
-        out_r = (
+        result[0] = (  # r component
             (arr_rz[1:-1, 2:] - arr_rz[1:-1, :-2]) * self.scale_z
             + (arr_rr[2:, 1:-1] - arr_rr[:-2, 1:-1]) * self.scale_r
             + (arr_rr[1:-1, 1:-1] - arr_φφ[1:-1, 1:-1]) / self.rs  # type: ignore
         )
 
-        out_φ = (
+        result[2] = (  # φ component
             (arr_φz[1:-1, 2:] - arr_φz[1:-1, :-2]) * self.scale_z
             + (arr_φr[2:, 1:-1] - arr_φr[:-2, 1:-1]) * self.scale_r
             + (arr_rφ[1:-1, 1:-1] + arr_φr[1:-1, 1:-1]) / self.rs  # type: ignore
         )
 
-        out_z = (
+        result[1] = (  # z component
             (arr_zz[1:-1, 2:] - arr_zz[1:-1, :-2]) * self.scale_z
             + (arr_zr[2:, 1:-1] - arr_zr[:-2, 1:-1]) * self.scale_r
             + arr_zr[1:-1, 1:-1] / self.rs  # type: ignore
         )
-
-        return torch.stack((out_r, out_z, out_φ))
+        return result
 
 
 __all__ = [
