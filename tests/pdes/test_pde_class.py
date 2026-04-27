@@ -29,6 +29,16 @@ def iter_grids():
     yield grids.PolarSymGrid(2, 2)
 
 
+def test_pde_name_exception():
+    """Test whether field names are checked."""
+    with pytest.raises(ValueError):
+        PDE({"*": "1"})
+    with pytest.raises(ValueError):
+        PDE({"def": "1"})
+    with pytest.raises(ValueError):
+        PDE({"t": "1"})
+
+
 def test_pde_critical_input(rng):
     """Test some wrong input and edge cases."""
     # test whether reserved symbols can be used as variables

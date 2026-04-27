@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import keyword
 import numbers
 import re
 from typing import TYPE_CHECKING, Any
@@ -179,9 +180,8 @@ class PDE(SDEBase):
         # validate input
         if not isinstance(rhs, dict):
             rhs = dict(rhs)
-        if "t" in rhs:
-            msg = "Cannot name field `t` since it denotes time"
-            raise ValueError(msg)
+        for name in rhs:
+            self._check_identifier(name)
         if consts is None:
             consts = {}
 
@@ -278,6 +278,23 @@ class PDE(SDEBase):
     def expressions(self) -> dict[str, str]:
         """Show the expressions of the PDE."""
         return {k: v.expression for k, v in self._rhs_expr.items()}
+
+    def _check_identifier(self, name: str) -> None:
+        """Checks the identifier of a field name.
+
+        Args:
+            name (str):
+                THe identifier to be checked
+        """
+        if not name.isidentifier():
+            msg = f"`{name}` is not a valid field name."
+            raise ValueError(msg)
+        if keyword.iskeyword(name):
+            msg = f"`{name}` is a keyword and cannot be a field name."
+            raise ValueError(msg)
+        if name == "t":
+            msg = "Cannot name field `t` since it denotes time"
+            raise ValueError(msg)
 
     def _add_operators_to_expr(
         self,
