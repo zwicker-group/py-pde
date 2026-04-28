@@ -19,12 +19,9 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import TYPE_CHECKING
 
 import numpy as np
-
-if TYPE_CHECKING:
-    from numba_mpi import Operator
+from numba_mpi import Operator
 
 # Initialize assuming that we run serial code if `numba_mpi` is not available
 initialized: bool = False
