@@ -10,7 +10,7 @@ import numpy as np
 from numba import types
 from numba.extending import SentryLiteralArgs, overload, register_jitable
 
-from ...tools.mpi import Operator, mpi_allreduce, mpi_recv, mpi_send, size
+from ...tools.mpi import MPIOperator, mpi_allreduce, mpi_recv, mpi_send, size
 
 try:
     from numba.types import Literal
@@ -68,7 +68,7 @@ def ol_mpi_allreduce(data, operator):
         # an operator is specified (using a literal value)
         if isinstance(operator.literal_value, str):
             # an operator is specified by it's name
-            op_id = Operator.id(operator.literal_value)
+            op_id = MPIOperator.id(operator.literal_value)
         else:
             # assume an operator is specified by it's id
             op_id = int(operator.literal_value)
