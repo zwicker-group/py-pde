@@ -83,14 +83,15 @@ class NestedDict(MutableMapping[str, TNestedDictValue], Generic[TValue]):
                 is itself a nested node.
         """
         if not isinstance(key, str):
-            msg = "Keys must be strings"
+            msg = f"Keys must be strings, not {key!r}"
             raise TypeError(msg)
         if self.sep not in key:
             # key denotes a node
             try:
                 node = self.data[key]
             except KeyError as err:
-                msg = f"{parent}{key}"
+                # node did not exist
+                msg = f"`{parent}{key}` not in {list(self.data.keys())}"
                 raise KeyError(msg) from err
             is_tree = isinstance(node, NestedDict)
             return self, key, is_tree
@@ -100,10 +101,11 @@ class NestedDict(MutableMapping[str, TNestedDictValue], Generic[TValue]):
         try:
             node = self.data[child]  # next node in branch
         except KeyError as err:
-            msg = f"{parent}{key}"  # node did not exist
+            # node did not exist
+            msg = f"`{parent}{key}` not in {list(self.data.keys())}"
             raise KeyError(msg) from err
         if not isinstance(node, NestedDict):
-            msg = f"`{child}` is not a tree node"
+            msg = f"`{child}` is not a tree node."
             raise TypeError(msg)
         # traverse branch recursively
         return node._node(grandchildren, parent=parent + key + self.sep)
