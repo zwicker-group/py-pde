@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from ...grids.boundaries.local import BCBase
     from ...pdes import PDEBase
     from ...solvers import SolverBase
-    from ...tools.config import Config, ConfigLike
+    from ...tools.config import ConfigLike
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
         NumberOrArray,
@@ -58,7 +58,7 @@ class JaxBackend(BackendBase[jax.Array]):
 
     def __init__(
         self,
-        config: Config | None = None,
+        config: ConfigLike | None = None,
         *,
         name: str | None = None,
         device: str = "config",
@@ -75,7 +75,7 @@ class JaxBackend(BackendBase[jax.Array]):
                 configuration) and "auto" (use CUDA if available, otherwise CPU)
         """
         if config is None:
-            from .config import DEFAULT_CONFIG as config  # type: ignore
+            from .config import DEFAULT_CONFIG as config
 
         super().__init__(config, name=name)
         self.device = device

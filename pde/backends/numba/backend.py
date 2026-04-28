@@ -174,8 +174,9 @@ class NumbaBackend(NumpyBackend):
         # throw an informative error since operator was not found
         op_list = ", ".join(sorted(self.get_registered_operators(grid)))
         msg = (
-            f"'{operator}' is not one of the defined operators ({op_list}). Custom "
-            "operators can be added using the `register_operator` method."
+            f"'{operator}' is not defined for {grid.__class__.__name__} on backend "
+            f"{self.__class__.__name__}. Operators can be added using the "
+            f"`register_operator` method. Defined operators: {op_list})."
         )
         raise NotImplementedError(msg)
 
@@ -553,7 +554,7 @@ class NumbaBackend(NumpyBackend):
             return out
 
         # overload `apply_op` with numba-compiled version
-        set_valid_w_bc = grid._make_set_valid(bcs=bcs)
+        set_valid_w_bc = self.make_data_setter(grid=grid, bcs=bcs)
 
         if not is_jitted(operator_raw):
             operator_raw = self.compile_function(operator_raw)
@@ -576,7 +577,7 @@ class NumbaBackend(NumpyBackend):
                     out = np.empty(shape_out, dtype=arr.dtype)
                     # prepare input with boundary conditions
                     arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                    set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
+                    set_valid_w_bc(arr_full, arr, args=args)
 
                     # apply operator
                     operator_raw(arr_full, out)  # type: ignore
@@ -600,7 +601,7 @@ class NumbaBackend(NumpyBackend):
 
                     # prepare input with boundary conditions
                     arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                    set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
+                    set_valid_w_bc(arr_full, arr, args=args)
 
                     # apply operator
                     operator_raw(arr_full, out)  # type: ignore

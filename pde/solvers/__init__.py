@@ -27,7 +27,6 @@ Inheritance structure of the classes:
         adams_bashforth.AdamsBashforthSolver
         crank_nicolson.CrankNicolsonSolver
         euler.EulerSolver
-        euler.MilsteinSolver
         explicit_mpi.ExplicitMPISolver
         implicit.ImplicitSolver
         milstein.MilsteinSolver

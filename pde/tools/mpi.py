@@ -19,12 +19,8 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import TYPE_CHECKING
 
 import numpy as np
-
-if TYPE_CHECKING:
-    from numba_mpi import Operator
 
 # Initialize assuming that we run serial code if `numba_mpi` is not available
 initialized: bool = False
@@ -35,6 +31,42 @@ size: int = 1
 
 rank: int = 0
 """int: ID of the current process"""
+
+
+class _OperatorRegistry:
+    """Collection of operators that MPI supports."""
+
+    _name_ids: dict[str, int]
+    _ids_operators: dict[int, MPI.Op]
+
+    def __init__(self):
+        self._name_ids = {}
+        self._ids_operators = {}
+
+    def register(self, name: str, op: MPI.Op):
+        op_id = int(MPI._addressof(op))
+        self._name_ids[name] = op_id
+        self._ids_operators[op_id] = op
+
+    def id(self, name_or_id: int | str) -> int:
+        if isinstance(name_or_id, int):
+            return name_or_id
+        return self._name_ids[name_or_id]
+
+    def operator(self, name_or_id: int | str) -> MPI.Op:
+        if isinstance(name_or_id, str):
+            name_or_id = self._name_ids[name_or_id]
+        return self._ids_operators[name_or_id]
+
+    def __getattr__(self, name: str):
+        try:
+            return self._name_ids[name]
+        except KeyError:
+            msg = f"MPI operator `{name}` not registered"
+            raise AttributeError(msg) from None
+
+
+MPIOperator = _OperatorRegistry()
 
 # read state of the current MPI node
 try:
@@ -52,42 +84,9 @@ else:
     size = MPI.COMM_WORLD.size
     rank = MPI.COMM_WORLD.rank
 
-    class _OperatorRegistry:
-        """Collection of operators that MPI supports."""
-
-        _name_ids: dict[str, int]
-        _ids_operators: dict[int, MPI.Op]
-
-        def __init__(self):
-            self._name_ids = {}
-            self._ids_operators = {}
-
-        def register(self, name: str, op: MPI.Op):
-            op_id = int(MPI._addressof(op))
-            self._name_ids[name] = op_id
-            self._ids_operators[op_id] = op
-
-        def id(self, name_or_id: int | str) -> int:
-            if isinstance(name_or_id, int):
-                return name_or_id
-            return self._name_ids[name_or_id]
-
-        def operator(self, name_or_id: int | str) -> MPI.Op:
-            if isinstance(name_or_id, str):
-                name_or_id = self._name_ids[name_or_id]
-            return self._ids_operators[name_or_id]
-
-        def __getattr__(self, name: str):
-            try:
-                return self._name_ids[name]
-            except KeyError:
-                msg = f"MPI operator `{name}` not registered"
-                raise AttributeError(msg) from None
-
-    Operator = _OperatorRegistry()
-    Operator.register("MAX", MPI.MAX)
-    Operator.register("MIN", MPI.MIN)
-    Operator.register("SUM", MPI.SUM)
+    MPIOperator.register("MAX", MPI.MAX)
+    MPIOperator.register("MIN", MPI.MIN)
+    MPIOperator.register("SUM", MPI.SUM)
 
 parallel_run: bool = size > 1
 """bool: Flag indicating whether the current run is using multiprocessing"""
@@ -141,8 +140,8 @@ def mpi_allreduce(data, operator):
     if isinstance(data, np.ndarray):
         # synchronize an array
         out = np.empty_like(data)
-        MPI.COMM_WORLD.Allreduce(data, out, op=Operator.operator(operator))
+        MPI.COMM_WORLD.Allreduce(data, out, op=MPIOperator.operator(operator))
         return out
 
     # synchronize a single value
-    return MPI.COMM_WORLD.allreduce(data, op=Operator.operator(operator))
+    return MPI.COMM_WORLD.allreduce(data, op=MPIOperator.operator(operator))

@@ -332,7 +332,7 @@ def make_laplace(
     """
     dim = grid.dim
     if spectral is None:
-        spectral = backend.config["use_spectral"]
+        spectral: bool = backend.config.get("use_spectral", False)  # type: ignore
 
     if spectral:
         # use spectral versions of the operators

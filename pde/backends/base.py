@@ -285,14 +285,17 @@ class BackendBase(Generic[TNativeArray]):
             grid_id (:class:`~pde.grid.base.GridBase` or its type):
                 Grid or grid class for which the operators need to be returned
         """
+        # determine all classes that are relevant to the grid
         grid_cls = grid_id if inspect.isclass(grid_id) else grid_id.__class__
+        grid_classes = inspect.getmro(grid_cls)[:-1]  # type: ignore
 
-        # get all operators registered on the class
+        # get all operators registered on the class from all relevant backends and grids
         operators = set()
-        # add all custom defined operators
-        classes = inspect.getmro(grid_cls)[:-1]  # type: ignore
-        for cls in classes:
-            operators |= set(self._operators[cls].keys())
+        for backend_cls in inspect.getmro(self.__class__)[:-1]:
+            operators_dict = getattr(backend_cls, "_operators", {})
+            for grid in grid_classes:
+                if grid in operators_dict:
+                    operators |= set(operators_dict[grid].keys())
 
         return operators
 
@@ -316,17 +319,21 @@ class BackendBase(Generic[TNativeArray]):
             return operator
         assert isinstance(operator, str)
 
-        # look for defined operators on all parent grid classes (except `object`)
-        classes = inspect.getmro(grid.__class__)[:-1]
-        for cls in classes:
-            if operator in self._operators[cls]:
-                return self._operators[cls][operator]
+        # determine all classes that are relevant to the grid
+        grid_classes = inspect.getmro(grid.__class__)[:-1]
+
+        # look for operators on all parent backend and grid classes (except `object`)
+        for backend_cls in inspect.getmro(self.__class__)[:-1]:
+            operators_dict = getattr(backend_cls, "_operators", {})
+            for grid_cls in grid_classes:
+                if grid_cls in operators_dict and operator in operators_dict[grid_cls]:
+                    return operators_dict[grid_cls][operator]  # type: ignore
 
         # throw an error since operator was not found
         msg = (
             f"Backend `{self.name}` does not define operator '{operator}' for grid "
             f"`{grid.__class__.__name__}`. Defined operators are: "
-            f"{sorted(self.get_registered_operators(cls))}."
+            f"{sorted(self.get_registered_operators(grid))}."
         )
         raise NotImplementedError(msg)
 
