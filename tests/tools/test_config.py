@@ -56,15 +56,15 @@ def test_config_backends():
     # the package-level config is populated with backend defaults during import
     c = config.copy()
 
-    assert c["backend.backend.numba.multithreading_threshold"] > 0
+    assert c["backend.numba.multithreading_threshold"] > 0
 
-    assert "backend.backend.numba.multithreading_threshold" in c
-    assert set(c.keys(flatten=True)) >= {"backend.backend.numba.multithreading_threshold"}
+    assert "backend.numba.multithreading_threshold" in c
+    assert set(c.keys(flatten=True)) >= {"backend.numba.multithreading_threshold"}
     assert any(
-        k == "backend.backend.numba.multithreading_threshold" and v > 0
+        k == "backend.numba.multithreading_threshold" and v > 0
         for k, v in c.to_dict(flatten=True, values=True).items()
     )
-    assert "backend.backend.numba.multithreading_threshold" in c.to_dict(flatten=True)
+    assert "backend.numba.multithreading_threshold" in c.to_dict(flatten=True)
     assert isinstance(repr(c), str)
 
 
