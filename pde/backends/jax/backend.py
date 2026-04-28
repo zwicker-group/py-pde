@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from ...grids.boundaries.local import BCBase
     from ...pdes import PDEBase
     from ...solvers import SolverBase
-    from ...tools.config import Config
+    from ...tools.config import Config, ConfigLike
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
         NumberOrArray,
@@ -86,6 +86,22 @@ class JaxBackend(BackendBase[jax.Array]):
             f"{self.__class__.__name__}(name={self.name!r}, "
             f"device={str(self.device)!r})"
         )
+
+    @classmethod
+    def from_args(
+        cls, config: ConfigLike | None, args: str = "", *, name: str | None = None
+    ):
+        """Initialize backend with extra arguments.
+
+        Args:
+            config (:class:`~pde.tools.config.Config`):
+                Configuration data for the backend
+            args (str):
+                Additional arguments that determine how the backend is initialized
+            name (str):
+                The name of the backend
+        """
+        return cls(config, name=name, device=args)
 
     @property
     def info(self) -> dict[str, Any]:

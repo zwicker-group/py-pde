@@ -128,6 +128,43 @@ The final documentation will be available in :file:`docs/build/html`.
 Note that a LaTeX documentation can be build using :command:`make latexpdf`.
 
 
+A simple example
+^^^^^^^^^^^^^^^^
+
+After installation, the easiest way to get started is to run a diffusion simulation
+on a one-dimensional grid.
+The example below shows the full workflow: create a grid, initialize a field,
+define a PDE, solve it, and inspect the final result.
+
+.. code-block:: python
+
+    import pde
+
+    # 1. Define a one-dimensional domain with 64 support points
+    grid = pde.UnitGrid([64])
+
+    # 2. Create an initial scalar field with random values
+    state = pde.ScalarField.random_uniform(grid, vmin=0, vmax=1)
+
+    # 3. Define a simple PDE (diffusion equation)
+    eq = pde.DiffusionPDE(diffusivity=0.1)
+
+    # 4. Evolve the field in time
+    result = eq.solve(state, t_range=1, dt=1e-3)
+
+    # 5. Inspect the final state
+    result.plot()
+
+This script runs with the default solver and uses only the core API.
+In practice, this is often enough to prototype a first model quickly.
+Running the script should open a line plot of the final one-dimensional field.
+Since the initial condition is random and diffusion smooths spatial variations,
+the final profile is typically less jagged than the initial state.
+
+
+You can read more about the package in the next section, or you move on to the
+:doc:`manual/basic_usage` section to learn about boundary conditions, custom equations,
+trackers, and result storage.
 
 Package overview
 ^^^^^^^^^^^^^^^^
@@ -171,7 +208,7 @@ Most notably, PDEs can be specified by their expression using the convenient
 :class:`~pde.pdes.pde.PDE` class.
 
 The PDEs are solved using solver classes, where a simple explicit solver is
-implemented by :class:`~pde.solvers.explicit.EulerSolver`, but more advanced
+implemented by :class:`~pde.solvers.euler.EulerSolver`, but more advanced
 implementations are available.
 Each solver object represents the integration strategy and configuration; during
 simulation it constructs an executable stepping function that advances the state

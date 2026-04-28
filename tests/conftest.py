@@ -10,7 +10,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from pde.backends import backend_registry, get_backend
+from pde import config
+from pde.backends import BackendBase, backend_registry, get_backend
 from pde.backends.numba.utils import random_seed
 from pde.tools.misc import module_available
 
@@ -64,16 +65,27 @@ def init_random_number_generators():
 if module_available("torch"):
     from pde.backends.torch import TorchBackend
 
-    torch_backend = get_backend("torch")
-
     # TODO: Test mps device once torch-mps works well again
     for device in ["cpu", "cuda"]:  # , "mps"]:
         try:
-            backend = TorchBackend(
-                torch_backend.config.copy(), name=f"torch-{device}", device=device
+            backend: BackendBase = TorchBackend(
+                config["backend"]["torch"].copy(), name=f"torch-{device}", device=device
             )
         except RuntimeError:
             _logger.info("Torch device `%s` is unavailable", device)
+        else:
+            backend_registry.register_backend(backend)
+
+if module_available("jax"):
+    from pde.backends.jax import JaxBackend
+
+    for device in ["cpu", "cuda"]:
+        try:
+            backend = JaxBackend(
+                config["backend"]["jax"].copy(), name=f"jax-{device}", device=device
+            )
+        except RuntimeError:
+            _logger.info("Jax device `%s` is unavailable", device)
         else:
             backend_registry.register_backend(backend)
 
@@ -87,19 +99,22 @@ def backend(request):
     automatically.
     """
     if request.param == "numba":
-        # a numba backend
+        # the numba backend
         if not module_available("numba"):
             pytest.skip("`numba` is not available")
         backend = get_backend("numba")
 
-    elif request.param == "jax":
-        # a jax backend
+    elif request.param.startswith("jax"):
+        # a jax backend, which might possibly include a device
         if not module_available("jax"):
             pytest.skip("`jax` is not available")
-        backend = get_backend("jax")
+        try:
+            backend = get_backend(request.param)
+        except KeyError as err:
+            pytest.skip(str(err))
 
     elif request.param.startswith("torch"):
-        # a torch backend, which might possible include a device
+        # a torch backend, which might possibly include a device
         if not module_available("torch"):
             pytest.skip("`torch` is not available")
         if platform.system() == "Windows":

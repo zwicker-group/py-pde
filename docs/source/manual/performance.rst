@@ -44,7 +44,7 @@ Note that the call overhead is generally lower in the `py-pde` package, so that 
 performance on small grids is particularly good using the `numba` backend (blue line).
 Moreover, further speed-up is possible (blue dotted line) if boundary conditions do not
 need to be set, i.e., if ghost cells were set by some other function before.
-However, realistic use-cases probably need more complicated operations and it is
+However, realistic use cases probably need more complicated operations and it is
 thus always necessary to profile the respective code.
 This can be done using the function
 :func:`~pde.tools.misc.estimate_computation_speed` or the traditional
@@ -55,8 +55,8 @@ This can be done using the function
 Improving performance
 """""""""""""""""""""
 
-Beside the underlying implementation of the operators, a major factor for performance is
-numerical problem at hand and the methods that are used to solve it.
+Besides the underlying implementation of the operators, a major factor for performance is
+the specific numerical problem being solved and the methods that are used to address it.
 It is thus paramount to choose the right backend.
 Here, compiled backends, like `numba` and `torch`, provide the fastest speed,
 particularly for larger systems, but they require an initial compilation, which can be

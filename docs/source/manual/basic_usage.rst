@@ -1,6 +1,6 @@
 Basic usage
 ^^^^^^^^^^^
-We here describe the typical workflow to solve a PDE using `py-pde`.
+We describe the typical workflow to solve a PDE using `py-pde`.
 Throughout this section, we assume that the package has been imported using
 :code:`import pde`.
 
@@ -10,7 +10,7 @@ Defining the geometry
 The state of the system is described in a discretized geometry, also known as a `grid`.
 The package focuses on simple geometries, which work well for the employed finite
 difference scheme.
-Grids are defined by instance of various classes that capture the symmetries of the 
+Grids are defined by instances of various classes that capture the symmetries of the 
 underlying space.
 In particular, the package offers Cartesian grids of `1` to `3` dimensions via
 :class:`~pde.grids.cartesian.CartesianGrid`, as well as curvilinear coordinates for
@@ -36,16 +36,16 @@ Note that the grid will only be periodic in the `x`-direction.
 
 Initializing a field
 """"""""""""""""""""
-Fields specifying the values at the discrete points of the grid defined in the previous
+Fields specify the values at the discrete points of the grid defined in the previous
 section.
-Most PDEs discussed in the package describe a scalar variable, which can be encoded by the
-class :class:`~pde.fields.scalar.ScalarField`.
+Most PDEs in the package involve scalar variables, which are represented using
+the class :class:`~pde.fields.scalar.ScalarField`.
 However, tensors with rank 1 (vectors) and rank 2 are also supported using 
 :class:`~pde.fields.vectorial.VectorField` and
 :class:`~pde.fields.tensorial.Tensor2Field`, respectively.
 In any case, a field is initialized using a pre-defined grid, e.g.,
 :code:`field = pde.ScalarField(grid)`.
-Optional values allow to set the value of the grid, as well as a label that is later
+Optional arguments allow setting field values as well as a label that is later
 used in plotting, e.g., :code:`field1 = pde.ScalarField(grid, data=1, label="Ones")`.
 Moreover, fields can be initialized randomly
 (:code:`field2 = pde.ScalarField.random_normal(grid, mean=0.5)`) or from a mathematical
@@ -60,7 +60,7 @@ calling the method :meth:`~pde.fields.scalar.ScalarField.laplace`, which
 returns another instance of :class:`~pde.fields.scalar.ScalarField`, whereas
 :meth:`~pde.fields.scalar.ScalarField.gradient` returns a
 :class:`~pde.fields.vectorial.VectorField`.
-Combining these functions with ordinary arithmetics on fields allows to
+Combining these functions with ordinary arithmetic on fields allows
 represent the right hand side of many partial differential equations that appear
 in physics.
 Importantly, the differential operators work with flexible boundary conditions. 

@@ -228,7 +228,7 @@ def _make_adaptive_stepper_euler(
     """Return a backend-level stepping function for adaptive Euler stepping.
 
     Args:
-        solver (:class:`~pde.solvers.explicit.EulerSolver`):
+        solver (:class:`~pde.solvers.euler.EulerSolver`):
             The solver instance, which determines how the stepper is constructed.
         state (:class:`~pde.fields.base.FieldBase`):
             An example for the state from which grid and other information can be

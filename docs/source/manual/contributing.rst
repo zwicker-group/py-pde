@@ -4,7 +4,7 @@ Contributing code
 
 Structure of the package
 """"""""""""""""""""""""
-The functionality of the :mod:`pde` package is split into multiple sub-packages.
+The functionality of the :mod:`pde` package is split into multiple subpackages.
 The domain, together with its symmetries, periodicities, and discretizations, is
 described by classes defined in :mod:`~pde.grids`.
 Discretized fields are represented by classes in :mod:`~pde.fields`, which have
