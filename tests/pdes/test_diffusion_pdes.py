@@ -16,7 +16,15 @@ from pde import (
 )
 from pde.tools.misc import module_available
 
-ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+ALL_BACKENDS = [
+    "numpy",
+    "numba",
+    "jax-cpu",
+    "jax-cuda",
+    "torch-cpu",
+    "torch-mps",
+    "torch-cuda",
+]
 
 
 def test_diffusion_single(rng):

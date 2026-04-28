@@ -266,4 +266,8 @@ def get_backend(backend: str | BackendBase) -> BackendBase:
 
 def registered_backends() -> list[str]:
     """Returns all registered backends."""
-    return sorted(set(backend_registry._packages) | set(backend_registry._classes))
+    return sorted(
+        set(backend_registry._packages)
+        | set(backend_registry._classes)
+        | set(backend_registry._backends)
+    )

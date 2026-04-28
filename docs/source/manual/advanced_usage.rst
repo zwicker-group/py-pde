@@ -219,10 +219,10 @@ A simple implementation for the Kuramoto–Sivashinsky equation could read
 
         def evolution_rate(self, state, t=0):
             """Evaluate the right hand side of the evolution equation."""
-            state_lapacian = state.laplace(bc="auto_periodic_neumann")
+            state_laplacian = state.laplace(bc="auto_periodic_neumann")
             state_gradient = state.gradient(bc="auto_periodic_neumann")
-            return (- state_lapacian.laplace(bc="auto_periodic_neumann")
-                    - state_lapacian
+            return (- state_laplacian.laplace(bc="auto_periodic_neumann")
+                    - state_laplacian
                     - 0.5 * state_gradient.to_scalar("squared_sum"))
 
 A slightly more advanced example would allow for attributes that for
@@ -240,13 +240,13 @@ instance define the boundary conditions and the diffusivity:
 
         def evolution_rate(self, state, t=0):
             """Evaluate the right hand side of the evolution equation."""
-            state_lapacian = state.laplace(bc=self.bc)
+            state_laplacian = state.laplace(bc=self.bc)
             state_gradient = state.gradient(bc=self.bc)
-            return (- state_lapacian.laplace(bc=self.bc_laplace)
-                    - state_lapacian
+            return (- state_laplacian.laplace(bc=self.bc_laplace)
+                    - state_laplacian
                     - 0.5 * self.diffusivity * (state_gradient @ state_gradient))
 
-We here replaced the call to :code:`to_scalar('squared_sum')` by a 
+We replaced the call to :code:`to_scalar('squared_sum')` with a 
 dot product with itself (using the `@` notation), which is equivalent.
 Note that the numpy implementation of the right hand side of the PDE is rather
 slow since it runs mostly in pure python and constructs a lot of intermediate
