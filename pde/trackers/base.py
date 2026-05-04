@@ -196,9 +196,9 @@ class TrackerCollection:
     """
 
     tracker_action_times: list[float]
-    """ list: Times at which the trackers need to be handled next """
+    """list: Times at which the trackers need to be handled next """
     time_next_action: float
-    """ float: The time of the next interrupt of the simulation """
+    """float: The time of the next interrupt of the simulation """
 
     def __init__(self, trackers: list[TrackerBase] | None = None):
         """

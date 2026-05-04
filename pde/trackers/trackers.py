@@ -6,15 +6,16 @@ The trackers defined in this module are:
    :nosignatures:
 
    CallbackTracker
-   ProgressTracker
-   PrintTracker
-   PlotTracker
-   LivePlotTracker
-   DataTracker
-   SteadyStateTracker
-   RuntimeTracker
    ConsistencyTracker
+   DataTracker
+   LivePlotTracker
    MaterialConservationTracker
+   MaxRuntimeTracker
+   PlotTracker
+   PrintTracker
+   ProgressTracker
+   SteadyStateTracker
+   WalltimeTracker
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -25,6 +26,7 @@ import inspect
 import math
 import sys
 import time
+import warnings
 from datetime import timedelta
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any
@@ -698,10 +700,9 @@ class DataTracker(CallbackTracker):
     def dataframe(self) -> pandas.DataFrame:
         """:class:`pandas.DataFrame`: the data in a dataframe.
 
-        If `func` returns a dictionary, the keys are used as column names.
-        Otherwise, the returned data is enumerated starting with '0'. In any
-        case the time point at which the data was recorded is stored in the
-        column 'time'.
+        If `func` returns a dictionary, the keys are used as column names. Otherwise,
+        the returned data is enumerated starting with '0'. In any case the time point at
+        which the data was recorded is stored in the column 'time'.
         """
         import pandas as pd
 
@@ -873,7 +874,41 @@ class SteadyStateTracker(TrackerBase):
                 self._best_rate_max = rate_abs_max
 
 
-class RuntimeTracker(TrackerBase):
+class WalltimeTracker(TrackerBase):
+    """Special tracker that records runtime of the simulation at regular intervals.
+
+    Attributes:
+        data (list):
+            A list of tuples (simulation_time, wall_time)
+    """
+
+    @fill_in_docstring
+    def __init__(self, interrupts: InterruptData = 1):
+        """
+        Args:
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
+        """
+        super().__init__(interrupts=interrupts)
+        self.start_time = time.monotonic()
+        self.data: list[tuple[float, float]] = []
+
+    def initialize(self, field, info):
+        return super().initialize(field, info)
+
+    def handle(self, field, t) -> None:
+        """Handle data supplied to this tracker.
+
+        Args:
+            field (:class:`~pde.fields.FieldBase`):
+                The current state of the simulation
+            t (float):
+                The associated time
+        """
+        self.data.append((t, time.monotonic() - self.start_time))
+
+
+class MaxRuntimeTracker(TrackerBase):
     """Tracker interrupting the simulation once a duration has passed."""
 
     @fill_in_docstring
@@ -923,6 +958,17 @@ class RuntimeTracker(TrackerBase):
             dt = timedelta(seconds=self.max_runtime)
             msg = f"Reached maximal runtime of {dt!s}"
             raise FinishedSimulation(msg)
+
+
+class RuntimeTracker(MaxRuntimeTracker):
+    def __init__(self, *args, **kwargs):
+        # deprecated since 2026-05-04
+        warnings.warn(
+            "'RuntimeTracker' class was renamed to MaxRuntimeTracker",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
 
 
 class ConsistencyTracker(TrackerBase):
@@ -1026,9 +1072,10 @@ __all__ = [
     "DataTracker",
     "LivePlotTracker",
     "MaterialConservationTracker",
+    "MaxRuntimeTracker",
     "PlotTracker",
     "PrintTracker",
     "ProgressTracker",
-    "RuntimeTracker",
     "SteadyStateTracker",
+    "WalltimeTracker",
 ]
