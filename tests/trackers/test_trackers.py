@@ -198,13 +198,24 @@ def test_small_tracker_dt(rng):
     assert len(storage) == 11
 
 
-def test_runtime_tracker(rng):
-    """Test the RuntimeTracker."""
+def test_maxruntime_tracker(rng):
+    """Test the MaxRuntimeTracker."""
     s = ScalarField.random_uniform(UnitGrid([128]), rng=rng)
-    tracker = trackers.RuntimeTracker("0:01")
+    tracker = trackers.MaxRuntimeTracker("0:01")
     sol = EulerSolver(DiffusionPDE())
-    con = Controller(sol, t_range=1e4, tracker=["progress", tracker])
+    con = Controller(sol, t_range=1e4, tracker=tracker)
     con.run(s, dt=1e-3)
+
+
+def test_walltime_tracker(rng):
+    """Test the WalltimeTracker."""
+    state = ScalarField.random_uniform(UnitGrid([16]), rng=rng)
+    eq = DiffusionPDE()
+    tracker = trackers.WalltimeTracker(2)
+    eq.solve(state, t_range=11, tracker=tracker)
+    data = np.asarray(tracker.data)
+    np.testing.assert_allclose(data[:, 0], np.arange(0, 11, 2))
+    assert all(np.diff(data[:, 1]) > 0)
 
 
 def test_consistency_tracker(rng):
