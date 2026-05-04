@@ -127,7 +127,7 @@ def mpi_bcast(data: T, root: int = 0) -> T:
     """Broadcast data from root node to all other MPI nodes.
 
     Args:
-        data: The data being send
+        data: The data being sent
         root (int): The ID of the sending node
     """
     return MPI.COMM_WORLD.bcast(data, root=root)  # type: ignore

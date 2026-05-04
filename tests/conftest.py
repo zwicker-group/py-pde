@@ -168,12 +168,14 @@ def pytest_collection_modifyitems(config, items):
     runslow = config.getoption("--runslow", default=False)
     runinteractive = config.getoption("--runinteractive", default=False)
     use_mpi = config.getoption("--use_mpi", default=False)
+    has_numba_mpi = module_available("numba_mpi") and module_available("mpi4py")
 
     # prepare markers
     skip_cov = pytest.mark.skip(reason="skipped during coverage run")
     skip_slow = pytest.mark.skip(reason="need --runslow option to run")
     skip_interactive = pytest.mark.skip(reason="need --runinteractive option to run")
     skip_serial = pytest.mark.skip(reason="serial test, but --use_mpi option was set")
+    skip_mpi = pytest.mark.skip(reason="mpi test, but `numba_mpi` not available")
 
     # check each test item
     for item in items:
@@ -187,6 +189,8 @@ def pytest_collection_modifyitems(config, items):
             # skip interactive tests unless they are specifically requested
             item.add_marker(skip_interactive)
 
+        if "multiprocessing" in item.keywords and not has_numba_mpi:
+            item.add_marker(skip_mpi)
         if use_mpi and "multiprocessing" not in item.keywords:
             # skip all non-MPI tests in an MPI test run
             item.add_marker(skip_serial)

@@ -134,7 +134,7 @@ known_self = ["pde", "fixtures"]
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "SELF", "LOCALFOLDER"]
 
 [tool.pytest]
-log_cli = true
+# log_cli = true
 log_cli_level = "ERROR" # only display errors
 addopts = ["--strict-markers"]
 filterwarnings = [
