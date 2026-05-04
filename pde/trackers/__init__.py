@@ -7,15 +7,16 @@ store, or output it. The trackers defined in this module are:
    :nosignatures:
 
    ~trackers.CallbackTracker
-   ~trackers.ProgressTracker
-   ~trackers.PrintTracker
-   ~trackers.PlotTracker
-   ~trackers.LivePlotTracker
-   ~trackers.DataTracker
-   ~trackers.SteadyStateTracker
-   ~trackers.RuntimeTracker
    ~trackers.ConsistencyTracker
+   ~trackers.DataTracker
+   ~trackers.LivePlotTracker
    ~trackers.MaterialConservationTracker
+   ~trackers.MaxRuntimeTracker
+   ~trackers.PlotTracker
+   ~trackers.PrintTracker
+   ~trackers.ProgressTracker
+   ~trackers.SteadyStateTracker
+   ~trackers.WalltimeTracker
    ~interactive.InteractivePlotTracker
 
 Some trackers can be referenced by name for convenience when using them in simulations.
@@ -48,14 +49,15 @@ Inheritance structure of the tracker classes:
 
 .. inheritance-diagram::
       trackers.CallbackTracker
-      trackers.ProgressTracker
-      trackers.PrintTracker
-      trackers.PlotTracker
-      trackers.LivePlotTracker
-      trackers.DataTracker
-      trackers.SteadyStateTracker
-      trackers.RuntimeTracker
       trackers.ConsistencyTracker
+      trackers.DataTracker
+      trackers.LivePlotTracker
+      trackers.MaxRuntimeTracker
+      trackers.PlotTracker
+      trackers.PrintTracker
+      trackers.ProgressTracker
+      trackers.SteadyStateTracker
+      trackers.WalltimeTracker
       interactive.InteractivePlotTracker
       pde.storage.base.StorageTracker
    :parts: 1
