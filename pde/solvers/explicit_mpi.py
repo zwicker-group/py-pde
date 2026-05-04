@@ -1,6 +1,6 @@
 """Defines an explicit solver using multiprocessing via MPI.
 
-TODO: Implement this not as a separate solver but as a separate numba-mpi backend
+TODO: Implement this not as a separate solver but as a separate numba_mpi backend
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -77,6 +77,7 @@ class ExplicitMPISolver(EulerSolver):
     """
 
     name = "explicit_mpi"
+    mpi_run = True
 
     def __init__(
         self,

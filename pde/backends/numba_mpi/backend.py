@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 class NumbaMPIBackend(NumbaBackend):
     """Defines MPI-compatible numba backend."""
 
+    config_inheritance = ["numba"]  # inherit config of "numba" module
+
     def _make_local_ghost_cell_setter(self, bc: BCBase) -> GhostCellSetter:
         """Return function that sets the ghost cells for a particular side of an axis.
 
@@ -241,7 +243,7 @@ class NumbaMPIBackend(NumbaBackend):
         return integrate_global
 
     def make_mpi_synchronizer(
-        self, operator: int | str = "MAX"
+        self, operator: int | str = "MAX", mpi_run: bool = False
     ) -> Callable[[float], float]:
         """Return function that synchronizes values between multiple MPI processes.
 
@@ -249,16 +251,11 @@ class NumbaMPIBackend(NumbaBackend):
             operator (str or int):
                 Flag determining how the value from multiple nodes is combined.
                 Possible values include "MAX", "MIN", and "SUM".
+            mpi_run (bool):
+                Whether MPI is actually used. If `False`, the method returns a no-op.
 
         Returns:
             Function that can be used to synchronize values across nodes
         """
 
-        from ...tools.mpi import mpi_allreduce
-
-        @register_jitable
-        def synchronize_value(error: float) -> float:
-            """Return error synchronized across all cores."""
-            return mpi_allreduce(error, operator=operator)  # type: ignore
-
-        return synchronize_value  # type: ignore
+        return register_jitable(super().make_mpi_synchronizer(operator, mpi_run))  # type: ignore

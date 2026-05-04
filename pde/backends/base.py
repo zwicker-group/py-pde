@@ -10,7 +10,7 @@ import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, overload
 
-from ..tools.config import Config, ConfigLike
+from ..tools.config import _OMITTED, Config, ConfigLike
 from ..tools.typing import (
     DataSetter,
     FloatingArray,
@@ -73,6 +73,9 @@ class BackendBase(Generic[TNativeArray]):
     """bool: Flag indicating whether data needs to be copied between numpy's
     representation on CPU and a native device."""
 
+    config_inheritance: list[str] = []
+    """list: Additional backends that are queried for configuration parameters."""
+
     config: Config
     """dict: Configuration options of this backend."""
 
@@ -100,6 +103,7 @@ class BackendBase(Generic[TNativeArray]):
             self.config = config
         else:
             self.config = Config(config)
+
         if name is None:
             name = self.__class__.__name__  # extract a default name
         if name in _RESERVED_BACKEND_NAMES:
@@ -141,6 +145,29 @@ class BackendBase(Generic[TNativeArray]):
     def info(self) -> dict[str, Any]:
         """dict: relevant information about the backend"""
         return {"name": self.name, "implementation": self.implementation}
+
+    def _config_parameter(self, key: str, default: Any = _OMITTED) -> Any:
+        """Returns the value of a configuration option, respecting inheritance
+
+        Args:
+            key (str):
+                The name of the configuration parameter
+            default
+        """
+        if key in self.config:
+            return self.config[key]
+
+        from .registry import backend_registry
+
+        for name in self.config_inheritance:
+            backend = backend_registry.get_backend(name)
+            if key in backend.config:
+                return backend.config[key]
+
+        if default is _OMITTED:
+            msg = f"Parameter `{key}` cannot be found"
+            raise KeyError(msg)
+        return default
 
     @overload
     def numpy_to_native(self, value: NumericArray) -> TNativeArray: ...
@@ -591,7 +618,7 @@ class BackendBase(Generic[TNativeArray]):
         raise NotImplementedError(msg)
 
     def make_mpi_synchronizer(
-        self, operator: int | str = "MAX"
+        self, operator: int | str = "MAX", mpi_run: bool = False
     ) -> Callable[[float], float]:
         """Return function that synchronizes values between multiple MPI processes.
 
@@ -603,13 +630,26 @@ class BackendBase(Generic[TNativeArray]):
             operator (str or int):
                 Flag determining how the value from multiple nodes is combined.
                 Possible values include "MAX", "MIN", and "SUM".
+            mpi_run (bool):
+                Whether MPI is actually used. If `False`, the method returns a no-op.
 
         Returns:
             Function that can be used to synchronize values across nodes
         """
+        from ..tools import mpi
 
-        def synchronize_value(value: float) -> float:
-            return value
+        if not mpi_run or mpi.size == 1:
+            # serial run, which does not require synchronization
+
+            def synchronize_value(value: float) -> float:
+                return value
+
+        else:
+            # parallel run, which requires synchronization
+
+            def synchronize_value(value: float) -> float:
+                """Return error synchronized across all cores."""
+                return mpi.mpi_allreduce(value, operator=operator)  # type: ignore
 
         return synchronize_value
 

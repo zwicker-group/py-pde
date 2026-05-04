@@ -67,6 +67,8 @@ def make_virtual_point_evaluator(bc: BCBase) -> VirtualPointEvaluator:
     if hasattr(bc, "make_virtual_point_evaluator"):
         return bc.make_virtual_point_evaluator()  # type: ignore
     msg = f"Cannot handle local boundary {bc.__class__}"
+    if "mpi" in bc.__class__.__name__.lower():
+        msg += ". Did you mean to use the `numba_mpi` backend?"
     raise NotImplementedError(msg)
 
 

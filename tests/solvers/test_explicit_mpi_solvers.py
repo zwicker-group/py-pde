@@ -11,7 +11,7 @@ from pde.tools import mpi
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numpy", "numba_mpi"])
 @pytest.mark.parametrize(
     ("adaptive", "decomposition"),
     [
@@ -54,7 +54,7 @@ def test_simple_pde_mpi(backend, adaptive, decomposition, rng):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numba", "numpy"])
+@pytest.mark.parametrize("backend", ["numba_mpi", "numpy"])
 def test_stochastic_mpi_solvers(backend, rng):
     """Test simple version of the stochastic solver."""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
@@ -80,7 +80,7 @@ def test_stochastic_mpi_solvers(backend, rng):
 
 @pytest.mark.slow
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numpy", "numba_mpi"])
 def test_multiple_pdes_mpi(backend, rng):
     """Test setting boundary conditions using numba."""
     grid = UnitGrid([8, 8], periodic=[True, False])

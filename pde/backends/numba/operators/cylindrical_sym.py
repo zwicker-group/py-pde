@@ -54,7 +54,7 @@ def make_laplace(
     factor_r = 1 / (2 * grid.axes_coords[0] * dr)
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= backend.config["multithreading_threshold"]
+    parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
 
     @jit(parallel=parallel)
     def laplace(arr: NumericArray, out: NumericArray) -> None:
@@ -95,7 +95,7 @@ def make_gradient(
     scale_r, scale_z = 1 / (2 * grid.discretization)
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= numba_backend.config["multithreading_threshold"]
+    parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
 
     @jit(parallel=parallel)
     def gradient(arr: NumericArray, out: NumericArray) -> None:
@@ -139,7 +139,7 @@ def make_gradient_squared(
     """
     # use processing for large enough arrays
     dim_r, dim_z = grid.shape
-    parallel = dim_r * dim_z >= numba_backend.config["multithreading_threshold"]
+    parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
 
     if central:
         # use central differences
@@ -195,7 +195,7 @@ def make_divergence(
     rs = grid.axes_coords[0]
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= numba_backend.config["multithreading_threshold"]
+    parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
 
     @jit(parallel=parallel)
     def divergence(arr: NumericArray, out: NumericArray) -> None:
@@ -239,7 +239,7 @@ def make_vector_gradient(
     rs = grid.axes_coords[0]
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= numba_backend.config["multithreading_threshold"]
+    parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
 
     @jit(parallel=parallel)
     def vector_gradient(arr: NumericArray, out: NumericArray) -> None:
@@ -296,7 +296,7 @@ def make_vector_laplace(
     scale_z = 1 / (dz**2)
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= numba_backend.config["multithreading_threshold"]
+    parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
 
     @jit(parallel=parallel)
     def vector_laplace(arr: NumericArray, out: NumericArray) -> None:
@@ -359,7 +359,7 @@ def make_tensor_divergence(
     scale_r, scale_z = 1 / (2 * grid.discretization)
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= numba_backend.config["multithreading_threshold"]
+    parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
 
     @jit(parallel=parallel)
     def tensor_divergence(arr: NumericArray, out: NumericArray) -> None:

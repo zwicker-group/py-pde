@@ -13,7 +13,7 @@ from pde.tools import mpi
 
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("dim", [1, 2, 3])
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numpy", "numba_mpi"])
 def test_pde_complex_bcs_mpi(dim, backend, rng):
     """Test PDE with complex BCs using multiprocessing."""
     eq = DiffusionPDE()
@@ -53,7 +53,7 @@ def test_pde_vector_mpi(rng):
         "tracker": None,
     }
     res_a = eq.solve(backend="numpy", solver="explicit_mpi", **args)
-    res_b = eq.solve(backend="numba", solver="explicit_mpi", **args)
+    res_b = eq.solve(backend="numba_mpi", solver="explicit_mpi", **args)
 
     if mpi.is_main:
         res_a.assert_field_compatible(res_b)
@@ -78,7 +78,7 @@ def test_pde_complex_mpi(rng):
         "ret_info": True,
     }
     res1, info1 = eq.solve(backend="numpy", solver="explicit_mpi", **args)
-    res2, info2 = eq.solve(backend="numba", solver="explicit_mpi", **args)
+    res2, info2 = eq.solve(backend="numba_mpi", solver="explicit_mpi", **args)
 
     if mpi.is_main:
         # check results in the main process
@@ -97,7 +97,7 @@ def test_pde_complex_mpi(rng):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numpy", "numba_mpi"])
 def test_pde_const_mpi(backend):
     """Test PDE with a field constant using multiprocessing."""
     grid = grids.UnitGrid([8])
@@ -115,7 +115,7 @@ def test_pde_const_mpi(backend):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numpy", "numba_mpi"])
 def test_pde_const_mpi_class(backend):
     """Test PDE with a field constant using multiprocessing."""
     grid = grids.UnitGrid([8])

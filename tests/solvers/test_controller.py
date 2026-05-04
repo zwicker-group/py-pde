@@ -34,6 +34,8 @@ def test_controller_foreign_solver():
     """Test whether the Controller can deal with a minimal foreign solver."""
 
     class MySolver:
+        mpi_run = False
+
         def make_stepper(self, state, dt):
             def stepper(state, t, t_break):
                 return t_break
