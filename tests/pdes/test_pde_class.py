@@ -119,6 +119,8 @@ def test_pde_vector_laplace(backend, rng):
 @pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)
 def test_pde_vector_ops(backend, rng):
     """Test PDE with a single vector field."""
+    if backend.name == "torch-mps":
+        pytest.skip("mps device does not work for torch backend for some reason.")
     eq = PDE({"u": "tensor_divergence(vector_gradient(u))"})
     assert not eq.explicit_time_dependence
     assert not eq.complex_valued
@@ -175,6 +177,11 @@ def test_pde_vector_scalar(backend, rng):
 @pytest.mark.parametrize("grid", iter_grids())
 def test_compare_swift_hohenberg(backend, grid, rng):
     """Compare custom class to Swift-Hohenberg class."""
+    if backend.name == "torch-mps" and isinstance(
+        grid, (grids.UnitGrid, grids.CylindricalSymGrid)
+    ):
+        pytest.skip("mps device does not work for torch backend for some reason.")
+
     rate, kc2, delta = rng.uniform(0.5, 2, size=3)
     eq1 = SwiftHohenbergPDE(rate=rate, kc2=kc2, delta=delta)
     eq2 = PDE(

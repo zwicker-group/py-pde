@@ -66,7 +66,7 @@ if module_available("torch"):
     from pde.backends.torch import TorchBackend
 
     # TODO: Test mps device once torch-mps works well again
-    for device in ["cpu", "cuda"]:  # , "mps"]:
+    for device in ["cpu", "cuda", "mps"]:
         try:
             backend: BackendBase = TorchBackend(
                 config["backend"]["torch"].copy(), name=f"torch-{device}", device=device
