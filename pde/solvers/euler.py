@@ -104,6 +104,8 @@ class EulerSolver(AdaptiveSolverBase):
 
         # noise increment scales with square root of time step
         dt_sqrt = np.sqrt(dt)
+        # noise variance scales with inverse cell volumes
+        inv_cell = 1 / state.grid.cell_volumes
 
         def single_step(state_data: NumericArray, t: float) -> NumericArray:
             """Perform a single Euler-Maruyama step."""
@@ -129,11 +131,13 @@ class EulerSolver(AdaptiveSolverBase):
 
             if use_noise_variance:
                 dW = gaussian_noise()
-                state_data += dt_sqrt * nx.sqrt(noise_var_field) * dW
+                state_data += dt_sqrt * nx.sqrt(noise_var_field * inv_cell) * dW
 
                 # add a drift term if the interpretation is not Itô
                 if has_noise_drift_term:
-                    state_data += 0.5 * dt * noise_drift_factor * noise_var_diff_field
+                    state_data += (
+                        0.5 * dt * noise_drift_factor * noise_var_diff_field * inv_cell
+                    )
 
             return state_data
 

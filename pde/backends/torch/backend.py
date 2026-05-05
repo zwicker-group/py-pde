@@ -589,8 +589,6 @@ class TorchBackend(BackendBase[torch.Tensor]):
     ) -> Callable[[], torch.Tensor]:
         """Create a function generating Gaussian white noise.
 
-        This noise is already scaled to respect different cell volumes of the grid.
-
         Args:
             field (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
@@ -602,15 +600,11 @@ class TorchBackend(BackendBase[torch.Tensor]):
         from .utils import TorchGaussianNoise
 
         data_shape: tuple[int, ...] = field.data.shape
-        scale = np.sqrt(1 / field.grid.cell_volumes)
         generator = torch.Generator(device=self.device)
         generator.manual_seed(int(rng.integers(0, 2**32)))
 
         return TorchGaussianNoise(
-            data_shape,
-            dtype=self.get_numpy_dtype(field.dtype),
-            scale=scale,
-            generator=generator,
+            data_shape, dtype=self.get_numpy_dtype(field.dtype), generator=generator
         ).to(self.device)
 
     def make_stepper(self, solver: SolverBase, state: TField) -> StepperType:

@@ -753,8 +753,6 @@ class JaxBackend(BackendBase[jax.Array]):
     ) -> Callable[[], jax.Array]:
         """Create a function generating Gaussian white noise.
 
-        This noise is already scaled to respect different cell volumes of the grid.
-
         Args:
             field (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
@@ -767,7 +765,6 @@ class JaxBackend(BackendBase[jax.Array]):
         from jax.experimental.random import stateful_rng
 
         data_shape: tuple[int, ...] = field.data.shape
-        scale = np.sqrt(1 / field.grid.cell_volumes)
 
         # initialize jax random number generator with numpy random number
         seed = rng.integers(0, np.iinfo(np.uint32).max + 1)
@@ -777,7 +774,7 @@ class JaxBackend(BackendBase[jax.Array]):
         def gaussian_noise() -> jax.Array:
             """Helper function returning a noise realization."""
             key = jax_rng.key()
-            return scale * jrandom.normal(key, shape=data_shape)  # type: ignore
+            return jrandom.normal(key, shape=data_shape)
 
         return gaussian_noise
 

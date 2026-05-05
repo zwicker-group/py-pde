@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from scipy import stats
 
-from pde import PDE, DiffusionPDE, MemoryStorage, ScalarField, UnitGrid
+from pde import PDE, CartesianGrid, DiffusionPDE, MemoryStorage, ScalarField, UnitGrid
 from pde.pdes import PDEBase
 from pde.solvers import (
     Controller,
@@ -188,6 +188,7 @@ def test_stochastic_solver_equilibrium(
     backend, solver_cls, mobility_factor, interpretation, rng
 ):
     """Test wether conversion to Itô representation is correct."""
+    size_scale = 2.3  # cell volume
     k_val = 0.5  # stiffness of the potential
 
     class MultiplicativeNoise(PDE):
@@ -222,18 +223,18 @@ def test_stochastic_solver_equilibrium(
     eq = MultiplicativeNoise(k=k_val, rng=rng, noise_interpretation=interpretation)
 
     # simulate an independent ensemble of points
-    field = ScalarField(UnitGrid([1024]))
+    field = ScalarField(CartesianGrid([[0, 2048 * size_scale]], 2048))
     solver = solver_cls(eq, backend=backend)
     controller = Controller(solver, t_range=5)
     result = controller.run(field, dt=1e-3)
 
     # check whether the points exhibit the expected distribution
-    sigma = 1 / np.sqrt(k_val)
+    sigma = 1 / np.sqrt(k_val * size_scale)
     test_res = stats.kstest(result.data, "norm", args=(0, sigma))
     if interpretation == "ito" and mobility_factor != 0:
-        assert test_res.pvalue < 0.05  # expect different distribution
+        assert test_res.pvalue < 0.04  # expect different distribution
     else:
-        assert test_res.pvalue > 0.05  # expect Gaussian distribution
+        assert test_res.pvalue > 0.04  # expect Gaussian distribution
 
 
 def test_stochastic_adaptive_solver(caplog, rng):

@@ -140,6 +140,8 @@ class ImplicitSolver(SolverBase):
             noise_var = _DUMMY_FUNCTION_2ARGS
             gaussian_noise = self.backend.compile_function(_DUMMY_FUNCTION)
         noise_var = self.backend.compile_function(noise_var)
+        # noise variance scales with inverse cell volumes
+        inv_cell = 1 / state.grid.cell_volumes
 
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
@@ -160,8 +162,8 @@ class ImplicitSolver(SolverBase):
             # add the noise to the reference state at the current time point and
             # adept the state at the next time point iteratively below
             if use_noise_variance:
-                noise_std_field = noise_var(state_data, t)
-                state_t += nx.sqrt(dt) * noise_std_field * gaussian_noise()
+                noise_var_field = noise_var(state_data, t)
+                state_t += nx.sqrt(dt * noise_var_field * inv_cell) * gaussian_noise()
             state_data[:] = state_t + dt * evolution_rate  # estimated new state
 
             # fixed point iteration for improving state after dt

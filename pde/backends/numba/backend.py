@@ -1455,8 +1455,6 @@ class NumbaBackend(NumpyBackend):
     ) -> Callable[[], NumericArray]:
         """Create a function generating Gaussian white noise.
 
-        This noise is already scaled to respect different cell volumes of the grid.
-
         Args:
             field (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
@@ -1466,12 +1464,11 @@ class NumbaBackend(NumpyBackend):
                 Not used in this numba backend.
         """
         data_shape: tuple[int, ...] = field.data.shape
-        scale = np.sqrt(1 / field.grid.cell_volumes)
 
         @self.compile_function
         def gaussian_noise() -> NumericArray:
             """Generate Gaussian white noise."""
-            return scale * np.random.randn(*data_shape)  # type: ignore
+            return np.random.randn(*data_shape)
 
         return gaussian_noise
 
