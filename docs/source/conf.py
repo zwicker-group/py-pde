@@ -277,7 +277,9 @@ sphinx_gallery_conf = {
 autodoc_typehints = "description"
 
 
-# main()
+from run_autodoc import main
+
+main()
 
 # # skip documentation of overloads
 # from sphinx.pycode import ModuleAnalyzer
