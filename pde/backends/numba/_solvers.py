@@ -58,7 +58,7 @@ def _make_post_step_hook(solver: SolverBase, state: TField) -> StepperHook:
     # compile post_step_hook
     post_step_data_type = nb.typeof(solver.info["post_step_data"])
     signature_hook = (nb.typeof(state.data), nb.float64, post_step_data_type)
-    post_step_hook = jit(signature_hook)(post_step_hook)
+    post_step_hook = jit(signature_hook, backend=solver.backend)(post_step_hook)
 
     solver._logger.debug("Compiled post-step hook")
     return post_step_hook
@@ -79,7 +79,7 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> InnerStepperType:
     # get compiled version of a single step
     single_step = solver._make_single_step_fixed_dt(state, dt)
     single_step_signature = (nb.typeof(state.data), nb.double)
-    single_step = jit(single_step_signature)(single_step)
+    single_step = jit(single_step_signature, backend=solver.backend)(single_step)
     post_step_hook = _make_post_step_hook(solver, state)
 
     # provide compiled function for innermost loop
@@ -90,7 +90,7 @@ def _make_fixed_stepper(solver: SolverBase, state: TField) -> InnerStepperType:
         nb.typeof(solver.info["post_step_data"]),
     )
 
-    @jit(compiled_stepper_signature)
+    @jit(compiled_stepper_signature, backend=solver.backend)
     def compiled_stepper(
         state_data: NumericArray, t_start: float, steps: int, post_step_data: Any
     ) -> tuple[float, Any]:
@@ -147,7 +147,7 @@ def _make_adams_bashforth_stepper(
         nb.typeof(solver.info["post_step_data"]),
     )
 
-    @jit(compiled_stepper_signature)
+    @jit(compiled_stepper_signature, backend=solver.backend)
     def compiled_stepper(
         state_data: NumericArray,
         state_prev: NumericArray,
@@ -220,7 +220,9 @@ def _make_adaptive_stepper_general(
     # obtain functions determining how the PDE is evolved
     single_step_error = solver._make_single_step_error_estimate(state)
     signature_single_step = (nb.typeof(state.data), nb.double, nb.double)
-    single_step_error = jit(signature_single_step)(single_step_error)
+    single_step_error = jit(signature_single_step, backend=solver.backend)(
+        single_step_error
+    )
     post_step_hook = _make_post_step_hook(solver, state)
     sync_errors = solver.backend.make_mpi_synchronizer(
         operator="MAX", mpi_run=solver.mpi_run
@@ -228,7 +230,9 @@ def _make_adaptive_stepper_general(
 
     # obtain auxiliary functions
     signature = (nb.double, nb.double)
-    adjust_dt = jit(signature)(_make_dt_adjuster(solver.dt_min, solver.dt_max))
+    adjust_dt = jit(signature, backend=solver.backend)(
+        _make_dt_adjuster(solver.dt_min, solver.dt_max)
+    )
     tolerance = solver.tolerance
     dt_min = solver.dt_min
 
@@ -286,7 +290,9 @@ def _make_adaptive_stepper_general(
             nb.typeof(solver.info["dt_statistics"]),
             nb.typeof(solver.info["post_step_data"]),
         )
-        compiled_stepper = jit(compiled_stepper_signature)(compiled_stepper)
+        compiled_stepper = jit(compiled_stepper_signature, backend=solver.backend)(
+            compiled_stepper
+        )
 
     def adaptive_stepper(
         state_data: NumericArray, t_start: float, t_end: float
@@ -338,7 +344,9 @@ def _make_adaptive_stepper_euler(
     rhs_pde = solver.backend.make_pde_rhs(solver.pde, state)
     single_step_error = solver._make_single_step_error_estimate(state)
     signature_single_step = (nb.typeof(state.data), nb.double, nb.double)
-    single_step_error = jit(signature_single_step)(single_step_error)
+    single_step_error = jit(signature_single_step, backend=solver.backend)(
+        single_step_error
+    )
     post_step_hook = _make_post_step_hook(solver, state)
     sync_errors = solver.backend.make_mpi_synchronizer(
         operator="MAX", mpi_run=solver.mpi_run
@@ -346,7 +354,9 @@ def _make_adaptive_stepper_euler(
 
     # obtain auxiliary functions
     signature = (nb.double, nb.double)
-    adjust_dt = jit(signature)(_make_dt_adjuster(solver.dt_min, solver.dt_max))
+    adjust_dt = jit(signature, backend=solver.backend)(
+        _make_dt_adjuster(solver.dt_min, solver.dt_max)
+    )
     tolerance = solver.tolerance
     dt_min = solver.dt_min
 
@@ -427,7 +437,9 @@ def _make_adaptive_stepper_euler(
             nb.typeof(solver.info["dt_statistics"]),
             nb.typeof(solver.info["post_step_data"]),
         )
-        compiled_stepper = jit(compiled_stepper_signature)(compiled_stepper)
+        compiled_stepper = jit(compiled_stepper_signature, backend=solver.backend)(
+            compiled_stepper
+        )
 
     def adaptive_stepper(
         state_data: NumericArray, t_start: float, t_end: float

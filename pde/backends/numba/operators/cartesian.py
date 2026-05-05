@@ -130,7 +130,7 @@ def _make_laplace_numba_2d(
         # use standard 5-point stencil
         scale_x, scale_y = grid.discretization**-2
 
-        @jit(parallel=parallel)
+        @jit(parallel=parallel, backend=backend)
         def laplace(arr: NumericArray, out: NumericArray) -> None:
             """Apply Laplace operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
@@ -166,7 +166,7 @@ def _make_laplace_numba_2d(
 
         set_corner_points = make_corner_point_setter_2d(grid)
 
-        @jit(parallel=parallel)
+        @jit(parallel=parallel, backend=backend)
         def laplace(arr: NumericArray, out: NumericArray) -> None:
             """Apply Laplace operator to array `arr`"""
             set_corner_points(arr)
@@ -203,7 +203,7 @@ def _make_laplace_numba_3d(
         "multithreading_threshold"
     )
 
-    @jit(parallel=parallel)
+    @jit(parallel=parallel, backend=backend)
     def laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply Laplace operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
@@ -424,7 +424,7 @@ def _make_gradient_numba_2d(
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y >= backend._config_parameter("multithreading_threshold")
 
-    @jit(parallel=parallel)
+    @jit(parallel=parallel, backend=backend)
     def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
@@ -476,7 +476,7 @@ def _make_gradient_numba_3d(
         "multithreading_threshold"
     )
 
-    @jit(parallel=parallel)
+    @jit(parallel=parallel, backend=backend)
     def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
@@ -624,7 +624,7 @@ def _make_gradient_squared_numba_2d(
         # use central differences
         scale_x, scale_y = 0.25 / grid.discretization**2
 
-        @jit(parallel=parallel)
+        @jit(parallel=parallel, backend=backend)
         def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
@@ -637,7 +637,7 @@ def _make_gradient_squared_numba_2d(
         # use forward and backward differences
         scale_x, scale_y = 0.5 / grid.discretization**2
 
-        @jit(parallel=parallel)
+        @jit(parallel=parallel, backend=backend)
         def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
@@ -688,7 +688,7 @@ def _make_gradient_squared_numba_3d(
         # use central differences
         scale_x, scale_y, scale_z = 0.25 / grid.discretization**2
 
-        @jit(parallel=parallel)
+        @jit(parallel=parallel, backend=backend)
         def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
@@ -703,7 +703,7 @@ def _make_gradient_squared_numba_3d(
         # use forward and backward differences
         scale_x, scale_y, scale_z = 0.5 / grid.discretization**2
 
-        @jit(parallel=parallel)
+        @jit(parallel=parallel, backend=backend)
         def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
@@ -830,7 +830,7 @@ def _make_divergence_numba_2d(
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y >= backend._config_parameter("multithreading_threshold")
 
-    @jit(parallel=parallel)
+    @jit(parallel=parallel, backend=backend)
     def divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
@@ -883,7 +883,7 @@ def _make_divergence_numba_3d(
         "multithreading_threshold"
     )
 
-    @jit(parallel=parallel)
+    @jit(parallel=parallel, backend=backend)
     def divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):

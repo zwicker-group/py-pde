@@ -32,6 +32,8 @@ from typing_extensions import Self
 
 from ...tools.misc import decorator_arguments
 from ...tools.typing import NumericArray
+from .. import get_backend
+from .backend import NumbaBackend
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -197,13 +199,20 @@ class Counter:
 JIT_COUNT = Counter()
 
 
-def numba_environment() -> dict[str, Any]:
+def numba_environment(backend: NumbaBackend | None = None) -> dict[str, Any]:
     """Return information about the numba setup used.
+
+    Args:
+        backend:
+            The backend from which compilation options will be read. If `None`, the
+            default numba backend will be used.
 
     Returns:
         (dict) information about the numba setup
     """
-    from . import numba_backend
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
 
     # determine whether Nvidia Cuda is available
     try:
@@ -243,10 +252,12 @@ def numba_environment() -> dict[str, Any]:
 
     return {
         "version": nb.__version__,
-        "multithreading": numba_backend.config["multithreading"],
-        "multithreading_threshold": numba_backend.config["multithreading_threshold"],
-        "fastmath": numba_backend.config["fastmath"],
-        "debug": numba_backend.config["debug"],
+        "multithreading": backend._config_parameter("multithreading"),
+        "multithreading_threshold": backend._config_parameter(
+            "multithreading_threshold"
+        ),
+        "fastmath": backend._config_parameter("fastmath"),
+        "debug": backend._config_parameter("debug"),
         "using_svml": nb.config.USING_SVML,
         "threading_layer": threading_layer,
         "omp_num_threads": os.environ.get("OMP_NUM_THREADS"),
@@ -281,34 +292,51 @@ def ol_flat_idx(arr, i):
 
 
 @decorator_arguments
-def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TFunc:
+def jit(
+    function: TFunc,
+    signature=None,
+    parallel: bool = False,
+    *,
+    backend: NumbaBackend | None = None,
+    **kwargs,
+) -> TFunc:
     """Apply nb.jit with predefined arguments.
 
     Args:
-        function: The function which is jitted
-        signature: Signature of the function to compile
-        parallel (bool): Allow parallel compilation of the function
-        **kwargs: Additional arguments to `nb.jit`
+        function:
+            The function which will be jitted
+        signature:
+            Signature of the function to compile
+        parallel (bool):
+            Allow parallel compilation of the function
+        backend:
+            The backend from which compilation options will be read. If `None`, the
+            default numba backend will be used.
+        **kwargs:
+            Additional arguments to :func:`numba.jit`
 
     Returns:
         Function that will be compiled using numba
     """
-    from . import numba_backend
+    if backend is None:
+        # default fallback
+        backend: NumbaBackend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
 
     if is_jitted(function):
         return function
 
     # prepare the compilation arguments
-    if numba_backend.config["fastmath"] is True:
+    if backend._config_parameter("fastmath", None) is True:
         # enable some (but not all) fastmath flags. We skip the flags that affect
         # handling of infinities and NaN for safety by default. Use "fast" to enable all
         # fastmath flags; see https://llvm.org/docs/LangRef.html#fast-math-flags
         kwargs.setdefault("fastmath", {"nsz", "arcp", "contract", "afn", "reassoc"})
     else:
-        kwargs.setdefault("fastmath", numba_backend.config["fastmath"])
-    kwargs.setdefault("debug", numba_backend.config["debug"])
+        kwargs.setdefault("fastmath", backend._config_parameter("fastmath"))
+    kwargs.setdefault("debug", backend._config_parameter("debug", False))
     # make sure parallel numba is only enabled in restricted cases
-    kwargs["parallel"] = parallel and numba_backend.use_multithreading()
+    kwargs["parallel"] = parallel and backend.use_multithreading()
 
     # log some details
     logger = logging.getLogger(__name__)

@@ -99,19 +99,20 @@ def decorator_arguments(decorator: Callable) -> _FlexibleDecorator:
     Inspired by https://stackoverflow.com/a/14412901/932593
 
     Args:
-        decorator: the decorator that needs to be modified
+        decorator:
+            The decorator that needs to be modified
 
     Returns:
-        the decorated function
+        The decorated function
     """
 
     @functools.wraps(decorator)
     def new_decorator(*args, **kwargs):
         if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
-            # actual decorated function
+            # called without arguments, so function is first argument
             return decorator(args[0])
-        # decorator arguments
-        return lambda realf: decorator(realf, *args, **kwargs)
+        # decorator is called with arguments, so we need to return a callable
+        return lambda func: decorator(func, *args, **kwargs)
 
     return new_decorator
 

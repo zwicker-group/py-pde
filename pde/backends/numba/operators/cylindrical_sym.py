@@ -56,7 +56,7 @@ def make_laplace(
     # use processing for large enough arrays
     parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
 
-    @jit(parallel=parallel)
+    @jit(parallel=parallel, backend=backend)
     def laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply laplace operator to array `arr`"""
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
@@ -97,7 +97,7 @@ def make_gradient(
     # use processing for large enough arrays
     parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
 
-    @jit(parallel=parallel)
+    @jit(parallel=parallel, backend=backend)
     def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
@@ -145,7 +145,7 @@ def make_gradient_squared(
         # use central differences
         scale_r, scale_z = 0.25 / grid.discretization**2
 
-        @jit(parallel=parallel)
+        @jit(parallel=parallel, backend=backend)
         def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply gradient operator to array `arr`"""
             for i in nb.prange(1, dim_r + 1):  # iterate radial points
@@ -158,7 +158,7 @@ def make_gradient_squared(
         # use forward and backward differences
         scale_r, scale_z = 0.5 / grid.discretization**2
 
-        @jit(parallel=parallel)
+        @jit(parallel=parallel, backend=backend)
         def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply gradient operator to array `arr`"""
             for i in nb.prange(1, dim_r + 1):  # iterate radial points
@@ -197,7 +197,7 @@ def make_divergence(
     # use processing for large enough arrays
     parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
 
-    @jit(parallel=parallel)
+    @jit(parallel=parallel, backend=backend)
     def divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply divergence operator to array `arr`"""
         arr_r, arr_z = arr[0], arr[1]
@@ -241,7 +241,7 @@ def make_vector_gradient(
     # use processing for large enough arrays
     parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
 
-    @jit(parallel=parallel)
+    @jit(parallel=parallel, backend=backend)
     def vector_gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         # assign aliases
@@ -298,7 +298,7 @@ def make_vector_laplace(
     # use processing for large enough arrays
     parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
 
-    @jit(parallel=parallel)
+    @jit(parallel=parallel, backend=backend)
     def vector_laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply vector laplace operator to array `arr`"""
         # assign aliases
@@ -361,7 +361,7 @@ def make_tensor_divergence(
     # use processing for large enough arrays
     parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
 
-    @jit(parallel=parallel)
+    @jit(parallel=parallel, backend=backend)
     def tensor_divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply tensor divergence operator to array `arr`"""
         # assign aliases
