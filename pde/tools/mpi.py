@@ -19,8 +19,14 @@ from __future__ import annotations
 
 import os
 import sys
+from typing import TYPE_CHECKING, TypeVar
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from .typing import NumericArray
+
+T = TypeVar("T")
 
 # Initialize assuming that we run serial code if `numba_mpi` is not available
 initialized: bool = False
@@ -95,7 +101,7 @@ is_main: bool = rank == 0
 """bool: Flag indicating whether the current process is the main process (with ID 0)"""
 
 
-def mpi_send(data, dest: int, tag: int) -> None:
+def mpi_send(data: NumericArray, dest: int, tag: int) -> None:
     """Send data to another MPI node.
 
     Args:
@@ -106,7 +112,7 @@ def mpi_send(data, dest: int, tag: int) -> None:
     MPI.COMM_WORLD.send(data, dest=dest, tag=tag)
 
 
-def mpi_recv(data, source, tag) -> None:
+def mpi_recv(data: NumericArray, source: int, tag: int) -> None:
     """Receive data from another MPI node.
 
     Args:
@@ -117,7 +123,17 @@ def mpi_recv(data, source, tag) -> None:
     data[...] = MPI.COMM_WORLD.recv(source=source, tag=tag)
 
 
-def mpi_allreduce(data, operator):
+def mpi_bcast(data: T, root: int = 0) -> T:
+    """Broadcast data from root node to all other MPI nodes.
+
+    Args:
+        data: The data being sent
+        root (int): The ID of the sending node
+    """
+    return MPI.COMM_WORLD.bcast(data, root=root)  # type: ignore
+
+
+def mpi_allreduce(data, operator: int | str):
     """Combines data from all MPI nodes.
 
     Note that complex datatypes and user-defined reduction operators are not properly

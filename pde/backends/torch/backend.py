@@ -105,7 +105,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         """dict: relevant information about the backend"""
         info = super().info
         info["device"] = self.device.type
-        info["compile"] = self.config["compile"]
+        info["compile"] = self._config_parameter("compile")
         return info
 
     @property
@@ -118,7 +118,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         """Set a new torch device."""
         # determine which device we need to use
         if device == "config":
-            device = self.config["device"]
+            device = self._config_parameter("device")
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -164,7 +164,10 @@ class TorchBackend(BackendBase[torch.Tensor]):
             torch.empty(1, dtype=torch_dtype, device=self.device)
         except TypeError:
             # dtype is not supported, so we see whether we need to use downcasting
-            if self.config["dtype_downcasting"] and torch_dtype == torch.float64:
+            if (
+                self._config_parameter("dtype_downcasting")
+                and torch_dtype == torch.float64
+            ):
                 if not self._emitted_downcast_warning:
                     self._logger.warning(
                         " %s device doesn't support float64, so we use float32 instead",
@@ -230,7 +233,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
             **compile_options:
                 Additional keyword arguments will be forwarded to :func:`torch.compile`
         """
-        if self.config["compile"]:
+        if self._config_parameter("compile"):
             # compile the function using the torch backend
             opts = self.compile_options | compile_options
             func = torch.compile(func, **opts)  # type: ignore

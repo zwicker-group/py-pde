@@ -7,11 +7,13 @@ from __future__ import annotations
 
 import datetime
 import logging
+import math
 import sys
 import time
 from typing import TYPE_CHECKING, Any
 
 from .. import __version__
+from ..tools import mpi
 from ..trackers.base import (
     FinishedSimulation,
     TrackerCollection,
@@ -157,11 +159,14 @@ class Controller:
                 Initial time step of the chosen stepping scheme. If `None`, a default
                 value based on the solver configuration will be chosen.
         """
+        assert mpi.is_main  # this is the main process (and there can be others)
+
         # gather basic information
         t_start, t_end = self.t_range
         get_time = self._get_current_time
 
         # initialize solver information
+        self.info["mpi_run"] = self.solver.mpi_run
         self.info["t_start"] = t_start
         self.info["t_end"] = t_end
         self.diagnostics["solver"] = getattr(self.solver, "info", {})
@@ -205,6 +210,8 @@ class Controller:
                 # determine next time point with an action
                 t_next_action = self.trackers.handle(state, t, atol=tracker_atol)
                 t_next_action = min(t_next_action, t_end)  # stop at t_end
+                if self.solver.mpi_run:
+                    mpi.mpi_bcast(t_next_action, root=0)  # send time to all other nodes
 
                 # track runtime of trackers and solver
                 prof_start_solve = get_time()
@@ -262,6 +269,10 @@ class Controller:
                 # error detected in the final handling of the tracker
                 msg_level, msg = handle_stop_iteration(err, t)
 
+        # signal that client nodes should exit
+        if self.solver.mpi_run:
+            mpi.mpi_bcast(-math.inf, root=0)
+
         # calculate final statistics
         profiler["tracker"] += get_time() - prof_start_tracker
         duration = datetime.datetime.now(datetime.timezone.utc) - solver_start
@@ -300,23 +311,32 @@ class Controller:
         Returns:
             The state at the final time point.
         """
+        assert mpi.size > 1  # there are multiple processes
+        assert not mpi.is_main  # this is not the main node
+
         # build the executable stepping function from the solver
         stepper = self.solver.make_stepper(state=state, dt=dt)
 
-        if not self.solver.info.get("use_mpi", False):
-            _logger.warning(
+        if not self.solver.mpi_run:
+            msg = (
                 "Started multiprocessing run without a solver/backend combination "
                 "that supports MPI stepping. Use `ExplicitMPISolver` to profit from "
                 "multiple cores"
             )
+            raise RuntimeError(msg)
 
-        # evolve the system from t_start to t_end
-        t_start, t_end = self.t_range
+        # evolve the system from t_start until main process is finished
+        t_start, _ = self.t_range
         t = t_start
-        while t < t_end:
-            t = stepper(state, t, t_end)
 
-    def _run_serial(self, state: TField, dt: float | None = None) -> TField:
+        while True:
+            # receive next interrupt time from main node
+            t_next_action = mpi.mpi_bcast(0.0, root=0)
+            if t_next_action < t_start:
+                break  # this signals that we should abort the client
+            t = stepper(state, t, t_next_action)
+
+    def _run_serial(self, state: TField, dt: float | None = None) -> TField | None:
         """Run the simulation in serial mode.
 
         Diagnostic information about the solver are available in the
@@ -333,7 +353,8 @@ class Controller:
             The state at the final time point. If multiprocessing is used, only the main
             node will return the state. All other nodes return None.
         """
-        self.info["mpi_run"] = False
+        if not mpi.is_main:
+            return None  # exit client nodes immediately
         self._run_main_process(state, dt)
         return state
 
@@ -356,9 +377,6 @@ class Controller:
         """
         from mpi4py import MPI
 
-        from ..tools import mpi
-
-        self.info["mpi_run"] = True
         self.info["mpi_count"] = mpi.size
         self.info["mpi_rank"] = mpi.rank
 
@@ -373,6 +391,7 @@ class Controller:
                 MPI.COMM_WORLD.Abort()  # abort all other nodes
                 raise
             else:
+                _logger.info("MPI main process finished")
                 return state
 
         else:
@@ -386,6 +405,7 @@ class Controller:
                 MPI.COMM_WORLD.Abort()  # abort all other (and main) nodes
                 raise
             else:
+                _logger.info("MPI client process finished")
                 return None  # do not return anything in client processes
 
     def run(self, initial_state: TField, dt: float | None = None) -> TField | None:
@@ -407,8 +427,6 @@ class Controller:
             The state at the final time point. If multiprocessing is used, only the main
             node will return the state. All other nodes return None.
         """
-        from ..tools import mpi
-
         # copy the initial state to not modify the supplied one
         if getattr(self.solver, "pde", None) and self.solver.pde.complex_valued:
             _logger.info("Convert state to complex numbers")
@@ -416,6 +434,7 @@ class Controller:
         else:
             state = initial_state.copy()
 
-        if mpi.size > 1:  # run the simulation on multiple nodes
+        if self.solver.mpi_run:
+            # run the simulation on multiple nodes
             return self._run_parallel(state, dt)
         return self._run_serial(state, dt)

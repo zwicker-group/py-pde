@@ -133,8 +133,10 @@ src_paths = ["pde", "examples", "scripts", "tests"]
 known_self = ["pde", "fixtures"]
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "SELF", "LOCALFOLDER"]
 
-[tool.pytest.ini_options]
-addopts = "--strict-markers"
+[tool.pytest]
+# log_cli = true
+log_cli_level = "ERROR" # only display errors
+addopts = ["--strict-markers"]
 filterwarnings = [
     'ignore:.*importing the ABCs from.*:DeprecationWarning',
     'ignore:.*IPython.utils.signatures backport for Python 2 is deprecated.*:DeprecationWarning',

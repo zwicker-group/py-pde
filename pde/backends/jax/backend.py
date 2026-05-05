@@ -108,7 +108,7 @@ class JaxBackend(BackendBase[jax.Array]):
         """dict: relevant information about the backend"""
         info = super().info
         info["device"] = self.device.device_kind
-        info["compile"] = self.config["compile"]
+        info["compile"] = self._config_parameter("compile")
         return info
 
     @property
@@ -121,7 +121,7 @@ class JaxBackend(BackendBase[jax.Array]):
         """Set a new jax device."""
         # determine which device we need to use
         if device == "config":
-            device = self.config["device"]
+            device = self._config_parameter("device")
         if device == "auto":
             try:
                 self._device = jax.devices("gpu")[0]
@@ -187,7 +187,7 @@ class JaxBackend(BackendBase[jax.Array]):
             func (callable):
                 The function that needs to be compiled for this backend
         """
-        if not self.config["compile"]:
+        if not self._config_parameter("compile"):
             return func
 
         return jax.jit(func)  # type: ignore

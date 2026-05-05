@@ -180,13 +180,17 @@ def pytest_collection_modifyitems(config, items):
     # check each test item
     for item in items:
         if "no_cover" in item.keywords and running_cov:
+            # skip some tests when determining test coverage
             item.add_marker(skip_cov)
         if "slow" in item.keywords and not runslow:
+            # skip slow tests unless they are specifically requested
             item.add_marker(skip_slow)
         if "interactive" in item.keywords and not runinteractive:
+            # skip interactive tests unless they are specifically requested
             item.add_marker(skip_interactive)
 
         if "multiprocessing" in item.keywords and not has_numba_mpi:
             item.add_marker(skip_mpi)
         if use_mpi and "multiprocessing" not in item.keywords:
+            # skip all non-MPI tests in an MPI test run
             item.add_marker(skip_serial)

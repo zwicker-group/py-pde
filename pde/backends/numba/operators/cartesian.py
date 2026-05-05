@@ -124,7 +124,7 @@ def _make_laplace_numba_2d(
 
     # use parallel processing for large enough arrays
     dim_x, dim_y = grid.shape
-    parallel = dim_x * dim_y >= backend.config["multithreading_threshold"]
+    parallel = dim_x * dim_y >= backend._config_parameter("multithreading_threshold")
 
     if corner_weight == 0:
         # use standard 5-point stencil
@@ -199,7 +199,9 @@ def _make_laplace_numba_3d(
     scale_x, scale_y, scale_z = grid.discretization**-2
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y * dim_z >= backend.config["multithreading_threshold"]
+    parallel = dim_x * dim_y * dim_z >= backend._config_parameter(
+        "multithreading_threshold"
+    )
 
     @jit(parallel=parallel)
     def laplace(arr: NumericArray, out: NumericArray) -> None:
@@ -332,7 +334,7 @@ def make_laplace(
     """
     dim = grid.dim
     if spectral is None:
-        spectral: bool = backend.config.get("use_spectral", False)  # type: ignore
+        spectral: bool = backend._config_parameter("use_spectral", False)  # type: ignore
 
     if spectral:
         # use spectral versions of the operators
@@ -420,7 +422,7 @@ def _make_gradient_numba_2d(
         raise ValueError(msg)
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y >= backend.config["multithreading_threshold"]
+    parallel = dim_x * dim_y >= backend._config_parameter("multithreading_threshold")
 
     @jit(parallel=parallel)
     def gradient(arr: NumericArray, out: NumericArray) -> None:
@@ -470,7 +472,9 @@ def _make_gradient_numba_3d(
         raise ValueError(msg)
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y * dim_z >= backend.config["multithreading_threshold"]
+    parallel = dim_x * dim_y * dim_z >= backend._config_parameter(
+        "multithreading_threshold"
+    )
 
     @jit(parallel=parallel)
     def gradient(arr: NumericArray, out: NumericArray) -> None:
@@ -614,7 +618,7 @@ def _make_gradient_squared_numba_2d(
     dim_x, dim_y = grid.shape
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y >= backend.config["multithreading_threshold"]
+    parallel = dim_x * dim_y >= backend._config_parameter("multithreading_threshold")
 
     if central:
         # use central differences
@@ -676,7 +680,9 @@ def _make_gradient_squared_numba_3d(
     dim_x, dim_y, dim_z = grid.shape
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y * dim_z >= backend.config["multithreading_threshold"]
+    parallel = dim_x * dim_y * dim_z >= backend._config_parameter(
+        "multithreading_threshold"
+    )
 
     if central:
         # use central differences
@@ -822,7 +828,7 @@ def _make_divergence_numba_2d(
         raise ValueError(msg)
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y >= backend.config["multithreading_threshold"]
+    parallel = dim_x * dim_y >= backend._config_parameter("multithreading_threshold")
 
     @jit(parallel=parallel)
     def divergence(arr: NumericArray, out: NumericArray) -> None:
@@ -873,7 +879,9 @@ def _make_divergence_numba_3d(
         raise ValueError(msg)
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y * dim_z >= backend.config["multithreading_threshold"]
+    parallel = dim_x * dim_y * dim_z >= backend._config_parameter(
+        "multithreading_threshold"
+    )
 
     @jit(parallel=parallel)
     def divergence(arr: NumericArray, out: NumericArray) -> None:

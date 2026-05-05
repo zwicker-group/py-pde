@@ -82,7 +82,7 @@ class NumbaBackend(NumpyBackend):
             ValueError: If the `numba.multithreading` setting is not one of the expected
             values ('always', 'never', 'only_local').
         """
-        setting = self.config["multithreading"]
+        setting = self._config_parameter("multithreading")
         if setting == "always":
             return True
         if setting == "never":
@@ -1428,7 +1428,7 @@ class NumbaBackend(NumpyBackend):
         return self.compile_function(function)  # type: ignore
 
     def make_mpi_synchronizer(
-        self, operator: int | str = "MAX"
+        self, operator: int | str = "MAX", mpi_run: bool = False
     ) -> Callable[[float], float]:
         """Return function that synchronizes values between multiple MPI processes.
 
@@ -1440,11 +1440,15 @@ class NumbaBackend(NumpyBackend):
             operator (str or int):
                 Flag determining how the value from multiple nodes is combined.
                 Possible values include "MAX", "MIN", and "SUM".
+            mpi_run (bool):
+                Whether MPI is actually used. If `False`, the method returns a no-op.
 
         Returns:
             Function that can be used to synchronize values across nodes
         """
-        return register_jitable(super().make_mpi_synchronizer(operator=operator))  # type: ignore
+        return register_jitable(  # type: ignore
+            super().make_mpi_synchronizer(operator=operator, mpi_run=mpi_run)
+        )
 
     def make_gaussian_noise(
         self, field: TField, *, rng: np.random.Generator
