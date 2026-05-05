@@ -149,7 +149,17 @@ def _make_user_virtual_point_evaluator(bc: UserBC) -> VirtualPointEvaluator:
 def _prepare_function(
     bc: ExpressionBC, func: Callable | float, *, backend: NumbaBackend | None = None
 ) -> Callable:
-    """Helper function that compiles a single function given as a parameter."""
+    """Helper function that compiles a single function given as a parameter.
+
+    Args:
+        bc (:class:`~pde.grids.boundaries.local.ExpressionBC`):
+            Defines the boundary condition that supplies test values used to force
+            compilation.
+        func (callable or float):
+            The user-provided function or scalar value describing the boundary data.
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details.
+    """
     if backend is None:
         backend = get_backend("numba")  # type: ignore
     if not callable(func):
@@ -578,6 +588,8 @@ def _make_const1storder_virtual_point_evaluator(
         bc (:class:`~pde.grids.boundaries.local.ConstBC1stOrderBase`):
             Defines the boundary conditions for a particular side, for which the setter
             should be defined.
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details.
 
     Returns:
         function: A function that takes the data array and an index marking the current

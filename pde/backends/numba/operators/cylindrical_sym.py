@@ -19,9 +19,9 @@ from typing import TYPE_CHECKING
 
 import numba as nb
 
+from .... import get_backend
 from ....grids.cylindrical import CylindricalSymGrid
 from ....tools.docstrings import fill_in_docstring
-from .. import numba_backend
 from ..backend import NumbaBackend
 from ..utils import jit
 
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 @NumbaBackend.register_operator(CylindricalSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(
-    grid: CylindricalSymGrid, *, backend: NumbaBackend = numba_backend
+    grid: CylindricalSymGrid, *, backend: NumbaBackend | None = None
 ) -> OperatorImplType:
     """Make a discretized laplace operator for a cylindrical grid.
 
@@ -47,6 +47,10 @@ def make_laplace(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
+
     # calculate preliminary quantities
     dim_r, dim_z = grid.shape
     dr = grid.discretization[0]
@@ -75,7 +79,7 @@ def make_laplace(
 @NumbaBackend.register_operator(CylindricalSymGrid, "gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(
-    grid: CylindricalSymGrid, *, backend: NumbaBackend = numba_backend
+    grid: CylindricalSymGrid, *, backend: NumbaBackend | None = None
 ) -> OperatorImplType:
     """Make a discretized gradient operator for a cylindrical grid.
 
@@ -90,6 +94,10 @@ def make_gradient(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
+
     # calculate preliminary quantities
     dim_r, dim_z = grid.shape
     scale_r, scale_z = 1 / (2 * grid.discretization)
@@ -116,7 +124,7 @@ def make_gradient(
 def make_gradient_squared(
     grid: CylindricalSymGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     central: bool = True,
 ) -> OperatorImplType:
     """Make a discretized gradient squared operator for a cylindrical grid.
@@ -137,6 +145,10 @@ def make_gradient_squared(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
+
     # use processing for large enough arrays
     dim_r, dim_z = grid.shape
     parallel = dim_r * dim_z >= backend._config_parameter("multithreading_threshold")
@@ -174,7 +186,7 @@ def make_gradient_squared(
 @NumbaBackend.register_operator(CylindricalSymGrid, "divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(
-    grid: CylindricalSymGrid, *, backend: NumbaBackend = numba_backend
+    grid: CylindricalSymGrid, *, backend: NumbaBackend | None = None
 ) -> OperatorImplType:
     """Make a discretized divergence operator for a cylindrical grid.
 
@@ -189,6 +201,10 @@ def make_divergence(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
+
     # calculate preliminary quantities
     dim_r, dim_z = grid.shape
     scale_r, scale_z = 1 / (2 * grid.discretization)
@@ -218,7 +234,7 @@ def make_divergence(
 )
 @fill_in_docstring
 def make_vector_gradient(
-    grid: CylindricalSymGrid, *, backend: NumbaBackend = numba_backend
+    grid: CylindricalSymGrid, *, backend: NumbaBackend | None = None
 ) -> OperatorImplType:
     """Make a discretized vector gradient operator for a cylindrical grid.
 
@@ -233,6 +249,10 @@ def make_vector_gradient(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
+
     # calculate preliminary quantities
     dim_r, dim_z = grid.shape
     scale_r, scale_z = 1 / (2 * grid.discretization)
@@ -272,7 +292,7 @@ def make_vector_gradient(
 )
 @fill_in_docstring
 def make_vector_laplace(
-    grid: CylindricalSymGrid, *, backend: NumbaBackend = numba_backend
+    grid: CylindricalSymGrid, *, backend: NumbaBackend | None = None
 ) -> OperatorImplType:
     """Make a discretized vector laplace operator for a cylindrical grid.
 
@@ -287,6 +307,9 @@ def make_vector_laplace(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
 
     # calculate preliminary quantities
     dim_r, dim_z = grid.shape
@@ -338,7 +361,7 @@ def make_vector_laplace(
 )
 @fill_in_docstring
 def make_tensor_divergence(
-    grid: CylindricalSymGrid, *, backend: NumbaBackend = numba_backend
+    grid: CylindricalSymGrid, *, backend: NumbaBackend | None = None
 ) -> OperatorImplType:
     """Make a discretized tensor divergence operator for a cylindrical grid.
 
@@ -353,6 +376,10 @@ def make_tensor_divergence(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
+
     # calculate preliminary quantities
     dim_r, dim_z = grid.shape
     rs = grid.axes_coords[0]

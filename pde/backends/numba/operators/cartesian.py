@@ -24,7 +24,6 @@ from numba.extending import overload, register_jitable
 from .... import config, get_backend
 from ....grids.cartesian import CartesianGrid
 from ....tools.misc import module_available
-from .. import numba_backend
 from ..backend import NumbaBackend
 from ..utils import jit
 
@@ -334,7 +333,7 @@ def _make_laplace_numba_spectral_2d(
 def make_laplace(
     grid: CartesianGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     spectral: bool | None = None,
     **kwargs,
 ) -> OperatorImplType:
@@ -356,6 +355,10 @@ def make_laplace(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
+
     dim = grid.dim
     if spectral is None:
         spectral: bool = backend._config_parameter("use_spectral", False)  # type: ignore
@@ -551,7 +554,7 @@ def _make_gradient_numba_3d(
 def make_gradient(
     grid: CartesianGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorImplType:
     """Make a gradient operator on a Cartesian grid.
@@ -568,6 +571,10 @@ def make_gradient(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
+
     dim = grid.dim
 
     if dim == 1:
@@ -767,7 +774,7 @@ def _make_gradient_squared_numba_3d(
 def make_gradient_squared(
     grid: CartesianGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     central: bool = True,
 ) -> OperatorImplType:
     """Make a gradient operator on a Cartesian grid.
@@ -786,6 +793,10 @@ def make_gradient_squared(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
+
     dim = grid.dim
 
     if dim == 1:
@@ -952,7 +963,7 @@ def _make_divergence_numba_3d(
 def make_divergence(
     grid: CartesianGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorImplType:
     """Make a divergence operator on a Cartesian grid.
@@ -969,6 +980,10 @@ def make_divergence(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
+
     dim = grid.dim
 
     if dim == 1:
@@ -1012,7 +1027,7 @@ def _vectorize_operator(
 def make_vector_gradient(
     grid: CartesianGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorImplType:
     """Make a vector gradient operator on a Cartesian grid.
@@ -1029,12 +1044,16 @@ def make_vector_gradient(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
+
     return _vectorize_operator(make_gradient, grid, backend=backend, method=method)
 
 
 @NumbaBackend.register_operator(CartesianGrid, "vector_laplace", rank_in=1, rank_out=1)
 def make_vector_laplace(
-    grid: CartesianGrid, *, backend: NumbaBackend = numba_backend
+    grid: CartesianGrid, *, backend: NumbaBackend | None = None
 ) -> OperatorImplType:
     """Make a vector Laplacian on a Cartesian grid.
 
@@ -1047,6 +1066,10 @@ def make_vector_laplace(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
+
     return _vectorize_operator(make_laplace, grid, backend=backend)
 
 
@@ -1056,7 +1079,7 @@ def make_vector_laplace(
 def make_tensor_divergence(
     grid: CartesianGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorImplType:
     """Make a tensor divergence operator on a Cartesian grid.
@@ -1073,6 +1096,10 @@ def make_tensor_divergence(
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+    assert isinstance(backend, NumbaBackend)
+
     return _vectorize_operator(make_divergence, grid, backend=backend, method=method)
 
 

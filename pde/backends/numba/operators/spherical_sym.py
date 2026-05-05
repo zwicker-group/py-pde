@@ -20,10 +20,9 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
-from .... import config
+from .... import config, get_backend
 from ....grids.spherical import SphericalSymGrid
 from ....tools.docstrings import fill_in_docstring
-from .. import numba_backend
 from ..backend import NumbaBackend
 from ..utils import jit
 
@@ -36,7 +35,7 @@ if TYPE_CHECKING:
 def make_laplace(
     grid: SphericalSymGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     conservative: bool | None = None,
 ) -> OperatorImplType:
     """Make a discretized laplace operator for a spherical grid.
@@ -58,6 +57,8 @@ def make_laplace(
         A function that can be applied to an array of values
     """
     assert isinstance(grid, SphericalSymGrid)
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     if conservative is None:
         conservative = config["operators.conservative_stencil"]
 
@@ -104,7 +105,7 @@ def make_laplace(
 def make_gradient(
     grid: SphericalSymGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorImplType:
     """Make a discretized gradient operator for a spherical grid.
@@ -124,6 +125,8 @@ def make_gradient(
         A function that can be applied to an array of values
     """
     assert isinstance(grid, SphericalSymGrid)
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
 
     # calculate preliminary quantities
     dim_r = grid.shape[0]
@@ -157,7 +160,7 @@ def make_gradient(
 def make_gradient_squared(
     grid: SphericalSymGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     central: bool = True,
 ) -> OperatorImplType:
     """Make a discretized gradient squared operator for a spherical grid.
@@ -179,6 +182,8 @@ def make_gradient_squared(
         A function that can be applied to an array of values
     """
     assert isinstance(grid, SphericalSymGrid)
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
 
     # calculate preliminary quantities
     dim_r = grid.shape[0]
@@ -213,7 +218,7 @@ def make_gradient_squared(
 def make_divergence(
     grid: SphericalSymGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     safe: bool | None = None,
     conservative: bool | None = None,
     method: Literal["central", "forward", "backward"] = "central",
@@ -248,6 +253,8 @@ def make_divergence(
         A function that can be applied to an array of values
     """
     assert isinstance(grid, SphericalSymGrid)
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     if safe is None:
         safe = config["operators.tensor_symmetry_check"]
     if conservative is None:
@@ -323,7 +330,7 @@ def make_divergence(
 def make_vector_gradient(
     grid: SphericalSymGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
     safe: bool | None = None,
 ) -> OperatorImplType:
@@ -352,6 +359,8 @@ def make_vector_gradient(
         A function that can be applied to an array of values
     """
     assert isinstance(grid, SphericalSymGrid)
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     if safe is None:
         safe = config["operators.tensor_symmetry_check"]
 
@@ -410,7 +419,7 @@ def make_vector_gradient(
 def make_tensor_divergence(
     grid: SphericalSymGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     safe: bool | None = None,
     conservative: bool | None = False,
 ) -> OperatorImplType:
@@ -436,6 +445,8 @@ def make_tensor_divergence(
         A function that can be applied to an array of values
     """
     assert isinstance(grid, SphericalSymGrid)
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     if safe is None:
         safe = config["operators.tensor_symmetry_check"]
     if conservative is None:
@@ -527,7 +538,7 @@ def make_tensor_divergence(
 def make_tensor_double_divergence(
     grid: SphericalSymGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     safe: bool | None = None,
     conservative: bool | None = None,
 ) -> OperatorImplType:
@@ -553,6 +564,8 @@ def make_tensor_double_divergence(
         A function that can be applied to an array of values
     """
     assert isinstance(grid, SphericalSymGrid)
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     if safe is None:
         safe = config["operators.tensor_symmetry_check"]
     if conservative is None:
