@@ -97,6 +97,8 @@ class MilsteinSolver(EulerSolver):
 
         # noise increment scales with square root of time step
         dt_sqrt = np.sqrt(dt)
+        # noise variance scales with inverse cell volumes
+        inv_cell = 1 / state.grid.cell_volumes
 
         def single_step(state_data: NumericArray, t: float) -> NumericArray:
             """Perform a single Euler-Milstein step."""
@@ -117,9 +119,9 @@ class MilsteinSolver(EulerSolver):
             dW = dt_sqrt * gaussian_noise()
             state_data += (
                 dt * evolution_rate
-                + 0.5 * dt * noise_drift_factor * noise_var_diff_field
-                + nx.sqrt(noise_var_field) * dW
-                + 0.25 * noise_var_diff_field * (dW**2 - dt)
+                + 0.5 * dt * noise_drift_factor * noise_var_diff_field * inv_cell
+                + nx.sqrt(noise_var_field * inv_cell) * dW
+                + 0.25 * noise_var_diff_field * inv_cell * (dW**2 - dt)
             )
 
             return state_data

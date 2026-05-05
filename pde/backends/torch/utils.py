@@ -9,6 +9,8 @@ import numpy as np
 import torch
 from numpy.typing import DTypeLike
 
+from .typing import NUMPY_TO_TORCH_DTYPE
+
 
 class TorchOperatorBase(torch.nn.Module):
     """Base class for operators implemented in torch."""
@@ -47,28 +49,28 @@ class TorchOperatorBase(torch.nn.Module):
 class TorchGaussianNoise(TorchOperatorBase):
     """Operator that returns uncorrelated Gaussian random field."""
 
-    def __init__(
-        self, data_shape, dtype, scale=1, generator: torch.Generator | None = None
-    ):
+    def __init__(self, data_shape, *, dtype, generator: torch.Generator | None = None):
         """
         Args:
             data_shape (tuple of ints):
                 Shape of the output array
             dtype:
-                Dtype of the
-            scale (float or array):
-                Scaling of each entry in the field
+                Torch dtype of the returned data
             generator (:class:`torch.Generator` or None):
-                Random number generator
+                Torch random number generator, which also allows setting the device on
+                which the data is stored.
         """
         super().__init__(dtype=dtype)
         self.data_shape = data_shape
-        self.register_array("scale", np.asarray(scale))
         self.generator = generator
+        self.torch_dtype = NUMPY_TO_TORCH_DTYPE[self.dtype]
 
     def forward(self):
-        return self.scale * torch.randn(
-            self.data_shape, device=self.scale.device, generator=self.generator
+        return torch.randn(
+            self.data_shape,
+            dtype=self.torch_dtype,
+            device=self.generator.device,
+            generator=self.generator,
         )
 
 

@@ -658,8 +658,6 @@ class BackendBase(Generic[TNativeArray]):
     ) -> Callable[[], TNativeArray]:
         """Create a function generating Gaussian white noise.
 
-        This noise is already scaled to respect different cell volumes of the grid.
-
         Args:
             field (:class:`~pde.fields.base.FieldBase`):
                 An example for the field from which the grid and other information can

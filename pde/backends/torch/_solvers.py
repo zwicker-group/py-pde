@@ -13,6 +13,7 @@ from ...solvers import AdamsBashforthSolver, EulerSolver, MilsteinSolver
 from ...solvers.base import AdaptiveSolverBase, SolverBase
 from ...tools.math import OnlineStatistics
 from .backend import TorchBackend
+from .utils import TorchOperatorBase
 
 if TYPE_CHECKING:
     from ...tools.typing import StepperHook, TField
@@ -71,7 +72,7 @@ def _make_post_step_hook(
     return post_step_hook
 
 
-class TorchStepper(torch.nn.Module):
+class TorchStepper(TorchOperatorBase):
     """Basic single-step integrator module."""
 
     def single_step(
@@ -134,7 +135,9 @@ class EulerStepper(TorchStepper):
             state (:class:`~pde.fields.base.FieldBase`):
                 Example field from which grid and other information is read
         """
-        super().__init__()
+        assert isinstance(solver.backend, TorchBackend)
+        dtype = solver.backend.get_numpy_dtype(state.dtype)
+        super().__init__(dtype=dtype)
         self.rhs = solver.backend.make_pde_rhs(solver.pde, state)
 
     def single_step(
@@ -143,7 +146,7 @@ class EulerStepper(TorchStepper):
         """Basic implementation of Euler scheme."""
         # we need to wrap time in a tensor to prevent re-compilation of RHS
         t_device = torch.tensor(t, device=state_data.device)
-        return state_data + dt * self.rhs(state_data, t_device)  # type: ignore
+        return state_data + dt * self.rhs(state_data, t_device)
 
 
 class EulerMaruyamaStepper(EulerStepper):
@@ -153,12 +156,16 @@ class EulerMaruyamaStepper(EulerStepper):
         assert solver.pde.use_noise_variance
         self.noise_drift_factor = solver.pde._noise_drift_factor
         self.has_noise_drift_term = self.noise_drift_factor != 0
+        # store function calculating the noise variance
         self.noise_var = solver.pde.make_noise_variance(  # type: ignore
             state, backend=solver.backend, ret_diff=self.has_noise_drift_term
         )
+        # store function calculating gaussian white noise
         self.gaussian_noise = solver.backend.make_gaussian_noise(
             state, rng=solver.pde.rng
         )
+        # store the inverse cell volumes to scale the noise variance
+        self.register_array("inv_cell", 1 / state.grid.cell_volumes)
 
     def single_step(
         self, state_data: torch.Tensor, t: float, dt: float
@@ -168,19 +175,21 @@ class EulerMaruyamaStepper(EulerStepper):
         t_device = torch.tensor(t, device=state_data.device)
 
         # evaluate deterministic part and variance without modifying field, yet
-        evolution_rate = self.rhs(state_data, t_device)  # type: ignore
+        evolution_rate = self.rhs(state_data, t_device)
         if self.has_noise_drift_term:
             noise_var, noise_var_diff = self.noise_var(state_data, t_device)
         else:
             noise_var = self.noise_var(state_data, t_device)
 
         # change the state
-        scale = torch.sqrt(torch.tensor(dt) * noise_var)
+        scale = torch.sqrt(torch.tensor(dt) * noise_var * self.inv_cell)
         state_data = state_data + dt * evolution_rate + scale * self.gaussian_noise()
 
         # add a drift term if the interpretation is not Itô
         if self.has_noise_drift_term:
-            state_data += 0.5 * dt * self.noise_drift_factor * noise_var_diff
+            state_data += (
+                0.5 * dt * self.noise_drift_factor * noise_var_diff * self.inv_cell
+            )
 
         return state_data
 
@@ -191,12 +200,16 @@ class EulerMilsteinStepper(EulerStepper):
         super().__init__(solver, state)
         assert solver.pde.use_noise_variance
         self.noise_drift_factor = solver.pde._noise_drift_factor
+        # store function calculating the noise variance
         self.noise_var = solver.pde.make_noise_variance(  # type: ignore
             state, backend=solver.backend, ret_diff=True
         )
+        # store function calculating gaussian white noise
         self.gaussian_noise = solver.backend.make_gaussian_noise(
             state, rng=solver.pde.rng
         )
+        # store the inverse cell volumes to scale the noise variance
+        self.register_array("inv_cell", 1 / state.grid.cell_volumes)
 
     def single_step(
         self, state_data: torch.Tensor, t: float, dt: float
@@ -206,7 +219,7 @@ class EulerMilsteinStepper(EulerStepper):
         t_device = torch.tensor(t, device=state_data.device)
 
         # evaluate deterministic part and variance without modifying field, yet
-        evolution_rate = self.rhs(state_data, t_device)  # type: ignore
+        evolution_rate = self.rhs(state_data, t_device)
         noise_var, noise_var_diff = self.noise_var(state_data, t_device)
 
         # change the state
@@ -214,9 +227,9 @@ class EulerMilsteinStepper(EulerStepper):
         return (  # type: ignore
             state_data
             + dt * evolution_rate
-            + 0.5 * dt * self.noise_drift_factor * noise_var_diff
-            + torch.sqrt(noise_var) * dW
-            + 0.25 * noise_var_diff * (dW**2 - dt)
+            + 0.5 * dt * self.noise_drift_factor * noise_var_diff * self.inv_cell
+            + torch.sqrt(noise_var * self.inv_cell) * dW
+            + 0.25 * noise_var_diff * self.inv_cell * (dW**2 - dt)
         )
 
 
