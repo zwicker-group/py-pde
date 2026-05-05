@@ -62,7 +62,7 @@ class NumbaBackend(NumpyBackend):
         """
         from .utils import jit
 
-        return jit(func)  # type: ignore
+        return jit(backend=self)(func)
 
     def use_multithreading(self) -> bool:
         """Determine whether multithreading should be used in numba-compiled code.

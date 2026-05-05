@@ -17,9 +17,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
+from .... import get_backend
 from ....grids.spherical import PolarSymGrid
 from ....tools.docstrings import fill_in_docstring
-from .. import numba_backend
 from ..backend import NumbaBackend
 from ..utils import jit
 
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 @NumbaBackend.register_operator(PolarSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(
-    grid: PolarSymGrid, *, backend: NumbaBackend = numba_backend
+    grid: PolarSymGrid, *, backend: NumbaBackend | None = None
 ) -> OperatorImplType:
     """Make a discretized laplace operator for a polar grid.
 
@@ -48,12 +48,15 @@ def make_laplace(
     assert isinstance(grid, PolarSymGrid)
 
     # calculate preliminary quantities
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+
     dim_r = grid.shape[0]
     dr = grid.discretization[0]
     factor_r = 1 / (2 * grid.axes_coords[0] * dr)
     dr_2 = 1 / dr**2
 
-    @jit
+    @jit(backend=backend)
     def laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply laplace operator to array `arr`"""
         for i in range(1, dim_r + 1):  # iterate inner radial points
@@ -68,7 +71,7 @@ def make_laplace(
 def make_gradient(
     grid: PolarSymGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorImplType:
     """Make a discretized gradient operator for a polar grid.
@@ -90,6 +93,9 @@ def make_gradient(
     assert isinstance(grid, PolarSymGrid)
 
     # calculate preliminary quantities
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+
     dim_r = grid.shape[0]
     if method == "central":
         scale_r = 0.5 / grid.discretization[0]
@@ -99,7 +105,7 @@ def make_gradient(
         msg = f"Unknown derivative type `{method}`"
         raise ValueError(msg)
 
-    @jit
+    @jit(backend=backend)
     def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in range(1, dim_r + 1):  # iterate inner radial points
@@ -119,7 +125,7 @@ def make_gradient(
 def make_gradient_squared(
     grid: PolarSymGrid,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
     central: bool = True,
 ) -> OperatorImplType:
     """Make a discretized gradient squared operator for a polar grid.
@@ -143,6 +149,9 @@ def make_gradient_squared(
     assert isinstance(grid, PolarSymGrid)
 
     # calculate preliminary quantities
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+
     dim_r = grid.shape[0]
     dr = grid.discretization[0]
 
@@ -150,7 +159,7 @@ def make_gradient_squared(
         # use central differences
         scale = 0.25 / dr**2
 
-        @jit
+        @jit(backend=backend)
         def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
@@ -160,7 +169,7 @@ def make_gradient_squared(
         # use forward and backward differences
         scale = 0.5 / dr**2
 
-        @jit
+        @jit(backend=backend)
         def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
@@ -173,7 +182,7 @@ def make_gradient_squared(
 @NumbaBackend.register_operator(PolarSymGrid, "divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(
-    grid: PolarSymGrid, *, backend: NumbaBackend = numba_backend
+    grid: PolarSymGrid, *, backend: NumbaBackend | None = None
 ) -> OperatorImplType:
     """Make a discretized divergence operator for a polar grid.
 
@@ -191,12 +200,15 @@ def make_divergence(
     assert isinstance(grid, PolarSymGrid)
 
     # calculate preliminary quantities
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+
     dim_r = grid.shape[0]
     dr = grid.discretization[0]
     rs = grid.axes_coords[0]
     scale_r = 1 / (2 * dr)
 
-    @jit
+    @jit(backend=backend)
     def divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply divergence operator to array `arr`"""
         # inner radial boundary condition
@@ -210,7 +222,7 @@ def make_divergence(
 @NumbaBackend.register_operator(PolarSymGrid, "vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
 def make_vector_gradient(
-    grid: PolarSymGrid, *, backend: NumbaBackend = numba_backend
+    grid: PolarSymGrid, *, backend: NumbaBackend | None = None
 ) -> OperatorImplType:
     """Make a discretized vector gradient operator for a polar grid.
 
@@ -228,12 +240,15 @@ def make_vector_gradient(
     assert isinstance(grid, PolarSymGrid)
 
     # calculate preliminary quantities
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+
     dim_r = grid.shape[0]
     rs = grid.axes_coords[0]
     dr = grid.discretization[0]
     scale_r = 1 / (2 * dr)
 
-    @jit
+    @jit(backend=backend)
     def vector_gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply vector gradient operator to array `arr`"""
         # assign aliases
@@ -255,7 +270,7 @@ def make_vector_gradient(
 )
 @fill_in_docstring
 def make_tensor_divergence(
-    grid: PolarSymGrid, *, backend: NumbaBackend = numba_backend
+    grid: PolarSymGrid, *, backend: NumbaBackend | None = None
 ) -> OperatorImplType:
     """Make a discretized tensor divergence operator for a polar grid.
 
@@ -273,12 +288,15 @@ def make_tensor_divergence(
     assert isinstance(grid, PolarSymGrid)
 
     # calculate preliminary quantities
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+
     dim_r = grid.shape[0]
     rs = grid.axes_coords[0]
     dr = grid.discretization[0]
     scale_r = 1 / (2 * dr)
 
-    @jit
+    @jit(backend=backend)
     def tensor_divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply tensor divergence operator to array `arr`"""
         # assign aliases

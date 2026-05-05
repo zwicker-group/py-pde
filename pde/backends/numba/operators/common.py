@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from .. import numba_backend
+from .... import get_backend
 from ..utils import jit
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ def make_derivative(
     axis: int = 0,
     *,
     method: Literal["central", "forward", "backward"] = "central",
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
 ) -> OperatorImplType:
     """Make a derivative operator along a single axis using numba compilation.
 
@@ -41,6 +41,9 @@ def make_derivative(
         ghost cells. The result will be an array of the same shape containing the actual
         derivatives at the valid (interior) grid points.
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+
     if method not in {"central", "forward", "backward"}:
         msg = f"Unknown derivative type `{method}`"
         raise ValueError(msg)
@@ -61,7 +64,7 @@ def make_derivative(
 
     if num_axes == 1:
 
-        @jit
+        @jit(backend=backend)
         def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 1d array `arr`"""
             for i in range(1, shape[0] + 1):
@@ -74,7 +77,7 @@ def make_derivative(
 
     elif num_axes == 2:
 
-        @jit
+        @jit(backend=backend)
         def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 2d array `arr`"""
             for i in range(1, shape[0] + 1):
@@ -90,7 +93,7 @@ def make_derivative(
 
     elif num_axes == 3:
 
-        @jit
+        @jit(backend=backend)
         def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 3d array `arr`"""
             for i in range(1, shape[0] + 1):
@@ -116,7 +119,7 @@ def make_derivative2(
     grid: GridBase,
     axis: int = 0,
     *,
-    backend: NumbaBackend = numba_backend,
+    backend: NumbaBackend | None = None,
 ) -> OperatorImplType:
     """Make a second-order derivative operator along a single axis.
 
@@ -133,6 +136,9 @@ def make_derivative2(
         ghost cells. The result will be an array of the same shape containing the actual
         derivatives at the valid (interior) grid points.
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
+
     shape = grid.shape
     num_axes = len(shape)
     scale = 1 / grid.discretization[axis] ** 2
@@ -149,7 +155,7 @@ def make_derivative2(
 
     if num_axes == 1:
 
-        @jit
+        @jit(backend=backend)
         def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 1d array `arr`"""
             for i in range(1, shape[0] + 1):
@@ -157,7 +163,7 @@ def make_derivative2(
 
     elif num_axes == 2:
 
-        @jit
+        @jit(backend=backend)
         def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 2d array `arr`"""
             for i in range(1, shape[0] + 1):
@@ -168,7 +174,7 @@ def make_derivative2(
 
     elif num_axes == 3:
 
-        @jit
+        @jit(backend=backend)
         def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 3d array `arr`"""
             for i in range(1, shape[0] + 1):

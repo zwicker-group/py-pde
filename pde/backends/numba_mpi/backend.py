@@ -12,7 +12,6 @@ from numba.extending import register_jitable
 
 from ...grids.boundaries.local import _MPIBC, BCBase
 from ..numba.backend import NumbaBackend
-from ..numba.utils import jit
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -216,7 +215,7 @@ class NumbaMPIBackend(NumbaBackend):
         # deal with MPI multiprocessing
         if grid._mesh is None or len(grid._mesh) == 1:
             # standard case of a single integral
-            @jit
+            @self.compile_function
             def integrate_global(arr: NumericArray) -> NumberOrArray:
                 """Integrate data.
 
@@ -230,7 +229,7 @@ class NumbaMPIBackend(NumbaBackend):
             # all subgrids in the grid mesh
             from ...tools.mpi import mpi_allreduce
 
-            @jit
+            @self.compile_function
             def integrate_global(arr: NumericArray) -> NumberOrArray:
                 """Integrate data over MPI parallelized grid.
 
