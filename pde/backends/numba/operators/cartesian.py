@@ -21,7 +21,7 @@ import numba as nb
 import numpy as np
 from numba.extending import overload, register_jitable
 
-from .... import config
+from .... import config, get_backend
 from ....grids.cartesian import CartesianGrid
 from ....tools.misc import module_available
 from .. import numba_backend
@@ -34,19 +34,25 @@ if TYPE_CHECKING:
     from ....tools.typing import NumericArray, OperatorImplType
 
 
-def make_corner_point_setter_2d(grid: CartesianGrid) -> Callable[[NumericArray], None]:
+def make_corner_point_setter_2d(
+    grid: CartesianGrid, *, backend: NumbaBackend | None = None
+) -> Callable[[NumericArray], None]:
     """Make a helper function that sets the virtual corner points of a 2d field.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the helper function is created
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     periodic_x, periodic_y = grid.periodic
 
-    @jit
+    @jit(backend=backend)
     def set_corner_points(arr: NumericArray) -> None:
         """Set the corner points of the array `arr`"""
         if periodic_x:
@@ -73,20 +79,26 @@ def make_corner_point_setter_2d(grid: CartesianGrid) -> Callable[[NumericArray],
     return set_corner_points
 
 
-def _make_laplace_numba_1d(grid: CartesianGrid) -> OperatorImplType:
+def _make_laplace_numba_1d(
+    grid: CartesianGrid, *, backend: NumbaBackend | None = None
+) -> OperatorImplType:
     """Make a 1d Laplace operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     dim_x = grid.shape[0]
     scale: float = grid.discretization[0] ** -2
 
-    @jit
+    @jit(backend=backend)
     def laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply Laplace operator to array `arr`"""
         for i in range(1, dim_x + 1):
@@ -164,7 +176,7 @@ def _make_laplace_numba_2d(
             ]
         )
 
-        set_corner_points = make_corner_point_setter_2d(grid)
+        set_corner_points = make_corner_point_setter_2d(grid, backend=backend)
 
         @jit(parallel=parallel, backend=backend)
         def laplace(arr: NumericArray, out: NumericArray) -> None:
@@ -218,16 +230,22 @@ def _make_laplace_numba_3d(
     return laplace
 
 
-def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorImplType:
+def _make_laplace_numba_spectral_1d(
+    grid: CartesianGrid, *, backend: NumbaBackend | None = None
+) -> OperatorImplType:
     """Make a 1d spectral Laplace operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     from scipy import fft
 
     assert module_available("rocket_fft")
@@ -254,7 +272,7 @@ def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorImplType:
 
         return laplace_impl
 
-    @jit
+    @jit(backend=backend)
     def laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply Laplace operator to array `arr`"""
         laplace_impl(arr, out)
@@ -262,16 +280,22 @@ def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorImplType:
     return laplace
 
 
-def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorImplType:
+def _make_laplace_numba_spectral_2d(
+    grid: CartesianGrid, *, backend: NumbaBackend | None = None
+) -> OperatorImplType:
     """Make a 2d spectral Laplace operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     from scipy import fft
 
     assert module_available("rocket_fft")
@@ -298,7 +322,7 @@ def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorImplType:
 
         return laplace_impl
 
-    @jit
+    @jit(backend=backend)
     def laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply Laplace operator to array `arr`"""
         laplace_impl(arr, out)
@@ -339,15 +363,15 @@ def make_laplace(
     if spectral:
         # use spectral versions of the operators
         if dim == 1:
-            return _make_laplace_numba_spectral_1d(grid, **kwargs)
+            return _make_laplace_numba_spectral_1d(grid, backend=backend, **kwargs)
         if dim == 2:
-            return _make_laplace_numba_spectral_2d(grid, **kwargs)
+            return _make_laplace_numba_spectral_2d(grid, backend=backend, **kwargs)
         msg = f"Numba spectral Laplace operator not implemented for {dim:d} dimensions"
         raise NotImplementedError(msg)
 
     # use finite-difference operators
     if dim == 1:
-        return _make_laplace_numba_1d(grid, **kwargs)
+        return _make_laplace_numba_1d(grid, backend=backend, **kwargs)
     if dim == 2:
         return _make_laplace_numba_2d(grid, backend=backend, **kwargs)
     if dim == 3:
@@ -357,7 +381,10 @@ def make_laplace(
 
 
 def _make_gradient_numba_1d(
-    grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
+    grid: CartesianGrid,
+    method: Literal["central", "forward", "backward"] = "central",
+    *,
+    backend: NumbaBackend | None = None,
 ) -> OperatorImplType:
     """Make a 1d gradient operator using numba compilation.
 
@@ -367,10 +394,14 @@ def _make_gradient_numba_1d(
         method (str):
             The method for calculating the derivative. Possible values are 'central',
             'forward', and 'backward'.
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     if method not in {"central", "forward", "backward"}:
         msg = f"Unknown derivative type `{method}`"
         raise ValueError(msg)
@@ -378,7 +409,7 @@ def _make_gradient_numba_1d(
     dim_x = grid.shape[0]
     dx = grid.discretization[0]
 
-    @jit
+    @jit(backend=backend)
     def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in range(1, dim_x + 1):
@@ -540,7 +571,7 @@ def make_gradient(
     dim = grid.dim
 
     if dim == 1:
-        return _make_gradient_numba_1d(grid, method=method)
+        return _make_gradient_numba_1d(grid, method=method, backend=backend)
     if dim == 2:
         return _make_gradient_numba_2d(grid, method=method, backend=backend)
     if dim == 3:
@@ -550,7 +581,7 @@ def make_gradient(
 
 
 def _make_gradient_squared_numba_1d(
-    grid: CartesianGrid, central: bool = True
+    grid: CartesianGrid, central: bool = True, *, backend: NumbaBackend | None = None
 ) -> OperatorImplType:
     """Make a 1d squared gradient operator using numba compilation.
 
@@ -562,17 +593,21 @@ def _make_gradient_squared_numba_1d(
             operator. If this is False, the squared gradient is calculated as
             the mean of the squared values of the forward and backward
             derivatives.
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     dim_x = grid.shape[0]
 
     if central:
         # use central differences
         scale = 0.25 / grid.discretization[0] ** 2
 
-        @jit
+        @jit(backend=backend)
         def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_x + 1):
@@ -582,7 +617,7 @@ def _make_gradient_squared_numba_1d(
         # use forward and backward differences
         scale = 0.5 / grid.discretization[0] ** 2
 
-        @jit
+        @jit(backend=backend)
         def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_x + 1):
@@ -754,7 +789,7 @@ def make_gradient_squared(
     dim = grid.dim
 
     if dim == 1:
-        return _make_gradient_squared_numba_1d(grid, central=central)
+        return _make_gradient_squared_numba_1d(grid, central=central, backend=backend)
     if dim == 2:
         return _make_gradient_squared_numba_2d(grid, central=central, backend=backend)
     if dim == 3:
@@ -764,7 +799,10 @@ def make_gradient_squared(
 
 
 def _make_divergence_numba_1d(
-    grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
+    grid: CartesianGrid,
+    method: Literal["central", "forward", "backward"] = "central",
+    *,
+    backend: NumbaBackend | None = None,
 ) -> OperatorImplType:
     """Make a 1d divergence operator using numba compilation.
 
@@ -774,17 +812,21 @@ def _make_divergence_numba_1d(
         method (str):
             The method for calculating the derivative. Possible values are 'central',
             'forward', and 'backward'.
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         A function that can be applied to an array of values
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     if method not in {"central", "forward", "backward"}:
         msg = f"Unknown derivative type `{method}`"
         raise ValueError(msg)
     dim_x = grid.shape[0]
     dx = grid.discretization[0]
 
-    @jit
+    @jit(backend=backend)
     def divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in range(1, dim_x + 1):
@@ -930,7 +972,7 @@ def make_divergence(
     dim = grid.dim
 
     if dim == 1:
-        return _make_divergence_numba_1d(grid, method=method)
+        return _make_divergence_numba_1d(grid, method=method, backend=backend)
     if dim == 2:
         return _make_divergence_numba_2d(grid, method=method, backend=backend)
     if dim == 3:

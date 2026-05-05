@@ -61,7 +61,7 @@ def make_derivative(
 
     if num_axes == 1:
 
-        @jit
+        @jit(backend=backend)
         def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 1d array `arr`"""
             for i in range(1, shape[0] + 1):
@@ -74,7 +74,7 @@ def make_derivative(
 
     elif num_axes == 2:
 
-        @jit
+        @jit(backend=backend)
         def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 2d array `arr`"""
             for i in range(1, shape[0] + 1):
@@ -90,7 +90,7 @@ def make_derivative(
 
     elif num_axes == 3:
 
-        @jit
+        @jit(backend=backend)
         def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 3d array `arr`"""
             for i in range(1, shape[0] + 1):
@@ -149,7 +149,7 @@ def make_derivative2(
 
     if num_axes == 1:
 
-        @jit
+        @jit(backend=backend)
         def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 1d array `arr`"""
             for i in range(1, shape[0] + 1):
@@ -157,7 +157,7 @@ def make_derivative2(
 
     elif num_axes == 2:
 
-        @jit
+        @jit(backend=backend)
         def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 2d array `arr`"""
             for i in range(1, shape[0] + 1):
@@ -168,7 +168,7 @@ def make_derivative2(
 
     elif num_axes == 3:
 
-        @jit
+        @jit(backend=backend)
         def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 3d array `arr`"""
             for i in range(1, shape[0] + 1):

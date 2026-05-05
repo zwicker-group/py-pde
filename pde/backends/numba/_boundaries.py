@@ -15,6 +15,7 @@ import numba as nb
 import numpy as np
 from numba.extending import overload, register_jitable
 
+from ... import get_backend
 from ...grids.boundaries.local import (
     BCBase,
     ConstBC1stOrderBase,
@@ -38,6 +39,7 @@ if TYPE_CHECKING:
         NumericArray,
         VirtualPointEvaluator,
     )
+    from .backend import NumbaBackend
 
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger instance."""
@@ -144,8 +146,12 @@ def _make_user_virtual_point_evaluator(bc: UserBC) -> VirtualPointEvaluator:
     return virtual_point  # type: ignore
 
 
-def _prepare_function(bc: ExpressionBC, func: Callable | float) -> Callable:
+def _prepare_function(
+    bc: ExpressionBC, func: Callable | float, *, backend: NumbaBackend | None = None
+) -> Callable:
     """Helper function that compiles a single function given as a parameter."""
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     if not callable(func):
         # the function is just a number, which we also need to support
         func_value = number(func)
@@ -159,8 +165,7 @@ def _prepare_function(bc: ExpressionBC, func: Callable | float) -> Callable:
     # function is callable and needs to be compiled
     try:
         # try compiling the function
-        value_func = jit(func)
-        # and evaluate it, so compilation is forced
+        value_func = jit(backend=backend)(func)
         value_func(*bc._test_values)
 
         if os.environ.get("PYPDE_TESTRUN"):
@@ -181,17 +186,23 @@ def _prepare_function(bc: ExpressionBC, func: Callable | float) -> Callable:
     return value_func  # type: ignore
 
 
-def _make_expression_function_from_userfunc(bc: ExpressionBC) -> Callable:
+def _make_expression_function_from_userfunc(
+    bc: ExpressionBC, *, backend: NumbaBackend | None = None
+) -> Callable:
     """Returns function from user function evaluating the value of the virtual point.
 
     Args:
         bc (:class:`~pde.grids.boundaries.local.ExpressionBC`):
             Defines the boundary conditions for a particular side, for which the virtual
             point evaluator should be defined.
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     # `value` is a callable function
     target = bc._input["target"]
-    value_func = _prepare_function(bc, bc._input["value_expr"])
+    value_func = _prepare_function(bc, bc._input["value_expr"], backend=backend)
 
     if target == "virtual_point":
         return value_func
@@ -232,19 +243,24 @@ def _make_expression_function_from_userfunc(bc: ExpressionBC) -> Callable:
     raise ValueError(msg)
 
 
-def _make_expression_function_from_expression(bc: ExpressionBC) -> Callable:
+def _make_expression_function_from_expression(
+    bc: ExpressionBC, *, backend: NumbaBackend | None = None
+) -> Callable:
     """Returns function from expression evaluating the value of the virtual point.
 
     Args:
         bc (:class:`~pde.grids.boundaries.local.ExpressionBC`):
             Defines the boundary conditions for a particular side, for which the virtual
             point evaluator should be defined.
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     func = bc._func_expression.get_function(backend="numba", single_arg=False)
     try:
         # try to compile the expression that was given
-        value_func = jit(func)
-        # call the function to actually trigger compilation
+        value_func = jit(backend=backend)(func)
         value_func(*bc._test_values)
 
         if os.environ.get("PYPDE_TESTRUN"):
@@ -261,7 +277,7 @@ def _make_expression_function_from_expression(bc: ExpressionBC) -> Callable:
         num_axes = bc.grid.num_axes
         if num_axes == 1:
 
-            @jit
+            @jit(backend=backend)
             def value_func(grid_value, dx, x, t):
                 with nb.objmode(value="double"):
                     value = func(grid_value, dx, x, t)
@@ -269,7 +285,7 @@ def _make_expression_function_from_expression(bc: ExpressionBC) -> Callable:
 
         elif num_axes == 2:
 
-            @jit
+            @jit(backend=backend)
             def value_func(grid_value, dx, x, y, t):
                 with nb.objmode(value="double"):
                     value = func(grid_value, dx, x, y, t)
@@ -277,7 +293,7 @@ def _make_expression_function_from_expression(bc: ExpressionBC) -> Callable:
 
         elif num_axes == 3:
 
-            @jit
+            @jit(backend=backend)
             def value_func(grid_value, dx, x, y, z, t):
                 with nb.objmode(value="double"):
                     value = func(grid_value, dx, x, y, z, t)
@@ -296,19 +312,25 @@ def _make_expression_function_from_expression(bc: ExpressionBC) -> Callable:
     return value_func
 
 
-def _make_expression_virtual_point_evaluator(bc: ExpressionBC) -> VirtualPointEvaluator:
+def _make_expression_virtual_point_evaluator(
+    bc: ExpressionBC, *, backend: NumbaBackend | None = None
+) -> VirtualPointEvaluator:
     """Return function that evaluates the value of a virtual point.
 
     Args:
         bc (:class:`~pde.grids.boundaries.local.ExpressionBC`):
             Defines the boundary conditions for a particular side, for which the virtual
             point evaluator should be defined.
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         function: A function that takes the data array and an index marking the current
         point, which is assumed to be a virtual point. The result is the data value at
         this point, which is calculated using the boundary condition.
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     dx = bc.grid.discretization[bc.axis]
     num_axes = bc.grid.num_axes
     get_arr_1d = make_get_arr_1d(num_axes, bc.axis)
@@ -322,11 +344,11 @@ def _make_expression_virtual_point_evaluator(bc: ExpressionBC) -> VirtualPointEv
         warn_if_time_not_set = bc._func_expression.depends_on("t")
 
     if bc._is_func:
-        func = _make_expression_function_from_userfunc(bc)
+        func = _make_expression_function_from_userfunc(bc, backend=backend)
     else:
-        func = _make_expression_function_from_expression(bc)
+        func = _make_expression_function_from_expression(bc, backend=backend)
 
-    @jit
+    @jit(backend=backend)
     def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None) -> float:
         """Evaluate the virtual point at `idx`"""
         _, _, bc_idx = get_arr_1d(arr, idx)
@@ -548,7 +570,7 @@ def _get_virtual_point_data_1storder(bc: ConstBC1stOrderBase):
 
 
 def _make_const1storder_virtual_point_evaluator(
-    bc: ConstBC1stOrderBase,
+    bc: ConstBC1stOrderBase, *, backend=None
 ) -> VirtualPointEvaluator:
     """Return function that evaluates the value of a virtual point.
 
@@ -571,7 +593,7 @@ def _make_const1storder_virtual_point_evaluator(
 
     if bc.homogeneous:
 
-        @jit
+        @jit(backend=backend)
         def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None) -> float:
             """Evaluate the virtual point at `idx`"""
             arr_1d, _, _ = get_arr_1d(arr, idx)
@@ -583,7 +605,7 @@ def _make_const1storder_virtual_point_evaluator(
 
     else:
 
-        @jit
+        @jit(backend=backend)
         def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None) -> float:
             """Evaluate the virtual point at `idx`"""
             arr_1d, _, bc_idx = get_arr_1d(arr, idx)

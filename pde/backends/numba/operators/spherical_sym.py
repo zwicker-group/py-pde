@@ -77,7 +77,7 @@ def make_laplace(
         factor_l = rl**2 / (dr * volumes)
         factor_h = rh**2 / (dr * volumes)
 
-        @jit
+        @jit(backend=backend)
         def laplace(arr: NumericArray, out: NumericArray) -> None:
             """Apply laplace operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
@@ -88,7 +88,7 @@ def make_laplace(
     else:  # create an operator that is not conservative
         dr2 = 1 / dr**2
 
-        @jit
+        @jit(backend=backend)
         def laplace(arr: NumericArray, out: NumericArray) -> None:
             """Apply laplace operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
@@ -135,7 +135,7 @@ def make_gradient(
         msg = f"Unknown derivative type `{method}`"
         raise ValueError(msg)
 
-    @jit
+    @jit(backend=backend)
     def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in range(1, dim_r + 1):  # iterate inner radial points
@@ -188,7 +188,7 @@ def make_gradient_squared(
         # use central differences
         scale = 0.25 / dr**2
 
-        @jit
+        @jit(backend=backend)
         def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
@@ -198,7 +198,7 @@ def make_gradient_squared(
         # use forward and backward differences
         scale = 0.5 / dr**2
 
-        @jit
+        @jit(backend=backend)
         def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
@@ -266,7 +266,7 @@ def make_divergence(
         factor_l = rl**2 / (2 * volumes)
         factor_h = rh**2 / (2 * volumes)
 
-        @jit
+        @jit(backend=backend)
         def divergence(arr: NumericArray, out: NumericArray) -> None:
             """Apply divergence operator to array `arr`"""
             if safe:
@@ -293,7 +293,7 @@ def make_divergence(
         # implement naive divergence operator
         factors = 2 / rs  # factors that need to be multiplied below
 
-        @jit
+        @jit(backend=backend)
         def divergence(arr: NumericArray, out: NumericArray) -> None:
             """Apply divergence operator to array `arr`"""
             if safe:
@@ -366,7 +366,7 @@ def make_vector_gradient(
         msg = f"Unknown derivative type `{method}`"
         raise ValueError(msg)
 
-    @jit
+    @jit(backend=backend)
     def vector_gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply vector gradient operator to array `arr`"""
         if safe:
@@ -455,7 +455,7 @@ def make_tensor_divergence(
         factor_h = rh**2 / (2 * volumes)
         area_factor = (rh**2 - rl**2) / volumes
 
-        @jit
+        @jit(backend=backend)
         def tensor_divergence(arr: NumericArray, out: NumericArray) -> None:
             """Apply tensor divergence operator to array `arr`"""
             # assign aliases
@@ -488,7 +488,7 @@ def make_tensor_divergence(
         # naive implementation of the tensor divergence
         scale_r = 1 / (2 * dr)
 
-        @jit
+        @jit(backend=backend)
         def tensor_divergence(arr: NumericArray, out: NumericArray) -> None:
             """Apply tensor divergence operator to array `arr`"""
             # assign aliases
@@ -576,7 +576,7 @@ def make_tensor_double_divergence(
         factor2_l = rl**2 / (dr * volumes)
         factor2_h = rh**2 / (dr * volumes)
 
-        @jit
+        @jit(backend=backend)
         def tensor_double_divergence(arr: NumericArray, out: NumericArray) -> None:
             """Apply double divergence operator to tensor array `arr`"""
             # assign aliases
@@ -615,7 +615,7 @@ def make_tensor_double_divergence(
         dr2 = 1 / dr**2
         scale_r = 1 / (2 * dr)
 
-        @jit
+        @jit(backend=backend)
         def tensor_double_divergence(arr: NumericArray, out: NumericArray) -> None:
             """Apply double divergence operator to tensor array `arr`"""
             # assign aliases

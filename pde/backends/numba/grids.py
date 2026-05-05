@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from numba.extending import register_jitable
 
+from ... import get_backend
 from ...grids import DomainError, GridBase
 from .utils import jit
 
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
         NumberOrArray,
         NumericArray,
     )
+    from .backend import NumbaBackend
 
 
 def get_grid_numba_type(grid: GridBase, rank: int = 0) -> str:
@@ -49,7 +51,9 @@ def get_grid_numba_type(grid: GridBase, rank: int = 0) -> str:
     return "f8[" + ", ".join([":"] * dim) + "]"
 
 
-def make_cell_volume_getter(grid: GridBase, *, flat_index: bool = False) -> CellVolume:
+def make_cell_volume_getter(
+    grid: GridBase, *, flat_index: bool = False, backend: NumbaBackend | None = None
+) -> CellVolume:
     """Return a compiled function returning the volume of a grid cell.
 
     Args:
@@ -58,17 +62,21 @@ def make_cell_volume_getter(grid: GridBase, *, flat_index: bool = False) -> Cell
         flat_index (bool):
             When True, cell_volumes are indexed by a single integer into the
             flattened array.
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         function: returning the volume of the chosen cell
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     if grid.cell_volume_data is not None and all(
         np.isscalar(d) for d in grid.cell_volume_data
     ):
         # all cells have the same volume
         cell_volume = np.prod(grid.cell_volume_data)  # type: ignore
 
-        @jit
+        @jit(backend=backend)
         def get_cell_volume(*args) -> float:
             return cell_volume  # type: ignore
 
@@ -78,13 +86,13 @@ def make_cell_volume_getter(grid: GridBase, *, flat_index: bool = False) -> Cell
 
         if flat_index:
 
-            @jit
+            @jit(backend=backend)
             def get_cell_volume(idx: int) -> float:
                 return cell_volumes.flat[idx]  # type: ignore
 
         else:
 
-            @jit
+            @jit(backend=backend)
             def get_cell_volume(*args) -> float:
                 return cell_volumes[args]  # type: ignore
 
@@ -188,6 +196,7 @@ def make_single_interpolator(
     fill: Number | None = None,
     with_ghost_cells: bool = False,
     cell_coords: bool = False,
+    backend: NumbaBackend | None = None,
 ) -> Callable[[NumericArray, FloatingArray], NumericArray]:
     """Return a compiled function for linear interpolation on the grid.
 
@@ -205,6 +214,8 @@ def make_single_interpolator(
         cell_coords (bool):
             Flag indicating whether points are given in cell coordinates or actual
             point coordinates.
+        backend (:class:`~pde.backends.numba.backend.NumbaBackend`):
+            References to the backend to read configuration details
 
     Returns:
         callable: A function which returns interpolated values when called with
@@ -212,13 +223,15 @@ def make_single_interpolator(
         function is (data, point), where `data` is the numpy array containing the
         field data and position denotes the position in grid coordinates.
     """
+    if backend is None:
+        backend = get_backend("numba")  # type: ignore
     args = {"with_ghost_cells": with_ghost_cells, "cell_coords": cell_coords}
 
     if grid.num_axes == 1:
         # specialize for 1-dimensional interpolation
         data_x = make_interpolation_axis_data(grid=grid, axis=0, **args)
 
-        @jit
+        @jit(backend=backend)
         def interpolate_single(
             data: NumericArray, point: FloatingArray
         ) -> NumberOrArray:
@@ -250,7 +263,7 @@ def make_single_interpolator(
         data_x = make_interpolation_axis_data(grid=grid, axis=0, **args)
         data_y = make_interpolation_axis_data(grid=grid, axis=1, **args)
 
-        @jit
+        @jit(backend=backend)
         def interpolate_single(
             data: NumericArray, point: FloatingArray
         ) -> NumberOrArray:
@@ -290,7 +303,7 @@ def make_single_interpolator(
         data_y = make_interpolation_axis_data(grid=grid, axis=1, **args)
         data_z = make_interpolation_axis_data(grid=grid, axis=2, **args)
 
-        @jit
+        @jit(backend=backend)
         def interpolate_single(
             data: NumericArray, point: FloatingArray
         ) -> NumberOrArray:
