@@ -41,7 +41,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        cat tests/requirements_full.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | xargs -I % sh -c "pip install % || true"
+        cat tests/requirements_full.txt | grep -Eo '(^[^#]+)' | xargs -n 1 pip install
         pip install -r tests/requirements.txt
 
     - name: Run serial tests with pytest
