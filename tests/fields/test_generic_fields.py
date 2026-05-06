@@ -595,7 +595,7 @@ def test_get_field_class_by_rank():
 
 
 @pytest.mark.skipif(
-    not module_available("modelrunner"), reason="requires `py-modelrunner`"
+    not module_available("modelrunner", strict=True), reason="requires `py-modelrunner`"
 )
 @pytest.mark.parametrize("field", iter_fields())
 def test_field_modelrunner_storage(field, tmp_path):

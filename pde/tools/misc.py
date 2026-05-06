@@ -42,7 +42,9 @@ if TYPE_CHECKING:
 _MODULE_AVAILABILITY_CACHE: dict[str, bool] = {}
 
 
-def module_available(module_name: str, *, cache: bool = True) -> bool:
+def module_available(
+    module_name: str, *, cache: bool = True, strict: bool = False
+) -> bool:
     """Check whether a python module is available.
 
     Args:
@@ -50,6 +52,8 @@ def module_available(module_name: str, *, cache: bool = True) -> bool:
             The name of the module to search
         cache (bool):
             Flag determining whether an internal cache is used to speed up the check
+        strict (bool):
+            If True, we actually try to import the full package
 
     Returns:
         `True` if the module can be imported and `False` otherwise
@@ -57,11 +61,21 @@ def module_available(module_name: str, *, cache: bool = True) -> bool:
     if cache and module_name in _MODULE_AVAILABILITY_CACHE:
         return _MODULE_AVAILABILITY_CACHE[module_name]  # use cached entry
 
-    # determine whether module can be loaded
+    # determine whether module can be loaded in principle
     is_available = importlib.util.find_spec(module_name) is not None
 
+    if is_available and strict:
+        # try to actually import the module
+        try:
+            __import__(module_name)
+        except ImportError:
+            is_available = False
+        else:
+            is_available = True
+
+    # store value in cache and return it
     if cache:
-        _MODULE_AVAILABILITY_CACHE[module_name] = is_available  # store value in cache
+        _MODULE_AVAILABILITY_CACHE[module_name] = is_available
     return is_available
 
 

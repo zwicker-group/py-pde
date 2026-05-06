@@ -268,7 +268,7 @@ def test_array_data_hook(backend):
     platform.system() == "Windows", reason="submit_job has issues on windows"
 )
 @pytest.mark.skipif(
-    not module_available("modelrunner"), reason="requires `py-modelrunner`"
+    not module_available("modelrunner", strict=True), reason="requires `py-modelrunner`"
 )
 def test_modelrunner_storage_one(tmp_path, capsys):
     """Test how modelrunner storage can be used."""
@@ -312,7 +312,7 @@ def test_modelrunner_storage_one(tmp_path, capsys):
     platform.system() == "Windows", reason="submit_jobs has issues on windows"
 )
 @pytest.mark.skipif(
-    not module_available("modelrunner"), reason="requires `py-modelrunner`"
+    not module_available("modelrunner", strict=True), reason="requires `py-modelrunner`"
 )
 def test_modelrunner_storage_many(tmp_path):
     """Test how modelrunner storage can be used."""
