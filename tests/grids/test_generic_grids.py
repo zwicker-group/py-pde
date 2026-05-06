@@ -170,7 +170,7 @@ def test_cell_volumes(grid):
 
 
 @pytest.mark.skipif(
-    not module_available("modelrunner"), reason="requires `py-modelrunner`"
+    not module_available("modelrunner", strict=True), reason="requires `py-modelrunner`"
 )
 @pytest.mark.parametrize("grid", iter_grids())
 def test_grid_modelrunner_storage(grid, tmp_path):
