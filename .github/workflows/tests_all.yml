@@ -41,18 +41,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-
-        # Install optional/full requirements, but do not fail the job if some are unavailable
-        while IFS= read -r req; do
-          # skip comments/empty lines
-          req="${req%%#*}"
-          req="$(echo "$req" | xargs)"
-          [ -z "$req" ] && continue
-
-          echo "Installing optional dependency: $req"
-          pip install "$req" || echo "Skipping (not available for this Python/OS): $req"
-        done < tests/requirements_full.txt
-
+        cat tests/requirements_full.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | xargs -I % sh -c "pip install % || true"
         pip install -r tests/requirements.txt
 
     - name: Run serial tests with pytest
