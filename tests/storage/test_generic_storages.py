@@ -309,8 +309,9 @@ def test_storage_types(storage_factory, dtype, rng):
 
 
 @pytest.mark.multiprocessing
+@pytest.mark.parametrize("solver", ["euler", "explicit_mpi"])
 @pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
-def test_storage_mpi(atol, can_clear, storage_factory, rng):
+def test_storage_mpi(solver, atol, can_clear, storage_factory, rng):
     """Test writing data using MPI."""
     eq = DiffusionPDE()
     grid = UnitGrid([8])
@@ -318,7 +319,12 @@ def test_storage_mpi(atol, can_clear, storage_factory, rng):
 
     storage = storage_factory()
     res = eq.solve(
-        field, t_range=0.1, dt=0.001, backend="numpy", tracker=[storage.tracker(0.01)]
+        field,
+        t_range=0.1,
+        dt=0.001,
+        backend="numpy",
+        solver=solver,
+        tracker=[storage.tracker(0.01)],
     )
 
     if mpi.is_main:

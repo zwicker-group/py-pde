@@ -66,29 +66,33 @@ class FileStorage(StorageBase):
                 If True, files will only be opened in the main node for an parallel
                 simulation using MPI. This flag has no effect in serial code.
         """
-        from ..tools import mpi
-
         super().__init__(info=info, write_mode=write_mode)
         self.filename = Path(filename)
         self.compression = compression
         self.keep_opened = keep_opened
-        self.check_mpi = check_mpi
 
         self._file: Any = None
         self._is_writing = False
         self._data_length: int = None  # type: ignore
         self._max_length: int | None = max_length
 
-        if not self.check_mpi or mpi.is_main:  # noqa: SIM102
-            # we are on the main process and can thus open the file directly
-            if self.filename.is_file() and self.filename.stat().st_size > 0:
-                try:
-                    self._open("reading")
-                except (OSError, KeyError):
-                    self.close()
-                    self._logger.warning(
-                        "File `%s` could not be opened for reading", filename
-                    )
+        if check_mpi:
+            from ..tools import mpi
+
+            self._is_child_node = not mpi.is_main
+        else:
+            self._is_child_node = False
+        if self._is_child_node:
+            return  # do not actually open the file if we're on a child process
+
+        if self.filename.is_file() and self.filename.stat().st_size > 0:
+            try:
+                self._open("reading")
+            except (OSError, KeyError):
+                self.close()
+                self._logger.warning(
+                    "File `%s` could not be opened for reading", filename
+                )
 
     def __del__(self):
         self.close()  # ensure open files are closed when the FileStorage is deleted
@@ -164,9 +168,7 @@ class FileStorage(StorageBase):
         """
         import h5py  # lazy loading so it's not a hard dependence
 
-        from ..tools import mpi
-
-        if self.check_mpi and not mpi.is_main:
+        if self._is_child_node:
             self._logger.warning("Do not open file on MPI child nodes")
             return
 
@@ -291,9 +293,7 @@ class FileStorage(StorageBase):
             clear_data_shape (bool):
                 Flag determining whether the data shape is also deleted.
         """
-        from ..tools import mpi
-
-        if self.check_mpi and not mpi.is_main:
+        if self._is_child_node:
             self._logger.warning("Do not clear file on MPI child nodes")
             return
 
@@ -381,11 +381,15 @@ class FileStorage(StorageBase):
             data (:class:`~numpy.ndarray`): The actual data
             time (float): The time point associated with the data
         """
+        if self._is_child_node:
+            self._logger.warning("Trying to append data on MPI child node.")
+            return
+
         if self.keep_opened:
             if not self._is_writing or self._data_length is None:
                 msg = (
-                    "Writing not initialized. Call "
-                    f"`{self.__class__.__name__}.start_writing`"
+                    f"Writing not initialized. Call `{self.__class__.__name__}."
+                    f"start_writing`. {self._is_child_node=}"
                 )
                 raise RuntimeError(msg)
 
@@ -422,6 +426,9 @@ class FileStorage(StorageBase):
         """
         if not self._is_writing:
             return  # writing mode was already ended
+        if self._is_child_node:
+            self._logger.warning("Trying to end writing on MPI child node.")
+            return
         self._logger.debug("End writing")
 
         # store extra information as attributes
