@@ -18,7 +18,6 @@ from ..fields.datafield_base import DataFieldBase
 from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.local import BCDataError
 from ..pdes.base import SDEBase
-from ..tools import mpi
 from ..tools.docstrings import fill_in_docstring
 
 if TYPE_CHECKING:
@@ -323,6 +322,8 @@ class PDE(SDEBase):
         """
         from sympy import Symbol
         from sympy.core.function import UndefinedFunction
+
+        from ..tools import mpi
 
         for func in self._operators[var]:
             if func in ops:

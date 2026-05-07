@@ -13,7 +13,6 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from .. import __version__
-from ..tools import mpi
 from ..trackers.base import (
     FinishedSimulation,
     TrackerCollection,
@@ -159,6 +158,8 @@ class Controller:
                 Initial time step of the chosen stepping scheme. If `None`, a default
                 value based on the solver configuration will be chosen.
         """
+        from ..tools import mpi
+
         assert mpi.is_main  # this is the main process (and there can be others)
 
         # gather basic information
@@ -311,6 +312,8 @@ class Controller:
         Returns:
             The state at the final time point.
         """
+        from ..tools import mpi
+
         assert mpi.size > 1  # there are multiple processes
         assert not mpi.is_main  # this is not the main node
 
@@ -353,6 +356,8 @@ class Controller:
             The state at the final time point. If multiprocessing is used, only the main
             node will return the state. All other nodes return None.
         """
+        from ..tools import mpi
+
         if not mpi.is_main:
             return None  # exit client nodes immediately
         self._run_main_process(state, dt)
@@ -376,6 +381,8 @@ class Controller:
             node will return the state. All other nodes return None.
         """
         from mpi4py import MPI
+
+        from ..tools import mpi
 
         self.info["mpi_count"] = mpi.size
         self.info["mpi_rank"] = mpi.rank
