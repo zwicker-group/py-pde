@@ -683,7 +683,9 @@ class SDEBase(PDEBase):
             raise TypeError
 
         noise_vars = noise_vars.reshape(state.data_shape + (1,) * grid.num_axes)
-        noise_vars_native: TNativeArray = backend.numpy_to_native(noise_vars)
+        noise_vars_native: TNativeArray = backend.numpy_to_native(noise_vars.copy())
+        # The extra copy makes the array writeable to please torch, which otherwise
+        # would throw a warning.
 
         if ret_diff:
             noise_vars_diff_native = backend.numpy_to_native(np.zeros_like(noise_vars))

@@ -221,7 +221,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         return value
 
     def compile_function(
-        self, func: TFunc, *, to_device: bool = False, **compile_options
+        self, func: TFunc, *, to_device: bool = False, **kwargs
     ) -> TFunc:
         r"""General method that compiles a user function.
 
@@ -230,12 +230,12 @@ class TorchBackend(BackendBase[torch.Tensor]):
                 The function that needs to be compiled for this backend
             to_device (bool):
                 Moves (compiled) function to device
-            **compile_options:
-                Additional keyword arguments will be forwarded to :func:`torch.compile`
+            **kwargs:
+                Additional keyword arguments forwarded to :func:`torch.compile`
         """
         if self._config_parameter("compile"):
             # compile the function using the torch backend
-            opts = self.compile_options | compile_options
+            opts = self.compile_options | kwargs
             func = torch.compile(func, **opts)  # type: ignore
         if to_device and isinstance(func, torch.nn.Module):
             func.to(self.device)  # move module to correct device
