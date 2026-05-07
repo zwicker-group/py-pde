@@ -20,7 +20,6 @@ import numpy as np
 from ..fields import FieldCollection
 from ..fields.base import FieldBase
 from ..fields.datafield_base import DataFieldBase
-from ..tools import mpi
 from ..tools.cache import cached_method
 from ..tools.plotting import plot_on_axes
 from .boundaries.axes import BoundariesBase, BoundariesList
@@ -210,6 +209,8 @@ class GridMesh:
         Returns:
             :class:`GridMesh`: The grid mesh created from the grid
         """
+        from ..tools import mpi
+
         if decomposition == "auto":
             # determine decomposition automatically
             decomposition = _get_optimal_decomposition(grid.shape, mpi.size)
@@ -287,6 +288,8 @@ class GridMesh:
     @property
     def current_node(self) -> int:
         """int: current MPI node"""
+        from ..tools import mpi
+
         return mpi.rank
 
     def __getitem__(self, node_id: int | None) -> GridBase:
@@ -581,7 +584,7 @@ class GridMesh:
         Returns:
             :class:`~numpy.ndarray`: The sub field data of the current node
         """
-        from ..tools.mpi import mpi_recv, mpi_send
+        from ..tools import mpi
 
         if len(self) != mpi.size:
             msg = f"GridMesh size differs from MPI size ({len(self)} != {mpi.size})"
@@ -593,7 +596,7 @@ class GridMesh:
                 subfield_data = self.extract_field_data(
                     field_data, i, with_ghost_cells=with_ghost_cells
                 )
-                mpi_send(subfield_data, i, MPIFlags.field_split)
+                mpi.mpi_send(subfield_data, i, MPIFlags.field_split)
 
             # extract field for the current process
             return self.extract_field_data(
@@ -608,7 +611,7 @@ class GridMesh:
         shape += subgrid._shape_full if with_ghost_cells else subgrid.shape
 
         subfield_data = np.empty(shape, dtype=field_data.dtype)
-        mpi_recv(subfield_data, 0, MPIFlags.field_split)
+        mpi.mpi_recv(subfield_data, 0, MPIFlags.field_split)
         return subfield_data
 
     def split_field_mpi(self: GridMesh, field: TField) -> TField:
@@ -715,7 +718,7 @@ class GridMesh:
             other cases, this function returns `None`. On the main node, this array is
             `out` if `out` was supplied.
         """
-        from ..tools.mpi import mpi_recv, mpi_send
+        from ..tools import mpi
 
         assert len(self) == mpi.size
 
@@ -731,7 +734,7 @@ class GridMesh:
                 else:
                     shape = element_shape + self[i].shape
                 subfield_data = np.empty(shape, dtype=subfield.dtype)
-                mpi_recv(subfield_data, i, MPIFlags.field_combine)
+                mpi.mpi_recv(subfield_data, i, MPIFlags.field_combine)
                 field_data.append(subfield_data)
 
             # combine the data into a single field
@@ -740,7 +743,7 @@ class GridMesh:
             )
 
         # mpi_send our subfield to the main node
-        mpi_send(subfield, 0, MPIFlags.field_combine)
+        mpi.mpi_send(subfield, 0, MPIFlags.field_combine)
         return None
 
     def broadcast(self, data: TData) -> TData:

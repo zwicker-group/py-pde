@@ -18,7 +18,6 @@ from ..fields.datafield_base import DataFieldBase
 from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.local import BCDataError
 from ..pdes.base import SDEBase
-from ..tools import mpi
 from ..tools.docstrings import fill_in_docstring
 
 if TYPE_CHECKING:
@@ -353,6 +352,8 @@ class PDE(SDEBase):
             dtype = self._cache[backend.name]["dtype"]
             op_backend: str | BackendBase
             if backend.implementation == "numpy":
+                from ..tools import mpi
+
                 op_backend = "numba" if mpi.size == 1 else "numba_mpi"
             else:
                 op_backend = backend
