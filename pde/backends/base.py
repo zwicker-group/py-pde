@@ -195,12 +195,14 @@ class BackendBase(Generic[TNativeArray]):
         """
         return value
 
-    def compile_function(self, func: TFunc) -> TFunc:
+    def compile_function(self, func: TFunc, **kwargs) -> TFunc:
         """General method that compiles a user function.
 
         Args:
             func (callable):
                 The function that needs to be compiled for this backend
+            **kwargs:
+                Additional arguments affecting how the function is compiled
         """
         msg = f"Compiling functions is not supported by backend `{self.name}`"
         raise NotImplementedError(msg)

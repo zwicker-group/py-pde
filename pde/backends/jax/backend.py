@@ -180,17 +180,19 @@ class JaxBackend(BackendBase[jax.Array]):
             return np.asarray(value)
         return value
 
-    def compile_function(self, func: TFunc) -> TFunc:
+    def compile_function(self, func: TFunc, **kwargs) -> TFunc:
         """General method that compiles a user function.
 
         Args:
             func (callable):
                 The function that needs to be compiled for this backend
+            **kwargs:
+                Additional arguments forwarded to :func:`jax.jit`
         """
         if not self._config_parameter("compile"):
             return func
 
-        return jax.jit(func)  # type: ignore
+        return jax.jit(func, **kwargs)  # type: ignore
 
     def _apply_operator(
         self, func: Callable, *values: NumericArray, out: NumericArray, **kwargs

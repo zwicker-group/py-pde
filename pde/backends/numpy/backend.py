@@ -37,13 +37,15 @@ class NumpyBackend(BackendBase[NumericArray]):
 
     implementation = "numpy"
 
-    def compile_function(self, func: TFunc) -> TFunc:
+    def compile_function(self, func: TFunc, **kwargs) -> TFunc:
         """General method that compiles a user function.
 
         Args:
             func (callable):
                 The function that needs to be compiled for this backend
         """
+        if kwargs:
+            self._logger.warning("NumpyBackend does not support compilation options.")
         return func
 
     def _apply_operator(

@@ -53,16 +53,18 @@ class NumbaBackend(NumpyBackend):
 
     implementation = "numba"
 
-    def compile_function(self, func: TFunc) -> TFunc:
+    def compile_function(self, func: TFunc, **kwargs) -> TFunc:
         """General method that compiles a user function.
 
         Args:
             func (callable):
                 The function that needs to be compiled for this backend
+            **kwargs:
+                Additional arguments forwarded to :func:`pde.backends.numba.utils.jit`
         """
         from .utils import jit
 
-        return jit(backend=self)(func)
+        return jit(backend=self, **kwargs)(func)
 
     def use_multithreading(self) -> bool:
         """Determine whether multithreading should be used in numba-compiled code.
