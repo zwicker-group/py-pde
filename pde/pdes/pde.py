@@ -323,8 +323,6 @@ class PDE(SDEBase):
         from sympy import Symbol
         from sympy.core.function import UndefinedFunction
 
-        from ..tools import mpi
-
         for func in self._operators[var]:
             if func in ops:
                 continue
@@ -354,6 +352,8 @@ class PDE(SDEBase):
             dtype = self._cache[backend.name]["dtype"]
             op_backend: str | BackendBase
             if backend.implementation == "numpy":
+                from ..tools import mpi
+
                 op_backend = "numba" if mpi.size == 1 else "numba_mpi"
             else:
                 op_backend = backend

@@ -158,9 +158,10 @@ class Controller:
                 Initial time step of the chosen stepping scheme. If `None`, a default
                 value based on the solver configuration will be chosen.
         """
-        from ..tools import mpi
+        if self.solver.mpi_run:
+            from ..tools import mpi
 
-        assert mpi.is_main  # this is the main process (and there can be others)
+            assert mpi.is_main  # this is the main process (and there can be others)
 
         # gather basic information
         t_start, t_end = self.t_range
@@ -356,10 +357,6 @@ class Controller:
             The state at the final time point. If multiprocessing is used, only the main
             node will return the state. All other nodes return None.
         """
-        from ..tools import mpi
-
-        if not mpi.is_main:
-            return None  # exit client nodes immediately
         self._run_main_process(state, dt)
         return state
 
@@ -380,8 +377,6 @@ class Controller:
             The state at the final time point. If multiprocessing is used, only the main
             node will return the state. All other nodes return None.
         """
-        from mpi4py import MPI
-
         from ..tools import mpi
 
         self.info["mpi_count"] = mpi.size
@@ -395,7 +390,7 @@ class Controller:
                 print(err, file=sys.stderr)  # print exception to show some info
                 _logger.exception("Error in main node", exc_info=err)
                 time.sleep(0.5)  # give some time for info to propagate
-                MPI.COMM_WORLD.Abort()  # abort all other nodes
+                mpi.MPI.COMM_WORLD.Abort()  # abort all other nodes
                 raise
             else:
                 _logger.info("MPI main process finished")
@@ -409,7 +404,7 @@ class Controller:
                 print(err, file=sys.stderr)  # print exception to show some info
                 _logger.exception("Error in node %d", mpi.rank, exc_info=err)
                 time.sleep(0.5)  # give some time for info to propagate
-                MPI.COMM_WORLD.Abort()  # abort all other (and main) nodes
+                mpi.MPI.COMM_WORLD.Abort()  # abort all other (and main) nodes
                 raise
             else:
                 _logger.info("MPI client process finished")
