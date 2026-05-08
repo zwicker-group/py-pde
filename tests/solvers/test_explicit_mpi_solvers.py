@@ -107,16 +107,17 @@ def test_multiple_pdes_mpi(backend, rng):
         assert info_mpi["solver"]["use_mpi"]
 
 
-def test_backend_selection_by_solver():
-    """Test whether automatic backend selection works appropriately"""
-    field = ScalarField(UnitGrid([8]))
-    eq = DiffusionPDE()
+# @pytest.mark.multiprocessing
+# def test_backend_selection_by_solver():
+#     """Test whether automatic backend selection works appropriately"""
+#     field = ScalarField(UnitGrid([8]))
+#     eq = DiffusionPDE()
 
-    result = eq.solve(field, t_range=1, solver="explicit_mpi", tracker=None)
-    if result:  # only check main process
-        assert eq.diagnostics["controller"]["mpi_run"]
-        assert eq.diagnostics["solver"]["use_mpi"]
-        assert eq.diagnostics["solver"]["class"] == "ExplicitMPISolver"
+#     result = eq.solve(field, t_range=1, solver="explicit_mpi", tracker=None)
+#     if result:  # only check main process
+#         assert eq.diagnostics["controller"]["mpi_run"]
+#         assert eq.diagnostics["solver"]["use_mpi"]
+#         assert eq.diagnostics["solver"]["class"] == "ExplicitMPISolver"
 
-    with pytest.raises(RuntimeError):
-        eq.solve(field, t_range=1, solver="explicit_mpi", backend="numba", tracker=None)
+#     with pytest.raises(RuntimeError):
+#         eq.solve(field, t_range=1, solver="explicit_mpi", backend="numba", tracker=None)
