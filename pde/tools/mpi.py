@@ -182,4 +182,7 @@ def mpi_excepthook(exc_type, exc_value, exc_tb):
         sys.stderr.flush()
         sys.stdout.flush()
     finally:
+        # we need to make sure MPI is imported
+        from mpi4py import MPI
+
         MPI.COMM_WORLD.Abort(1)
