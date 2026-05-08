@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ...fields import DataFieldBase, VectorField
+from ...grids.boundaries.axes import BoundariesList
 from ...tools.typing import NumericArray
 from ..base import BackendBase, OperatorInfo
 
@@ -65,40 +66,15 @@ class NumpyBackend(BackendBase[NumericArray]):
         """
         func(*values, out=out, **kwargs)
 
-    def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
-        """Return function that sets the ghost cells on a full array.
-
-        Args:
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
-                Defines the boundary conditions for a particular grid, for which the
-                setter should be defined.
-
-        Returns:
-            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-            sets the ghost cells of the full data, potentially using additional
-            information in `args` (e.g., the time `t` during solving a PDE)
-        """
-
-        def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
-            """Default implementation that simply uses the python interface."""
-            if args is None:
-                boundaries.set_ghost_cells(data_full)
-            else:
-                boundaries.set_ghost_cells(data_full, *args)
-
-        return ghost_cell_setter
-
-    def make_data_setter(
-        self, grid: GridBase, bcs: BoundariesBase | None = None
-    ) -> DataSetter:
+    def make_valid_data_setter(self, grid: GridBase, rank: int) -> DataSetter:
         """Create a function to set the valid part of a full data array.
 
         Args:
-            grid (:class:`~pde.grids.base.GridBase`):
+            grid (:class:`~pde.grid.base.GridBase`):
                 The grid for which the data setter is created
-            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
-                If supplied, the returned function also enforces boundary conditions by
-                setting the ghost cells to the correct values
+            rank (int):
+                Rank of the data represented on the grid.
+
 
         Returns:
             callable:
@@ -122,6 +98,7 @@ class NumpyBackend(BackendBase[NumericArray]):
                 args:
                     Additional arguments (unused in this implementation)
             """
+            assert data_full.ndim == rank + num_axes
             if num_axes == 1:
                 data_full[..., 1:-1] = data_valid
             elif num_axes == 2:
@@ -131,14 +108,54 @@ class NumpyBackend(BackendBase[NumericArray]):
             else:
                 raise NotImplementedError
 
-        if bcs is None:
-            # just set the valid elements and leave ghost cells with arbitrary values
-            return set_valid
+        return set_valid
 
-        # set the valid elements and the ghost cells according to boundary condition
+    def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
+        """Return function that sets the ghost cells on a full array.
+
+        Args:
+            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
+                Defines the boundary conditions for a particular grid, for which the
+                setter should be defined.
+
+        Returns:
+            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
+            sets the ghost cells of the full data, potentially using additional
+            information in `args` (e.g., the time `t` during solving a PDE)
+        """
+
+        def set_ghost_cells(data_full: NumericArray, args=None) -> None:
+            """Default implementation that simply uses the python interface."""
+            if args is None:
+                boundaries.set_ghost_cells(data_full)
+            else:
+                boundaries.set_ghost_cells(data_full, *args)
+
+        return set_ghost_cells
+
+    def make_full_data_setter(self, bcs: BoundariesBase) -> DataSetter:
+        """Create a function to set the valid part of a full data array.
+
+        Args:
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
+                If supplied, the returned function also enforces boundary conditions by
+                setting the ghost cells to the correct values
+
+        Returns:
+            callable:
+                Takes two numpy arrays, setting the valid data in the first one, using
+                the second array. The arrays need to be allocated already and they need
+                to have the correct dimensions, which are not checked. If `bcs` are
+                given, a third argument is allowed, which sets arguments for the BCs.
+        """
+        if not isinstance(bcs, BoundariesList):
+            msg = "`make_full_data_setter` must be BoundariesList"
+            raise NotImplementedError(msg)
+
+        set_valid = self.make_valid_data_setter(bcs.grid, bcs.rank)
         set_bcs = self.make_ghost_cell_setter(bcs)
 
-        def set_valid_bcs(
+        def set_valid_and_bcs(
             data_full: NumericArray, data_valid: NumericArray, args=None
         ) -> None:
             """Set valid part of the data and the ghost cells using BCs.
@@ -154,7 +171,7 @@ class NumpyBackend(BackendBase[NumericArray]):
             set_valid(data_full, data_valid)
             set_bcs(data_full, args=args)
 
-        return set_valid_bcs
+        return set_valid_and_bcs
 
     def make_operator(
         self,

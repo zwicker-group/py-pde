@@ -342,11 +342,57 @@ class NumbaBackend(NumpyBackend):
 
         return ghost_cell_setter  # type: ignore
 
-    def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
+    def make_valid_data_setter(self, grid: GridBase, rank: int) -> DataSetter:
+        """Create a function to set the valid part of a full data array.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                The grid for which the data setter is created
+            rank (int):
+                Rank of the data represented on the grid.
+
+
+        Returns:
+            callable:
+                Takes two numpy arrays, setting the valid data in the first one, using
+                the second array. The arrays need to be allocated already and they need
+                to have the correct dimensions, which are not checked. If `bcs` are
+                given, a third argument is allowed, which sets arguments for the BCs.
+        """
+        num_axes = grid.num_axes
+
+        @self.compile_function
+        def set_valid(
+            data_full: NumericArray, data_valid: NumericArray, args=None
+        ) -> None:
+            """Set valid part of the data (without ghost cells)
+
+            Args:
+                data_full (:class:`~numpy.ndarray`):
+                    The full array with ghost cells that the data is written to
+                data_valid (:class:`~numpy.ndarray`):
+                    The valid data that is written to `data_full`
+                args:
+                    Additional arguments (not used in this function)
+            """
+            assert data_full.ndim == rank + num_axes
+            if num_axes == 1:
+                data_full[..., 1:-1] = data_valid
+            elif num_axes == 2:
+                data_full[..., 1:-1, 1:-1] = data_valid
+            elif num_axes == 3:
+                data_full[..., 1:-1, 1:-1, 1:-1] = data_valid
+            else:
+                raise NotImplementedError
+
+        # just set the valid elements and leave ghost cells with arbitrary values
+        return set_valid
+
+    def make_ghost_cell_setter(self, bcs: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
 
         Args:
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
                 Defines the boundary conditions for a particular grid, for which the
                 setter should be defined.
 
@@ -355,9 +401,9 @@ class NumbaBackend(NumpyBackend):
             sets the ghost cells of the full data, potentially using additional
             information in `args` (e.g., the time `t` during solving a PDE)
         """
-        if isinstance(boundaries, BoundariesList):
+        if isinstance(bcs, BoundariesList):
             ghost_cell_setters = tuple(
-                self._make_axis_ghost_cell_setter(bc_axis) for bc_axis in boundaries
+                self._make_axis_ghost_cell_setter(bc_axis) for bc_axis in bcs
             )
 
             # TODO: use numba.literal_unroll
@@ -398,20 +444,16 @@ class NumbaBackend(NumpyBackend):
 
             return chain(ghost_cell_setters)
 
-        if isinstance(boundaries, BoundariesSetter):
-            return self.compile_function(boundaries._setter)
+        if isinstance(bcs, BoundariesSetter):
+            return self.compile_function(bcs._setter)
 
-        msg = f"Cannot handle following boundary conditions: {boundaries}"
+        msg = f"Cannot handle following boundary conditions: {bcs}"
         raise NotImplementedError(msg)
 
-    def make_data_setter(
-        self, grid: GridBase, bcs: BoundariesBase | None = None
-    ) -> DataSetter:
+    def make_full_data_setter(self, bcs: BoundariesBase) -> DataSetter:
         """Create a function to set the valid part of a full data array.
 
         Args:
-            grid (:class:`~pde.grid.base.GridBase`):
-                The grid for which the data setter is created
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 Defines the boundary conditions for a particular grid, for which the
                 setter should be defined.
@@ -423,40 +465,15 @@ class NumbaBackend(NumpyBackend):
                 to have the correct dimensions, which are not checked. If `bcs` are
                 given, a third argument is allowed, which sets arguments for the BCs.
         """
-        num_axes = grid.num_axes
+        if not isinstance(bcs, BoundariesList):
+            msg = "`make_full_data_setter` must be BoundariesList"
+            raise NotImplementedError(msg)
 
-        @self.compile_function
-        def set_valid(
-            data_full: NumericArray, data_valid: NumericArray, args=None
-        ) -> None:
-            """Set valid part of the data (without ghost cells)
-
-            Args:
-                data_full (:class:`~numpy.ndarray`):
-                    The full array with ghost cells that the data is written to
-                data_valid (:class:`~numpy.ndarray`):
-                    The valid data that is written to `data_full`
-                args:
-                    Additional arguments (not used in this function)
-            """
-            if num_axes == 1:
-                data_full[..., 1:-1] = data_valid
-            elif num_axes == 2:
-                data_full[..., 1:-1, 1:-1] = data_valid
-            elif num_axes == 3:
-                data_full[..., 1:-1, 1:-1, 1:-1] = data_valid
-            else:
-                raise NotImplementedError
-
-        if bcs is None:
-            # just set the valid elements and leave ghost cells with arbitrary values
-            return set_valid
-
-        # set the valid elements and the ghost cells according to boundary condition
+        set_valid = self.make_valid_data_setter(bcs.grid, bcs.rank)
         set_bcs = self.make_ghost_cell_setter(bcs)
 
         @self.compile_function
-        def set_valid_bcs(
+        def set_valid_and_bcs(
             data_full: NumericArray, data_valid: NumericArray, args=None
         ) -> None:
             """Set valid part of the data and the ghost cells using BCs.
@@ -472,7 +489,7 @@ class NumbaBackend(NumpyBackend):
             set_valid(data_full, data_valid)
             set_bcs(data_full, args=args)
 
-        return set_valid_bcs
+        return set_valid_and_bcs
 
     @cached_method()
     def make_operator(
@@ -556,7 +573,7 @@ class NumbaBackend(NumpyBackend):
             return out
 
         # overload `apply_op` with numba-compiled version
-        set_valid_w_bc = self.make_data_setter(grid=grid, bcs=bcs)
+        set_valid_and_bcs = self.make_full_data_setter(bcs=bcs)
 
         if not is_jitted(operator_raw):
             operator_raw = self.compile_function(operator_raw)
@@ -579,7 +596,7 @@ class NumbaBackend(NumpyBackend):
                     out = np.empty(shape_out, dtype=arr.dtype)
                     # prepare input with boundary conditions
                     arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                    set_valid_w_bc(arr_full, arr, args=args)
+                    set_valid_and_bcs(arr_full, arr, args=args)
 
                     # apply operator
                     operator_raw(arr_full, out)  # type: ignore
@@ -603,7 +620,7 @@ class NumbaBackend(NumpyBackend):
 
                     # prepare input with boundary conditions
                     arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                    set_valid_w_bc(arr_full, arr, args=args)
+                    set_valid_and_bcs(arr_full, arr, args=args)
 
                     # apply operator
                     operator_raw(arr_full, out)  # type: ignore

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import inspect
 import logging
+import warnings
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, overload
 
@@ -368,11 +369,30 @@ class BackendBase(Generic[TNativeArray]):
         )
         raise NotImplementedError(msg)
 
-    def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
+    def make_valid_data_setter(self, grid: GridBase, rank: int) -> DataSetter:
+        """Create a function to set the valid part of a full data array.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the data setter is defined
+            rank (int):
+                Rank of the data represented on the grid
+
+        Returns:
+            callable:
+                Takes two numpy arrays, setting the valid data in the first one, using
+                the second array. The arrays need to be allocated already and they need
+                to have the correct dimensions, which are not checked. If `bcs` are
+                given, a third argument is allowed, which sets arguments for the BCs.
+        """
+        msg = f"Valid data setter not defined for backend {self.name}"
+        raise NotImplementedError(msg)
+
+    def make_ghost_cell_setter(self, bcs: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
 
         Args:
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
                 Defines the boundary conditions for a particular grid, for which the
                 setter should be defined.
 
@@ -384,14 +404,10 @@ class BackendBase(Generic[TNativeArray]):
         msg = f"Ghost cell setter not defined for backend {self.name}"
         raise NotImplementedError(msg)
 
-    def make_data_setter(
-        self, grid: GridBase, bcs: BoundariesBase | None = None
-    ) -> DataSetter:
+    def make_full_data_setter(self, bcs: BoundariesBase) -> DataSetter:
         """Create a function to set the valid part of a full data array.
 
         Args:
-            grid (:class:`~pde.grid.base.GridBase`):
-                Grid for which the data setter is defined
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 If supplied, the returned function also enforces boundary conditions by
                 setting the ghost cells to the correct values
@@ -403,8 +419,40 @@ class BackendBase(Generic[TNativeArray]):
                 to have the correct dimensions, which are not checked. If `bcs` are
                 given, a third argument is allowed, which sets arguments for the BCs.
         """
-        msg = f"Data setter not defined for backend {self.name}"
+        msg = f"Full data setter not defined for backend {self.name}"
         raise NotImplementedError(msg)
+
+    def make_data_setter(
+        self, grid: GridBase, rank: int, bcs: BoundariesBase | None = None
+    ) -> DataSetter:
+        """Create a function to set the valid part of a full data array.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the data setter is defined
+            rank (int):
+                Rank of the data represented on the grid
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
+                If supplied, the returned function also enforces boundary conditions by
+                setting the ghost cells to the correct values
+
+        Returns:
+            callable:
+                Takes two numpy arrays, setting the valid data in the first one, using
+                the second array. The arrays need to be allocated already and they need
+                to have the correct dimensions, which are not checked. If `bcs` are
+                given, a third argument is allowed, which sets arguments for the BCs.
+        """
+        # Deprecated since 2026-05-08
+        warnings.warn(
+            "`make_data_setter` is deprecated. Use `make_valid_data_setter` or "
+            "`make_full_data_setter` instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if bcs is None:
+            return self.make_valid_data_setter(grid, rank)
+        return self.make_full_data_setter(bcs)
 
     def make_integrator(self, grid: GridBase) -> Callable[[TNativeArray], TNativeArray]:
         """Return function that integrates discretized data over a grid.

@@ -21,7 +21,7 @@ def _apply_ghost_cells(backend, field: ScalarField, bcs):
     f_copy = field.copy()
     if backend.name == "jax":
         jax_backend = get_backend("jax")
-        setter = jax_backend.make_data_setter(field.grid, rank=field.rank, bcs=bcs)
+        setter = jax_backend.make_full_data_setter(bcs=bcs)
         backend._apply_operator(setter, field.data, out=f_copy._data_full)
 
     elif backend.name.startswith("torch"):
