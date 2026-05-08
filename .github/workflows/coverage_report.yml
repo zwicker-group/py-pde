@@ -45,7 +45,7 @@ jobs:
         PYPDE_TESTRUN: 1
       run: |
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
-        pytest --cov-config=pyproject.toml --cov=pde -n auto tests
+        pytest -v -rP -o log_cli=true --cov-config=pyproject.toml --cov=pde -n auto tests 
 
     - name: Setup MPI
       uses: mpi4py/setup-mpi@v1
@@ -61,7 +61,7 @@ jobs:
       run: |
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
         pip install -r tests/requirements_mpi.txt
-        mpiexec -n 2 pytest --cov-config=pyproject.toml --cov-append --cov=pde --use_mpi tests
+        mpiexec -n 2 pytest -v -rP -o log_cli=true --cov-config=pyproject.toml --cov-append --cov=pde --use_mpi tests
 
     - name: Create coverage report
       run: |

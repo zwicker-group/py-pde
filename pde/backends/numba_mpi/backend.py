@@ -1,4 +1,4 @@
-"""Defines the numba backend class.
+"""Defines a numba backend class that support MPI parallelism.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """

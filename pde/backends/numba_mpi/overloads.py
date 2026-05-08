@@ -1,4 +1,4 @@
-"""Defines functions overloads, so numba can use them.
+"""Defines MPI functions overloads, so numba can use them.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """

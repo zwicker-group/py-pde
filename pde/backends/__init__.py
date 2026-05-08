@@ -4,11 +4,10 @@ Backends are classes that provide logic to carry out numerical calculations. In
 particular, each of these classes implements various operators. In principle, backend
 classes can be defined independently, but we use some inheritance to share logic.
 
-Moreover, we provide :obj:`~pde.backends.backends`, which is an object of type
-:class:`~pde.backends.registry.BackendRegistry`. This registry allows selecting backends
-by their identifier, so users do not usually need to construct backend classes. However,
-in most cases, users should simply use the function :func:`get_backend` to load a
-backend in their code.
+Moreover, we provide a :class:`~pde.backends.registry.BackendRegistry`, which allows
+selecting backends by their identifier, so users do not usually need to construct
+backend classes. Users should access the registry via the function :func:`get_backend`
+to load a backend in their code.
 
 
 .. autosummary::

@@ -1,4 +1,4 @@
-"""Defines the :mod:`numba_mpi` backend.
+"""Defines the :mod:`numba_mpi` backend, which supports MPI parallelism
 
 .. autosummary::
    :nosignatures:
