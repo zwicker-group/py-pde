@@ -235,7 +235,7 @@ def test_noncartesian_grids(grid, decomposition, rng):
         "state": field,
         "t_range": 1,
         "dt": 0.1,
-        "backend": "numpy",
+        "backend": "numba_mpi",
         "tracker": None,
     }
     res = eq.solve(solver="explicit_mpi", decomposition=decomposition, **args)

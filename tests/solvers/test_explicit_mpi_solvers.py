@@ -11,7 +11,7 @@ from pde.tools import mpi
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numpy", "numba_mpi"])
+@pytest.mark.parametrize("backend", ["numba_mpi"])
 @pytest.mark.parametrize(
     ("adaptive", "decomposition"),
     [
@@ -54,7 +54,7 @@ def test_simple_pde_mpi(backend, adaptive, decomposition, rng):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numba_mpi", "numpy"])
+@pytest.mark.parametrize("backend", ["numba_mpi"])
 def test_stochastic_mpi_solvers(backend, rng):
     """Test simple version of the stochastic solver."""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
@@ -80,7 +80,7 @@ def test_stochastic_mpi_solvers(backend, rng):
 
 @pytest.mark.slow
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numpy", "numba_mpi"])
+@pytest.mark.parametrize("backend", ["numba_mpi"])
 def test_multiple_pdes_mpi(backend, rng):
     """Test setting boundary conditions using numba."""
     grid = UnitGrid([8, 8], periodic=[True, False])
@@ -105,3 +105,18 @@ def test_multiple_pdes_mpi(backend, rng):
 
         assert info_mpi["solver"]["steps"] == info2["solver"]["steps"]
         assert info_mpi["solver"]["use_mpi"]
+
+
+def test_backend_selection_by_solver():
+    """Test whether automatic backend selection works appropriately"""
+    field = ScalarField(UnitGrid([8]))
+    eq = DiffusionPDE()
+
+    result = eq.solve(field, t_range=1, solver="explicit_mpi", tracker=None)
+    if result:  # only check main process
+        assert eq.diagnostics["controller"]["mpi_run"]
+        assert eq.diagnostics["solver"]["use_mpi"]
+        assert eq.diagnostics["solver"]["class"] == "ExplicitMPISolver"
+
+    with pytest.raises(RuntimeError):
+        eq.solve(field, t_range=1, solver="explicit_mpi", backend="numba", tracker=None)

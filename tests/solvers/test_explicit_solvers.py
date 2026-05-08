@@ -20,7 +20,6 @@ from pde.tools import mpi
 ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
 
 
-@pytest.mark.multiprocessing
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_solvers_simple_fixed(backend):
     """Test explicit solvers."""
@@ -31,10 +30,7 @@ def test_solvers_simple_fixed(backend):
 
     dt = 0.001
 
-    if mpi.parallel_run:
-        solver = ExplicitMPISolver(eq, backend=backend, adaptive=False)
-    else:
-        solver = EulerSolver(eq, backend=backend, adaptive=False)
+    solver = EulerSolver(eq, backend=backend, adaptive=False)
     controller = Controller(solver, t_range=10.0, tracker=None)
     res = controller.run(field, dt=dt)
 
@@ -45,6 +41,25 @@ def test_solvers_simple_fixed(backend):
 
 
 @pytest.mark.multiprocessing
+def test_solvers_simple_fixed_mpi():
+    """Test explicit solvers with MPI."""
+    grid = UnitGrid([4])
+    xs = grid.axes_coords[0]
+    field = ScalarField.from_expression(grid, "x")
+    eq = PDE({"c": "c"})
+
+    dt = 0.001
+
+    solver = ExplicitMPISolver(eq, adaptive=False)
+    controller = Controller(solver, t_range=10.0, tracker=None)
+    res = controller.run(field, dt=dt)
+
+    if mpi.is_main:
+        np.testing.assert_allclose(res.data, xs * np.exp(10), rtol=0.1)
+        assert solver.info["steps"] == pytest.approx(10 / dt, abs=1)
+        assert not solver.info.get("dt_adaptive", False)
+
+
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_solvers_simple_adaptive(backend):
     """Test explicit solvers."""
@@ -55,10 +70,30 @@ def test_solvers_simple_adaptive(backend):
     dt = 0.1
 
     args = {"backend": backend, "adaptive": True, "tolerance": 1e-1}
-    if mpi.parallel_run:
-        solver = ExplicitMPISolver(eq, **args)
-    else:
-        solver = EulerSolver(eq, **args)
+    solver = EulerSolver(eq, **args)
+    storage = MemoryStorage()
+    controller = Controller(solver, t_range=10.1, tracker=storage.tracker(1.0))
+    res = controller.run(field, dt=dt)
+
+    if mpi.is_main:
+        np.testing.assert_allclose(res.data, y0 * np.exp(10.1), rtol=0.02)
+        assert solver.info["steps"] != pytest.approx(10.1 / dt, abs=1)
+        assert solver.info["dt_adaptive"]
+        assert solver.info["dt_statistics"]["min"] < 0.0005
+        assert np.allclose(storage.times, np.arange(11))
+
+
+@pytest.mark.multiprocessing
+def test_solvers_simple_adaptive_mpi():
+    """Test explicit solvers."""
+    grid = UnitGrid([4])
+    y0 = np.array([1e-3, 1e-3, 1e3, 1e3])
+    field = ScalarField(grid, y0)
+    eq = PDE({"c": "c"})
+    dt = 0.1
+
+    args = {"adaptive": True, "tolerance": 1e-1}
+    solver = ExplicitMPISolver(eq, **args)
     storage = MemoryStorage()
     controller = Controller(solver, t_range=10.1, tracker=storage.tracker(1.0))
     res = controller.run(field, dt=dt)

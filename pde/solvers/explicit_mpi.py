@@ -167,7 +167,12 @@ class ExplicitMPISolver(EulerSolver):
                     dt,
                 )
 
-        self._select_backend(state)
+        # select the backend used to
+        self._select_backend(state, use_mpi=True)
+        if not self.backend.supports_mpi:
+            msg = f"The selected backend {self.backend} does not support MPI"
+            raise RuntimeError(msg)
+
         self.info["dt"] = float(dt)
         self.info["dt_adaptive"] = self.adaptive
         self.info["dt_statistics"] = OnlineStatistics()
