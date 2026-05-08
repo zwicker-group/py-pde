@@ -45,7 +45,8 @@ jobs:
         PYPDE_TESTRUN: 1
       run: |
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
-        pytest --cov-config=pyproject.toml --cov=pde -n auto tests
+        export COVERAGE_FILE=".coverage.serial"
+        pytest -v -rP -o log_cli=true --cov-config=pyproject.toml --cov=pde -n auto tests 
 
     - name: Setup MPI
       uses: mpi4py/setup-mpi@v1
@@ -61,7 +62,21 @@ jobs:
       run: |
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
         pip install -r tests/requirements_mpi.txt
-        mpiexec -n 2 pytest --cov-config=pyproject.toml --cov-append --cov=pde --use_mpi tests
+        # mpiexec -n 2 pytest -v -rP -o log_cli=true --cov-config=pyproject.toml --cov=pde --use_mpi tests
+
+        # run pytest under MPI, but avoid sharing cache/coverage state between ranks
+        mpiexec -n 2 bash -lc '
+          export COVERAGE_FILE=".coverage.mpi.${OMPI_COMM_WORLD_RANK:-0}"
+          export TMPDIR="$(pwd)/.tmp_mpi_${OMPI_COMM_WORLD_RANK:-0}"
+          mkdir -p "$TMPDIR"
+          pytest -v -rP -o log_cli=true \
+            --cov-config=pyproject.toml --cov=pde \
+            -p no:cacheprovider \
+            --use_mpi tests
+        '
+
+        # combine per-rank coverage data into the main file for the later "coverage xml"
+        coverage combine .coverage.serial .coverage.mpi.*
 
     - name: Create coverage report
       run: |

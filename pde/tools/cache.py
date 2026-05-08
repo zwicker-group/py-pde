@@ -132,6 +132,9 @@ def hash_mutable(obj) -> int:
     if isinstance(obj, np.ndarray):
         return hash(obj.tobytes())
 
+    if isinstance(obj, slice):
+        return hash((obj.start, obj.stop, obj.step))
+
     try:
         # try using the internal hash function
         return hash(obj)

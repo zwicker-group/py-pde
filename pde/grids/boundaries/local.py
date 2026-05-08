@@ -621,6 +621,18 @@ class _MPIBC(BCBase):
             and self._neighbor_id == other._neighbor_id
         )
 
+    def _cache_hash(self) -> int:
+        """Return a unique hash of the current instance"""
+        return hash(
+            (
+                self.__class__.__name__,
+                self.grid._cache_hash(),
+                self.axis,
+                self.rank,
+                self._neighbor_id,
+            )
+        )
+
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition.
 

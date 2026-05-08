@@ -70,8 +70,10 @@ class BackendBase(Generic[TNativeArray]):
     information can be used to distinguish the general implementation of backends."""
 
     copy_data: bool = False
-    """bool: Flag indicating whether data needs to be copied between numpy's
-    representation on CPU and a native device."""
+    """bool: Data must be copied from CPU numpy representation to a native device."""
+
+    supports_mpi: bool = False
+    """bool: This backend supports parallel simulations with MPI."""
 
     config_inheritance: list[str] = []
     """list: Additional backends that are queried for configuration parameters."""

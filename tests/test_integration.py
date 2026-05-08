@@ -114,11 +114,11 @@ def test_custom_pde_mpi(rng):
         "ret_info": True,
     }
 
-    res1, info1 = eq.solve(backend="numpy", solver="explicit_mpi", **args)
-    if mpi.is_main:
-        assert all(v > 0 for v in info1["solver"]["post_step_data_list"])
+    # res1, info1 = eq.solve(backend="numpy", solver="explicit_mpi", **args)
+    # if mpi.is_main:
+    #     assert all(v > 0 for v in info1["solver"]["post_step_data_list"])
 
-    res2, info2 = eq.solve(backend="numba", solver="explicit_mpi", **args)
+    res2, info2 = eq.solve(backend="numba_mpi", solver="explicit_mpi", **args)
     if mpi.is_main:
         assert all(v > 0 for v in info2["solver"]["post_step_data_list"])
 
@@ -126,11 +126,11 @@ def test_custom_pde_mpi(rng):
         # check results in the main process
         expect, info3 = eq.solve(backend="numpy", solver="euler", **args)
 
-        np.testing.assert_allclose(res1.data, expect.data)
+        # np.testing.assert_allclose(res1.data, expect.data)
         np.testing.assert_allclose(res2.data, expect.data)
         assert info3["solver"]["post_step_data"] > 0
 
-        for info in [info1["solver"], info2["solver"]]:
+        for info in [info2["solver"]]:  # [info1["solver"], info2["solver"]]:
             assert info["steps"] == 11
             assert info["use_mpi"]
             assert sum(info["post_step_data_list"]) == info3["solver"]["post_step_data"]

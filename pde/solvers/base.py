@@ -278,10 +278,21 @@ class SolverBase:
 
         return fixed_stepper
 
-    def _select_backend(self, state: TField):
-        """Select backend automatically based on implemented PDE."""
+    def _select_backend(self, state: TField, *, use_mpi: bool = False):
+        """Select backend automatically based on implemented PDE.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+            use_mpi (bool):
+                Request backend with MPI support for parallel simulation.
+
+        """
         if isinstance(self._backend, str):
-            self._backend = self.pde.determine_backend(state, self._backend)
+            self._backend = self.pde.determine_backend(
+                state, self._backend, use_mpi=use_mpi
+            )
         self.info["backend"] = self.backend.info
 
     def make_stepper(self, state: TField, dt: float | None = None) -> StepperType:

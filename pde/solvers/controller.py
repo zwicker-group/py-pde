@@ -182,7 +182,9 @@ class Controller:
         self.trackers.initialize(state, info=self.diagnostics)
         handle_stop_iteration = self._get_stop_handler()
 
-        # build the executable stepping function from the solver
+        # Build the executable stepping function from the solver. This call also
+        # inherently selects the backend for this simulation (if it was not set
+        # explicitly). The backend is available via `self.solver.backend`.
         stepper = self.solver.make_stepper(state=state, dt=dt)
 
         # store intermediate profiling information before starting simulation
@@ -382,6 +384,7 @@ class Controller:
         self.info["mpi_count"] = mpi.size
         self.info["mpi_rank"] = mpi.rank
 
+        # temporarily replace the system excepthook with one that works with MPI
         if mpi.is_main:
             # this node is the primary one and must thus run the main process
             try:
@@ -389,8 +392,7 @@ class Controller:
             except Exception as err:
                 print(err, file=sys.stderr)  # print exception to show some info
                 _logger.exception("Error in main node", exc_info=err)
-                time.sleep(0.5)  # give some time for info to propagate
-                mpi.MPI.COMM_WORLD.Abort()  # abort all other nodes
+                mpi.mpi_excepthook(type(err), err, err.__traceback__)
                 raise
             else:
                 _logger.info("MPI main process finished")
@@ -403,8 +405,7 @@ class Controller:
             except Exception as err:
                 print(err, file=sys.stderr)  # print exception to show some info
                 _logger.exception("Error in node %d", mpi.rank, exc_info=err)
-                time.sleep(0.5)  # give some time for info to propagate
-                mpi.MPI.COMM_WORLD.Abort()  # abort all other (and main) nodes
+                mpi.mpi_excepthook(type(err), err, err.__traceback__)
                 raise
             else:
                 _logger.info("MPI client process finished")

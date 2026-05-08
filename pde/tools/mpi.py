@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import os
 import sys
+import traceback
 from typing import TYPE_CHECKING, TypeVar
 
 import numpy as np
@@ -161,3 +162,27 @@ def mpi_allreduce(data, operator: int | str):
 
     # synchronize a single value
     return MPI.COMM_WORLD.allreduce(data, op=MPIOperator.operator(operator))
+
+
+def mpi_excepthook(exc_type, exc_value, exc_tb):
+    """Print uncaught exceptions with rank information and abort the MPI job.
+
+    This function is intended to be assigned to :data:`sys.excepthook` in MPI runs.
+    It formats the traceback on the local rank, writes the error to stderr, flushes
+    stdio streams, and then calls :meth:`MPI.Comm.Abort` to terminate all ranks.
+
+    Args:
+        exc_type: Exception class of the uncaught exception.
+        exc_value: Exception instance.
+        exc_tb: Traceback object of the uncaught exception.
+    """
+    msg = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    print(f"\n[FATAL] rank={rank}/{size}\n{msg}", file=sys.stderr, flush=True)
+    try:
+        sys.stderr.flush()
+        sys.stdout.flush()
+    finally:
+        # we need to make sure MPI is imported
+        from mpi4py import MPI
+
+        MPI.COMM_WORLD.Abort(1)

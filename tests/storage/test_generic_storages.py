@@ -322,7 +322,6 @@ def test_storage_mpi(solver, atol, can_clear, storage_factory, rng):
         field,
         t_range=0.1,
         dt=0.001,
-        backend="numpy",
         solver=solver,
         tracker=[storage.tracker(0.01)],
     )

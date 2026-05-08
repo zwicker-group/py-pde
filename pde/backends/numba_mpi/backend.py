@@ -1,4 +1,4 @@
-"""Defines the numba backend class.
+"""Defines a numba backend class that support MPI parallelism.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -25,6 +25,7 @@ class NumbaMPIBackend(NumbaBackend):
     """Defines MPI-compatible numba backend."""
 
     config_inheritance = ["numba"]  # inherit config of "numba" module
+    supports_mpi = True
 
     def _make_local_ghost_cell_setter(self, bc: BCBase) -> GhostCellSetter:
         """Return function that sets the ghost cells for a particular side of an axis.

@@ -10,6 +10,9 @@ import sys
 import numpy as np
 import pytest
 
+from pde import UnitGrid
+from pde.grids._mesh import GridMesh
+from pde.grids.boundaries.local import _MPIBC, DirichletBC
 from pde.tools import cache
 
 
@@ -133,6 +136,21 @@ def test_hashes():
         assert f(1) != f("1")
         assert f("a") != f("b")
         assert f({1, 2}) != f((1, 2))
+
+
+def test_hash_mutual():
+    """Test the hash_mutable function"""
+    grid = UnitGrid([8])
+    mesh = GridMesh.from_grid(grid, [2])
+    items = [
+        _MPIBC(mesh, axis=0, upper=True),
+        DirichletBC(grid, axis=0, upper=False),
+        slice(1, 2, 3),
+    ]
+    assert isinstance(cache.hash_mutable(items), int)
+    assert cache.hash_mutable(items[0]) == cache.hash_mutable(
+        _MPIBC(mesh, axis=0, upper=True)
+    )
 
 
 def test_serializer_nonsense():

@@ -353,7 +353,11 @@ class PDEBase(metaclass=ABCMeta):
         return rhs  # type: ignore
 
     def determine_backend(
-        self, state: TField, backend: str | BackendBase = "auto"
+        self,
+        state: TField,
+        backend: str | BackendBase = "auto",
+        *,
+        use_mpi: bool = False,
     ) -> BackendBase:
         """Returns backend that will be chosen automatically for this PDE.
 
@@ -365,6 +369,8 @@ class PDEBase(metaclass=ABCMeta):
                 Information about which backend to choose. The special value `auto`
                 tries various backends and returns one for which the evolution rate is
                 implemented for this PDE.
+            use_mpi (bool):
+                Request backend with MPI support for parallel simulation.
 
         Returns:
             str: The backend used automatically
@@ -374,8 +380,13 @@ class PDEBase(metaclass=ABCMeta):
         if backend != "auto":
             return get_backend(backend)  # load the respective backend
 
+        if use_mpi:
+            candidates = ["numba_mpi"]
+        else:
+            candidates = ["numba", "torch", "numpy"]
+
         # choose backend automatically by trial and error to see which one works
-        for backend in ["numba", "torch", "numpy"]:
+        for backend in candidates:
             # TODO: Could first add a check whether module is available; Issue #762
             try:
                 self.make_pde_rhs(state, backend=backend)
