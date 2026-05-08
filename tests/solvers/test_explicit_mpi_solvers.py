@@ -120,4 +120,4 @@ def test_multiple_pdes_mpi(backend, rng):
 #         assert eq.diagnostics["solver"]["class"] == "ExplicitMPISolver"
 
 #     with pytest.raises(RuntimeError):
-#         eq.solve(field, t_range=1, solver="explicit_mpi", backend="numba", tracker=None)
+#         eq.solve(field, t_range=1, solver="explicit_mpi", backend="numba")
