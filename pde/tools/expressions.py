@@ -1071,7 +1071,7 @@ def evaluate(
         from numba.typed import Dict as NumbaDict
 
         # args for differential operators
-        bc_args = NumbaDict.empty(key_type=types.intc, value_type=types.intc)
+        bc_args = NumbaDict.empty(key_type=types.string, value_type=types.double)
     else:
         bc_args = {}
     # In the following call, the `None` is required by the signature we choose. It

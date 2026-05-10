@@ -69,7 +69,7 @@ class NumpyBackend(BackendBase[NumericArray]):
         """Create a function to set the valid part of a full data array.
 
         Args:
-            grid (:class:`~pde.grid.base.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the data setter is created
             rank (int):
                 Rank of the data represented on the grid.
