@@ -22,7 +22,15 @@ from pde import (
 from pde.tools import misc, mpi
 from pde.tools.misc import get_array_namespace, module_available
 
-ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+ALL_BACKENDS = [
+    "numpy",
+    "numba",
+    "jax-cpu",
+    "jax-cuda",
+    "torch-cpu",
+    "torch-mps",
+    "torch-cuda",
+]
 
 
 @pytest.mark.skipif(not misc.module_available("h5py"), reason="requires `h5py` module")
@@ -355,15 +363,27 @@ def test_modelrunner_storage_many(tmp_path):
         path.unlink()
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_pde_with_bc_setter(backend):
     """Test a PDE with boundary conditions controlled by an explicit setter."""
 
-    def setter(data, args=None):
-        data[0, :] = data[1, :]  # Neumann
-        data[-1, :] = 2 * args["t"] - data[-2, :]  # Dirichlet ~ t
-        data[:, 0] = data[:, -2]  # periodic
-        data[:, -1] = data[:, 1]  # periodic
+    if backend.implementation == "jax":
+
+        def setter(data, args=None):
+            data = data.at[0, :].set(data[1, :])  # Neumann
+            data = data.at[-1, :].set(2 * args["t"] - data[-2, :])  # Dirichlet ~ t
+            data = data.at[:, 0].set(data[:, -2])  # periodic
+            data = data.at[:, -1].set(data[:, 1])  # periodic
+            return data
+
+    else:  # torch, numpy, and numba backends
+
+        def setter(data, args=None):
+            data[0, :] = data[1, :]  # Neumann
+            data[-1, :] = 2 * args["t"] - data[-2, :]  # Dirichlet ~ t
+            data[:, 0] = data[:, -2]  # periodic
+            data[:, -1] = data[:, 1]  # periodic
+            return data
 
     field = ScalarField.random_normal(UnitGrid([4, 4], periodic=[False, True]))
 

@@ -150,7 +150,7 @@ warn_unused_configs = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = "numba.*"
+module = ["numba.*", "zarr.*"]
 ignore_missing_imports = true
 ignore_errors = false
 follow_imports = "skip"

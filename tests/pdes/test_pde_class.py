@@ -16,8 +16,15 @@ from pde.backends import get_backend
 from pde.fields import FieldCollection, ScalarField, VectorField
 from pde.grids.boundaries.local import BCDataError
 
-ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
-ALL_COMPILED_BACKENDS = ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+ALL_COMPILED_BACKENDS = [
+    "numba",
+    "jax-cpu",
+    "jax-cuda",
+    "torch-cpu",
+    "torch-mps",
+    "torch-cuda",
+]
+ALL_BACKENDS = ["numpy", *ALL_COMPILED_BACKENDS]
 
 
 def iter_grids():
@@ -337,7 +344,9 @@ def test_pde_user_funcs(backend, rng):
 
 # FIXME: torch MPS backend does not support complex numbers correctly
 @pytest.mark.parametrize(
-    "backend", ["numba", "jax", "torch-cpu", "torch-cuda"], indirect=True
+    "backend",
+    ["numba", "jax-cpu", "jax-cuda", "torch-cpu", "torch-cuda"],
+    indirect=True,
 )
 def test_pde_complex_serial(backend, rng):
     """Test complex valued PDE."""
@@ -465,7 +474,7 @@ def test_pde_time_dependent_bcs(backend):
     np.testing.assert_allclose(storage[-1].data, 1, rtol=1e-3)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba", "jax"], indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_pde_integral(backend, rng):
     """Test PDE with integral."""
     grid = grids.UnitGrid([16])

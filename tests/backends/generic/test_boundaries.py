@@ -8,9 +8,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pde import ScalarField, UnitGrid, get_backend
+from pde import ScalarField, UnitGrid
 
-ALL_BACKENDS = ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+ALL_BACKENDS = ["numba", "jax-cpu", "jax-cuda", "torch-cpu", "torch-mps", "torch-cuda"]
 
 
 def _apply_ghost_cells(backend, field: ScalarField, bcs):
@@ -19,13 +19,14 @@ def _apply_ghost_cells(backend, field: ScalarField, bcs):
     Returns the full data array (including ghost cells) after applying the BCs.
     """
     f_copy = field.copy()
-    if backend.name == "jax":
-        jax_backend = get_backend("jax")
-        setter = jax_backend.make_data_setter(field.grid, rank=field.rank, bcs=bcs)
+    if backend.implementation == "jax":
+        setter = backend.make_full_data_setter(bcs=bcs)
         backend._apply_operator(setter, field.data, out=f_copy._data_full)
 
     elif backend.name.startswith("torch"):
-        from pde.backends.torch._boundaries import GhostCellSetter as _GhostCellSetter
+        from pde.backends.torch._boundaries import (
+            TorchGhostCellSetter as _GhostCellSetter,
+        )
 
         setter = _GhostCellSetter(bcs=bcs, dtype=field.dtype).to(backend.device)
         backend._apply_operator(setter, f_copy._data_full, out=f_copy._data_full)

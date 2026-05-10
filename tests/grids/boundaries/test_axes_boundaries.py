@@ -230,10 +230,11 @@ def test_boundaries_setter_1d(periodic, rng):
             data[0] = data[1]  # Neumann
             data[-1] = -data[-2]  # Dirichlet
 
-    f1 = ScalarField.random_normal(UnitGrid([4], periodic=periodic))
+    grid = UnitGrid([4], periodic=periodic)
+    f1 = ScalarField.random_normal(grid)
     f2 = f1.copy()
 
-    f1.set_ghost_cells(bc=BoundariesSetter(setter))
+    f1.set_ghost_cells(bc=BoundariesSetter(setter, grid))
     if periodic:
         f2.set_ghost_cells(bc="periodic")
     else:
@@ -250,10 +251,11 @@ def test_boundaries_setter_2d(rng):
         data[:, 0] = data[:, -2]  # periodic
         data[:, -1] = data[:, 1]  # periodic
 
-    f1 = ScalarField.random_normal(UnitGrid([4, 4], periodic=[False, True]))
+    grid = UnitGrid([4, 4], periodic=[False, True])
+    f1 = ScalarField.random_normal(grid)
     f2 = f1.copy()
 
-    f1.set_ghost_cells(bc=BoundariesSetter(setter))
+    f1.set_ghost_cells(bc=BoundariesSetter(setter, grid))
     f2.set_ghost_cells(bc={"x-": "neumann", "x+": "dirichlet", "y": "periodic"})
     # compare full fields without corner points
     mask = np.ones((6, 6), dtype=bool)

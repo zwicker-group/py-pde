@@ -8,8 +8,8 @@ import pytest
 
 from pde import CartesianGrid, ScalarField, SphericalSymGrid, Tensor2Field, VectorField
 
-ALL_BACKENDS = ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
-BACKENDS_WITHOUT_TORCH = ["numba", "jax"]
+ALL_BACKENDS = ["numba", "jax-cpu", "jax-cuda", "torch-cpu", "torch-mps", "torch-cuda"]
+BACKENDS_WITHOUT_TORCH = ["numba", "jax-cpu", "jax-cuda"]
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)

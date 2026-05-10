@@ -17,7 +17,15 @@ from pde.solvers import (
 )
 from pde.tools import mpi
 
-ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+ALL_BACKENDS = [
+    "numpy",
+    "numba",
+    "jax-cpu",
+    "jax-cuda",
+    "torch-cpu",
+    "torch-mps",
+    "torch-cuda",
+]
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)

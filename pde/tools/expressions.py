@@ -1066,7 +1066,18 @@ def evaluate(
 
     # calculate the result of the expression
     func = expr.get_function(single_arg=False, user_funcs=ops, backend=backend)
-    result_data: NumericArray = func(*field_data, None, {}, *extra_args)  # type: ignore
+    if backend.implementation == "numba":
+        from numba import types
+        from numba.typed import Dict as NumbaDict
+
+        # args for differential operators
+        bc_args = NumbaDict.empty(key_type=types.string, value_type=types.double)
+    else:
+        bc_args = {}
+    # In the following call, the `None` is required by the signature we choose. It
+    # essentially indicates that we do not supply an output array, consistent with the
+    # definition of operators.
+    result_data: NumericArray = func(*field_data, None, bc_args, *extra_args)  # type: ignore
 
     # turn result into a proper field
     result_data = backend.native_to_numpy(result_data)

@@ -333,21 +333,29 @@ class BoundaryPair(BoundaryAxisBase):
         self.high.check_value_rank(rank)
 
 
-class BoundaryPeriodic(BoundaryPair):
+class BoundaryPeriodic(BoundaryAxisBase):
     """Represent a periodic axis."""
 
-    def __init__(self, grid: GridBase, axis: int, flip_sign: bool = False):
+    def __init__(
+        self, grid: GridBase, axis: int, rank: int = 0, flip_sign: bool = False
+    ):
         """
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
             axis (int):
                 The axis to which this boundary condition is associated
+            rank (int):
+                The tensorial rank of the field for this boundary condition
             flip_sign (bool):
                 Impose different signs on the two sides of the boundary
         """
-        low = _PeriodicBC(grid=grid, axis=axis, upper=False, flip_sign=flip_sign)
-        high = _PeriodicBC(grid=grid, axis=axis, upper=True, flip_sign=flip_sign)
+        low = _PeriodicBC(
+            grid=grid, axis=axis, upper=False, rank=rank, flip_sign=flip_sign
+        )
+        high = _PeriodicBC(
+            grid=grid, axis=axis, upper=True, rank=rank, flip_sign=flip_sign
+        )
         super().__init__(low, high)
 
     @property
@@ -368,7 +376,9 @@ class BoundaryPeriodic(BoundaryPair):
 
     def copy(self) -> BoundaryPeriodic:
         """Return a copy of itself, but with a reference to the same grid."""
-        return self.__class__(grid=self.grid, axis=self.axis, flip_sign=self.flip_sign)
+        return self.__class__(
+            grid=self.grid, axis=self.axis, rank=self.rank, flip_sign=self.flip_sign
+        )
 
     def check_value_rank(self, rank: int) -> None:
         """Check whether the values at the boundaries have the correct rank.
@@ -418,13 +428,13 @@ def get_boundary_axis(
         isinstance(data, dict) and data.get("type") == "periodic"
     ):
         # initialize a periodic boundary condition
-        bcs = BoundaryPeriodic(grid, axis)
+        bcs = BoundaryPeriodic(grid, axis, rank=rank)
 
     elif data == "anti-periodic" or (
         isinstance(data, dict) and data.get("type") == "anti-periodic"
     ):
         # initialize an anti-periodic boundary condition
-        bcs = BoundaryPeriodic(grid, axis, flip_sign=True)
+        bcs = BoundaryPeriodic(grid, axis, rank=rank, flip_sign=True)
 
     else:
         # initialize independent boundary conditions for the two sides

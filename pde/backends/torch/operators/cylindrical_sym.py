@@ -86,13 +86,7 @@ class CylindricalGradient(TorchDifferentialOperator):
 
     rank_in = 0
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Cylindrical gradient operator.
 
         Args:
@@ -231,13 +225,7 @@ class CylindricalVectorGradient(TorchDifferentialOperator):
 
     rank_in = 1
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Cylindrical vector gradient operator.
 
         Args:
@@ -292,13 +280,7 @@ class CylindricalVectorLaplacian(TorchDifferentialOperator):
 
     rank_in = 1
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Cylindrical vector Laplacian operator.
 
         Args:
@@ -370,13 +352,7 @@ class CylindricalTensorDivergence(TorchDifferentialOperator):
 
     rank_in = 2
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Cylindrical tensor divergence operator.
 
         Args:

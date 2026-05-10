@@ -353,17 +353,24 @@ class GridBase(metaclass=ABCMeta):
         return make_get_valid(self)
 
     @overload
-    def _make_set_valid(self) -> Callable[[NumericArray, NumericArray], None]: ...
+    def _make_set_valid(
+        self, *, rank: int = 0, backend: str | BackendBase = "default"
+    ) -> Callable[[NumericArray, NumericArray], None]: ...
 
     @overload
     def _make_set_valid(
-        self, bcs: BoundariesBase
+        self,
+        bcs: BoundariesBase,
+        *,
+        rank: int = 0,
+        backend: str | BackendBase = "default",
     ) -> Callable[[NumericArray, NumericArray, dict], None]: ...
 
     def _make_set_valid(
         self,
         bcs: BoundariesBase | None = None,
         *,
+        rank: int = 0,
         backend: str | BackendBase = "default",
     ) -> Callable:
         """Create a function to set the valid part of a full data array.
@@ -372,6 +379,8 @@ class GridBase(metaclass=ABCMeta):
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 If supplied, the returned function also enforces boundary conditions by
                 setting the ghost cells to the correct values
+            rank (int):
+                Rank of the data represented on the grid.
             backend (str):
                 The backend to use for making the operator
 
@@ -384,7 +393,10 @@ class GridBase(metaclass=ABCMeta):
         """
         from ..backends import get_backend
 
-        return get_backend(backend).make_data_setter(self, bcs=bcs)
+        backend = get_backend(backend)
+        if bcs is None:
+            return backend.make_valid_data_setter(self, rank=rank)
+        return backend.make_full_data_setter(bcs)
 
     @property
     @abstractmethod

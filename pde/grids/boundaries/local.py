@@ -1645,6 +1645,7 @@ class _PeriodicBC(ConstBC1stOrderBase):
         axis: int,
         upper: bool,
         *,
+        rank: int = 0,
         flip_sign: bool = False,
     ):
         """
@@ -1657,10 +1658,12 @@ class _PeriodicBC(ConstBC1stOrderBase):
                 Flag indicating whether this boundary condition is associated with the
                 upper side of an axis or not. In essence, this determines the direction
                 of the local normal vector of the boundary.
+            rank (int):
+                The tensorial rank of the field for this boundary condition
             flip_sign (bool):
                 Impose different signs on the two sides of the boundary
         """
-        super().__init__(grid, axis, upper)
+        super().__init__(grid, axis, upper, rank=rank)
         self.flip_sign = flip_sign
 
     def __str__(self):

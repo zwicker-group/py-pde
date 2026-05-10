@@ -10,7 +10,15 @@ from scipy import stats
 
 from pde import ScalarField, UnitGrid
 
-ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+ALL_BACKENDS = [
+    "numpy",
+    "numba",
+    "jax-cpu",
+    "jax-cuda",
+    "torch-cpu",
+    "torch-mps",
+    "torch-cuda",
+]
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
