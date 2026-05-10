@@ -89,8 +89,9 @@ def get_single_run(backend: str, size: int) -> list[tuple[float, float]] | None:
         size (int):
             Dimension of the grid
     """
-    cache_file = RESULT_CACHE / f"{backend}_{size}.json"
-    img_file = RESULT_CACHE / f"{backend}_{size}.pdf"
+    name = f"{backend}_size{size}".replace(":", "-")
+    cache_file = RESULT_CACHE / f"{name}.json"
+    img_file = RESULT_CACHE / f"{name}.pdf"
 
     if cache_file.exists():
         # read performance data
@@ -170,7 +171,7 @@ def plot_performance(performance_data):
 
 def main():
     """Run main scripts."""
-    data = collect_performance_data(size=256)
+    data = collect_performance_data(size=512)
     plot_performance(data)
     plt.savefig("performance_cahn_hilliard.pdf", transparent=True)
     plt.savefig("performance_cahn_hilliard.png", transparent=True, dpi=200)
