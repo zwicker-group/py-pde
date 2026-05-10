@@ -49,6 +49,11 @@ def _is_local_bc_data(data: dict[str, Any]) -> bool:
 class BoundariesBase:
     """Base class keeping information about how to set conditions on all boundaries."""
 
+    grid: GridBase
+    """:class:`~pde.grids.base.GridBase`: Grid on which boundaries are defined."""
+    rank: int
+    """int: The tensorial rank of the field for this boundary condition."""
+
     def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         """Set the ghost cells for all boundaries.
 
@@ -62,7 +67,7 @@ class BoundariesBase:
         raise NotImplementedError
 
     @classmethod
-    def from_data(cls, data, **kwargs) -> BoundariesBase:
+    def from_data(cls, data, grid: GridBase, rank: int = 0, **kwargs) -> BoundariesBase:
         r"""Creates all boundaries from given data.
 
         Args:
@@ -72,21 +77,21 @@ class BoundariesBase:
                 cases :class:`~pde.grids.boundaries.axes.BoundariesList` is created and
                 `data` can either be string denoting a specific boundary condition
                 applied to all sides or a dictionary with detailed information.
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid with which the boundary condition is associated
+            rank (int):
+                The tensorial rank of the field for this boundary condition
             **kwargs:
-                In some cases additional data can be specified or is even required. For
-                instance, :class:`~pde.grids.boundaries.axes.BoundariesList` expects
-                a `grid` (:class:`~pde.grids.base.GridBase`): to which the boundary
-                condition are associated, and it can use a `rank` (int), which sets
-                the tensorial rank of the field for this boundary condition.
+                In some cases additional data can be specified or is even required.
         """
         # check whether this is already of the correct type
         if isinstance(data, BoundariesBase):
-            return data.__class__.from_data(data, **kwargs)
+            return data.__class__.from_data(data, grid=grid, rank=rank, **kwargs)
 
         # best guess based on the data:
         if callable(data):
-            return BoundariesSetter.from_data(data)
-        return BoundariesList.from_data(data, **kwargs)
+            return BoundariesSetter.from_data(data, grid=grid, rank=rank)
+        return BoundariesList.from_data(data, grid=grid, rank=rank, **kwargs)
 
     @classmethod
     def get_help(cls) -> str:
@@ -114,6 +119,7 @@ class BoundariesList(BoundariesBase):
 
         # extract grid
         self.grid = boundaries[0].grid
+        self.rank = boundaries[0].rank
 
         # check dimension
         if len(boundaries) != self.grid.num_axes:
@@ -123,7 +129,12 @@ class BoundariesList(BoundariesBase):
         # check consistency
         for axis, boundary in enumerate(boundaries):
             if boundary.grid != self.grid:
-                msg = "BoundariesList are not defined on the same grid"
+                grids = ", ".join(str(b.grid) for b in boundaries)
+                msg = f"BoundariesList are not defined on the same grid: [{grids}]"
+                raise BCDataError(msg)
+            if boundary.rank != self.rank:
+                ranks = ", ".join(str(b.rank) for b in boundaries)
+                msg = f"BoundariesList are not defined with the same rank: [{ranks}]"
                 raise BCDataError(msg)
             if boundary.axis != axis:
                 msg = "BoundariesList need to be ordered like the respective axes"
@@ -513,16 +524,24 @@ class BoundariesSetter(BoundariesBase):
                 data[:, -1] = data[:, 1]  # Periodic BC at bottom
     """
 
-    def __init__(self, setter: GhostCellSetter):
+    def __init__(self, setter: GhostCellSetter, grid: GridBase, rank: int = 0):
         self._setter = setter
+        self.grid = grid
+        self.rank = rank
 
     @classmethod
-    def from_data(cls, data, **kwargs) -> BoundariesSetter:
+    def from_data(
+        cls, data, grid: GridBase, rank: int = 0, **kwargs
+    ) -> BoundariesSetter:
         """Creates all boundaries from given data.
 
         Args:
             data (callable):
-                Function that sets the ghost cells
+                Function that sets the ghost cell
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid with which the boundary condition is associated
+            rank (int):
+                The tensorial rank of the field for this boundary condition
             **kwargs:
                 Additional keyword arguments (unused)
         """
@@ -538,7 +557,7 @@ class BoundariesSetter(BoundariesBase):
             )
             raise TypeError(msg)
 
-        return BoundariesSetter(data)
+        return BoundariesSetter(data, grid, rank=rank)
 
     def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         """Set the ghost cells for all boundaries.

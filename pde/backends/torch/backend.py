@@ -136,6 +136,9 @@ class TorchBackend(BackendBase[torch.Tensor]):
     def get_torch_dtype(self, dtype: DTypeLike) -> torch.dtype:
         """Convert dtype to torch dtype.
 
+        The torch dtype might be narrower than the corresponding numpy dtype if the
+        configuration parameter `dtype_downcasting` is enabled.
+
         Args:
             dtype:
                 numpy dtype to convert to corresponding torch dtype
@@ -161,12 +164,16 @@ class TorchBackend(BackendBase[torch.Tensor]):
 
         try:
             # Try to create a tensor of this dtype on the device
-            torch.empty(1, dtype=torch_dtype, device=self.device)
-        except TypeError:
+            if np.issubdtype(np_dtype, np.complexfloating):
+                x = torch.tensor([1 + 1j], dtype=torch_dtype, device=self.device)
+            else:
+                x = torch.tensor([1], dtype=torch_dtype, device=self.device)
+            # simple test to see whether arithmetics also work
+            y = x + x  # noqa: F841
+        except (TypeError, RuntimeError) as err:
             # dtype is not supported, so we see whether we need to use downcasting
-            if (
-                self._config_parameter("dtype_downcasting")
-                and torch_dtype == torch.float64
+            if self._config_parameter("dtype_downcasting") and (
+                torch_dtype == torch.float64 or torch_dtype == torch.complex128
             ):
                 if not self._emitted_downcast_warning:
                     self._logger.warning(
@@ -174,7 +181,12 @@ class TorchBackend(BackendBase[torch.Tensor]):
                         self.device.type,
                     )
                     self._emitted_downcast_warning = True
-                torch_dtype = torch.float32
+                if torch_dtype == torch.float64:
+                    torch_dtype = torch.float32
+                elif torch_dtype == torch.complex128:
+                    torch_dtype = torch.complex64
+                else:
+                    raise NotImplementedError from err
             else:
                 raise
 
@@ -233,12 +245,14 @@ class TorchBackend(BackendBase[torch.Tensor]):
             **kwargs:
                 Additional keyword arguments forwarded to :func:`torch.compile`
         """
+        if to_device and isinstance(func, torch.nn.Module):
+            func.to(self.device)  # move module to correct device
+
         if self._config_parameter("compile"):
             # compile the function using the torch backend
             opts = self.compile_options | kwargs
             func = torch.compile(func, **opts)  # type: ignore
-        if to_device and isinstance(func, torch.nn.Module):
-            func.to(self.device)  # move module to correct device
+
         return func
 
     def _apply_operator(

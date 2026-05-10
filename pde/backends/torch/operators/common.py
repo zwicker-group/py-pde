@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
-from ....grids.boundaries import BoundariesList
-from .._boundaries import GhostCellSetter
+from ....grids.boundaries.axes import BoundariesList, BoundariesSetter
+from .._boundaries import TorchBoundariesSetter, TorchGhostCellSetter
 from ..utils import TorchOperatorBase
 
 if TYPE_CHECKING:
@@ -63,7 +63,11 @@ class TorchDifferentialOperator(TorchOperatorBase):
                 msg = "Different grids for operator and BCs"
                 raise ValueError(msg)
             self.apply_bcs = True
-            self.ghost_cell_setter = GhostCellSetter(bcs, dtype=self.dtype)
+            self.ghost_cell_setter = TorchGhostCellSetter(bcs, dtype=self.dtype)
+
+        elif isinstance(bcs, BoundariesSetter):
+            self.apply_bcs = True
+            self.ghost_cell_setter = TorchBoundariesSetter(bcs, dtype=self.dtype)
 
         else:
             raise NotImplementedError

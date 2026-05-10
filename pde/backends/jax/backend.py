@@ -334,7 +334,7 @@ class JaxBackend(BackendBase[jax.Array]):
 
         return ghost_cell_setter
 
-    def make_valid_data_setter(self, grid: GridBase, rank: int) -> JaxDataSetter:
+    def make_valid_data_setter(self, grid: GridBase, rank: int) -> JaxDataSetter:  # type: ignore
         """Create a function to set the valid part of a full data array.
 
         Args:
@@ -342,7 +342,6 @@ class JaxBackend(BackendBase[jax.Array]):
                 The grid for which the data setter is created
             rank (int):
                 Rank of the data represented on the grid.
-
 
         Returns:
             callable:
@@ -356,14 +355,10 @@ class JaxBackend(BackendBase[jax.Array]):
         shape_in_full = (grid.dim,) * rank + grid._shape_full
 
         @self.compile_function
-        def set_valid(
-            data_full: NumericArray, data_valid: NumericArray, args=None
-        ) -> None:
+        def set_valid(data_valid: jax.Array, args=None) -> jax.Array:
             """Set valid part of the data (without ghost cells)
 
             Args:
-                data_full (:class:`~numpy.ndarray`):
-                    The full array with ghost cells that the data is written to
                 data_valid (:class:`~numpy.ndarray`):
                     The valid data that is written to `data_full`
                 args:
@@ -382,11 +377,11 @@ class JaxBackend(BackendBase[jax.Array]):
         # just set the valid elements and leave ghost cells with arbitrary values
         return set_valid
 
-    def make_ghost_cell_setter(self, bcs: BoundariesBase) -> JaxGhostCellSetter:
+    def make_ghost_cell_setter(self, bcs: BoundariesBase) -> JaxGhostCellSetter:  # type: ignore
         """Return function that sets the ghost cells on a full array.
 
         Args:
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
                 Defines the boundary conditions for a particular grid, for which the
                 setter should be defined.
 
@@ -423,20 +418,16 @@ class JaxBackend(BackendBase[jax.Array]):
             return set_ghost_cells
 
         if isinstance(bcs, BoundariesSetter):
-            return self.compile_function(bcs._setter)
+            return self.compile_function(bcs._setter)  # type: ignore
 
         raise NotImplementedError
 
     def make_full_data_setter(  # type: ignore
-        self, bcs: BoundariesBase | None = None
+        self, bcs: BoundariesBase
     ) -> JaxDataSetter:
         """Create a function to set the valid part of a full data array.
 
         Args:
-            grid (:class:`~pde.grid.base.GridBase`):
-                The grid for which the data setter is created
-            rank (int):
-                Rank of the data represented on the grid
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 Defines the boundary conditions for a particular grid, for which the
                 setter should be defined.
@@ -448,10 +439,6 @@ class JaxBackend(BackendBase[jax.Array]):
                 to have the correct dimensions, which are not checked. If `bcs` are
                 given, a third argument is allowed, which sets arguments for the BCs.
         """
-        if not isinstance(bcs, BoundariesList):
-            msg = "`make_full_data_setter` must be BoundariesList"
-            raise NotImplementedError(msg)
-
         set_valid = self.make_valid_data_setter(bcs.grid, bcs.rank)
         set_bcs = self.make_ghost_cell_setter(bcs)
 
@@ -826,15 +813,17 @@ class JaxBackend(BackendBase[jax.Array]):
 
         data_shape: tuple[int, ...] = field.data.shape
 
-        # initialize jax random number generator with numpy random number
-        seed = rng.integers(0, np.iinfo(np.uint32).max + 1)
-        jax_rng = stateful_rng(seed)
+        # make sure the data is created on the right device
+        with jax.default_device(self.device):
+            # initialize jax random number generator with numpy random number
+            seed = rng.integers(0, np.iinfo(np.uint32).max + 1)
+            jax_rng = stateful_rng(seed)
 
-        @self.compile_function
-        def gaussian_noise() -> jax.Array:
-            """Helper function returning a noise realization."""
-            key = jax_rng.key()
-            return jrandom.normal(key, shape=data_shape)
+            @self.compile_function
+            def gaussian_noise() -> jax.Array:
+                """Helper function returning a noise realization."""
+                key = jax_rng.key()
+                return jrandom.normal(key, shape=data_shape)
 
         return gaussian_noise
 

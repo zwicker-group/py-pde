@@ -20,8 +20,15 @@ from pde.tools.expressions import (
     parse_number,
 )
 
-ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
-ALL_BACKENDS_NO_NUMBA = ["numpy", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+ALL_BACKENDS_NO_NUMBA = [
+    "numpy",
+    "jax-cpu",
+    "jax-cuda",
+    "torch-cpu",
+    "torch-mps",
+    "torch-cuda",
+]
+ALL_BACKENDS = ["numba", *ALL_BACKENDS_NO_NUMBA]
 
 
 def test_parse_number():
@@ -394,7 +401,7 @@ def test_tensor_expression_consts():
     assert d1[1](2) == 5
 
 
-@pytest.mark.parametrize("backend", ["numpy", "jax", "torch-cpu"], indirect=True)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_evaluate_func_scalar(backend):
     """Test the evaluate function with scalar fields."""
     grid = UnitGrid([2, 4])

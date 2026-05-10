@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ...fields import DataFieldBase, VectorField
-from ...grids.boundaries.axes import BoundariesList
 from ...tools.typing import NumericArray
 from ..base import BackendBase, OperatorInfo
 
@@ -75,7 +74,6 @@ class NumpyBackend(BackendBase[NumericArray]):
             rank (int):
                 Rank of the data represented on the grid.
 
-
         Returns:
             callable:
                 Takes two numpy arrays, setting the valid data in the first one, using
@@ -85,6 +83,8 @@ class NumpyBackend(BackendBase[NumericArray]):
         """
         num_axes = grid.num_axes
 
+        # we call compile_function, so this method also works for the numba backend
+        @self.compile_function
         def set_valid(
             data_full: NumericArray, data_valid: NumericArray, args=None
         ) -> None:
@@ -110,11 +110,11 @@ class NumpyBackend(BackendBase[NumericArray]):
 
         return set_valid
 
-    def make_ghost_cell_setter(self, boundaries: BoundariesBase) -> GhostCellSetter:
+    def make_ghost_cell_setter(self, bcs: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
 
         Args:
-            boundaries (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
                 Defines the boundary conditions for a particular grid, for which the
                 setter should be defined.
 
@@ -127,9 +127,9 @@ class NumpyBackend(BackendBase[NumericArray]):
         def set_ghost_cells(data_full: NumericArray, args=None) -> None:
             """Default implementation that simply uses the python interface."""
             if args is None:
-                boundaries.set_ghost_cells(data_full)
+                bcs.set_ghost_cells(data_full)
             else:
-                boundaries.set_ghost_cells(data_full, *args)
+                bcs.set_ghost_cells(data_full, *args)
 
         return set_ghost_cells
 
@@ -148,13 +148,11 @@ class NumpyBackend(BackendBase[NumericArray]):
                 to have the correct dimensions, which are not checked. If `bcs` are
                 given, a third argument is allowed, which sets arguments for the BCs.
         """
-        if not isinstance(bcs, BoundariesList):
-            msg = "`make_full_data_setter` must be BoundariesList"
-            raise NotImplementedError(msg)
-
         set_valid = self.make_valid_data_setter(bcs.grid, bcs.rank)
         set_bcs = self.make_ghost_cell_setter(bcs)
 
+        # we call compile_function, so this method also works for the numba backend
+        @self.compile_function
         def set_valid_and_bcs(
             data_full: NumericArray, data_valid: NumericArray, args=None
         ) -> None:

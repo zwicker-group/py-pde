@@ -37,13 +37,7 @@ class CartesianLaplacian(TorchDifferentialOperator):
 
     rank_in = 0
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Cartesian Laplacian operator.
 
         Args:
@@ -97,13 +91,7 @@ class CartesianGradient(TorchDifferentialOperator):
 
     rank_in = 0
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Cartesian gradient operator.
 
         Args:
@@ -231,13 +219,7 @@ class CartesianDivergence(TorchDifferentialOperator):
 
     rank_in = 1
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Cartesian divergence operator.
 
         Args:
@@ -281,13 +263,7 @@ class CartesianVectorGradient(TorchDifferentialOperator):
 
     rank_in = 1
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Cartesian vector gradient operator.
 
         Args:
@@ -321,13 +297,7 @@ class CartesianVectorLaplacian(TorchDifferentialOperator):
 
     rank_in = 1
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Cartesian vector Laplacian operator.
 
         Args:
@@ -363,13 +333,7 @@ class CartesianTensorDivergence(TorchDifferentialOperator):
 
     rank_in = 2
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Cartesian tensor divergence operator.
 
         Args:

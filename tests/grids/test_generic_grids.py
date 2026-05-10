@@ -107,7 +107,7 @@ def test_coordinate_conversion(grid, rng):
 @pytest.mark.parametrize("grid", iter_grids())
 @pytest.mark.parametrize(
     "backend",
-    ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"],
+    ["numpy", "numba", "jax-cpu", "jax-cuda", "torch-cpu", "torch-mps", "torch-cuda"],
     indirect=True,
 )
 @pytest.mark.parametrize("rank", [0, 2])

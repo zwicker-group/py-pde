@@ -48,7 +48,15 @@ NOT_SUPPORTED = {
     },
 }
 
-ALL_BACKENDS = ["numpy", "numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+ALL_BACKENDS = [
+    "numpy",
+    "numba",
+    "jax-cpu",
+    "jax-cuda",
+    "torch-cpu",
+    "torch-mps",
+    "torch-cuda",
+]
 
 
 def test_solver_registration():

@@ -26,7 +26,7 @@ from ...grids.boundaries.local import (
 from .utils import TorchOperatorBase
 
 if TYPE_CHECKING:
-    from ...grids.boundaries import BoundariesList
+    from ...grids.boundaries.axes import BoundariesList, BoundariesSetter
 
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger instance."""
@@ -370,16 +370,14 @@ def make_local_ghost_cell_setter(bc: BCBase, *, dtype: np.dtype) -> torch.nn.Mod
     raise NotImplementedError(msg)
 
 
-class GhostCellSetter(torch.nn.Module):
+class TorchGhostCellSetter(torch.nn.Module):
     """Return function that sets virtual points for a local BC."""
 
     def __init__(self, bcs: BoundariesList, *, dtype: np.dtype):
         """
         Args:
-            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList` or None):
-                The boundary conditions applied to the field. If `None`, no boundary
-                conditions are enforced and it is assumed that the operator is applied
-                to the full field.
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesList`):
+                The boundary conditions applied to the field.
             dtype:
                 The dtype of the data
         """
@@ -396,4 +394,24 @@ class GhostCellSetter(torch.nn.Module):
         """Set the virtual points at all boundaries."""
         for set_ghost_cells in self.ghost_cell_setters:
             set_ghost_cells(data_full, args=args)
+        return data_full
+
+
+class TorchBoundariesSetter(torch.nn.Module):
+    """Return function that uses a user function to set all BCs"""
+
+    def __init__(self, bcs: BoundariesSetter, *, dtype: np.dtype):
+        """
+        Args:
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesSetter`):
+                The boundary conditions applied to the field.
+        """
+        super().__init__()
+        # Store the user setter directly without compilation
+        # User functions may not be compatible with torch.compile tracing
+        self.set_ghost_cells = bcs._setter
+
+    def forward(self, data_full: Tensor, args=None) -> Tensor:
+        """Set the virtual points at all boundaries."""
+        self.set_ghost_cells(data_full, args=args)  # type: ignore
         return data_full

@@ -41,13 +41,7 @@ class PolarLaplacian(TorchDifferentialOperator):
 
     rank_in = 0
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Polar Laplacian operator.
 
         Args:
@@ -197,13 +191,7 @@ class PolarDivergence(TorchDifferentialOperator):
 
     rank_in = 1
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Polar divergence operator.
 
         Args:
@@ -240,13 +228,7 @@ class PolarVectorGradient(TorchDifferentialOperator):
 
     rank_in = 1
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Polar vector gradient operator.
 
         Args:
@@ -290,13 +272,7 @@ class PolarTensorDivergence(TorchDifferentialOperator):
 
     rank_in = 2
 
-    def __init__(
-        self,
-        grid: GridBase,
-        bcs: BoundariesList | None,
-        *,
-        dtype: np.dtype,
-    ):
+    def __init__(self, grid: GridBase, bcs: BoundariesList | None, *, dtype: np.dtype):
         """Initialize the Polar tensor divergence operator.
 
         Args:

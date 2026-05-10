@@ -15,6 +15,8 @@ from pde.grids._mesh import GridMesh
 from pde.tools import mpi
 from pde.tools.misc import module_available
 
+ALL_BACKENDS = ["numba", "jax-cpu", "jax-cuda", "torch-cpu", "torch-mps", "torch-cuda"]
+
 
 def test_interpolation_singular():
     """Test interpolation on singular dimensions."""
@@ -103,9 +105,7 @@ def test_scalars(rng):
     np.testing.assert_allclose((arr * s1).data, (s1 * arr).data)
 
 
-@pytest.mark.parametrize(
-    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_laplacian(backend, rng):
     """Test the Laplace operator."""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)

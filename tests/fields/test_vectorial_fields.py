@@ -10,6 +10,8 @@ from pde.fields.base import FieldBase
 from pde.grids import CylindricalSymGrid, PolarSymGrid, SphericalSymGrid
 from pde.tools.misc import module_available
 
+ALL_BACKENDS = ["numba", "jax-cpu", "jax-cuda", "torch-cpu", "torch-mps", "torch-cuda"]
+
 
 def test_vectors_basic():
     """Test some vector fields."""
@@ -295,9 +297,7 @@ def test_complex_vectors(rng):
         np.testing.assert_allclose(dot_op(v1.data, v2.data), res.data)
 
 
-@pytest.mark.parametrize(
-    "backend", ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"], indirect=True
-)
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_vector_bcs(backend):
     """Test boundary conditions on vector fields."""
     grid = UnitGrid([3, 3], periodic=False)

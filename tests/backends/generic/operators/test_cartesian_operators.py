@@ -11,7 +11,7 @@ from scipy import ndimage
 
 from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid, VectorField
 
-ALL_BACKENDS = ["numba", "jax", "torch-cpu", "torch-mps", "torch-cuda"]
+ALL_BACKENDS = ["numba", "jax-cpu", "jax-cuda", "torch-cpu", "torch-mps", "torch-cuda"]
 
 
 def _get_random_grid_bcs(ndim: int, dx="random", periodic="random", rank=0):

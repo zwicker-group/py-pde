@@ -34,7 +34,6 @@ if TYPE_CHECKING:
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
         BinaryOperatorImplType,
-        DataSetter,
         FloatingArray,
         GhostCellSetter,
         InexactArray,
@@ -342,52 +341,6 @@ class NumbaBackend(NumpyBackend):
 
         return ghost_cell_setter  # type: ignore
 
-    def make_valid_data_setter(self, grid: GridBase, rank: int) -> DataSetter:
-        """Create a function to set the valid part of a full data array.
-
-        Args:
-            grid (:class:`~pde.grid.base.GridBase`):
-                The grid for which the data setter is created
-            rank (int):
-                Rank of the data represented on the grid.
-
-
-        Returns:
-            callable:
-                Takes two numpy arrays, setting the valid data in the first one, using
-                the second array. The arrays need to be allocated already and they need
-                to have the correct dimensions, which are not checked. If `bcs` are
-                given, a third argument is allowed, which sets arguments for the BCs.
-        """
-        num_axes = grid.num_axes
-
-        @self.compile_function
-        def set_valid(
-            data_full: NumericArray, data_valid: NumericArray, args=None
-        ) -> None:
-            """Set valid part of the data (without ghost cells)
-
-            Args:
-                data_full (:class:`~numpy.ndarray`):
-                    The full array with ghost cells that the data is written to
-                data_valid (:class:`~numpy.ndarray`):
-                    The valid data that is written to `data_full`
-                args:
-                    Additional arguments (not used in this function)
-            """
-            assert data_full.ndim == rank + num_axes
-            if num_axes == 1:
-                data_full[..., 1:-1] = data_valid
-            elif num_axes == 2:
-                data_full[..., 1:-1, 1:-1] = data_valid
-            elif num_axes == 3:
-                data_full[..., 1:-1, 1:-1, 1:-1] = data_valid
-            else:
-                raise NotImplementedError
-
-        # just set the valid elements and leave ghost cells with arbitrary values
-        return set_valid
-
     def make_ghost_cell_setter(self, bcs: BoundariesBase) -> GhostCellSetter:
         """Return function that sets the ghost cells on a full array.
 
@@ -449,47 +402,6 @@ class NumbaBackend(NumpyBackend):
 
         msg = f"Cannot handle following boundary conditions: {bcs}"
         raise NotImplementedError(msg)
-
-    def make_full_data_setter(self, bcs: BoundariesBase) -> DataSetter:
-        """Create a function to set the valid part of a full data array.
-
-        Args:
-            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
-                Defines the boundary conditions for a particular grid, for which the
-                setter should be defined.
-
-        Returns:
-            callable:
-                Takes two numpy arrays, setting the valid data in the first one, using
-                the second array. The arrays need to be allocated already and they need
-                to have the correct dimensions, which are not checked. If `bcs` are
-                given, a third argument is allowed, which sets arguments for the BCs.
-        """
-        if not isinstance(bcs, BoundariesList):
-            msg = "`make_full_data_setter` must be BoundariesList"
-            raise NotImplementedError(msg)
-
-        set_valid = self.make_valid_data_setter(bcs.grid, bcs.rank)
-        set_bcs = self.make_ghost_cell_setter(bcs)
-
-        @self.compile_function
-        def set_valid_and_bcs(
-            data_full: NumericArray, data_valid: NumericArray, args=None
-        ) -> None:
-            """Set valid part of the data and the ghost cells using BCs.
-
-            Args:
-                data_full (:class:`~numpy.ndarray`):
-                    The full array with ghost cells that the data is written to
-                data_valid (:class:`~numpy.ndarray`):
-                    The valid data that is written to `data_full`
-                args (dict):
-                    Extra arguments affecting the boundary conditions
-            """
-            set_valid(data_full, data_valid)
-            set_bcs(data_full, args=args)
-
-        return set_valid_and_bcs
 
     @cached_method()
     def make_operator(

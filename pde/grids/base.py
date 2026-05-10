@@ -354,12 +354,16 @@ class GridBase(metaclass=ABCMeta):
 
     @overload
     def _make_set_valid(
-        self, **kwargs
+        self, *, rank: int = 0, backend: str | BackendBase = "default"
     ) -> Callable[[NumericArray, NumericArray], None]: ...
 
     @overload
     def _make_set_valid(
-        self, bcs: BoundariesBase, **kwargs
+        self,
+        bcs: BoundariesBase,
+        *,
+        rank: int = 0,
+        backend: str | BackendBase = "default",
     ) -> Callable[[NumericArray, NumericArray, dict], None]: ...
 
     def _make_set_valid(
@@ -389,11 +393,10 @@ class GridBase(metaclass=ABCMeta):
         """
         from ..backends import get_backend
 
-        backend=get_backend(backend)
+        backend = get_backend(backend)
         if bcs is None:
             return backend.make_valid_data_setter(self, rank=rank)
-        else:
-            return backend.make_full_data_setter(bcs)
+        return backend.make_full_data_setter(bcs)
 
     @property
     @abstractmethod
