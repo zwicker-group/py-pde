@@ -20,6 +20,7 @@ from ...tools.cache import cached_method
 from ..base import BackendBase
 
 if TYPE_CHECKING:
+    import types
     from collections.abc import Callable
 
     from numpy.typing import DTypeLike
@@ -31,7 +32,7 @@ if TYPE_CHECKING:
     from ...pdes import PDEBase
     from ...solvers import SolverBase
     from ...tools.config import ConfigLike
-    from ...tools.expressions import ExpressionBase
+    from ...tools.expressions import ExpressionBase, TensorExpression
     from ...tools.typing import (
         NumberOrArray,
         NumericArray,
@@ -110,6 +111,9 @@ class JaxBackend(BackendBase[jax.Array]):
         info["device"] = self.device.device_kind
         info["compile"] = self._config_parameter("compile")
         return info
+
+    def __array_namespace__(self) -> types.ModuleType:
+        return jnp
 
     @property
     def device(self) -> jax.Device:
@@ -766,16 +770,21 @@ class JaxBackend(BackendBase[jax.Array]):
         return self.compile_function(result)
 
     def _make_expression_array(
-        self, expression: ExpressionBase, *, single_arg: bool = True
-    ) -> Callable[[jax.Array, jax.Array | None], jax.Array]:
-        """Compile the tensor expression such that a numpy array is returned.
+        self, expression: TensorExpression, *, single_arg: bool = True
+    ) -> Callable[[jax.Array, jax.Array | tuple[jax.Array, ...]], jax.Array]:
+        """Compile the tensor expression such that a jax array is returned.
 
         Args:
-            expression (:class:`~pde.tools.expression.ExpressionBase`):
+            expression (:class:`~pde.tools.expression.TensorExpression`):
                 The expression that is converted to a function
             single_arg (bool):
                 Whether the compiled function expects all arguments as a single array
                 or whether they are supplied individually.
+
+        Returns:
+            Function that returns the evaluated tensor expressions. The shape of the
+            returned array is given by the shape of the tensor plus the shape of the
+            input arrays.
         """
         import sympy
 
@@ -785,18 +794,26 @@ class JaxBackend(BackendBase[jax.Array]):
         shape = expression._sympy_expr.shape  # shape of the output tensor
         rank = len(shape)
 
-        # generate individual expressions
+        # generate list of individual expressions
         funcs = np.empty(shape, dtype=object)
         for i in np.ndindex(*shape):
             funcs[i] = self.make_expression_function(expression[i], single_arg=True)
         funcs = funcs.tolist()
 
-        def _expression_array(args):
+        def _expression_array(args: jax.Array | tuple[jax.Array, ...] = ()):
             """Function that evaluates each element of the tensor expression"""
-            arr0 = jnp.asarray(args[0])
-            out = jnp.empty(shape + arr0.shape)
+            # determine shape of output array
+            if jnp.isscalar(args) or len(args) == 0:
+                arr_shape: tuple[int, ...] = ()
+            else:
+                arr_shape = jnp.asarray(args[0]).shape
+            out = jnp.empty(shape + arr_shape)
+
+            # fill each element of the output tensor
             for i in np.ndindex(*shape):
-                if rank == 1:
+                if rank == 0:
+                    field = funcs(args)
+                elif rank == 1:
                     field = funcs[i[0]](args)
                 elif rank == 2:
                     field = funcs[i[0]][i[1]](args)
@@ -805,6 +822,7 @@ class JaxBackend(BackendBase[jax.Array]):
                 out = out.at[i].set(field)
             return out
 
+        # add support for giving fields as separate arguments
         if single_arg:
             expression_array = _expression_array
         else:
@@ -812,7 +830,7 @@ class JaxBackend(BackendBase[jax.Array]):
             def expression_array(*args):
                 return _expression_array(args)
 
-        return self.compile_function(expression_array)
+        return self.compile_function(expression_array)  # type: ignore
 
     def make_pde_rhs(
         self, eq: PDEBase, state: TField

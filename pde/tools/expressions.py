@@ -855,7 +855,7 @@ class TensorExpression(ExpressionBase):
         # deprecated since 2025-12-06
         warnings.warn(
             "`get_compiled_array` is deprecated. Use `_make_expression_array` of the "
-            "`numba` backend instead.",
+            "respective backend instead.",
             stacklevel=2,
         )
 

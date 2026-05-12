@@ -76,6 +76,7 @@ if module_available("torch"):
         else:
             backend_registry.register_backend(backend)
 
+# try registering specific jax backends for various devices
 if module_available("jax"):
     from pde.backends.jax import JaxBackend
 

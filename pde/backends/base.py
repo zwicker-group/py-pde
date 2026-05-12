@@ -27,6 +27,7 @@ from ..tools.typing import (
 )
 
 if TYPE_CHECKING:
+    import types
     from collections.abc import Callable
 
     import numpy as np
@@ -148,6 +149,9 @@ class BackendBase(Generic[TNativeArray]):
     def info(self) -> dict[str, Any]:
         """dict: relevant information about the backend"""
         return {"name": self.name, "implementation": self.implementation}
+
+    def __array_namespace__(self) -> types.ModuleType:
+        raise NotImplementedError
 
     def _config_parameter(self, key: str, default: Any = _OMITTED) -> Any:
         """Returns the value of a configuration option, respecting inheritance

@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from ...grids.boundaries.axis import BoundaryAxisBase
     from ...pdes import PDEBase
     from ...solvers.base import SolverBase
-    from ...tools.expressions import ExpressionBase
+    from ...tools.expressions import ExpressionBase, TensorExpression
     from ...tools.typing import (
         BinaryOperatorImplType,
         FloatingArray,
@@ -1284,16 +1284,21 @@ class NumbaBackend(NumpyBackend):
         return self.compile_function(result)
 
     def _make_expression_array(
-        self, expression: ExpressionBase, *, single_arg: bool = True
+        self, expression: TensorExpression, *, single_arg: bool = True
     ) -> Callable[[NumericArray, NumericArray | None], NumericArray]:
         """Compile the tensor expression such that a numpy array is returned.
 
         Args:
-            expression (:class:`~pde.tools.expression.ExpressionBase`):
+            expression (:class:`~pde.tools.expression.TensorExpression`):
                 The expression that is converted to a function
             single_arg (bool):
                 Whether the compiled function expects all arguments as a single array
                 or whether they are supplied individually.
+
+        Returns:
+            Function that returns the evaluated tensor expressions. The shape of the
+            returned array is given by the shape of the tensor plus the shape of the
+            input arrays.
         """
         import builtins
 
@@ -1319,12 +1324,11 @@ class NumbaBackend(NumpyBackend):
 
             if single_arg:
                 # the function takes a single input array
-                first_dim = 0 if len(expression.vars) == 1 else 1
                 code = "def _generated_function(arr, out=None):\n"
                 code += "    arr = asarray(arr)\n"
-                code += f"    {variables} = arr\n"
+                code += f"    ({variables},) = arr\n"
                 code += "    if out is None:\n"
-                code += f"        out = empty({shape} + arr.shape[{first_dim}:])\n"
+                code += f"        out = empty({shape} + arr.shape[1:])\n"
 
             else:
                 # the function takes each variables as an argument
