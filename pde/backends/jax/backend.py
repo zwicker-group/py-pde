@@ -765,6 +765,55 @@ class JaxBackend(BackendBase[jax.Array]):
             result = func
         return self.compile_function(result)
 
+    def _make_expression_array(
+        self, expression: ExpressionBase, *, single_arg: bool = True
+    ) -> Callable[[jax.Array, jax.Array | None], jax.Array]:
+        """Compile the tensor expression such that a numpy array is returned.
+
+        Args:
+            expression (:class:`~pde.tools.expression.ExpressionBase`):
+                The expression that is converted to a function
+            single_arg (bool):
+                Whether the compiled function expects all arguments as a single array
+                or whether they are supplied individually.
+        """
+        import sympy
+
+        if not isinstance(expression._sympy_expr, sympy.Array):
+            msg = "Expression must be an array"
+            raise TypeError(msg)
+        shape = expression._sympy_expr.shape  # shape of the output tensor
+        rank = len(shape)
+
+        # generate individual expressions
+        funcs = np.empty(shape, dtype=object)
+        for i in np.ndindex(*shape):
+            funcs[i] = self.make_expression_function(expression[i], single_arg=True)
+        funcs = funcs.tolist()
+
+        def _expression_array(args):
+            """Function that evaluates each element of the tensor expression"""
+            arr0 = jnp.asarray(args[0])
+            out = jnp.empty(shape + arr0.shape)
+            for i in np.ndindex(*shape):
+                if rank == 1:
+                    field = funcs[i[0]](args)
+                elif rank == 2:
+                    field = funcs[i[0]][i[1]](args)
+                else:
+                    raise NotImplementedError
+                out = out.at[i].set(field)
+            return out
+
+        if single_arg:
+            expression_array = _expression_array
+        else:
+
+            def expression_array(*args):
+                return _expression_array(args)
+
+        return self.compile_function(expression_array)
+
     def make_pde_rhs(
         self, eq: PDEBase, state: TField
     ) -> Callable[[jax.Array, float], jax.Array]:
