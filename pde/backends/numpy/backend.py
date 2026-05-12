@@ -14,6 +14,7 @@ from ...tools.typing import NumericArray
 from ..base import BackendBase, OperatorInfo
 
 if TYPE_CHECKING:
+    import types
     from collections.abc import Callable
 
     from numpy.typing import DTypeLike
@@ -36,6 +37,9 @@ class NumpyBackend(BackendBase[NumericArray]):
     """Defines :mod:`numpy` backend, from which all other backends inherit."""
 
     implementation = "numpy"
+
+    def __array_namespace__(self) -> types.ModuleType:
+        return np
 
     def compile_function(self, func: TFunc, **kwargs) -> TFunc:
         """General method that compiles a user function.

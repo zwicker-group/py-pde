@@ -19,6 +19,7 @@ from ..base import BackendBase, OperatorInfo
 from .typing import NUMPY_TO_TORCH_DTYPE, TORCH_TO_NUMPY_DTYPE, TorchRHSType
 
 if TYPE_CHECKING:
+    import types
     from collections.abc import Callable
 
     from numpy.typing import DTypeLike
@@ -107,6 +108,9 @@ class TorchBackend(BackendBase[torch.Tensor]):
         info["device"] = self.device.type
         info["compile"] = self._config_parameter("compile")
         return info
+
+    def __array_namespace__(self) -> types.ModuleType:
+        return torch
 
     @property
     def device(self) -> torch.device:

@@ -10,7 +10,6 @@ import pytest
 
 from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.backends import get_backend
-from pde.backends.numba import numba_backend
 from pde.tools.expressions import (
     BCDataError,
     ScalarExpression,
@@ -229,9 +228,6 @@ def test_tensor_expression():
     assert e.shape == (2, 2)
     assert e.rank == 2
     assert e.constant
-    func = numba_backend._make_expression_array(e)
-    np.testing.assert_allclose(func(), [[0, 1], [2, 3]])
-    np.testing.assert_allclose(func(()), [[0, 1], [2, 3]])
     assert e.differentiate("a") == TensorExpression("[[0, 0], [0, 0]]")
     np.testing.assert_allclose(e.value, np.arange(4).reshape(2, 2))
 
@@ -247,14 +243,62 @@ def test_tensor_expression():
     assert e[0] == ScalarExpression("a")
     assert e[1] == ScalarExpression("2*a")
     assert e[0:1] == TensorExpression("[a]")
-    func = numba_backend._make_expression_array(e)
-    np.testing.assert_allclose(func(1.0), [1.0, 2.0])
-    np.testing.assert_allclose(func(2.0), [2.0, 4.0])
 
     e2 = TensorExpression(e)
     assert isinstance(str(e2), str)
     assert e == e2
     assert e is not e2
+
+
+@pytest.mark.parametrize("backend", ["numba", "jax-cpu", "jax-cuda"], indirect=True)
+def test_tensor_expression_compiled(backend):
+    """Test TensorExpression with compilation"""
+    nx = backend.__array_namespace__()
+    e = TensorExpression("[[0, 1], [2, 3]]", signature=["a"])
+    func = backend._make_expression_array(e, single_arg=True)
+    # np.testing.assert_allclose(func(()), [[0, 1], [2, 3]])
+    np.testing.assert_allclose(func(nx.array([1])), [[0, 1], [2, 3]])
+    func = backend._make_expression_array(e, single_arg=False)
+    # np.testing.assert_allclose(func(), [[0, 1], [2, 3]])
+    np.testing.assert_allclose(func(nx.array(1)), [[0, 1], [2, 3]])
+
+    e = TensorExpression("[a, 2*a]")
+    func = backend._make_expression_array(e, single_arg=True)
+    np.testing.assert_allclose(func(nx.array([1.0])), [1.0, 2.0])
+    np.testing.assert_allclose(func(nx.array([2.0])), [2.0, 4.0])
+    np.testing.assert_allclose(func(nx.array([[1.0, 2.0]])), [[1.0, 2.0], [2.0, 4.0]])
+    func = backend._make_expression_array(e, single_arg=False)
+    np.testing.assert_allclose(func(nx.array(1.0)), [1.0, 2.0])
+    np.testing.assert_allclose(func(nx.array(2.0)), [2.0, 4.0])
+    np.testing.assert_allclose(func(nx.array([1.0, 2.0])), [[1.0, 2.0], [2.0, 4.0]])
+
+    e = TensorExpression("[a, b]")
+    func = backend._make_expression_array(e, single_arg=True)
+    np.testing.assert_allclose(func(nx.array([1.0, 2.0])), [1.0, 2.0])
+    np.testing.assert_allclose(
+        func(nx.array([[1.0, 2.0], [2.0, 4.0]])), [[1.0, 2.0], [2.0, 4.0]]
+    )
+    func = backend._make_expression_array(e, single_arg=False)
+    np.testing.assert_allclose(func(nx.array(1.0), nx.array(2.0)), [1.0, 2.0])
+    np.testing.assert_allclose(
+        func(nx.array([1.0, 2.0]), nx.array([2.0, 4.0])), [[1.0, 2.0], [2.0, 4.0]]
+    )
+
+    e = TensorExpression("[[a, a], [b, b]]")
+    func = backend._make_expression_array(e, single_arg=True)
+    np.testing.assert_allclose(func(nx.array([1.0, 2.0])), [[1.0, 1.0], [2.0, 2.0]])
+    np.testing.assert_allclose(
+        func(nx.array([[1.0, 2.0], [2.0, 4.0]])),
+        [[[1.0, 2.0], [1.0, 2.0]], [[2.0, 4.0], [2.0, 4.0]]],
+    )
+    func = backend._make_expression_array(e, single_arg=False)
+    np.testing.assert_allclose(
+        func(nx.array(1.0), nx.array(2.0)), [[1.0, 1.0], [2.0, 2.0]]
+    )
+    np.testing.assert_allclose(
+        func(nx.array([1.0, 2.0]), nx.array([2.0, 4.0])),
+        [[[1.0, 2.0], [1.0, 2.0]], [[2.0, 4.0], [2.0, 4.0]]],
+    )
 
 
 def test_expression_from_expression():
