@@ -307,7 +307,7 @@ class VectorField(DataFieldBase):
 
         Args:
             backend (str):
-                The backend (e.g., 'numba' or 'numba') used for this operator.
+                The backend (e.g., 'numba' or 'numba_mpi') used for this operator.
 
         Returns:
             function that takes two instance of :class:`~numpy.ndarray`, which contain
