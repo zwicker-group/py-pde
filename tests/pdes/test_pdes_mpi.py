@@ -13,8 +13,7 @@ from pde.tools import mpi
 
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("dim", [1, 2, 3])
-@pytest.mark.parametrize("backend", ["numba_mpi"])
-def test_pde_complex_bcs_mpi(dim, backend, rng):
+def test_pde_complex_bcs_mpi(dim, rng):
     """Test PDE with complex BCs using multiprocessing."""
     eq = DiffusionPDE()
     grid = grids.UnitGrid([8] * dim)
@@ -26,7 +25,7 @@ def test_pde_complex_bcs_mpi(dim, backend, rng):
         "dt": 0.01,
         "tracker": None,
     }
-    res = eq.solve(backend=backend, solver="explicit_mpi", **args)
+    res = eq.solve(backend="numba_mpi", solver="explicit_mpi", **args)
 
     if mpi.is_main:
         res_exp = eq.solve(backend="numpy", solver="euler", **args)
@@ -97,14 +96,13 @@ def test_pde_complex_mpi(rng):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numba_mpi"])
-def test_pde_const_mpi(backend):
+def test_pde_const_mpi():
     """Test PDE with a field constant using multiprocessing."""
     grid = grids.UnitGrid([8])
     eq = PDE({"u": "k"}, consts={"k": ScalarField.from_expression(grid, "x")})
 
     args = {"state": ScalarField(grid), "t_range": 1, "dt": 0.01, "tracker": None}
-    res_b = eq.solve(backend=backend, solver="explicit_mpi", **args)
+    res_b = eq.solve(backend="numba_mpi", solver="explicit_mpi", **args)
 
     if mpi.is_main:
         res_a = eq.solve(backend="numpy", solver="euler", **args)
@@ -115,8 +113,7 @@ def test_pde_const_mpi(backend):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numba_mpi"])
-def test_pde_const_mpi_class(backend):
+def test_pde_const_mpi_class():
     """Test PDE with a field constant using multiprocessing."""
     grid = grids.UnitGrid([8])
 
@@ -135,7 +132,7 @@ def test_pde_const_mpi_class(backend):
     eq = ExplicitFieldPDE()
 
     args = {"state": ScalarField(grid), "t_range": 1, "dt": 0.01, "tracker": None}
-    res_b = eq.solve(backend=backend, solver="explicit_mpi", **args)
+    res_b = eq.solve(backend="numba_mpi", solver="explicit_mpi", **args)
 
     if mpi.is_main:
         res_a = eq.solve(backend="numpy", solver="euler", **args)
@@ -143,3 +140,18 @@ def test_pde_const_mpi_class(backend):
         np.testing.assert_allclose(res_a.data, res_b.data)
     else:
         assert res_b is None
+
+
+@pytest.mark.multiprocessing
+def test_mpi_auto_backend(rng):
+    """Test automatic backend selection using multiprocessing."""
+    eq = DiffusionPDE()
+    field = ScalarField.random_normal(grids.UnitGrid([8]), rng=rng).smooth(1)
+    res = eq.solve(field, t_range=1, dt=0.01, solver="explicit_mpi", tracker=None)
+
+    if mpi.is_main:
+        assert eq.diagnostics["controller"]["mpi_run"]
+        assert eq.diagnostics["solver"]["backend"]["name"] == "numba_mpi"
+        assert isinstance(res, ScalarField)
+    else:
+        assert res is None
