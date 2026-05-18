@@ -8,7 +8,6 @@ from __future__ import annotations
 import datetime
 import logging
 import math
-import sys
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -384,26 +383,23 @@ class Controller:
         self.info["mpi_count"] = mpi.size
         self.info["mpi_rank"] = mpi.rank
 
-        # temporarily replace the system excepthook with one that works with MPI
         if mpi.is_main:
             # this node is the primary one and must thus run the main process
             try:
                 self._run_main_process(state, dt)
             except Exception as err:
-                print(err, file=sys.stderr)  # print exception to show some info
                 _logger.exception("Error in main node", exc_info=err)
                 mpi.mpi_excepthook(type(err), err, err.__traceback__)
                 raise
             else:
                 _logger.info("MPI main process finished")
-                return state
+                return state  # return final state only in main process
 
         else:
             # this node is a secondary node and must thus run the client process
             try:
                 self._run_client_process(state, dt)
             except Exception as err:
-                print(err, file=sys.stderr)  # print exception to show some info
                 _logger.exception("Error in node %d", mpi.rank, exc_info=err)
                 mpi.mpi_excepthook(type(err), err, err.__traceback__)
                 raise
