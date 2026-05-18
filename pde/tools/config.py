@@ -147,7 +147,7 @@ class Parameter:
 
 
 ConfigValue = Union["Config", Parameter]
-ConfigLike = Union[Sequence[Parameter], MutableMapping[str, Any], "Config"]
+ConfigLike = Union[MutableMapping[str, Any], "Config"]
 
 
 class Modes(Enum):
@@ -394,7 +394,10 @@ class Config(NestedDict[Parameter]):
     _mode: ConfigMode
 
     def __init__(
-        self, items: ConfigLike | None = None, *, mode: ConfigMode | str = "update"
+        self,
+        items: ConfigLike | Sequence[Parameter] | None = None,
+        *,
+        mode: ConfigMode | str = "update",
     ):
         """
         Args:
@@ -549,6 +552,10 @@ class Config(NestedDict[Parameter]):
             else (v.value if values else v)  # type: ignore
             for k, v in self.data.items()
         }
+
+    def __str__(self) -> str:
+        """Shows the configuration as a string."""
+        return f"{self.__class__.__name__}({self.to_dict(values=True)!r})"
 
     def __repr__(self) -> str:
         """Represent the configuration as a string."""

@@ -11,6 +11,8 @@ import warnings
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, overload
 
+from typing_extensions import Self
+
 from ..tools.config import _OMITTED, Config, ConfigLike
 from ..tools.typing import (
     DataSetter,
@@ -117,7 +119,7 @@ class BackendBase(Generic[TNativeArray]):
     @classmethod
     def from_args(
         cls, config: ConfigLike | None, args: str = "", *, name: str | None = None
-    ):
+    ) -> Self:
         """Initialize backend with extra arguments.
 
         Args:

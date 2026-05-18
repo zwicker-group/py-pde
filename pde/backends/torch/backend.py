@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import torch
+from typing_extensions import Self
 
 from ...fields import VectorField
 from ...grids import GridBase
@@ -81,7 +82,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
     @classmethod
     def from_args(
         cls, config: ConfigLike | None, args: str = "", *, name: str | None = None
-    ):
+    ) -> Self:
         """Initialize backend with extra arguments.
 
         Args:

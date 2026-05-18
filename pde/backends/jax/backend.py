@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 import jax
 import jax.numpy as jnp
 import numpy as np
+from typing_extensions import Self
 
 from ...fields import VectorField
 from ...grids import GridBase
@@ -91,7 +92,7 @@ class JaxBackend(BackendBase[jax.Array]):
     @classmethod
     def from_args(
         cls, config: ConfigLike | None, args: str = "", *, name: str | None = None
-    ):
+    ) -> Self:
         """Initialize backend with extra arguments.
 
         Args:
