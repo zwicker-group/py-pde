@@ -102,3 +102,20 @@ def test_backend_configuration_subcase():
     assert config["backend.torch.dtype_downcasting"]
     assert b0.config["dtype_downcasting"]
     assert b1.config["dtype_downcasting"]
+
+
+def test_get_backend():
+    """Test get_backend function."""
+    b1 = get_backend("numba")
+    assert b1.name == "numba"
+    assert b1.config["fastmath"]
+    assert b1 is get_backend(b1)
+    with pytest.raises(RuntimeError):
+        get_backend(b1, {"fastmath": False})
+
+    b2 = get_backend("numba", {"fastmath": False})
+    assert b2.name == "numba"
+    assert not b2.config["fastmath"]
+    assert b2 is get_backend(b2)
+    with pytest.raises(RuntimeError):
+        get_backend(b2, {"fastmath": True})

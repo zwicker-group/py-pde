@@ -23,7 +23,7 @@ from .. import config as global_config
 from .base import _RESERVED_BACKEND_NAMES, BackendBase
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Sequence
     from pathlib import Path
 
     from ..tools.config import ConfigLike, Parameter
@@ -59,7 +59,7 @@ class BackendRegistry:
         name: str,
         package_path: str,
         *,
-        config: ConfigLike | None = None,
+        config: ConfigLike | Sequence[Parameter] | None = None,
     ) -> None:
         """Register a backend python package (without loading it yet)
 
@@ -140,10 +140,62 @@ class BackendRegistry:
 
         return self._classes[name]
 
+    def _get_backend(
+        self, name: str, *, link_global_config: bool, **kwargs
+    ) -> BackendBase:
+        """Create backend object, potentially loading the respective package.
+
+        Args:
+            name (str):
+                Name of the backend to be loaded.
+            link_global_config (bool):
+                If true, this backend may directly use the global configuration as its
+                own, linking changes to its config to the global one. This will only be
+                enabled if `name` directly specifies the backend without additional
+                configurations.
+            **kwargs:
+                Additional options of the backend
+
+        Returns:
+            :class:`~pde.backends.base.BackendBase`: An instance of the backend with
+            the particular configuration
+        """
+        # create backend from the class definition
+        parts = name.split(":", 1)
+        if len(parts) == 2:
+            cls_name, args = parts
+        elif len(parts) == 1:
+            cls_name, args = parts[0], None
+        else:
+            raise RuntimeError
+        cls = self._get_class(cls_name)
+
+        # determine the configuration of the backend
+        if link_global_config and name == cls_name:
+            # directly use the global configuration
+            backend_config = global_config["backend"][cls_name]
+        else:
+            # detach config of specific backend from general backend
+            backend_config = global_config["backend"][cls_name].copy()
+
+        # create the backend
+        if args:
+            backend_obj = cls.from_args(backend_config, args, name=name, **kwargs)
+        else:
+            backend_obj = cls(backend_config, name=name, **kwargs)
+        return backend_obj
+
     def get_backend(
         self, name: str, *, config: ConfigLike | None = None, **kwargs
     ) -> BackendBase:
         """Return backend object, potentially loading the respective package.
+
+        The returned backend is cached if `config` is not specified. Consequently, the
+        same object will be returned for repeated calls to `get_backend`, which allows
+        sharing configuration parameters. Moreover, if `name` only specifies a backend,
+        i.e., does not contain a colon `:`, the configuration of this backend is linked
+        with the global configuration :obj:`pde.config`, such that changes to the config
+        are reflected globally.
 
         Args:
             name (str):
@@ -163,38 +215,17 @@ class BackendRegistry:
         if name == "default":
             name = global_config["default_backend"]
 
+        if config:
+            # return backend with custom configuration, which will not be cached
+            backend = self._get_backend(name, link_global_config=False, **kwargs)
+            backend.config.update_recursive(config)
+            return backend
+
         # check whether the precise backend has been instantiated already
         if name not in self._backends:
             # create backend from the class definition
-            parts = name.split(":", 1)
-            if len(parts) == 2:
-                cls_name, args = parts
-            elif len(parts) == 1:
-                cls_name, args = parts[0], None
-            else:
-                raise RuntimeError
-            cls = self._get_class(cls_name)
-
-            # determine the configuration of the backend
-            backend_config = global_config["backend"][cls_name]
-            if name != cls_name:
-                # detach config of specific backend from general backend
-                backend_config = backend_config.copy()
-            if config is not None:
-                backend_config.update_recursive(config)
-
-            if name == cls_name:
-                assert global_config["backend"][cls_name] is backend_config
-            else:
-                assert global_config["backend"][cls_name] is not backend_config
-
-            # create the backend
-            if args:
-                backend_obj = cls.from_args(backend_config, args, name=name, **kwargs)
-                self.register_backend(backend_obj)
-            else:
-                backend_obj = cls(backend_config, name=name, **kwargs)
-                self.register_backend(backend_obj)
+            backend = self._get_backend(name, link_global_config=True, **kwargs)
+            self.register_backend(backend)
 
         return self._backends[name]
 
@@ -244,8 +275,17 @@ def load_default_config(module_path: str | Path) -> list[Parameter] | None:
         return None
 
 
-def get_backend(backend: str | BackendBase) -> BackendBase:
+def get_backend(
+    backend: str | BackendBase, config: ConfigLike | None = None
+) -> BackendBase:
     """Return backend specified by string of instance.
+
+    The returned backend is cached if `config` is not specified. Consequently, the same
+    object will be returned for repeated calls to `get_backend`, which allows sharing
+    configuration parameters. Moreover, if `name` only specifies a backend, i.e., does
+    not contain a colon `:`, the configuration of this backend is linked with the global
+    configuration :obj:`pde.config`, such that changes to the config are reflected
+    globally.
 
     Args:
         backend (str or :class:`~pde.backends.base.BackendBase`):
@@ -256,18 +296,30 @@ def get_backend(backend: str | BackendBase) -> BackendBase:
             backend objects, which are simply returned. This is a simple way to allow
             providing full backend objects in places where we otherwise would expect a
             backend name.
+        config (dict):
+            Additional configuration options for this specific backend. The full
+            configuration will be taken from the global configuration and merged with
+            the given options here. This option is only permitted if `backend` is a
+            string since there otherwise might be unintended side effects of modifying
+            an existing backend.
+
+    Returns:
+        :class:`~pde.backends.base.BackendBase`: An initialized backend
     """
     if isinstance(backend, BackendBase):
-        return backend  # backend already initialized
+        # backend already initialized -> optionally update the configuration
+        if config:
+            msg = "Configuration can only be set for new backend."
+            raise RuntimeError(msg)
+        return backend
+
     if isinstance(backend, str):
-        return backend_registry.get_backend(backend)  # backend given by name
+        # create a new backend given by name
+        return backend_registry.get_backend(backend, config=config)
+
     raise TypeError
 
 
 def registered_backends() -> list[str]:
     """Returns all registered backends."""
-    return sorted(
-        set(backend_registry._packages)
-        | set(backend_registry._classes)
-        | set(backend_registry._backends)
-    )
+    return list(backend_registry)
