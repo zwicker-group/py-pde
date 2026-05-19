@@ -11,7 +11,7 @@ This package provides classes and methods for solving partial differential equat
 - **Storage**: Methods for storing simulation data
 - **Visualization**: Functions for visualizing fields and creating movies
 
-For detailed documentation, see the submodules.
+See the submodules for detailed documentation.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -34,8 +34,6 @@ except ImportError:
 # initialize the configuration before doing anything else
 from .tools.config import Parameter, config, environment  # noqa
 
-import contextlib
-
 # import most common classes into main name space
 from .backends import *  # noqa: F403
 from .fields import *  # noqa: F403
@@ -47,7 +45,7 @@ from .trackers import *  # noqa: F403
 from .visualization import *  # noqa: F403
 
 # try registering the hooks that allow py-modelrunner to store fields from py-pde
-with contextlib.suppress(ImportError):
-    from .tools.modelrunner import *  # noqa: F403
+from .tools.modelrunner import register_modelrunner_hooks
 
-del contextlib  # clean name space
+register_modelrunner_hooks()
+del register_modelrunner_hooks  # clean name space
