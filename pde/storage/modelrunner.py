@@ -7,12 +7,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import modelrunner as mr
 from typing_extensions import Self
 
 from .base import InfoDict, StorageBase, WriteModeType
 
 if TYPE_CHECKING:
+    import modelrunner as mr
+
     from ..fields.base import FieldBase
     from ..tools.typing import NumericArray
 
@@ -59,6 +60,7 @@ class ModelrunnerStorage(StorageBase):
                 (data is cleared for the first writing, but appended subsequently).
                 Alternatively, specifying 'readonly' will disable writing completely.
         """
+
         super().__init__(info=info, write_mode=write_mode)
         self.storage = storage
         self.loc = loc
@@ -87,6 +89,8 @@ class ModelrunnerStorage(StorageBase):
         if self._writer is not None:
             return self._writer
         if self._reader is None:
+            import modelrunner as mr
+
             self._reader = mr.storage.Trajectory(self.storage, loc=self.loc)
         return self._reader
 
@@ -122,6 +126,8 @@ class ModelrunnerStorage(StorageBase):
             info (dict):
                 Supplies extra information that is stored in the storage
         """
+        import modelrunner as mr
+
         if self._writer:
             msg = f"{self.__class__.__name__} is already in writing mode"
             raise RuntimeError(msg)
