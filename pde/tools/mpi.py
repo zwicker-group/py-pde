@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
-# Initialize assuming that we run serial code if `numba_mpi` is not available
+# Initialize assuming that we run serial code if `mpi4py` is not available
 initialized: bool = False
 """bool: Flag determining whether mpi was initialized (and is available)"""
 
@@ -79,12 +79,11 @@ MPIOperator = _OperatorRegistry()
 try:
     from mpi4py import MPI
 except ImportError:
-    # package `numba_mpi` could not be loaded
     if int(os.environ.get("PMI_SIZE", "1")) > 1:
         # environment variable indicates that we are in a parallel program
         sys.exit(
-            "WARNING: Detected multiprocessing run, but could not import python "
-            "package `numba_mpi`"
+            "ERROR: Detected multiprocessing run, but could not import python "
+            "package `mpi4py`"
         )
 else:
     initialized = MPI.Is_initialized()
@@ -145,7 +144,7 @@ def mpi_allreduce(data, operator: int | str):
             Data being send from this node to all others
         operator:
             The operator used to combine all data. Possible options are summarized in
-            the IntEnum :class:`numba_mpi.Operator`.
+            :obj:`MPIOperator`.
 
     Returns:
         The accumulated data
