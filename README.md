@@ -27,6 +27,8 @@ transparently using numba for speed.
 Installation
 ------------
 
+### PyPI / pip
+
 `py-pde` is available on `pypi`, so you should be able to install it through `pip`:
 
 ```bash
@@ -34,13 +36,24 @@ pip install py-pde
 ```
 
 In order to have all features of the package available, you might want to 
-install the following optional packages:
+install the following optional packages manually (all or a subset of these):
 
 ```bash
-pip install h5py pandas mpi4py numba-mpi
+pip install h5py pandas mpi4py numba-mpi py-modelrunner napari ffmpeg-python
+```
+
+or using the `py-pde` package variants `mpi`, `io` and/or `interactive` (any combination):
+
+```bash
+pip install py-pde[mpi]
+pip install py-pde[io]
+pip install py-pde[interactive]
+pip install py-pde[mpi,io,interactive]
 ```
 
 Moreover, `ffmpeg` needs to be installed for creating movies.
+
+### conda
 
 As an alternative, you can install `py-pde` through [conda](https://docs.conda.io/en/latest/)
 using the [conda-forge](https://conda-forge.org/) channel:
@@ -49,7 +62,11 @@ using the [conda-forge](https://conda-forge.org/) channel:
 conda install -c conda-forge py-pde
 ```
 
-Installation with `conda` includes all dependencies of `py-pde`.
+Installation with `conda` includes the optional dependencies of `py-pde`.
+
+### Arch Linux package
+
+`py-pde` is also available as an [Arch package](https://aur.archlinux.org/packages/python-py-pde).
 
 Usage
 -----
