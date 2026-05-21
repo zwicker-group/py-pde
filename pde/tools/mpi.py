@@ -144,7 +144,7 @@ def mpi_allreduce(data, operator: int | str):
             Data being send from this node to all others
         operator:
             The operator used to combine all data. Possible options are summarized in
-            the IntEnum :class:`numba_mpi.Operator`.
+            :obj:`MPIOperator`.
 
     Returns:
         The accumulated data
