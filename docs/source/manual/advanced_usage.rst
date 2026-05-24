@@ -373,7 +373,7 @@ translated to code that does not use the full package:
 .. code-block:: python
 
     grid = UnitGrid([6, 8])
-    interpolate = grid.make_interpolator_compiled(bc="auto_periodic_neumann")
+    interpolate = grid.make_integrator(bc="auto_periodic_neumann")
 
     data = np.random.random((6, 8))
     value = interpolate(data, np.array([3.5, 7.9]))
@@ -607,9 +607,9 @@ Parameters can generally be set using a dictionary-like interface in either the 
 configuration :data:`~pde.config` or in backend-specific settings at
 :data:`~pde.backends.base.BackendBase.config`.
 To provide flexibility, the default backends (whose name is identical to the backend 
-package, e.g. `numba`) have a special behavior such that their configuration is linked
-with the global configuration. Consequently, the following commands all yield identical
-results:
+package, e.g. `numba`, `jax`, or `torch`) have a special behavior such that their
+configuration is linked with the global configuration. Consequently, the following
+commands all yield identical results:
 
 .. code-block:: python
 
