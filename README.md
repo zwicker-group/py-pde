@@ -14,12 +14,11 @@
 
 `py-pde` is a Python package for solving partial differential equations (PDEs). 
 The package provides classes for grids on which scalar and tensor fields can be
-defined. The associated differential operators are computed using a
-numba-compiled implementation of finite differences. This allows defining,
-inspecting, and solving typical PDEs that appear for instance in the study of
-dynamical systems in physics. The focus of the package lies on easy usage to
-explore the behavior of PDEs. However, core computations can be compiled
-transparently using numba for speed.
+defined. The associated differential operators are computed using finite differences,
+which allows defining, inspecting, and solving typical PDEs that appear for instance in
+the study of dynamical systems in physics. The focus of the package lies on easy usage
+to explore the behavior of PDEs. However, core computations can be compiled
+transparently using `numba`, `jax`, or `torch` for speed.
 
 [Try it online!](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
 

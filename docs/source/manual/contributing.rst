@@ -46,6 +46,8 @@ This operator would be registered with the grid by calling
 :code:`numba_backend.register_operator(CylindricalSymGrid, "operator", make_operator)`,
 where the arguments denote the grid class, the name of the operator, and the factory
 function, respectively.
+Similar options exist for the `jax` and the `torch` backend, but there can sometimes be
+subtle difference to comply with specific requirements of the backends.
 
 
 Data layout

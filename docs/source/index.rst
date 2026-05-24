@@ -27,6 +27,8 @@ To support this, `py-pde` evaluates PDEs using the methods of lines with a
 finite-difference approximation of the differential operators.
 Consequently, the mathematical operator :math:`\mathcal D` can be naturally
 translated to a function evaluating the evolution rate of the PDE.
+Moreover, core computations can be compiled transparently using `numba`, `jax`, or
+`torch` for speed.
 
 
 **Contents**

@@ -84,6 +84,8 @@ schemes. To enable those, simply specify this in the solver call:
 An initial time step can be supplied, but is not necessary.
 Additional factors influencing the performance of the package include the compiler used
 for :mod:`numpy`, :mod:`scipy`, and of course :mod:`numba`.
+Performance of compiled backends, such as `numba`, `jax`, or `torch`, can vary
+tremendously depending on problem size, the chosen device, and many other details.
 Moreover, the BLAS and LAPACK libraries might make a difference.
 The package has some basic support for multithreading, which can be accelerated
 using the `Threading Building Blocks` library.
