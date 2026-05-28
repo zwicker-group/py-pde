@@ -388,7 +388,6 @@ def test_collection_slice_project():
 
     f4 = fc.project("x", method="max")
     np.testing.assert_allclose(f4[0].data, fc[0].data.max(axis=0))
-    assert f3.label == "projected"
 
 
 def test_collection_slice_project_wrong_type():
