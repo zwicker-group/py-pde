@@ -287,8 +287,8 @@ class ScalarField(DataFieldBase):
                 The label of the returned field
 
         Returns:
-            :class:`~pde.fields.scalar.ScalarField`: The projected data in a scalar
-            field with a subgrid of the original grid.
+            :class:`~pde.fields.scalar.ScalarField`: The projected data is a scalar
+            field defined on a subgrid of the original grid.
         """
         if isinstance(axes, str):
             axes = [axes]
@@ -353,8 +353,8 @@ class ScalarField(DataFieldBase):
                 The label of the returned field
 
         Returns:
-            :class:`~pde.fields.scalar.ScalarField`: The sliced data in a scalar field
-            with a subgrid of the original grid.
+            :class:`~pde.fields.scalar.ScalarField`: The sliced data is a scalar field
+            defined on a subgrid of the original grid.
         """
         grid = self.grid
 
