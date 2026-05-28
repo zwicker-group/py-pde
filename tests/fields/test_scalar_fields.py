@@ -277,11 +277,11 @@ def test_to_scalar(rng):
 
 
 @pytest.mark.parametrize("grid", (grid for grid in iter_grids() if grid.num_axes > 1))
-@pytest.mark.parametrize("method", ["integral", "average"])
+@pytest.mark.parametrize("method", ["integral", "average", "max", "min"])
 def test_projection(grid, method, rng):
     """Test scalar projection."""
     sf = ScalarField.random_uniform(grid, rng=rng)
-    for ax in grid.axes:
+    for ax_i, ax in enumerate(grid.axes):
         sp = sf.project(ax, method=method)
         assert sp.grid.dim < grid.dim
         assert sp.grid.num_axes == grid.num_axes - 1
@@ -289,6 +289,12 @@ def test_projection(grid, method, rng):
             assert sp.integral == pytest.approx(sf.integral)
         elif method == "average":
             assert sp.average == pytest.approx(sf.average)
+        elif method == "max":
+            np.testing.assert_allclose(sp.data, np.max(sf.data, axis=ax_i))
+        elif method == "min":
+            np.testing.assert_allclose(sp.data, np.min(sf.data, axis=ax_i))
+        else:
+            raise NotImplementedError
 
     with pytest.raises(ValueError):
         sf.project(grid.axes[0], method="nonsense")
