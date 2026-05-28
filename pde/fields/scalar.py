@@ -286,12 +286,9 @@ class ScalarField(DataFieldBase):
                 The projection method. Supported values are:
 
                 * ``"integral"``: Integrate over the removed axes.
-                * ``"average"`` or ``"mean"``: Return the average over the removed
-                    axes.
-                * ``"maximum"`` or ``"max"``: Return the maximum over the removed
-                    axes.
-                * ``"minimum"`` or ``"min"``: Return the minimum over the removed
-                    axes.
+                * ``"average"`` or ``"mean"``: Return the average over the removed axes.
+                * ``"maximum"`` or ``"max"``: Return the maximum over the removed axes.
+                * ``"minimum"`` or ``"min"``: Return the minimum over the removed axes.
             label (str, optional):
                 The label of the returned field
 
