@@ -740,7 +740,8 @@ class FieldCollection(FieldBase):
             label (str, optional):
                 Name of the returned collection. If omitted, the current label is used.
             **kwargs:
-                Additional arguments forwarded to the projection method (e.g., method).
+                Additional arguments forwarded to the projection method. In particular,
+                this allows selecting a projection method.
 
         Returns:
             :class:`~pde.fields.collection.FieldCollection`:

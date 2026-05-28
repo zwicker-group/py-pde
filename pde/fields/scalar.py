@@ -270,7 +270,9 @@ class ScalarField(DataFieldBase):
         self,
         axes: str | Sequence[str],
         *,
-        method: Literal["integral", "average", "mean"] = "integral",
+        method: Literal[
+            "integral", "average", "mean", "maximum", "max", "minimum", "min"
+        ] = "integral",
         label: str | None = None,
     ) -> ScalarField:
         """Project scalar field along given axes.
@@ -281,8 +283,12 @@ class ScalarField(DataFieldBase):
                 valid names for a given grid are the ones in the :attr:`GridBase.axes`
                 attribute.
             method (str):
-                The projection method. This can be either 'integral' to integrate over
-                the removed axes or 'average' to perform an average instead.
+                The projection method. Supported values are:
+
+                * ``"integral"``: Integrate over the removed axes.
+                * ``"average"`` or ``"mean"``: Return the average over the removed axes.
+                * ``"maximum"`` or ``"max"``: Return the maximum over the removed axes.
+                * ``"minimum"`` or ``"min"``: Return the minimum over the removed axes.
             label (str, optional):
                 The label of the returned field
 
@@ -311,10 +317,16 @@ class ScalarField(DataFieldBase):
         if method == "integral":
             subdata = self.grid.integrate(self.data, axes=ax_remove)
 
-        elif method == "average" or method == "mean":
+        elif method in {"average", "mean"}:
             integrals = self.grid.integrate(self.data, axes=ax_remove)
             volumes = self.grid.integrate(1, axes=ax_remove)
             subdata = integrals / volumes
+
+        elif method in {"maximum", "max"}:
+            subdata = np.max(self.data, axis=ax_remove)
+
+        elif method in {"minimum", "min"}:
+            subdata = np.min(self.data, axis=ax_remove)
 
         else:
             msg = f"Unknown projection method `{method}`"
