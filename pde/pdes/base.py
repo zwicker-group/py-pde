@@ -158,7 +158,7 @@ class PDEBase(metaclass=ABCMeta):
         return NOISE_INTERPRETATIONS[interpretation]
 
     def make_post_step_hook(
-        self, state: FieldBase, backend: str | BackendBase = "numpy"
+        self, state: FieldBase, backend: str | BackendBase[TNativeArray] = "numpy"
     ) -> tuple[StepperHook, Any]:
         """Returns a function that is called after each step.
 

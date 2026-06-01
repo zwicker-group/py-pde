@@ -46,6 +46,7 @@ if TYPE_CHECKING:
         NumericArray,
         OperatorImplType,
         OperatorType,
+        TNativeArray,
     )
     from ._mesh import GridMesh
     from .boundaries.axes import BoundariesBase, BoundariesData
@@ -1199,7 +1200,7 @@ class GridBase(metaclass=ABCMeta):
         operator: str | OperatorInfo,
         bc: BoundariesData,
         *,
-        backend: str | BackendBase = "default",
+        backend: str | BackendBase[TNativeArray] = "default",
         dtype: DTypeLike | None = None,
         **kwargs,
     ) -> OperatorType:
