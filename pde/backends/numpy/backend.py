@@ -252,7 +252,7 @@ class NumpyBackend(BackendBase[NumericArray]):
             # return valid part of the output
             return out
 
-        return apply_operator  # type: ignore
+        return apply_operator
 
     def make_integrator(  # type: ignore
         self, grid: GridBase

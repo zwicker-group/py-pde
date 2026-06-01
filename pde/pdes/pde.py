@@ -133,7 +133,7 @@ class PDE(SDEBase):
                 A dictionary with user defined constants that can be used in the
                 expression. These can be either scalar numbers or fields defined on the
                 same grid as the actual simulation.
-            noise (float or :class:`~numpy.ndarray`):
+            noise (float, :class:`~numpy.ndarray`, or dict):
                 Variance of additive Gaussian white noise. The default value of zero
                 implies deterministic partial differential equations will be solved.
                 Different noise magnitudes can be supplied for each field in coupled
@@ -669,7 +669,7 @@ class PDE(SDEBase):
         return result
 
     def make_post_step_hook(
-        self, state: FieldBase, backend: str | BackendBase = "numpy"
+        self, state: FieldBase, backend: str | BackendBase[TNativeArray] = "numpy"
     ) -> tuple[StepperHook, Any]:
         """Returns a function that is called after each step.
 

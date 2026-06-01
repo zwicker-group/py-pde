@@ -600,7 +600,7 @@ class JaxBackend(BackendBase[jax.Array]):
             # apply operator
             return operator_raw(arr_full)  # type: ignore
 
-        return apply_op_jax  # type: ignore
+        return apply_op_jax
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True

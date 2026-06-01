@@ -550,7 +550,7 @@ class NumbaBackend(NumpyBackend):
             return apply_op(arr, out, args)
 
         # return the compiled versions of the operator
-        return apply_op_compiled  # type: ignore
+        return apply_op_compiled
 
     def _make_local_integrator(
         self, grid: GridBase

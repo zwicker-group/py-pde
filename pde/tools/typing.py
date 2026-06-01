@@ -19,7 +19,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Generic, NamedTuple, Protocol, TypeVar, Union
 
 import numpy as np
 from numpy.typing import ArrayLike  # noqa: F401
@@ -84,7 +84,7 @@ class OperatorFactory(Protocol):
         """
 
 
-class OperatorType(Protocol):
+class OperatorType(Protocol, Generic[TNativeArray]):
     """An operator that acts on an array."""
 
     def __call__(
@@ -145,7 +145,7 @@ class DataSetter(Protocol):
         """
 
 
-class PostStepHook(Protocol):
+class PostStepHook(Protocol, Generic[TNativeArray]):
     def __call__(self, state_data: TNativeArray, t: float) -> TNativeArray:
         """Function analyzing and potentially modifying the current state.
 
@@ -158,7 +158,7 @@ class PostStepHook(Protocol):
         """
 
 
-class StepperHook(Protocol):
+class StepperHook(Protocol, Generic[TNativeArray]):
     def __call__(
         self, state_data: TNativeArray, t: float, post_step_data: Any
     ) -> tuple[TNativeArray, Any]:
