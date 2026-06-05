@@ -720,3 +720,13 @@ def test_mpi_bc():
     assert isinstance(bc.get_mathematical_representation(), str)
     assert bc == _MPIBC(mesh, axis=0, upper=True, node_id=0)
     assert bc != _MPIBC(mesh, axis=0, upper=True, node_id=1)
+
+
+def test_setting_array_boundaries():
+    """Try the general interface of setting boundary conditions"""
+    field = ScalarField(UnitGrid([8, 8]))
+    field.set_ghost_cells(
+        {"x+": {"value": 0}, "x-": {"value": np.arange(8)}, "y": "derivative"}
+    )
+    bc_data = field.get_boundary_values(0, False, bc=None)
+    np.testing.assert_allclose(bc_data, np.arange(8))

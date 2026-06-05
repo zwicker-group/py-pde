@@ -412,8 +412,19 @@ def get_boundary_axis(
     # covers the special case where `data == ("periodic", "periodic")` and similar
     # constructs. These are converted to `data == "periodic"`, so the next check can
     # catch them properly.
-    if isinstance(data, collections.abc.Sequence) and data[0] == data[1]:
-        data = data[0]
+    try:
+        if (
+            isinstance(data, collections.abc.Sequence)
+            and len(data) == 2
+            and data[0] == data[1]
+        ):
+            data = data[0]
+    except ValueError:
+        # This case can happen when `data` contains arrays, which often raise an error
+        # in the comparison data[0] == data[1] since numpy performs element-wise.
+        # However, we do not need to catch this here, since such complex boundary
+        # conditions are handled below.
+        pass
 
     # handle special case describing potentially periodic boundary conditions
     if isinstance(data, str) and data.startswith("auto_periodic_"):
