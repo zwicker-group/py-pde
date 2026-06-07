@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
     from ..backends.base import BackendBase
     from ..pdes.base import PDEBase
-    from ..tools.typing import NumericArray, TField
+    from ..tools.typing import NumericArray, TState
 
 
 class ImplicitSolver(SolverBase):
@@ -48,12 +48,12 @@ class ImplicitSolver(SolverBase):
         self.maxerror = maxerror
 
     def _make_single_step_fixed_dt_deterministic(
-        self, state: TField, dt: float
+        self, state: TState, dt: float
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function doing a deterministic step with an implicit Euler scheme.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
@@ -66,7 +66,7 @@ class ImplicitSolver(SolverBase):
         self.info["function_evaluations"] = 0
         self.info["stochastic"] = False
 
-        rhs = self.backend.make_pde_rhs(self.pde, state)
+        rhs = self.backend.make_pde_rhs(self.pde, state)  # type: ignore
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
 
@@ -111,12 +111,12 @@ class ImplicitSolver(SolverBase):
         return implicit_step
 
     def _make_single_step_fixed_dt_stochastic(
-        self, state: TField, dt: float
+        self, state: TState, dt: float
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function doing a step for a SDE with an implicit Euler scheme.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
@@ -130,18 +130,18 @@ class ImplicitSolver(SolverBase):
         self.info["stochastic"] = True
 
         # get the function that calculates the noise
-        rhs = self.backend.make_pde_rhs(self.pde, state)
+        rhs = self.backend.make_pde_rhs(self.pde, state)  # type: ignore
         if use_noise_variance := self.pde.use_noise_variance:
             noise_var = self.pde.make_noise_variance(  # type: ignore
                 state, backend=self.backend, ret_diff=False
             )
-            gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)
+            gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)  # type: ignore
         else:
             noise_var = _DUMMY_FUNCTION_2ARGS
             gaussian_noise = self.backend.compile_function(_DUMMY_FUNCTION)
         noise_var = self.backend.compile_function(noise_var)
         # noise variance scales with inverse cell volumes
-        inv_cell = 1 / state.grid.cell_volumes
+        inv_cell = 1 / state.grid.cell_volumes  # type: ignore
 
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
@@ -195,12 +195,12 @@ class ImplicitSolver(SolverBase):
         return implicit_step
 
     def _make_single_step_fixed_dt(
-        self, state: TField, dt: float
+        self, state: TState, dt: float
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function doing a single step with an implicit Euler scheme.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):

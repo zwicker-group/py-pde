@@ -10,8 +10,8 @@ various backends, such as numba, jax, and torch.
 - Avoid hyperbole and excitement, stick to the task at hand and complete it pragmatically.
 
 ## Coding Standards
-
 - All public methods and functions must have a docstring documenting their arguments.
-- The first line of docstrings summarizes the main function.
+- The first line of a docstring summarizes the main function.
 - Type overloaded methods should not carry a docstring.
 - Commit message should have one summary line on top. They should list relevant changes using bullet points below.
+- Avoid calls to `typing.cast`. Instead, some typing errors are acceptable.

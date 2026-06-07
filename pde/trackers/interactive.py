@@ -138,11 +138,13 @@ def napari_process(
 class NapariViewer:
     """Allows viewing and updating data in a separate napari process."""
 
-    def __init__(self, state: FieldBase, t_initial: float | None = None):
+    def __init__(self, field: FieldBase, t_initial: float | None = None):
         """
         Args:
-            state (:class:`pde.fields.base.FieldBase`): The initial state to be shown
-            t_initial (float): The initial time. If `None`, no time will be shown.
+            field (:class:`pde.fields.base.FieldBase`):
+                The initial state to be shown
+            t_initial (float):
+                The initial time. If `None`, no time will be shown.
         """
         self._logger = logging.getLogger(__name__)
 
@@ -154,10 +156,10 @@ class NapariViewer:
 
         # create process that runs napari
         self.data_channel = context.Queue()
-        initial_data = state._get_napari_data()
+        initial_data = field._get_napari_data()
         viewer_args = {
-            "axis_labels": state.grid.axes,
-            "ndisplay": 3 if state.grid.dim >= 3 else 2,
+            "axis_labels": field.grid.axes,
+            "ndisplay": 3 if field.grid.dim >= 3 else 2,
         }
         args = (self.data_channel, initial_data, t_initial, viewer_args)
 
@@ -183,16 +185,18 @@ class NapariViewer:
             print()
             self._logger.exception("Could not launch napari process")
 
-    def update(self, state: FieldBase, t: float):
+    def update(self, field: FieldBase, t: float):
         """Update the state in the napari viewer.
 
         Args:
-            state (:class:`pde.fields.base.FieldBase`): The new state
-            t (float): Current time
+            field (:class:`pde.fields.base.FieldBase`):
+                The new state
+            t (float):
+                Current time
         """
         if self.proc.is_alive():
             try:
-                data = (state._get_napari_data(), t)
+                data = (field._get_napari_data(), t)
                 self.data_channel.put(("update", data), block=False)
             except queue.Full:
                 pass  # could not write data
@@ -269,11 +273,11 @@ class InteractivePlotTracker(TrackerBase):
         self.close = close
         self.show_time = show_time
 
-    def initialize(self, state: FieldBase, info: InfoDict | None = None) -> float:
+    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:  # type: ignore
         """Initialize the tracker with information about the simulation.
 
         Args:
-            state (:class:`~pde.fields.FieldBase`):
+            field (:class:`~pde.fields.FieldBase`):
                 An example of the data that will be analyzed by the tracker
             info (dict):
                 Extra information from the simulation
@@ -286,19 +290,19 @@ class InteractivePlotTracker(TrackerBase):
         else:
             t_initial = None
 
-        self._viewer = NapariViewer(state, t_initial=t_initial)
-        return super().initialize(state, info=info)
+        self._viewer = NapariViewer(field, t_initial=t_initial)
+        return super().initialize(field, info=info)
 
-    def handle(self, state: FieldBase, t: float) -> None:
+    def handle(self, field: FieldBase, t: float) -> None:  # type: ignore
         """Handle data supplied to this tracker.
 
         Args:
-            state (:class:`~pde.fields.FieldBase`):
+            field (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
             t (float):
                 The associated time
         """
-        self._viewer.update(state, t)
+        self._viewer.update(field, t)
 
     def finalize(self, info: InfoDict | None = None) -> None:
         """Finalize the tracker, supplying additional information.

@@ -601,7 +601,7 @@ class StorageTracker(TransformedTrackerBase):
         super().__init__(interrupts=interrupts, transformation=transformation)
         self.storage = storage
 
-    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
+    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:  # type: ignore
         """
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -616,13 +616,14 @@ class StorageTracker(TransformedTrackerBase):
         self.storage.start_writing(self._transform(field, t_first), info)
         return t_first
 
-    def handle(self, field: FieldBase, t: float) -> None:
+    def handle(self, field: FieldBase, t: float) -> None:  # type: ignore
         """Handle data supplied to this tracker.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
-            t (float): The associated time
+            t (float):
+                The associated time
         """
         self.storage.append(self._transform(field, t), time=t)
 

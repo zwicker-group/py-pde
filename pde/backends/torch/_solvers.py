@@ -146,7 +146,7 @@ class EulerStepper(TorchStepper):
         """Basic implementation of Euler scheme."""
         # we need to wrap time in a tensor to prevent re-compilation of RHS
         t_device = torch.tensor(t, device=state_data.device)
-        return state_data + dt * self.rhs(state_data, t_device)
+        return state_data + dt * self.rhs(state_data, t_device)  # type: ignore
 
 
 class EulerMaruyamaStepper(EulerStepper):
@@ -175,7 +175,7 @@ class EulerMaruyamaStepper(EulerStepper):
         t_device = torch.tensor(t, device=state_data.device)
 
         # evaluate deterministic part and variance without modifying field, yet
-        evolution_rate = self.rhs(state_data, t_device)
+        evolution_rate = self.rhs(state_data, t_device)  # type: ignore
         if self.has_noise_drift_term:
             noise_var, noise_var_diff = self.noise_var(state_data, t_device)
         else:
@@ -219,7 +219,7 @@ class EulerMilsteinStepper(EulerStepper):
         t_device = torch.tensor(t, device=state_data.device)
 
         # evaluate deterministic part and variance without modifying field, yet
-        evolution_rate = self.rhs(state_data, t_device)
+        evolution_rate = self.rhs(state_data, t_device)  # type: ignore
         noise_var, noise_var_diff = self.noise_var(state_data, t_device)
 
         # change the state
@@ -696,7 +696,7 @@ def _make_adaptive_stepper_general(
     if isinstance(solver, EulerSolver):
         # define an optimized integrator for the Euler single-step module
         inner_solver: TorchAdaptiveSolverBase = TorchAdaptiveEulerSolver(
-            rhs,
+            rhs,  # type: ignore
             dt_init=float(solver.info["dt"]),
             post_step_hook=post_step_hook,
             post_step_data=solver.info["post_step_data"],

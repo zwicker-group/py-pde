@@ -647,8 +647,21 @@ class BackendBase(Generic[TNativeArray]):
         Returns:
             Function returning deterministic part of the right hand side of the PDE
         """
-        msg = f"PDE right hand side not defined for backend {self.name}"
-        raise NotImplementedError(msg)
+        try:
+            make_rhs = eq.make_evolution_rate
+        except AttributeError as err:
+            msg = (
+                "The right-hand side of the PDE is not implemented using the "
+                f"`{self.name}` backend. To add the implementation, provide the "
+                "method `make_evolution_rate`, which should return a compilable "
+                "function calculating the evolution rate."
+            )
+            raise NotImplementedError(msg) from err
+        else:
+            rhs_native = make_rhs(state, backend=self)
+
+        # get the compiled right hand side
+        return self.compile_function(rhs_native)
 
     def make_expression_function(
         self,

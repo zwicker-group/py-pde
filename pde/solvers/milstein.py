@@ -20,10 +20,9 @@ from .euler import _DUMMY_FUNCTION_2ARGS, EulerSolver
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from pde.tools.typing import NumericArray, TField
-
     from ..backends.base import BackendBase
     from ..pdes.base import PDEBase
+    from ..tools.typing import NumericArray, TState
 
 
 class MilsteinSolver(EulerSolver):
@@ -56,7 +55,7 @@ class MilsteinSolver(EulerSolver):
             raise RuntimeError(msg)
 
     def _make_single_step_fixed_dt_stochastic(
-        self, state: TField, dt: float
+        self, state: TState, dt: float
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Make a Euler-Milstein single-step update with fixed time step.
 
@@ -66,7 +65,7 @@ class MilsteinSolver(EulerSolver):
             down calculations.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
@@ -77,7 +76,7 @@ class MilsteinSolver(EulerSolver):
             signature is `(state_data: numpy.ndarray, t: float)`.
         """
         # create deterministic part
-        rhs_pde = self.backend.make_pde_rhs(self.pde, state)
+        rhs_pde = self.backend.make_pde_rhs(self.pde, state)  # type: ignore
 
         # handle with first noise interface based on supplying the noise variance
         assert self.pde.use_noise_variance
@@ -86,7 +85,7 @@ class MilsteinSolver(EulerSolver):
             state, backend=self.backend, ret_diff=True
         )
         noise_var = self.backend.compile_function(fn)
-        gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)
+        gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)  # type: ignore
 
         # handle with second noise interface based on supplying a realization
         if use_noise_realization := self.pde.use_noise_realization:
@@ -98,7 +97,7 @@ class MilsteinSolver(EulerSolver):
         # noise increment scales with square root of time step
         dt_sqrt = np.sqrt(dt)
         # noise variance scales with inverse cell volumes
-        inv_cell = 1 / state.grid.cell_volumes
+        inv_cell = 1 / state.grid.cell_volumes  # type: ignore
 
         def single_step(state_data: NumericArray, t: float) -> NumericArray:
             """Perform a single Euler-Milstein step."""

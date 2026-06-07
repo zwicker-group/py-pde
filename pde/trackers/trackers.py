@@ -53,7 +53,7 @@ if TYPE_CHECKING:
     import pandas  # noqa: ICN001
 
     from ..fields.base import FieldBase
-    from ..tools.typing import NumericArray, Real
+    from ..tools.typing import NumericArray, Real, TState
     from ..visualization.movies import Movie
 
 
@@ -84,7 +84,7 @@ class CallbackTracker(TrackerBase):
             func:
                 The function to call periodically. The function signature should be
                 `(state)` or `(state, time)`, where `state` contains the current state
-                as an instance of :class:`~pde.fields.base.FieldBase` and `time` is a
+                as an instance of :class:`~pde.fields.state.StateBase` and `time` is a
                 float value indicating the current time. Note that only a view of the
                 state is supplied, implying that a copy needs to be made if the data
                 should be stored. The function can thus adjust the state by modifying it
@@ -103,19 +103,19 @@ class CallbackTracker(TrackerBase):
             )
             raise ValueError(msg)
 
-    def handle(self, field: FieldBase, t: float) -> None:
+    def handle(self, state: TState, t: float) -> None:
         """Handle data supplied to this tracker.
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 The current state of the simulation
             t (float):
                 The associated time
         """
         if self._num_args == 1:
-            self._callback(field)
+            self._callback(state)
         else:
-            self._callback(field, t)
+            self._callback(state, t)
 
 
 class ProgressTracker(TrackerBase):
@@ -156,11 +156,11 @@ class ProgressTracker(TrackerBase):
         self.ndigits = ndigits
         self.leave = leave
 
-    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
+    def initialize(self, state: TState, info: InfoDict | None = None) -> float:
         """Initialize the tracker with information about the simulation.
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example of the data that will be analyzed by the tracker
             info (dict):
                 Extra information from the simulation
@@ -168,7 +168,7 @@ class ProgressTracker(TrackerBase):
         Returns:
             float: The first time the tracker needs to handle data
         """
-        result = super().initialize(field, info)
+        result = super().initialize(state, info)
 
         # get solver information
         controller_info = {} if info is None else info.get("controller", {})
@@ -184,11 +184,11 @@ class ProgressTracker(TrackerBase):
 
         return result
 
-    def handle(self, field: FieldBase, t: float) -> None:
+    def handle(self, state: TState, t: float) -> None:
         """Handle data supplied to this tracker.
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 The current state of the simulation
             t (float):
                 The associated time
@@ -260,16 +260,16 @@ class PrintTracker(TrackerBase):
         super().__init__(interrupts=interrupts)
         self.stream = stream
 
-    def handle(self, field: FieldBase, t: float) -> None:
+    def handle(self, state: TState, t: float) -> None:
         """Handle data supplied to this tracker.
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 The current state of the simulation
             t (float):
                 The associated time
         """
-        data = f"c={field.data.mean():.3g}±{field.data.std():.3g}"
+        data = f"c={state.data.mean():.3g}±{state.data.std():.3g}"
 
         self.stream.write(f"t={t:g}, {data}\n")
         self.stream.flush()
@@ -407,7 +407,7 @@ class PlotTracker(TransformedTrackerBase):
         else:
             self.show = show
 
-    def initialize(self, state: FieldBase, info: InfoDict | None = None) -> float:
+    def initialize(self, state: FieldBase, info: InfoDict | None = None) -> float:  # type: ignore[override]
         """Initialize the tracker with information about the simulation.
 
         Args:
@@ -465,7 +465,7 @@ class PlotTracker(TransformedTrackerBase):
         self._last_update = time.monotonic()
         return super().initialize(state, info=info)
 
-    def handle(self, state: FieldBase, t: float) -> None:
+    def handle(self, state: FieldBase, t: float) -> None:  # type: ignore
         """Handle data supplied to this tracker.
 
         Args:
@@ -649,7 +649,7 @@ class DataTracker(CallbackTracker):
                 The function to call periodically. The function signature
                 should be `(state)` or `(state, time)`, where `state` contains
                 the current state as an instance of
-                :class:`~pde.fields.FieldBase` and `time` is a
+                :class:`~pde.fields.state.StateBase` and `time` is a
                 float value indicating the current time. Note that only a view
                 of the state is supplied, implying that a copy needs to be made
                 if the data should be stored.
@@ -670,20 +670,20 @@ class DataTracker(CallbackTracker):
         self.times: list[float] = []
         self.data: list[Any] = []
 
-    def handle(self, field: FieldBase, t: float) -> None:
+    def handle(self, state: TState, t: float) -> None:
         """Handle data supplied to this tracker.
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 The current state of the simulation
             t (float):
                 The associated time
         """
         self.times.append(t)
         if self._num_args == 1:
-            self.data.append(self._callback(field))
+            self.data.append(self._callback(state))
         else:
-            self.data.append(self._callback(field, t))
+            self.data.append(self._callback(state, t))
 
     def finalize(self, info: InfoDict | None = None) -> None:
         """Finalize the tracker, supplying additional information.
@@ -807,40 +807,40 @@ class SteadyStateTracker(TrackerBase):
         self._last_time: float | None = None
         self._best_rate_max: float | None = None
 
-    def handle(self, field: FieldBase, t: float) -> None:
+    def handle(self, state: TState, t: float) -> None:
         """Handle data supplied to this tracker.
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 The current state of the simulation
             t (float):
                 The associated time
         """
-        finite = np.isfinite(field.data)  # ignore infinite and nan data
+        finite = np.isfinite(state.data)  # ignore infinite and nan data
 
         # determine the maximal rate of change
         if self.evolution_rate is not None:
             # use the evolution_rate function to calculate the rate
-            evolution_rate = self.evolution_rate(field.data, t)[finite]
+            evolution_rate = self.evolution_rate(state.data, t)[finite]
 
         elif self._last_data is not None:
             # get evolution rate from the difference of current state to previous one
-            diff = self._last_data[finite] - field.data[finite]
+            diff = self._last_data[finite] - state.data[finite]
             evolution_rate = diff / (t - self._last_time)  # type: ignore
 
             # save current data for next comparison
-            self._last_data[:] = field.data
+            self._last_data[:] = state.data
             self._last_time = t
 
         else:
             # create storage for the data
-            self._last_data = field.data.copy()
+            self._last_data = state.data.copy()
             self._last_time = t
             return  # do not output anything since we don't know `evolution_rate` yet
 
         # calculate the maximal deviation of the evolution rate from zero, subtracting
         # the relative tolerance with respect to the field values
-        rate_abs = np.abs(evolution_rate) - self.rtol * np.abs(field.data[finite])
+        rate_abs = np.abs(evolution_rate) - self.rtol * np.abs(state.data[finite])
         rate_abs_max: float = np.max(rate_abs)
 
         # check wether the simulation has converged
@@ -893,14 +893,14 @@ class WalltimeTracker(TrackerBase):
         self.start_time = time.monotonic()
         self.data: list[tuple[float, float]] = []
 
-    def initialize(self, field, info):
-        return super().initialize(field, info)
+    def initialize(self, state: TState, info: InfoDict | None = None):
+        return super().initialize(state, info)
 
-    def handle(self, field, t) -> None:
+    def handle(self, state: TState, t: float) -> None:
         """Handle data supplied to this tracker.
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 The current state of the simulation
             t (float):
                 The associated time
@@ -931,10 +931,10 @@ class MaxRuntimeTracker(TrackerBase):
             td = parse_duration(str(max_runtime))
             self.max_runtime = td.total_seconds()
 
-    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
+    def initialize(self, state: TState, info: InfoDict | None = None) -> float:
         """
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example of the data that will be analyzed by the tracker
             info (dict):
                 Extra information from the simulation
@@ -943,13 +943,13 @@ class MaxRuntimeTracker(TrackerBase):
             float: The first time the tracker needs to handle data
         """
         self.max_time = time.monotonic() + self.max_runtime
-        return super().initialize(field, info)
+        return super().initialize(state, info)
 
-    def handle(self, field: FieldBase, t: float) -> None:
+    def handle(self, state: TState, t: float) -> None:
         """Handle data supplied to this tracker.
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 The current state of the simulation
             t (float):
                 The associated time
@@ -989,16 +989,16 @@ class ConsistencyTracker(TrackerBase):
             interrupts = RealtimeInterrupts(duration=1)
         super().__init__(interrupts=interrupts)
 
-    def handle(self, field: FieldBase, t: float) -> None:
+    def handle(self, state: TState, t: float) -> None:
         """Handle data supplied to this tracker.
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 The current state of the simulation
             t (float):
                 The associated time
         """
-        if not np.all(np.isfinite(field.data)):
+        if not np.all(np.isfinite(state.data)):
             msg = "Field was not finite"
             raise StopIteration(msg)
 
@@ -1025,7 +1025,7 @@ class MaterialConservationTracker(TrackerBase):
         self.atol = atol
         self.rtol = rtol
 
-    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
+    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:  # type: ignore
         """
         Args:
             field (:class:`~pde.fields.base.FieldBase`):
@@ -1043,7 +1043,7 @@ class MaterialConservationTracker(TrackerBase):
 
         return super().initialize(field, info)
 
-    def handle(self, field: FieldBase, t: float) -> None:
+    def handle(self, field: FieldBase, t: float) -> None:  # type: ignore
         """Handle data supplied to this tracker.
 
         Args:

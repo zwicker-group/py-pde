@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
     from ..backends.base import BackendBase
     from ..pdes.base import PDEBase
-    from ..tools.typing import NumericArray, TField
+    from ..tools.typing import NumericArray, TState
 
 
 class CrankNicolsonSolver(SolverBase):
@@ -52,12 +52,12 @@ class CrankNicolsonSolver(SolverBase):
         self.explicit_fraction = explicit_fraction
 
     def _make_single_step_fixed_dt(
-        self, state: TField, dt: float
+        self, state: TState, dt: float
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function doing a single step with an implicit Euler scheme.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
@@ -70,7 +70,7 @@ class CrankNicolsonSolver(SolverBase):
         self.info["function_evaluations"] = 0
         self.info["stochastic"] = False
 
-        rhs = self.backend.make_pde_rhs(self.pde, state)
+        rhs = self.backend.make_pde_rhs(self.pde, state)  # type: ignore
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
         α = self.explicit_fraction

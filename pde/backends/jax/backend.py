@@ -30,7 +30,6 @@ if TYPE_CHECKING:
     from ...grids import GridBase
     from ...grids.boundaries.axes import BoundariesBase
     from ...grids.boundaries.local import BCBase
-    from ...pdes import PDEBase
     from ...solvers import SolverBase
     from ...tools.config import ConfigLike
     from ...tools.expressions import ExpressionBase, TensorExpression
@@ -832,36 +831,6 @@ class JaxBackend(BackendBase[jax.Array]):
                 return _expression_array(args)
 
         return self.compile_function(expression_array)  # type: ignore
-
-    def make_pde_rhs(
-        self, eq: PDEBase, state: TField
-    ) -> Callable[[jax.Array, float], jax.Array]:
-        """Return a function for evaluating the right hand side of the PDE.
-
-        Args:
-            eq (:class:`~pde.pdes.base.PDEBase`):
-                The object describing the differential equation
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which information can be extracted
-
-        Returns:
-            Function returning deterministic part of the right hand side of the PDE.
-        """
-        try:
-            make_rhs = eq.make_evolution_rate
-        except AttributeError as err:
-            msg = (
-                "The right-hand side of the PDE is not implemented using the "
-                f"`{self.name}` backend. To add the implementation, provide the "
-                "method `make_evolution_rate`, which should return a compilable "
-                "function calculating the evolution rate."
-            )
-            raise NotImplementedError(msg) from err
-        else:
-            rhs_native = make_rhs(state, backend=self)
-
-        # get the compiled right hand side
-        return self.compile_function(rhs_native)
 
     def make_gaussian_noise(
         self, field: TField, *, rng: np.random.Generator

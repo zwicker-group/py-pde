@@ -14,7 +14,7 @@ from .base import SolverBase
 if TYPE_CHECKING:
     from ..backends.base import BackendBase
     from ..pdes.base import PDEBase
-    from ..tools.typing import NumericArray, StepperType, TField
+    from ..tools.typing import NumericArray, StepperType, TState
 
 
 class ScipySolverError(RuntimeError): ...
@@ -43,11 +43,11 @@ class ScipySolver(SolverBase):
         super().__init__(pde, backend=backend)
         self.solver_params = kwargs
 
-    def make_stepper(self, state: TField, dt: float | None = None) -> StepperType:
+    def make_stepper(self, state: TState, dt: float | None = None) -> StepperType:
         """Create the executable stepping function produced by this solver.
 
         Args:
-            state (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted.
             dt (float):
@@ -71,7 +71,7 @@ class ScipySolver(SolverBase):
 
         # obtain function for evaluating the right hand side
         self._select_backend(state)
-        rhs = self.backend.make_pde_rhs(self.pde, state)
+        rhs = self.backend.make_pde_rhs(self.pde, state)  # type: ignore
 
         def rhs_helper(t: float, state_flat: NumericArray) -> NumericArray:
             """Helper function to provide the correct call convention."""
@@ -87,7 +87,7 @@ class ScipySolver(SolverBase):
                 raise RuntimeError(msg)
             return y  # type: ignore
 
-        def stepper(state: TField, t_start: float, t_end: float) -> float:
+        def stepper(state: TState, t_start: float, t_end: float) -> float:
             """Use scipy.integrate.odeint to advance `state` from `t_start` to
             `t_end`"""
             if dt is not None:

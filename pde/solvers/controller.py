@@ -21,7 +21,7 @@ from ..trackers.base import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ..tools.typing import TField
+    from ..tools.typing import TState
     from .base import SolverBase
 
 _logger = logging.getLogger(__name__)
@@ -143,7 +143,7 @@ class Controller:
 
         return _handle_stop_iteration
 
-    def _run_main_process(self, state: TField, dt: float | None = None) -> None:
+    def _run_main_process(self, state: TState, dt: float | None = None) -> None:
         """Run the main part of the simulation.
 
         This is either a serial run or the main node of an MPI run. Diagnostic
@@ -297,7 +297,7 @@ class Controller:
                 profiler["solver"],
             )
 
-    def _run_client_process(self, state: TField, dt: float | None = None) -> None:
+    def _run_client_process(self, state: TState, dt: float | None = None) -> None:
         """Run the simulation on client nodes during an MPI run.
 
         This function just calls the stepping function to advance the sub field of the
@@ -341,14 +341,14 @@ class Controller:
                 break  # this signals that we should abort the client
             t = stepper(state, t, t_next_action)
 
-    def _run_serial(self, state: TField, dt: float | None = None) -> TField | None:
+    def _run_serial(self, state: TState, dt: float | None = None) -> TState | None:
         """Run the simulation in serial mode.
 
         Diagnostic information about the solver are available in the
         :attr:`~Controller.diagnostics` property after this function has been called.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 The initial state of the simulation.
             dt (float):
                 Initial time step of the chosen stepping scheme. If `None`, a default
@@ -361,14 +361,14 @@ class Controller:
         self._run_main_process(state, dt)
         return state
 
-    def _run_parallel(self, state: TField, dt: float | None = None) -> TField | None:
+    def _run_parallel(self, state: TState, dt: float | None = None) -> TState | None:
         """Run the simulation in MPI mode.
 
         Diagnostic information about the solver are available in the
         :attr:`~Controller.diagnostics` property after this function has been called.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 The initial state of the simulation.
             dt (float):
                 Initial time step of the chosen stepping scheme. If `None`, a default
@@ -407,14 +407,14 @@ class Controller:
                 _logger.info("MPI client process finished")
                 return None  # do not return anything in client processes
 
-    def run(self, initial_state: TField, dt: float | None = None) -> TField | None:
+    def run(self, initial_state: TState, dt: float | None = None) -> TState | None:
         """Run the simulation.
 
         Diagnostic information about the solver are available in the
         :attr:`~Controller.diagnostics` property after this function has been called.
 
         Args:
-            initial_state (:class:`~pde.fields.base.FieldBase`):
+            initial_state (:class:`~pde.fields.state.StateBase`):
                 The initial state of the simulation. This state will be copied and thus
                 not modified by the simulation. Instead, the final state will be
                 returned and trackers can be used to record intermediate states.
@@ -429,7 +429,7 @@ class Controller:
         # copy the initial state to not modify the supplied one
         if getattr(self.solver, "pde", None) and self.solver.pde.complex_valued:
             _logger.info("Convert state to complex numbers")
-            state: TField = initial_state.copy(dtype=complex)
+            state: TState = initial_state.copy(dtype=complex)
         else:
             state = initial_state.copy()
 

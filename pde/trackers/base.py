@@ -20,9 +20,10 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Sequence
 from typing import Any, Union
 
-from ..fields.base import FieldBase
+from ..fields.state import StateBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
+from ..tools.typing import TState
 from .interrupts import InterruptData, parse_interrupt
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
@@ -87,11 +88,11 @@ class TrackerBase(metaclass=ABCMeta):
         msg = f"Unsupported tracker format: `{data}`."
         raise ValueError(msg)
 
-    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
+    def initialize(self, state: TState, info: InfoDict | None = None) -> float:
         """Initialize the tracker with information about the simulation.
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example of the data that will be analyzed by the tracker
             info (dict):
                 Extra information from the simulation
@@ -106,11 +107,11 @@ class TrackerBase(metaclass=ABCMeta):
         return self.interrupt.initialize(t_start)
 
     @abstractmethod
-    def handle(self, field: FieldBase, t: float) -> None:
+    def handle(self, state: TState, t: float) -> None:
         """Handle data supplied to this tracker.
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 The current state of the simulation
             t (float):
                 The associated time
@@ -125,7 +126,7 @@ class TrackerBase(metaclass=ABCMeta):
         """
 
 
-TransformationType = Callable[[FieldBase, float], FieldBase] | None
+TransformationType = Callable[[TState, float], TState] | None
 
 
 class TransformedTrackerBase(TrackerBase):
@@ -161,27 +162,27 @@ class TransformedTrackerBase(TrackerBase):
         self.transformation = transformation
         self._emitted_type_warning = False
 
-    def _transform(self, field: FieldBase, t: float) -> FieldBase:
+    def _transform(self, state: TState, t: float) -> TState:
         """Transforms the field according to the defined transformation."""
         if self.transformation is None:
             # no transformation specified -> just return field
-            return field
+            return state
 
         if self.transformation.__code__.co_argcount == 1:
             # transformation does not take time argument
-            transformed_field = self.transformation(field)  # type: ignore
+            result: Any = self.transformation(state)  # type: ignore
 
         else:
             # transformation takes field and time arguments
-            transformed_field = self.transformation(field, t)
+            result = self.transformation(state, t)
 
         # check whether transformed data is a proper field
-        if not (self._emitted_type_warning or isinstance(transformed_field, FieldBase)):
+        if not (self._emitted_type_warning or isinstance(result, StateBase)):
             warnings.warn(
                 "Applied `transformation` did not return a field.", stacklevel=2
             )
             self._emitted_type_warning = True
-        return transformed_field
+        return result  # type: ignore
 
 
 TrackerCollectionDataType = Sequence[TrackerDataType] | TrackerDataType | None
@@ -265,11 +266,11 @@ class TrackerCollection:
 
         return cls(trackers)
 
-    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
+    def initialize(self, state: TState, info: InfoDict | None = None) -> float:
         """Initialize the tracker with information about the simulation.
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example of the data that will be analyzed by the tracker
             info (dict):
                 Extra information from the simulation
@@ -279,7 +280,7 @@ class TrackerCollection:
         """
         # initialize trackers and get their action times
         self.tracker_action_times = [
-            tracker.initialize(field, info) for tracker in self.trackers
+            tracker.initialize(state, info) for tracker in self.trackers
         ]
 
         if self.trackers:
@@ -290,11 +291,11 @@ class TrackerCollection:
 
         return self.time_next_action
 
-    def handle(self, state: FieldBase, t: float, atol: float = 1.0e-8) -> float:
+    def handle(self, state: TState, t: float, atol: float = 1.0e-8) -> float:
         """Handle all trackers.
 
         Args:
-            state (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 The current state of the simulation
             t (float):
                 The associated time

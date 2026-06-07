@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from torch import Tensor
 
     from ..fields import DataFieldBase, FieldCollection
+    from ..fields.state import StateBase
     from ..grids.base import GridBase
 
 # types for single numbers:
@@ -44,6 +45,7 @@ FloatingArray = np.ndarray[Any, np.dtype[np.floating]]  # array of real numbers
 FloatOrArray = float | np.ndarray[Any, np.dtype[np.floating]]
 
 # generic array types that work for various fields or arrays
+TState = TypeVar("TState", bound="StateBase")
 TField = TypeVar("TField", "FieldCollection", "DataFieldBase")
 # the following generic array type also supports torch.Tensor and jax.Array
 NativeArray = Union[NumericArray, "Tensor", "Array"]
@@ -180,7 +182,7 @@ class StepperType(Protocol):
     Instances of this protocol are typically created by solver objects.
     """
 
-    def __call__(self, state: TField, t_start: float, t_end: float) -> float:
+    def __call__(self, state: TState, t_start: float, t_end: float) -> float:
         """Advance the state given as a field.
 
         Args:

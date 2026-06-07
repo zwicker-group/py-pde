@@ -18,7 +18,7 @@ from .euler import EulerSolver
 if TYPE_CHECKING:
     from ..backends.base import BackendBase
     from ..pdes.base import PDEBase
-    from ..tools.typing import StepperType, TField
+    from ..tools.typing import StepperType, TState
 
 
 class ExplicitMPISolver(EulerSolver):
@@ -130,11 +130,11 @@ class ExplicitMPISolver(EulerSolver):
         else:
             self.info["post_step_data_list"] = None
 
-    def make_stepper(self, state: TField, dt=None) -> StepperType:
+    def make_stepper(self, state: TState, dt: float | None = None) -> StepperType:
         """Create the executable stepping function produced by this solver.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
@@ -181,8 +181,8 @@ class ExplicitMPISolver(EulerSolver):
         self.info["use_mpi"] = True
 
         # decompose the state into multiple cells
-        self.mesh: GridMesh = GridMesh.from_grid(state.grid, self.decomposition)
-        sub_state = self.mesh.extract_subfield(state)
+        self.mesh: GridMesh = GridMesh.from_grid(state.grid, self.decomposition)  # type: ignore
+        sub_state = self.mesh.extract_subfield(state)  # type: ignore
         self.info["grid_decomposition"] = self.mesh.shape
 
         # create the inner stepping function
@@ -190,7 +190,7 @@ class ExplicitMPISolver(EulerSolver):
         inner_stepper = self._make_inner_stepper(sub_state)
         self._init_post_step_data()
 
-        def wrapped_stepper(state: TField, t_start: float, t_end: float) -> float:
+        def wrapped_stepper(state: TState, t_start: float, t_end: float) -> float:
             """Advance `state` from `t_start` to `t_end` using the stepping function."""
             nonlocal dt  # `dt` stores value for the next call
 

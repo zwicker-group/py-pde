@@ -34,8 +34,8 @@ if TYPE_CHECKING:
         NumericArray,
         StepperHook,
         StepperType,
-        TField,
         TNativeArray,
+        TState,
     )
 
 
@@ -188,14 +188,14 @@ class SolverBase:
             operator=operator, mpi_run=self.mpi_run
         )
 
-    def _make_post_step_hook(self, state: TField) -> StepperHook:
+    def _make_post_step_hook(self, state: TState) -> StepperHook:
         """Create a function that calls the post-step hook of the PDE.
 
         A no-op function is returned if :attr:`SolverBase._use_post_step_hook` is
         `False` or the PDE does not provide :meth:`PDEBase.make_post_step_hook`.
 
         Args:
-            state (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted.
 
@@ -208,7 +208,7 @@ class SolverBase:
             try:
                 # try to get hook function and initial data from PDE instance
                 post_step_hook, self.info["post_step_data"] = (
-                    self.pde.make_post_step_hook(state, backend=self.backend)
+                    self.pde.make_post_step_hook(state, backend=self.backend)  # type: ignore
                 )
                 self._logger.info("Created post-step hook from PDE")
 
@@ -228,15 +228,15 @@ class SolverBase:
             self._logger.debug("No post-step hook defined")
 
         assert "post_step_data" in self.info
-        return post_step_hook  # type: ignore
+        return post_step_hook
 
     def _make_single_step_fixed_dt(
-        self, state: TField, dt: float
+        self, state: TState, dt: float
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a callable performing one fixed-size update step.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
@@ -245,11 +245,11 @@ class SolverBase:
         msg = "A fixed-step update rule has not been defined"
         raise NotImplementedError(msg)
 
-    def _make_inner_stepper(self, state: TField) -> InnerStepperType:
+    def _make_inner_stepper(self, state: TState) -> InnerStepperType:
         """Create the backend-level stepping function for fixed time stepping.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
         """
@@ -278,11 +278,11 @@ class SolverBase:
 
         return fixed_stepper
 
-    def _select_backend(self, state: TField, *, use_mpi: bool = False):
+    def _select_backend(self, state: TState, *, use_mpi: bool = False):
         """Select backend automatically based on implemented PDE.
 
         Args:
-            state (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted.
             use_mpi (bool):
@@ -290,16 +290,16 @@ class SolverBase:
 
         """
         if isinstance(self._backend, str):
-            self._backend = self.pde.determine_backend(
+            self._backend = self.pde.determine_backend(  # type: ignore
                 state, self._backend, use_mpi=use_mpi
             )
         self.info["backend"] = self.backend.info
 
-    def make_stepper(self, state: TField, dt: float | None = None) -> StepperType:
+    def make_stepper(self, state: TState, dt: float | None = None) -> StepperType:
         """Create the executable stepping function produced by this solver.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
@@ -329,7 +329,7 @@ class SolverBase:
 
         # create the backend-specific stepping function
         self._select_backend(state)
-        return self.backend.make_stepper(self, state)
+        return self.backend.make_stepper(self, state)  # type: ignore
 
 
 class AdaptiveSolverBase(SolverBase):
@@ -364,12 +364,12 @@ class AdaptiveSolverBase(SolverBase):
         self.tolerance = tolerance
 
     def _make_single_step_variable_dt(
-        self, state: TField
+        self, state: TState
     ) -> Callable[[NumericArray, float, float], NumericArray]:
         """Return a function doing a single step with a variable time step.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
 
@@ -382,7 +382,7 @@ class AdaptiveSolverBase(SolverBase):
             msg = "Adaptive stepping does not support stochastic equations"
             raise RuntimeError(msg)
 
-        rhs_pde = self.backend.make_pde_rhs(self.pde, state)
+        rhs_pde = self.backend.make_pde_rhs(self.pde, state)  # type: ignore
 
         def single_step(state_data: NumericArray, t: float, dt: float) -> NumericArray:
             """Basic implementation of Euler scheme."""
@@ -391,12 +391,12 @@ class AdaptiveSolverBase(SolverBase):
         return self.backend.compile_function(single_step)
 
     def _make_single_step_error_estimate(
-        self, state: TField
+        self, state: TState
     ) -> Callable[[NumericArray, float, float], tuple[NumericArray, float]]:
         """Make a helper that advances the state and estimates the local error.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
         """
@@ -426,12 +426,12 @@ class AdaptiveSolverBase(SolverBase):
 
     def _make_inner_stepper(
         self,
-        state: TField,  # , *, adjust_dt: Callable[[float, float], float] | None = None
+        state: TState,  # , *, adjust_dt: Callable[[float, float], float] | None = None
     ) -> InnerStepperType:
         """Create the backend-level stepping function for adaptive time stepping.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
 
@@ -508,11 +508,11 @@ class AdaptiveSolverBase(SolverBase):
         self._logger.info("Initialized adaptive stepping function")
         return adaptive_stepper
 
-    def make_stepper(self, state: TField, dt: float | None = None) -> StepperType:
+    def make_stepper(self, state: TState, dt: float | None = None) -> StepperType:
         """Create the executable stepping function produced by this solver.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):

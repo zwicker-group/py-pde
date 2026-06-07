@@ -333,10 +333,10 @@ class DictFiniteCapacity(collections.OrderedDict):
 
 
 class SerializedDict(collections.abc.MutableMapping):
-    """A key value database which is stored on the disk.
+    """A key value StateBase which is stored on the disk.
 
     This class provides hooks for converting arbitrary keys and values to strings, which
-    are then stored in the database.
+    are then stored in the StateBase.
     """
 
     def __init__(
@@ -526,7 +526,7 @@ class _class_cache:
                     # initialized => we don't need to clear anything
                     return
                 # initialize the cache, since it might open a persistent
-                # database, which needs to be cleared
+                # StateBase, which needs to be cleared
                 cache = getattr(obj, self.factory)(self.name)
 
             # clear the cache

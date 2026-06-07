@@ -17,7 +17,7 @@ from ...fields import VectorField
 from ...grids import GridBase
 from ...solvers.scipy import ScipySolver
 from ..base import BackendBase, OperatorInfo
-from .typing import NUMPY_TO_TORCH_DTYPE, TORCH_TO_NUMPY_DTYPE, TorchRHSType
+from .typing import NUMPY_TO_TORCH_DTYPE, TORCH_TO_NUMPY_DTYPE
 
 if TYPE_CHECKING:
     import types
@@ -28,7 +28,6 @@ if TYPE_CHECKING:
     from ...fields import DataFieldBase
     from ...grids import GridBase
     from ...grids.boundaries.axes import BoundariesBase
-    from ...pdes import PDEBase
     from ...solvers import SolverBase
     from ...tools.config import ConfigLike
     from ...tools.expressions import ExpressionBase
@@ -489,34 +488,6 @@ class TorchBackend(BackendBase[torch.Tensor]):
             return torch.einsum("i...,j...->ij...", a, b)
 
         return outer
-
-    def make_pde_rhs(self, eq: PDEBase, state: TField) -> TorchRHSType:  # type: ignore
-        """Return a function for evaluating the right hand side of the PDE.
-
-        Args:
-            eq (:class:`~pde.pdes.base.PDEBase`):
-                The object describing the differential equation
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which information can be extracted
-
-        Returns:
-            Function returning deterministic part of the right hand side of the PDE.
-        """
-        try:
-            make_rhs = eq.make_evolution_rate
-        except AttributeError as err:
-            msg = (
-                "The right-hand side of the PDE is not implemented using the "
-                f"`{self.name}` backend. To add the implementation, provide the "
-                "method `make_evolution_rate`, which should return a compilable "
-                "function calculating the evolution rate."
-            )
-            raise NotImplementedError(msg) from err
-        else:
-            rhs_native = make_rhs(state, backend=self)
-
-        # get the compiled right hand side
-        return self.compile_function(rhs_native)  # type: ignore
 
     def make_expression_function(
         self,

@@ -22,11 +22,10 @@ import numpy as np
 from typing_extensions import Self
 
 from ..tools.plotting import napari_add_layers, napari_viewer
+from .state import StateBase
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-    from numpy.typing import DTypeLike
 
     from ..grids.base import GridBase
     from ..tools.typing import NumberOrArray, NumericArray
@@ -41,7 +40,7 @@ class RankError(TypeError):
     """Error indicating that the field has the wrong rank."""
 
 
-class FieldBase(metaclass=ABCMeta):
+class FieldBase(StateBase, metaclass=ABCMeta):
     """Abstract base class for describing (discretized) fields."""
 
     data_shape: tuple[int, ...]
@@ -86,11 +85,6 @@ class FieldBase(metaclass=ABCMeta):
             if cls.__name__ in cls._subclasses:
                 warnings.warn(f"Redefining class {cls.__name__}", stacklevel=2)
             cls._subclasses[cls.__name__] = cls
-
-    def __getstate__(self) -> dict[str, Any]:
-        state = self.__dict__.copy()
-        state.pop("_cache_methods", None)  # delete method cache if present
-        return state
 
     @property
     def data(self) -> NumericArray:
@@ -163,11 +157,8 @@ class FieldBase(metaclass=ABCMeta):
     def _data_flat(self) -> NumericArray:
         """:class:`~numpy.ndarray`: flat version of discretized data with ghost
         cells."""
-        # flatten the first dimension of the internal data by creating a view and then
-        # setting the new shape. This disallows accidental copying of the data
-        data_flat = self._data_full.view()
-        data_flat.shape = (-1, *self.grid._shape_full)
-        return data_flat  # type: ignore
+        # Flatten the component dimensions while guaranteeing no data copy happens.
+        return np.reshape(self._data_full, (-1, *self.grid._shape_full), copy=False)
 
     @_data_flat.setter
     def _data_flat(self, value: NumericArray) -> None:
@@ -351,23 +342,6 @@ class FieldBase(metaclass=ABCMeta):
         msg = f"Cannot save {self.__class__.__name__} as an image"
         raise NotImplementedError(msg)
 
-    @abstractmethod
-    def copy(
-        self: TField, *, label: str | None = None, dtype: DTypeLike | None = None
-    ) -> TField:
-        """Return a new field with the data (but not the grid) copied.
-
-        Args:
-            label (str, optional):
-                Name of the returned field
-            dtype (numpy dtype):
-                The data type of the field. If omitted, it will be determined from
-                `data` automatically or the dtype of the current field is used.
-
-        Returns:
-            :class:`DataFieldBase`: A copy of the current field
-        """
-
     def assert_field_compatible(
         self, other: FieldBase, accept_scalar: bool = False
     ) -> None:
@@ -393,17 +367,6 @@ class FieldBase(metaclass=ABCMeta):
         if not self.grid.compatible_with(other.grid):
             msg = f"Grids {self.grid} and {other.grid} are incompatible"
             raise ValueError(msg)
-
-    @property
-    def dtype(self) -> DTypeLike:
-        """:class:`~DTypeLike`: the numpy dtype of the underlying data."""
-        # this property is necessary to support np.iscomplexobj for DataFieldBases
-        return self.data.dtype
-
-    @property
-    def is_complex(self) -> bool:
-        """bool: whether the field contains real or complex data"""
-        return np.iscomplexobj(self.data)
 
     @property
     def attributes(self) -> dict[str, Any]:
@@ -466,31 +429,6 @@ class FieldBase(metaclass=ABCMeta):
             :class:`FieldBase`: An field that contains the result of the operation.
         """
         return self.__class__(grid=self.grid, data=op(self.data), label=self.label)
-
-    @property
-    def real(self) -> Self:
-        """:class:`FieldBase`: Real part of the field."""
-        return self._unary_operation(np.real)
-
-    @property
-    def imag(self) -> Self:
-        """:class:`FieldBase`: Imaginary part of the field."""
-        return self._unary_operation(np.imag)
-
-    def conjugate(self) -> Self:
-        """Returns complex conjugate of the field.
-
-        Returns:
-            :class:`FieldBase`: the complex conjugated field
-        """
-        return self._unary_operation(np.conjugate)
-
-    def __neg__(self):
-        """Return the negative of the current field.
-
-        :class:`FieldBase`: The negative of the current field
-        """
-        return self._unary_operation(np.negative)
 
     def _binary_operation(
         self, other, op: Callable, scalar_second: bool = True

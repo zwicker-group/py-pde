@@ -12,7 +12,7 @@ import numpy as np
 from .base import SolverBase
 
 if TYPE_CHECKING:
-    from ..tools.typing import InnerStepperType, NumericArray, TField
+    from ..tools.typing import InnerStepperType, NumericArray, TState
 
 
 class AdamsBashforthSolver(SolverBase):
@@ -20,11 +20,11 @@ class AdamsBashforthSolver(SolverBase):
 
     name = "adams-bashforth"
 
-    def _make_inner_stepper(self, state: TField) -> InnerStepperType:
+    def _make_inner_stepper(self, state: TState) -> InnerStepperType:
         """Create the executable Adams-Bashforth stepping function.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
         """
@@ -33,7 +33,7 @@ class AdamsBashforthSolver(SolverBase):
             raise RuntimeError(msg)
 
         dt = float(self.info["dt"])
-        rhs_pde = self.backend.make_pde_rhs(self.pde, state)
+        rhs_pde = self.backend.make_pde_rhs(self.pde, state)  # type: ignore
         post_step_hook = self._make_post_step_hook(state)
 
         def single_step(

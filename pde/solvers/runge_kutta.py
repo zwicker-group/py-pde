@@ -18,7 +18,7 @@ from .base import AdaptiveSolverBase
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ..tools.typing import NumericArray, TField
+    from ..tools.typing import NumericArray, TState
 
 
 class RungeKuttaSolver(AdaptiveSolverBase):
@@ -27,12 +27,12 @@ class RungeKuttaSolver(AdaptiveSolverBase):
     name = "runge-kutta"
 
     def _make_single_step_fixed_dt(
-        self, state: TField, dt: float
+        self, state: TState, dt: float
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Make a function performing one explicit Runge-Kutta step of order 5(4).
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
@@ -47,7 +47,7 @@ class RungeKuttaSolver(AdaptiveSolverBase):
             raise RuntimeError(msg)
 
         # obtain functions determining how the PDE is evolved
-        rhs = self.backend.make_pde_rhs(self.pde, state)
+        rhs = self.backend.make_pde_rhs(self.pde, state)  # type: ignore
 
         def single_step(state_data: NumericArray, t: float) -> NumericArray:
             """Compiled inner loop for speed."""
@@ -66,12 +66,12 @@ class RungeKuttaSolver(AdaptiveSolverBase):
         return single_step
 
     def _make_single_step_error_estimate(
-        self, state: TField
+        self, state: TState
     ) -> Callable[[NumericArray, float, float], tuple[NumericArray, float]]:
         """Make a single-step error estimator using Runge-Kutta-Fehlberg.
 
         Args:
-            state (:class:`~pde.fields.base.FieldBase`):
+            state (:class:`~pde.fields.state.StateBase`):
                 An example for the state from which the grid and other information can
                 be extracted
 
@@ -85,7 +85,7 @@ class RungeKuttaSolver(AdaptiveSolverBase):
             raise RuntimeError(msg)
 
         # obtain functions determining how the PDE is evolved
-        rhs = self.backend.make_pde_rhs(self.pde, state)
+        rhs = self.backend.make_pde_rhs(self.pde, state)  # type: ignore
 
         # use Runge-Kutta-Fehlberg method
         # define coefficients for RK4(5), formula 2 Table III in Fehlberg
