@@ -87,11 +87,7 @@ def make_general_poisson_solver(
         Poisson's equation where the array is used as the right hand side
     """
     from scipy import sparse
-
-    try:
-        from scipy.sparse.linalg import MatrixRankWarning
-    except ImportError:
-        from scipy.sparse.linalg.dsolve.linsolve import MatrixRankWarning
+    from scipy.sparse.linalg import MatrixRankWarning
 
     logger = logging.getLogger(__name__)
 

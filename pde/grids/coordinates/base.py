@@ -142,8 +142,10 @@ class CoordinatesBase:
     def _mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
         # Basic implementation based on finite difference, which should be overwritten
         # using analytical expressions for speed and accuracy
-        jac = np.apply_along_axis(
-            lambda p: optimize.approx_fprime(p, self.pos_to_cart), 0, points
+        jac: FloatingArray = np.apply_along_axis(  # type: ignore
+            lambda p: optimize.approx_fprime(p, self.pos_to_cart),  # type: ignore
+            axis=0,
+            arr=points,
         )
         if self.dim == 1 and jac.ndim != points.ndim + 1:
             # this happens with some versions of scipy, which collapses dimensions
@@ -194,7 +196,8 @@ class CoordinatesBase:
         cell_volumes = np.empty(c_low.shape[:-1])
         for i in np.ndindex(*cell_volumes.shape):
             cell_volumes[i] = integrate.nquad(
-                lambda *x: self._volume_factor(np.array(x)), np.c_[c_low[i], c_high[i]]
+                lambda *x: self._volume_factor(np.array(x)),  # type: ignore
+                ranges=np.c_[c_low[i], c_high[i]],
             )[0]
         return cell_volumes
 

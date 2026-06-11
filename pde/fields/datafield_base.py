@@ -1024,7 +1024,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         for axis in range(-len(self.grid.axes), 0):
             sigma_dx = sigma / self.grid.discretization[axis]
             mode = "wrap" if self.grid.periodic[axis] else "reflect"
-            ndimage.gaussian_filter1d(
+            ndimage.gaussian_filter1d(  # type: ignore
                 data_in, sigma=sigma_dx, axis=axis, output=data_out, mode=mode
             )
             data_in = data_out  # use this smoothed data as input for next axis

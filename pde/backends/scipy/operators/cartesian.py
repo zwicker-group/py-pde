@@ -70,7 +70,7 @@ def _get_laplace_matrix_1d(bcs: BoundariesList) -> tuple[NumericArray, NumericAr
     matrix *= bcs.grid.discretization[0] ** -2
     vector *= bcs.grid.discretization[0] ** -2
 
-    return matrix, vector
+    return matrix, vector  # type: ignore
 
 
 def _get_laplace_matrix_2d(bcs: BoundariesList) -> tuple[NumericArray, NumericArray]:
@@ -139,7 +139,7 @@ def _get_laplace_matrix_2d(bcs: BoundariesList) -> tuple[NumericArray, NumericAr
             else:
                 matrix[i(x, y), i(x, y + 1)] += scale_y
 
-    return matrix, vector
+    return matrix, vector  # type: ignore
 
 
 def _get_laplace_matrix_3d(bcs: BoundariesList) -> tuple[NumericArray, NumericArray]:
@@ -226,7 +226,7 @@ def _get_laplace_matrix_3d(bcs: BoundariesList) -> tuple[NumericArray, NumericAr
                 else:
                     matrix[i(x, y, z), i(x, y, z + 1)] += scale_z
 
-    return matrix, vector
+    return matrix, vector  # type: ignore
 
 
 def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray]:
