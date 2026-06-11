@@ -83,7 +83,7 @@ def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray
         else:
             matrix[i, i + 1] = factor_h[i]
 
-    return matrix, vector
+    return matrix, vector  # type: ignore
 
 
 @ScipyBackend.register_operator(

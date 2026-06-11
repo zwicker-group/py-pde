@@ -91,7 +91,7 @@ def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray
             else:
                 matrix[i(r, z), i(r, z + 1)] += scale_z
 
-    return matrix, vector
+    return matrix, vector  # type: ignore
 
 
 @ScipyBackend.register_operator(

@@ -76,7 +76,7 @@ def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray
         else:
             matrix[i, i + 1] = scale + scale_i
 
-    return matrix, vector
+    return matrix, vector  # type: ignore
 
 
 @ScipyBackend.register_operator(PolarSymGrid, "poisson_solver", rank_in=0, rank_out=0)

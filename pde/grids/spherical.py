@@ -323,7 +323,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             # interpolate over the new coordinates using linear interpolation
             f = interpolate.interp1d(
                 r_data,
-                data,
+                data,  # type: ignore
                 copy=False,
                 bounds_error=False,
                 fill_value=fill_value,
@@ -333,7 +333,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 
         elif performance_goal == "quality":
             # interpolate over the new coordinates using radial base function
-            f = interpolate.Rbf(r_data, data, function="cubic")
+            f = interpolate.Rbf(r_data, data, function="cubic")  # type: ignore
             data_int = f(r_img)
 
         else:
