@@ -202,9 +202,9 @@ def plot_on_axes(wrapped=None, update_method=None):
     text. Note that the decorator can be used on both functions and methods.
 
     Example:
-        The following example illustrates how this decorator can be used to
-        implement plotting for a given class. In particular, supplying the
-        `update_method` will allow efficient dynamical plotting::
+        The following example illustrates how this decorator can be used to implement
+        plotting for a given class. In particular, supplying the `update_method` will
+        allow efficient dynamical plotting::
 
             class State:
                 def __init__(self) -> None:
@@ -257,10 +257,9 @@ def plot_on_axes(wrapped=None, update_method=None):
         action (str):
             Decides what to do with the final figure. If the argument is set to `show`,
             :func:`matplotlib.pyplot.show` will be called to show the plot. If the value
-            is `none`, the figure will be created, but not necessarily shown. The value
-            `close` closes the figure, after saving it to a file when `filename` is
-            given. The default value `auto` implies that the plot is shown if it is not
-            a nested plot call.
+            is `auto` or `none`, the figure will be created, but not necessarily shown.
+            The value `close` closes the figure, after saving it to a file when
+            `filename` is given.
         ax_style (dict):
             Dictionary with properties that will be changed on the axis after the plot
             has been drawn by calling :meth:`matplotlib.pyplot.setp`. A special item i
@@ -283,80 +282,60 @@ def plot_on_axes(wrapped=None, update_method=None):
         if ax_style is None:
             ax_style = {}
 
-        # Show figure by calling `plt.show` automatically only if
-        #    - action == 'auto'
-        #    - axis is not given, i.e., ax == None
-        #    - backend is not `inline` (which would show figure anyway)
-        # This safeguard is necessary to allow specifying subplot axes explicitly
-        # through the `ax` argument.
-        auto_show_figure = ax is None and "backend_inline" not in mpl.get_backend()
-
         # some logic to check for nested plotting calls:
-        with nested_plotting_check() as is_outermost_plot_call:
-            # disable interactive plotting temporarily
-            with disable_interactive():
-                if ax is None:
-                    # create new figure
-                    backend = mpl.get_backend()
-                    if "backend_inline" in backend or backend == "nbAgg":
-                        plt.close("all")  # close left over figures
-                        auto_show_figure = True  # show this figure if action == 'auto'
-                    fig, ax = plt.subplots()
+        if ax is None:
+            # create new figure
+            backend = mpl.get_backend()
+            if "backend_inline" in backend or backend == "nbAgg":
+                plt.close("all")  # close left over figures
+            fig, ax = plt.subplots()
 
-                elif ax == "reuse":
-                    # try to reuse an existing figure (or create a new one)
-                    ax = plt.gca()
-                    fig = ax.get_figure()
+        elif ax == "reuse":
+            # try to reuse an existing figure (or create a new one)
+            ax = plt.gca()
+            fig = ax.get_figure()
 
-                else:
-                    # assume an axes was given
-                    fig = ax.get_figure()
+        else:
+            # assume an axes was given
+            fig = ax.get_figure()
 
-                # call the actual plotting function
-                reference = wrapped(*args, ax=ax, **kwargs)
+        # call the actual plotting function
+        reference = wrapped(*args, ax=ax, **kwargs)
 
-                # finishing touches...
-                if title is not None:
-                    ax.set_title(title)
+        # finishing touches...
+        if title is not None:
+            ax.set_title(title)
 
-                use_offset = ax_style.pop("use_offset", False)
-                if use_offset is not None:
-                    ax.get_xaxis().get_major_formatter().set_useOffset(use_offset)
-                    ax.get_yaxis().get_major_formatter().set_useOffset(use_offset)
-                if ax_style:
-                    plt.setp(ax, **ax_style)
-                if fig_style:
-                    plt.setp(fig, **fig_style)
-                if filename:
-                    fig.savefig(filename)
+        use_offset = ax_style.pop("use_offset", False)
+        if use_offset is not None:
+            ax.get_xaxis().get_major_formatter().set_useOffset(use_offset)
+            ax.get_yaxis().get_major_formatter().set_useOffset(use_offset)
+        if ax_style:
+            plt.setp(ax, **ax_style)
+        if fig_style:
+            plt.setp(fig, **fig_style)
+        if filename:
+            fig.savefig(filename)
 
-            # decide what to do with the final plot
-            if action == "auto":
-                if is_outermost_plot_call and auto_show_figure:
-                    # only call show on the outermost plot call and only in the
-                    # circumstances determined above
-                    action = "show"
-                else:
-                    action = "sca"
+        # decide what to do with the final plot
+        if action in {"auto", "sca"}:
+            # set the axes as the current axes, so subsequent plot calls modify it
+            plt.sca(ax)
 
-            if action == "sca":
-                # set the axes as the current axes, so subsequent plot calls modify it
-                plt.sca(ax)
+        elif action == "show":
+            # show the entire figure
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                plt.show()
 
-            elif action == "show":
-                # show the entire figure
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    plt.show()
+        elif action == "close":
+            # close the figure, e.g., because it has already been used
+            plt.close(fig)
 
-            elif action == "close":
-                # close the figure, e.g., because it has already been used
-                plt.close(fig)
-
-            elif action != "none":
-                # do nothing if "none", otherwise raise error
-                msg = f"Unknown action `{action}`"
-                raise ValueError(msg)
+        elif action != "none":
+            # do nothing if "none", otherwise raise error
+            msg = f"Unknown action `{action}`"
+            raise ValueError(msg)
 
         return reference
 
@@ -487,50 +466,39 @@ def plot_on_figure(wrapped=None, update_method=None):
         import matplotlib as mpl
         import matplotlib.pyplot as plt
 
-        # some logic to check for nested plotting calls:
-        with nested_plotting_check() as is_outermost_plot_call:
-            # disable interactive plotting temporarily
-            with disable_interactive():
-                if fig is None:
-                    # create new figure
-                    backend = mpl.get_backend()
-                    if "backend_inline" in backend or backend == "nbAgg":
-                        plt.close("all")  # close left over figures
-                    fig = plt.figure(constrained_layout=constrained_layout)
+        if fig is None:
+            # create new figure
+            backend = mpl.get_backend()
+            if "backend_inline" in backend or backend == "nbAgg":
+                plt.close("all")  # close left over figures
+            fig = plt.figure(constrained_layout=constrained_layout)
 
-                # call the actual plotting function
-                reference = wrapped(*args, fig=fig, **kwargs)
+        # call the actual plotting function
+        reference = wrapped(*args, fig=fig, **kwargs)
 
-                # finishing touches...
-                if title is not None:
-                    fig.suptitle(title)
-                if fig_style:
-                    plt.setp(fig, **fig_style)
-                if filename:
-                    fig.savefig(filename)
+        # finishing touches...
+        if title is not None:
+            fig.suptitle(title)
+        if fig_style:
+            plt.setp(fig, **fig_style)
+        if filename:
+            fig.savefig(filename)
 
-            # decide what to do with the final plot
-            if action == "auto":
-                if is_outermost_plot_call:
-                    # only call show on the outermost plot call
-                    action = "show"
-                else:
-                    action = "none"
+        # decide what to do with the final plot
+        if action == "show":
+            # show the entire figure
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                plt.show()
 
-            if action == "show":
-                # show the entire figure
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    plt.show()
+        elif action == "close":
+            # close the figure, e.g., because it has already been used
+            plt.close(fig)
 
-            elif action == "close":
-                # close the figure, e.g., because it has already been used
-                plt.close(fig)
-
-            elif action != "none":
-                # do nothing if "none", otherwise raise error
-                msg = f"Unknown action `{action}`"
-                raise ValueError(msg)
+        elif action not in {"auto", "none"}:
+            # do nothing if "none", otherwise raise error
+            msg = f"Unknown action `{action}`"
+            raise ValueError(msg)
 
         return reference
 
