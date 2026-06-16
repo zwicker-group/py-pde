@@ -4,7 +4,8 @@ description = "Python package for solving partial differential equations"
 authors = [
     {name = "David Zwicker", email="david.zwicker@ds.mpg.de"}
 ]
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=$MIN_PYTHON_VERSION,<$MAX_PYTHON_VERSION_NEXT"
 dynamic = ["version"]
@@ -15,7 +16,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -130,8 +130,10 @@ src_paths = ["pde", "examples", "scripts", "tests"]
 known_self = ["pde", "fixtures"]
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "SELF", "LOCALFOLDER"]
 
-[tool.pytest.ini_options]
-addopts = "--strict-markers"
+[tool.pytest]
+# log_cli = true
+log_cli_level = "ERROR" # only display errors
+addopts = ["--strict-markers"]
 filterwarnings = [
     'ignore:.*importing the ABCs from.*:DeprecationWarning',
     'ignore:.*IPython.utils.signatures backport for Python 2 is deprecated.*:DeprecationWarning',
@@ -145,7 +147,7 @@ warn_unused_configs = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = "numba.*"
+module = ["numba.*", "zarr.*"]
 ignore_missing_imports = true
 ignore_errors = false
 follow_imports = "skip"
