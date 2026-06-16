@@ -22,6 +22,7 @@ deal with raw data for faster simulations.
    ~klein_gordon.KleinGordonPDE
    ~kpz_interface.KPZInterfacePDE
    ~kuramoto_sivashinsky.KuramotoSivashinskyPDE
+   ~reaction_diffusion.ReactionDiffusionPDE
    ~swift_hohenberg.SwiftHohenbergPDE
    ~wave.WavePDE
 
@@ -43,6 +44,7 @@ Additionally, we offer two solvers for typical elliptical PDEs:
       klein_gordon.KleinGordonPDE
       kpz_interface.KPZInterfacePDE
       kuramoto_sivashinsky.KuramotoSivashinskyPDE
+      reaction_diffusion.ReactionDiffusionPDE
       swift_hohenberg.SwiftHohenbergPDE
       wave.WavePDE
    :parts: 1
@@ -63,5 +65,6 @@ from .laplace import (
     solve_poisson_equation,  # noqa: F401
 )
 from .pde import PDE  # noqa: F401
+from .reaction_diffusion import ReactionDiffusionPDE  # noqa: F401
 from .swift_hohenberg import SwiftHohenbergPDE  # noqa: F401
 from .wave import WavePDE  # noqa: F401
