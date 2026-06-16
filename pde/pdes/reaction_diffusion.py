@@ -1,6 +1,6 @@
 """
-Defines a PDE class implementing a scalar `reaction diffusion equation
-<https://en.wikipedia.org/wiki/Reaction-diffusion_system>`_.
+Defines a PDE class implementing a
+`reaction-diffusion system <https://en.wikipedia.org/wiki/Reaction-diffusion_system>`_.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -11,13 +11,14 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ..tools.docstrings import fill_in_docstring
 from .pde import PDE
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     from ..grids.boundaries.axes import BoundariesData
-    from ..tools.typing import ArrayLike, NumberOrArray, PostStepHook
+    from ..tools.typing import ArrayLike, Number, NumberOrArray, PostStepHook
 
 
 class ReactionDiffusionPDE(PDE):
@@ -28,15 +29,16 @@ class ReactionDiffusionPDE(PDE):
     .. math::
         \partial_t c_i = D_i \partial_\alpha^2 c_i + s_i(\{c_j\}, t)
 
-    where `c_i` are the concentration fields, :math:`D_{ij}` is the diffusivity matrix,
-    and :math:`s_i` are sink/source terms that account for chemical reactions.
+    where `c_i` are the concentration fields, :math:`D_i` are the diffusivities, and
+    :math:`s_i` are sink/source terms that account for chemical reactions.
     """
 
+    @fill_in_docstring
     def __init__(
         self,
         variables: Sequence[str],
         diffusivity: ArrayLike,
-        sources: Sequence[str] | dict[str, str],
+        sources: Sequence[str | Number] | dict[str, str | Number],
         *,
         bc: BoundariesData | None = None,
         bc_ops: dict[str, BoundariesData] | None = None,
@@ -49,15 +51,14 @@ class ReactionDiffusionPDE(PDE):
         r"""
         Args:
             variables (list of strings):
-                The names and order of the variables in the system
+                The names and order of the variables :math:`c_i` in the system
             diffusivity (:class:`~numpy.ndarray`):
-                Diffusivities of all species. A scalar sets the same diffusivity for all
-                species. A vector is supported for setting different diffusivities per
-                species.
+                Diffusivities :math:`D_i` of all species. A scalar sets the same
+                diffusivity for all species.
             sources (list of str or dict of str):
-                Specifies the source terms of each species. Must be a list with an entry
-                for each variable. Alternatively, a dictionary may be used to only
-                specify the source term of a few variables, while all others are
+                Specifies the source terms :math:`s_i` of each species. Must be a list
+                with an entry for each variable. Alternatively, a dictionary may be used
+                to only specify the source term of a few variables, while all others are
                 assumed to not have any sources.
             bc:
                 General boundary conditions for all operators that do not have a
