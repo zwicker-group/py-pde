@@ -45,6 +45,7 @@ else:
     )
 # determine path of the cache for the ground truth of simulations
 RESULT_CACHE = Path(__file__).resolve().parent / "_cache" / "performance_ops"
+RESULT_CACHE.mkdir(parents=True, exist_ok=True)
 
 
 def time_function(func, arg, repeat: int = 3, use_out: bool = False) -> float:
