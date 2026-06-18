@@ -32,6 +32,7 @@ from pde import CahnHilliardPDE, ScalarField, TrackerBase, UnitGrid
 
 # determine path of the cache for the ground truth of simulations
 RESULT_CACHE = Path(__file__).resolve().parent / "_cache" / "performance_pde"
+RESULT_CACHE.mkdir(parents=True, exist_ok=True)
 
 
 class RuntimeTacker(TrackerBase):
