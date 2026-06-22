@@ -359,13 +359,13 @@ class ScalarFieldPlot:
                 cmap = panel.get("cmap")
                 if cmap is None:
                     if vmin is None or vmax is None:
-                        cmap = cm.viridis  # type: ignore
+                        cmap = cm.viridis
                     elif np.isclose(-vmin, vmax):
-                        cmap = cm.coolwarm  # type: ignore
+                        cmap = cm.coolwarm
                     elif np.isclose(vmin, 0):
-                        cmap = cm.gray  # type: ignore
+                        cmap = cm.gray
                     else:
-                        cmap = cm.viridis  # type: ignore
+                        cmap = cm.viridis
 
                 # initialize image
                 ax = self.axes[i, j]
