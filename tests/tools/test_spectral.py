@@ -75,7 +75,7 @@ def test_correlated_gaussian_statistics(correlation, rng):
     noise = make_correlated_noise(grid.shape, correlation=correlation, rng=rng)
     samples = np.ravel([noise() for _ in range(1000)])
 
-    pvalue = stats.kstest(samples, "norm").pvalue
+    pvalue = stats.kstest(samples, stats.norm(loc=0, scale=1).cdf).pvalue
     assert pvalue > 0.05, f"DISTRIBUTION: {samples.mean():.5g} ± {samples.std():.5g}"
 
 
@@ -215,6 +215,6 @@ def test_complex_correlated_noise(rng):
     )
     samples = np.ravel([noise() for _ in range(1000)])
     for s in [samples.real, samples.imag]:
-        pvalue = stats.kstest(s, "norm").pvalue
+        pvalue = stats.kstest(s, stats.norm(loc=0, scale=1).cdf).pvalue
         assert pvalue > 0.05, f"DISTRIBUTION: {s.mean():.5g} ± {s.std():.5g}"
     assert stats.ks_2samp(samples.real, samples.imag).pvalue > 0.05
