@@ -28,5 +28,5 @@ def test_random_noise_basic(backend, rng):
     noise = backend.make_gaussian_noise(field, rng=rng)
 
     data = backend.native_to_numpy(noise())
-    test_res = stats.kstest(data, "norm", args=(0, 1))
+    test_res = stats.kstest(data, stats.norm(loc=0, scale=1).cdf)
     assert test_res.pvalue > 0.01  # expect Gaussian distribution

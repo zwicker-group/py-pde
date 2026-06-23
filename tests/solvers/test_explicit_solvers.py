@@ -273,7 +273,7 @@ def test_stochastic_solver_equilibrium(
 
     # check whether the points exhibit the expected distribution
     sigma = 1 / np.sqrt(k_val * size_scale)
-    test_res = stats.kstest(result.data, "norm", args=(0, sigma))
+    test_res = stats.kstest(result.data, stats.norm(loc=0, scale=sigma).cdf)
     if interpretation == "ito" and mobility_factor != 0:
         assert test_res.pvalue < 0.04  # expect different distribution
     else:
