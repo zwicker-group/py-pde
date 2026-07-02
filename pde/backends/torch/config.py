@@ -14,10 +14,9 @@ DEFAULT_CONFIG: dict[str, Parameter] = {
     "device": Parameter(
         value="cpu",
         cls=str,
-        description="Determines the torch device that is used for the torch backend. "
-        "Common options include `cpu`, `cuda`, and more specific choices, like "
-        "`cuda:0`. The special value `auto` chooses `cuda` if it is available, and "
-        "falls back to `cpu` if not.",
+        description="Determines the device that is used for the torch backend. Common "
+        "options include `cpu`, `cuda`, and more specific choices, like `cuda:0`. The "
+        "special value `auto` chooses `cuda` if available, otherwise `cpu`.",
     ),
     "dtype_downcasting": Parameter(
         value=True,

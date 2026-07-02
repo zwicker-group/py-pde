@@ -9,6 +9,7 @@ User manual
    mathematical_basics
    basic_usage
    advanced_usage
+   configuration
    performance
    contributing
    citing
