@@ -218,3 +218,15 @@ def test_vector_to_cartesian(grid, rng):
 
     else:
         raise NotImplementedError
+
+
+@pytest.mark.parametrize("grid", iter_grids())
+def test_grid_distance_calculations(grid):
+    """Test grid distance calculations."""
+    ps = np.array([grid.get_random_point(coords="grid") for _ in range(5)])
+    d1 = grid.distance(ps[:, None], ps[None, :], coords="grid")
+    d2 = [grid.distance(p, ps, coords="grid") for p in ps]
+    d3 = [[grid.distance(p1, p2, coords="grid") for p1 in ps] for p2 in ps]
+
+    np.testing.assert_allclose(d1, d2)
+    np.testing.assert_allclose(d1, d3)
