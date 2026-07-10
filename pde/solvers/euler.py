@@ -209,10 +209,7 @@ class EulerSolver(AdaptiveSolverBase):
         post_step_hook = self._make_post_step_hook(state)
 
         # obtain auxiliary functions
-        sync_errors = self.backend.make_mpi_synchronizer(
-            operator="MAX", mpi_run=self.mpi_run
-        )
-        # if adjust_dt is None:
+        sync_errors = self.backend.make_mpi_synchronizer(operator="MAX")
         adjust_dt = _make_dt_adjuster(self.dt_min, self.dt_max)
         tolerance = self.tolerance
         dt_min = self.dt_min

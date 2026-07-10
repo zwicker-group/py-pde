@@ -676,7 +676,7 @@ class BackendBase(Generic[TNativeArray]):
         raise NotImplementedError(msg)
 
     def make_mpi_synchronizer(
-        self, operator: int | str = "MAX", mpi_run: bool = False
+        self, operator: int | str = "MAX"
     ) -> Callable[[float], float]:
         """Return function that synchronizes values between multiple MPI processes.
 
@@ -688,26 +688,14 @@ class BackendBase(Generic[TNativeArray]):
             operator (str or int):
                 Flag determining how the value from multiple nodes is combined.
                 Possible values include "MAX", "MIN", and "SUM".
-            mpi_run (bool):
-                Whether MPI is actually used. If `False`, the method returns a no-op.
 
         Returns:
             Function that can be used to synchronize values across nodes
         """
-        from ..tools import mpi
+        # Assume serial run, which does not require synchronization
 
-        if not mpi_run or mpi.size == 1:
-            # serial run, which does not require synchronization
-
-            def synchronize_value(value: float) -> float:
-                return value
-
-        else:
-            # parallel run, which requires synchronization
-
-            def synchronize_value(value: float) -> float:
-                """Return error synchronized across all cores."""
-                return mpi.mpi_allreduce(value, operator=operator)  # type: ignore
+        def synchronize_value(value: float) -> float:
+            return value
 
         return synchronize_value
 

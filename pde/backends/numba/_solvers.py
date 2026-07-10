@@ -224,9 +224,7 @@ def _make_adaptive_stepper_general(
         single_step_error
     )
     post_step_hook = _make_post_step_hook(solver, state)
-    sync_errors = solver.backend.make_mpi_synchronizer(
-        operator="MAX", mpi_run=solver.mpi_run
-    )
+    sync_errors = solver.backend.make_mpi_synchronizer(operator="MAX")
 
     # obtain auxiliary functions
     signature = (nb.double, nb.double)
@@ -348,9 +346,7 @@ def _make_adaptive_stepper_euler(
         single_step_error
     )
     post_step_hook = _make_post_step_hook(solver, state)
-    sync_errors = solver.backend.make_mpi_synchronizer(
-        operator="MAX", mpi_run=solver.mpi_run
-    )
+    sync_errors = solver.backend.make_mpi_synchronizer(operator="MAX")
 
     # obtain auxiliary functions
     signature = (nb.double, nb.double)

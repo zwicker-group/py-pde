@@ -184,9 +184,7 @@ class SolverBase:
             stacklevel=2,
         )
 
-        return self.backend.make_mpi_synchronizer(
-            operator=operator, mpi_run=self.mpi_run
-        )
+        return self.backend.make_mpi_synchronizer(operator=operator)
 
     def _make_post_step_hook(self, state: TField) -> StepperHook:
         """Create a function that calls the post-step hook of the PDE.
@@ -451,12 +449,9 @@ class AdaptiveSolverBase(SolverBase):
         # obtain functions determining how the PDE is evolved
         single_step_error = self._make_single_step_error_estimate(state)
         post_step_hook = self._make_post_step_hook(state)
-        sync_errors = self.backend.make_mpi_synchronizer(
-            operator="MAX", mpi_run=self.mpi_run
-        )
+        sync_errors = self.backend.make_mpi_synchronizer(operator="MAX")
 
         # obtain auxiliary functions
-        # if adjust_dt is None:
         adjust_dt = _make_dt_adjuster(self.dt_min, self.dt_max)
         tolerance = self.tolerance
         dt_min = self.dt_min
