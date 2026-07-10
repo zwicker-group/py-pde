@@ -17,27 +17,32 @@ from pde import (
 )
 
 
-def iter_grids():
-    """Generator providing some test grids."""
+def get_grids():
+    """Provide some test grids."""
+    grid_list = [PolarSymGrid(3, 4), SphericalSymGrid(3, 4)]
     for periodic in [True, False]:
-        yield UnitGrid([3], periodic=periodic)
-        yield UnitGrid([3, 3, 3], periodic=periodic)
-        yield CartesianGrid([[-1, 2], [0, 3]], [5, 7], periodic=periodic)
-        yield CylindricalSymGrid(3, [-1, 2], [7, 8], periodic_z=periodic)
-    yield PolarSymGrid(3, 4)
-    yield SphericalSymGrid(3, 4)
+        grid_list.extend(
+            [
+                UnitGrid([3], periodic=periodic),
+                UnitGrid([3, 3, 3], periodic=periodic),
+                CartesianGrid([[-1, 2], [0, 3]], [5, 7], periodic=periodic),
+                CylindricalSymGrid(3, [-1, 2], [7, 8], periodic_z=periodic),
+            ]
+        )
+    return grid_list
 
 
-def iter_fields():
-    """Generator providing some test fields."""
-    yield ScalarField(UnitGrid([1, 2, 3]), 1)
-    yield VectorField.from_expression(PolarSymGrid(2, 3), ["r**2", "r"])
-    yield Tensor2Field.random_normal(
-        CylindricalSymGrid(3, [-1, 2], [7, 8], periodic_z=True)
-    )
-
+def get_fields():
+    """Provide some test fields."""
     grid = CartesianGrid([[0, 2], [-1, 1]], [3, 4], [True, False])
-    yield FieldCollection([ScalarField(grid, 1), VectorField(grid, 2)])
+    return [
+        ScalarField(UnitGrid([1, 2, 3]), 1),
+        VectorField.from_expression(PolarSymGrid(2, 3), ["r**2", "r"]),
+        Tensor2Field.random_normal(
+            CylindricalSymGrid(3, [-1, 2], [7, 8], periodic_z=True)
+        ),
+        FieldCollection([ScalarField(grid, 1), VectorField(grid, 2)]),
+    ]
 
 
 def get_cartesian_grid(dim=2, periodic=True):

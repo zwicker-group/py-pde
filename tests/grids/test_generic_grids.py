@@ -17,18 +17,22 @@ from pde.grids.base import (
 from pde.tools.misc import module_available
 
 
-def iter_grids():
-    """Generator providing some test grids."""
+def get_grids():
+    """Provide some test grids."""
+    grid_list = [grids.PolarSymGrid(3, 4), grids.SphericalSymGrid(3, 4)]
     for periodic in [True, False]:
-        yield grids.UnitGrid([3], periodic=periodic)
-        yield grids.UnitGrid([3, 3, 3], periodic=periodic)
-        yield grids.CartesianGrid([[-1, 2], [0, 3]], [5, 7], periodic=periodic)
-        yield grids.CylindricalSymGrid(3, [-1, 2], [7, 8], periodic_z=periodic)
-    yield grids.PolarSymGrid(3, 4)
-    yield grids.SphericalSymGrid(3, 4)
+        grid_list.extend(
+            [
+                grids.UnitGrid([3], periodic=periodic),
+                grids.UnitGrid([3, 3, 3], periodic=periodic),
+                grids.CartesianGrid([[-1, 2], [0, 3]], [5, 7], periodic=periodic),
+                grids.CylindricalSymGrid(3, [-1, 2], [7, 8], periodic_z=periodic),
+            ]
+        )
+    return grid_list
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", get_grids())
 def test_basic_grid_properties(grid):
     """Test basic grid properties."""
     with pytest.raises(AttributeError):
@@ -48,7 +52,7 @@ def test_discretize(rng):
     np.testing.assert_allclose(x, x_expect)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", get_grids())
 def test_serialization(grid):
     """Test whether grid can be serialized and copied."""
     g = GridBase.from_state(grid.state_serialized)
@@ -83,7 +87,7 @@ def test_iter_mirror_points():
         assert len(list(ps)) == num_expect
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", get_grids())
 def test_coordinate_conversion(grid, rng):
     """Test the conversion between cells and points."""
     p_empty = np.zeros((0, grid.dim))
@@ -104,7 +108,7 @@ def test_coordinate_conversion(grid, rng):
             np.testing.assert_allclose(p1, p3, err_msg=f"{coords} -> {target}")
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", get_grids())
 @pytest.mark.parametrize(
     "backend",
     ["numpy", "numba", "jax-cpu", "jax-cuda", "torch-cpu", "torch-mps", "torch-cuda"],
@@ -159,7 +163,7 @@ def test_registered_operators():
         assert all(op in grid_class_ops for op in ops)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", get_grids())
 def test_cell_volumes(grid):
     """Test calculation of cell volumes."""
     d2 = grid.discretization / 2
@@ -172,7 +176,7 @@ def test_cell_volumes(grid):
 @pytest.mark.skipif(
     not module_available("modelrunner", strict=True), reason="requires `py-modelrunner`"
 )
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", get_grids())
 def test_grid_modelrunner_storage(grid, tmp_path):
     """Test storing grids in modelrunner storages."""
     from modelrunner import open_storage
@@ -186,7 +190,7 @@ def test_grid_modelrunner_storage(grid, tmp_path):
         assert storage["grid"] == grid
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", get_grids())
 def test_vector_to_cartesian(grid, rng):
     """Test vector_to_cartesian function of grids."""
     point = grid.get_random_point(coords="grid", rng=rng)
@@ -220,7 +224,7 @@ def test_vector_to_cartesian(grid, rng):
         raise NotImplementedError
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", get_grids())
 def test_grid_distance_calculations(grid):
     """Test grid distance calculations."""
     ps = np.array([grid.get_random_point(coords="grid") for _ in range(5)])

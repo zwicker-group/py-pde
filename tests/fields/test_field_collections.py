@@ -5,13 +5,13 @@
 import numpy as np
 import pytest
 
-from fixtures.fields import iter_grids
+from fixtures.fields import get_grids
 from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.fields.base import FieldBase
 from pde.tools.misc import module_available
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", get_grids())
 def test_shapes_nfields(grid, rng):
     """Test single component field."""
     for num in [1, 3]:

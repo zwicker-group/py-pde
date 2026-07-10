@@ -7,7 +7,7 @@ import gc
 import numpy as np
 import pytest
 
-from fixtures.fields import get_cartesian_grid, iter_grids
+from fixtures.fields import get_cartesian_grid, get_grids
 from pde import ScalarField, get_backend
 from pde.fields.base import FieldBase
 from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
@@ -48,7 +48,7 @@ def test_interpolation_edge():
     np.testing.assert_allclose(y, [1.0, 1.5, 2.0])
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", get_grids())
 def test_simple_shapes(grid, rng):
     """Test simple scalar fields."""
     pf = ScalarField.random_uniform(grid, rng=rng)
@@ -138,7 +138,7 @@ def test_gradient():
     np.testing.assert_allclose(v.data[1], np.cos(y), rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", get_grids())
 def test_interpolation_to_grid(grid, rng):
     """Test whether data is interpolated correctly for different grids."""
     sf = ScalarField.random_uniform(grid, rng=rng)
@@ -154,7 +154,7 @@ def test_interpolation_bcs():
     np.testing.assert_allclose(res, np.array([42.0, 0.5, 1.5, 2.5, 3.5, 42.0]))
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", get_grids())
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_insert_scalar(grid, backend, rng):
     """Test the `insert` method."""
@@ -276,7 +276,7 @@ def test_to_scalar(rng):
         sf.to_scalar("nonsense")
 
 
-@pytest.mark.parametrize("grid", (grid for grid in iter_grids() if grid.num_axes > 1))
+@pytest.mark.parametrize("grid", (grid for grid in get_grids() if grid.num_axes > 1))
 @pytest.mark.parametrize("method", ["integral", "average", "max", "min"])
 def test_projection(grid, method, rng):
     """Test scalar projection."""
@@ -300,7 +300,7 @@ def test_projection(grid, method, rng):
         sf.project(grid.axes[0], method="nonsense")
 
 
-@pytest.mark.parametrize("grid", (grid for grid in iter_grids() if grid.num_axes > 1))
+@pytest.mark.parametrize("grid", (grid for grid in get_grids() if grid.num_axes > 1))
 def test_slice(grid, rng):
     """Test scalar slicing."""
     sf = ScalarField(grid, 0.5)
@@ -509,7 +509,7 @@ def test_corner_interpolation():
     assert field.interpolate(np.array([0.0, 0.0])) == pytest.approx(0.0)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", get_grids())
 def test_generic_derivatives(grid, rng):
     """Test generic derivatives operators."""
     sf = ScalarField.random_uniform(grid, rng=rng)
