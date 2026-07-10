@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import pathlib
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Self
@@ -178,6 +179,13 @@ def movie_scalar(
         show (bool):
             Flag determining whether images are shown during making the movie
     """
+    # Deprecated since 2026-07-10
+    warnings.warn(
+        "`movie_scalar` is deprecated. Use `movie` instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     quantities = [{"title": "Concentration", "source": None}]
     if extras:
         for key, value in extras.items():
@@ -214,6 +222,13 @@ def movie_multiple(
         progress (bool):
             Flag determining whether the progress of making the movie is shown.
     """
+    # Deprecated since 2026-07-10
+    warnings.warn(
+        "`movie_multiple` is deprecated. Use `movie` instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     plot = ScalarFieldPlot.from_storage(storage, quantities=quantities, scale=scale)
     plot.make_movie(storage, filename, progress=progress)
 
