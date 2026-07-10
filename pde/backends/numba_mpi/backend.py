@@ -210,7 +210,6 @@ class NumbaMPIBackend(NumbaBackend):
             A function that takes a numpy array and returns the integral with the
             correct weights given by the cell volumes.
         """
-
         integrate_local = self._make_local_integrator(grid)
 
         # deal with MPI multiprocessing
@@ -243,19 +242,31 @@ class NumbaMPIBackend(NumbaBackend):
         return integrate_global
 
     def make_mpi_synchronizer(
-        self, operator: int | str = "MAX", mpi_run: bool = False
+        self, operator: int | str = "MAX"
     ) -> Callable[[float], float]:
         """Return function that synchronizes values between multiple MPI processes.
+
+        Warning:
+            The default implementation does not synchronize anything. This is simply a
+            hook, which can be used by backends that support MPI
 
         Args:
             operator (str or int):
                 Flag determining how the value from multiple nodes is combined.
                 Possible values include "MAX", "MIN", and "SUM".
-            mpi_run (bool):
-                Whether MPI is actually used. If `False`, the method returns a no-op.
 
         Returns:
             Function that can be used to synchronize values across nodes
         """
+        from ...tools import mpi
 
-        return register_jitable(super().make_mpi_synchronizer(operator, mpi_run))  # type: ignore
+        if not mpi.parallel_run:
+            # serial run, which does not require synchronization
+            return super().make_mpi_synchronizer(operator=operator)
+        # parallel run, which requires synchronization
+
+        def synchronize_value(value: float) -> float:
+            """Return error synchronized across all cores."""
+            return mpi.mpi_allreduce(value, operator=operator)  # type: ignore
+
+        return register_jitable(synchronize_value)  # type: ignore
