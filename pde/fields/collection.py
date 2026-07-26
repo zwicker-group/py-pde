@@ -910,7 +910,8 @@ class FieldCollection(FieldBase):
         """
         # obtain image data
         data_args = reference.parameters.copy()
-        assert data_args.pop("kind") == "merged_image"
+        kind = data_args.pop("kind")
+        assert kind == "merged_image"
         rgb_arr, _ = self._get_merged_image_data(**data_args)
         # update the axes image
         reference.element.set_data(rgb_arr)
@@ -991,7 +992,7 @@ class FieldCollection(FieldBase):
         return PlotReference(ax, axes_image, parameters)
 
     def _update_merged_line_plot(self, reference: PlotReference) -> None:
-        """Update an merged line plot with the current field values.
+        """Update a merged line plot with the current field values.
 
         Args:
             reference (:class:`PlotReference`):

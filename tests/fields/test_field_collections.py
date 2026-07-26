@@ -375,7 +375,7 @@ def test_merged_image_plotting(num):
 
 @pytest.mark.parametrize("num", [1, 2, 3, 4])
 def test_merged_line_plotting(num):
-    """Test plotting of collections as merged images."""
+    """Test plotting of collections as merged lines."""
     grid = UnitGrid([8])
     fc = FieldCollection([ScalarField.random_uniform(grid) for _ in range(num)])
 
