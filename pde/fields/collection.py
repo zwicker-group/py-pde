@@ -910,7 +910,7 @@ class FieldCollection(FieldBase):
         """
         # obtain image data
         data_args = reference.parameters.copy()
-        data_args.pop("kind")
+        assert data_args.pop("kind") == "merged_image"
         rgb_arr, _ = self._get_merged_image_data(**data_args)
         # update the axes image
         reference.element.set_data(rgb_arr)
@@ -990,6 +990,103 @@ class FieldCollection(FieldBase):
         }
         return PlotReference(ax, axes_image, parameters)
 
+    def _update_merged_line_plot(self, reference: PlotReference) -> None:
+        """Update an merged line plot with the current field values.
+
+        Args:
+            reference (:class:`PlotReference`):
+                The reference to the plot that is updated
+        """
+        import matplotlib as mpl
+
+        # obtain data for the plot
+        assert reference.parameters.get("kind", "merged_lines") == "merged_lines"
+        scalar = reference.parameters.get("scalar", "auto")
+        extract = reference.parameters.get("extract", "auto")
+
+        line_data = [
+            field.get_line_data(scalar=scalar, extract=extract) for field in self
+        ]
+
+        lines = reference.element
+        for line, data in zip(lines, line_data, strict=True):
+            if isinstance(line, mpl.lines.Line2D):
+                # update old plot
+                line.set_xdata(data["data_x"])
+                line.set_ydata(data["data_y"].real)
+
+            else:
+                msg = f"Unsupported plot reference {reference}"
+                raise TypeError(msg)
+
+    @plot_on_axes(update_method="_update_merged_line_plot")
+    def _plot_merged_lines(
+        self,
+        ax,
+        scalar: str = "auto",
+        extract: str = "auto",
+        ylabel: str | None = None,
+        ylim: tuple[float, float] | None = None,
+        legend: bool = False,
+        **kwargs,
+    ) -> PlotReference:
+        r"""Visualize 1d fields using a combined line plot.
+
+        Args:
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting.
+            scalar (str):
+                Method used for extracting a scalar representation; see
+                :meth:`DataFieldBase.to_scalar`.
+            extract (str):
+                Method used for extracting one-dimensional line data from the grid.
+            ylabel (str):
+                Label of the y-axis.
+            ylim (tuple of float):
+                Limits of the y-axis. If omitted, the data range is used
+            legend (bool):
+                Display the legend to distinguish the different plots
+            \**kwargs:
+                Additional keyword arguments that affect the line plot.
+
+        Returns:
+            :class:`PlotReference`: Instance that contains information to update the
+            plot with new data later.
+        """
+        # obtain data for the plot
+        line_data = [
+            field.get_line_data(scalar=scalar, extract=extract) for field in self
+        ]
+
+        # warn if there is an imaginary part
+        if any(np.any(np.iscomplex(data["data_y"])) for data in line_data):
+            self._logger.warning("Only the real part of the complex data is shown")
+
+        # do the plot
+        lines, labels = [], []
+        for data in line_data:
+            (line2d,) = ax.plot(data["data_x"], data["data_y"].real, **kwargs)
+            lines.append(line2d)
+            labels.append(data["label_y"])
+
+        # set some default properties
+        ax.set_xlabel(data["label_x"])  # take the x-label from the last data point
+        if ylabel:
+            ax.set_ylabel(ylabel)
+        if ylim is not None:
+            ax.set_ylim(ylim)
+        if legend:
+            ax.legend(lines, labels)
+
+        parameters = {
+            "kind": "merged_lines",
+            "scalar": scalar,
+            "extract": extract,
+            "ylabel": ylabel,
+            "ylim": ylim,
+        }
+        return PlotReference(ax, lines, parameters)
+
     def _update_plot(self, reference: list[PlotReference]) -> None:
         """Update a plot collection with the current field values.
 
@@ -997,7 +1094,10 @@ class FieldCollection(FieldBase):
             reference (list of :class:`PlotReference`):
                 All references of the plot to update
         """
-        if reference[0].parameters.get("kind", None) == "merged_image":
+        kind = reference[0].parameters.get("kind", None)
+        if kind == "merged_lines":
+            self._update_merged_line_plot(reference[0])
+        elif kind == "merged_image":
             self._update_merged_image_plot(reference[0])
         else:
             for field, ref in zip(self.fields, reference, strict=False):
@@ -1048,7 +1148,7 @@ class FieldCollection(FieldBase):
             to update all the plots with new data later.
         """
         # determine how many panels we need
-        if kind == "merged":
+        if kind in {"merged", "merged_image", "merged_lines"}:
             num_panels = 1
         else:
             num_panels = len(self)
@@ -1085,6 +1185,18 @@ class FieldCollection(FieldBase):
         axs = fig.subplots(nrows=nrows, ncols=ncols, squeeze=False)
 
         if kind == "merged":
+            # automatically determine kind of merged plot
+            kind = "merged_lines" if self.grid.num_axes == 1 else "merged_image"
+
+        if kind == "merged_lines":
+            # plot all lines in a single image
+            reference = [
+                self._plot_merged_lines(
+                    ax=axs[0, 0], action="none", **kwargs, **subplot_args[0]
+                )
+            ]
+
+        elif kind == "merged_image":
             # plot a single RGB representation
             reference = [
                 self._plot_merged_image(

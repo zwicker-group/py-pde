@@ -177,12 +177,20 @@ class PlotReference:
 
     __slots__ = ["ax", "element", "parameters"]
 
-    def __init__(self, ax, element: Any, parameters: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        ax: matplotlib.axes.Axes,
+        element: Any,
+        parameters: dict[str, Any] | None = None,
+    ):
         """
         Args:
-            ax (:class:`matplotlib.axes.Axes`): The axes of the element
-            element (:class:`matplotlib.artist.Artist`): The actual element
-            parameters (dict): Parameters to recreate the plot element
+            ax (:class:`matplotlib.axes.Axes`):
+                The figure axes which shows the element
+            element (:class:`matplotlib.artist.Artist`):
+                The actual matplotlib element or a list
+            parameters (dict):
+                Additional parameters necessary to recreate the plot element
         """
         self.ax = ax
         self.element = element
