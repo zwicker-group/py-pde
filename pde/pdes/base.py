@@ -459,7 +459,7 @@ class PDEBase(metaclass=ABCMeta):
         solver: str | SolverBase = "euler",
         ret_info: bool = False,
         **kwargs,
-    ) -> None | TField | tuple[TField | None, dict[str, Any]]:
+    ) -> TField | tuple[TField | None, dict[str, Any]] | None:
         """Solves the partial differential equation.
 
         The method constructs a suitable solver (:class:`~pde.solvers.base.SolverBase`)

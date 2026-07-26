@@ -325,7 +325,7 @@ class BackendBase(Generic[TNativeArray]):
         """
         # determine all classes that are relevant to the grid
         grid_cls = grid_id if inspect.isclass(grid_id) else grid_id.__class__
-        grid_classes = inspect.getmro(grid_cls)[:-1]  # type: ignore
+        grid_classes = inspect.getmro(grid_cls)[:-1]
 
         # get all operators registered on the class from all relevant backends and grids
         operators = set()

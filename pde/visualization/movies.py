@@ -193,7 +193,12 @@ def movie_scalar(
 
     # initialize the plot with the first data point
     plot = ScalarFieldPlot.from_storage(
-        storage, quantities=quantities, scale=scale, tight=tight, show=show
+        storage,
+        quantities=quantities,
+        scale=scale,
+        tight=tight,
+        show=show,
+        skip_deprecation=True,
     )
     # make the full movie
     plot.make_movie(storage, filename, progress=progress)
@@ -229,7 +234,9 @@ def movie_multiple(
         stacklevel=2,
     )
 
-    plot = ScalarFieldPlot.from_storage(storage, quantities=quantities, scale=scale)
+    plot = ScalarFieldPlot.from_storage(
+        storage, quantities=quantities, scale=scale, skip_deprecation=True
+    )
     plot.make_movie(storage, filename, progress=progress)
 
 

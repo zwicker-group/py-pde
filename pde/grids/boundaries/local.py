@@ -967,9 +967,11 @@ class ExpressionBC(BCBase):
         if self._input["target"] == "mixed":
             # treat the mixed case separately
             res = [
-                f'target="{self._input["target"]}", '
-                f'value="{self._input["value_expr"]}", '
-                f'const="{self._input["const_expr"]}"'
+                (
+                    f'target="{self._input["target"]}", '
+                    f'value="{self._input["value_expr"]}", '
+                    f'const="{self._input["const_expr"]}"'
+                )
             ]
         elif self._is_func:
             res = [f"{self._input['target']}=<function>"]

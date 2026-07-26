@@ -49,6 +49,7 @@ DOCSTRING_REPLACEMENTS = {
         More fine-grained control is possible by passing an instance of classes defined
         in :mod:`~pde.trackers.interrupts`.
         """,
+    # plot_quantities and plot_scale are deprecated since 2026-07-10
     "ARG_PLOT_QUANTITIES": """
         A 2d list of quantities that are shown in a rectangular arrangement.
         If `quantities` is a simple list, the panels will be rendered as a

@@ -1149,7 +1149,7 @@ class _FieldLabels:
         for field in self.collection:
             yield field.label
 
-    def __getitem__(self, index: int | slice) -> str | None | list[str | None]:
+    def __getitem__(self, index: int | slice) -> str | list[str | None] | None:
         """Return one or many labels of a field in the collection."""
         if isinstance(index, int):
             return self.collection[index].label
@@ -1158,7 +1158,7 @@ class _FieldLabels:
         msg = "Unsupported index type"
         raise TypeError(msg)
 
-    def __setitem__(self, index: int | slice, value: None | str | list[str | None]):
+    def __setitem__(self, index: int | slice, value: str | list[str | None] | None):
         """Change one or many labels of a field in the collection."""
         if isinstance(index, int):
             self.collection.fields[index].label = value  # type: ignore

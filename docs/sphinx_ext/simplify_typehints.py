@@ -9,28 +9,36 @@ REPLACEMENTS = [
     ("Union[int, float, complex, numpy.ndarray]", "NumberOrArray"),
     ("Union[int, float, complex]", "Number"),
     (
-        "Optional[Union[_SupportsArray[dtype], _NestedSequence[_SupportsArray[dtype]], "
-        "bool, int, float, complex, str, bytes, _NestedSequence[Union[bool, int, "
-        "float, complex, str, bytes]]]]",
+        (
+            "Optional[Union[_SupportsArray[dtype], _NestedSequence[_SupportsArray[dtype]], "  # noqa: E501
+            "bool, int, float, complex, str, bytes, _NestedSequence[Union[bool, int, "
+            "float, complex, str, bytes]]]]"
+        ),
         "NumberOrArray",
     ),
     (
-        "Union[dtype[Any], None, Type[Any], _SupportsDType[dtype[Any]], str, "
-        "Tuple[Any, int], Tuple[Any, Union[SupportsIndex, Sequence[SupportsIndex]]], "
-        "List[Any], _DTypeDict, Tuple[Any, Any]]",
+        (
+            "Union[dtype[Any], None, Type[Any], _SupportsDType[dtype[Any]], str, "
+            "Tuple[Any, int], Tuple[Any, Union[SupportsIndex, Sequence[SupportsIndex]]], "  # noqa: E501
+            "List[Any], _DTypeDict, Tuple[Any, Any]]"
+        ),
         "DType",
     ),
     # Complex types describing the boundary conditions
     (
-        "Dict[str, Dict | str | BCBase] | Dict | str | BCBase | "
-        "Tuple[Dict | str | BCBase, Dict | str | BCBase] | BoundaryAxisBase | "
-        "Sequence[Dict[str, Dict | str | BCBase] | Dict | str | BCBase | "
-        "Tuple[Dict | str | BCBase, Dict | str | BCBase] | BoundaryAxisBase]",
+        (
+            "Dict[str, Dict | str | BCBase] | Dict | str | BCBase | "
+            "Tuple[Dict | str | BCBase, Dict | str | BCBase] | BoundaryAxisBase | "
+            "Sequence[Dict[str, Dict | str | BCBase] | Dict | str | BCBase | "
+            "Tuple[Dict | str | BCBase, Dict | str | BCBase] | BoundaryAxisBase]"
+        ),
         "BoundariesData",
     ),
     (
-        "Dict[str, Dict | str | BCBase] | Dict | str | BCBase | "
-        "Tuple[Dict | str | BCBase, Dict | str | BCBase] | BoundaryAxisBase",
+        (
+            "Dict[str, Dict | str | BCBase] | Dict | str | BCBase | "
+            "Tuple[Dict | str | BCBase, Dict | str | BCBase] | BoundaryAxisBase"
+        ),
         "BoundariesPairData",
     ),
     ("Dict | str | BCBase", "BoundaryData"),
