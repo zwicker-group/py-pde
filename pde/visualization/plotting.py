@@ -68,7 +68,7 @@ def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
 
 def extract_field(
     fields: FieldBase,
-    source: None | int | Callable = None,
+    source: int | Callable | None = None,
     check_rank: int | None = None,
 ) -> DataFieldBase:
     """Extracts a single field from a possible collection.
@@ -132,6 +132,8 @@ class ScalarFieldPlot:
         title: str | None = None,
         tight: bool = False,
         show: bool = True,
+        *,
+        skip_deprecation: bool = False,
     ):
         """
         Args:
@@ -154,6 +156,14 @@ class ScalarFieldPlot:
                 kept in the background, which can be useful if it only needs to
                 be written to a file.
         """
+        if not skip_deprecation:
+            # Deprecated since 2026-07-10
+            warnings.warn(
+                "`ScalarFieldPlot` is deprecated and will be removed soon.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         self.grid = fields.grid
         self.quantities = self._prepare_quantities(fields, quantities, scale=scale)
         self.show = show
@@ -192,6 +202,8 @@ class ScalarFieldPlot:
         scale: ScaleData = "automatic",
         tight: bool = False,
         show: bool = True,
+        *,
+        skip_deprecation: bool = False,
     ) -> ScalarFieldPlot:
         """Create ScalarFieldPlot from storage.
 
@@ -232,8 +244,14 @@ class ScalarFieldPlot:
                         vmax = np.nanmax([np.nanmax(img["data"]), vmax])
                     quantity["scale"] = (vmin, vmax)
 
-        # actually setup
-        return cls(fields, quantities, tight=tight, show=show)
+        # actual creation of object
+        return cls(
+            fields,
+            quantities,
+            tight=tight,
+            show=show,
+            skip_deprecation=skip_deprecation,
+        )
 
     @staticmethod
     @fill_in_docstring
@@ -510,7 +528,10 @@ class ScalarFieldPlot:
 @plot_on_axes()
 @fill_in_docstring
 def plot_magnitudes(
-    storage: StorageBase, quantities=None, ax=None, **kwargs
+    storage: StorageBase,
+    quantities: list[dict[str, Any]] | None = None,
+    ax=None,
+    **kwargs,
 ) -> PlotReference:
     r"""Plot spatially averaged quantities as a function of time.
 
@@ -550,6 +571,13 @@ def plot_magnitudes(
                 quantities.append({"label": label, "source": i})
         else:
             quantities = [{"label": label_base, "source": None}]
+    else:
+        # Deprecated since 2026-07-10
+        warnings.warn(
+            "Argument `quantities` is deprecated and will be removed soon.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     _logger.debug("Quantities: %s", quantities)
 

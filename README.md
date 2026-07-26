@@ -72,12 +72,12 @@ A simple example showing the evolution of the diffusion equation in 2d:
 ```python
 import pde
 
-grid = pde.UnitGrid([64, 64])                 # generate grid
+grid = pde.UnitGrid([64, 64])  # generate grid
 state = pde.ScalarField.random_uniform(grid)  # generate initial condition
 
-eq = pde.DiffusionPDE(diffusivity=0.1)        # define the pde
-result = eq.solve(state, t_range=10)          # solve the pde
-result.plot()                                 # plot the resulting field
+eq = pde.DiffusionPDE(diffusivity=0.1)  # define the pde
+result = eq.solve(state, t_range=10)  # solve the pde
+result.plot()  # plot the resulting field
 ```
 
 PDEs can also be specified by simply writing expressions of the evolution rate.
@@ -86,7 +86,7 @@ For instance, the
 can be implemented as
 
 ```python
-eq = pde.PDE({'c': 'laplace(c**3 - c - laplace(c))'})
+eq = pde.PDE({"c": "laplace(c**3 - c - laplace(c))"})
 ```
 
 which can be used in place of the `DiffusionPDE` in the example above.

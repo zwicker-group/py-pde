@@ -365,9 +365,12 @@ class PDE(SDEBase):
                 # wrong data was supplied for the boundary condition
                 raise
             except Exception as err:
+                # use err.add_note in python 3.11 or higher
                 err.args += (
-                    f"Problems in boundary condition `{bc}` for operator `{func}` in "
-                    f"PDE for `{var}`",
+                    (
+                        f"Problems in boundary condition `{bc}` for operator `{func}` "
+                        f"in PDE for `{var}`"
+                    ),
                 )
                 raise
 
