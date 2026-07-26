@@ -1037,6 +1037,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def get_line_data(
         self, scalar: str = "auto", extract: str = "auto"
     ) -> dict[str, Any]:
+        """Return data for visualizing the field in a line plot.
+
+        Args:
+            scalar (str):
+                Method used for extracting a scalar representation; see
+                :meth:`DataFieldBase.to_scalar`.
+            extract (str):
+                Method used for extracting one-dimensional line data from the grid.
+
+        Returns:
+            dict: Information useful for plotting a line representation of the field.
+        """
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
 
@@ -1052,6 +1064,21 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def get_image_data(
         self, scalar: str = "auto", transpose: bool = False, **kwargs
     ) -> dict[str, Any]:
+        """Return data for visualizing the field as an image.
+
+        Args:
+            scalar (str):
+                Method used for extracting a scalar representation; see
+                :meth:`DataFieldBase.to_scalar`.
+            transpose (bool):
+                Determines whether the transpose of the data should be returned.
+            **kwargs:
+                Additional keyword arguments are forwarded to
+                :meth:`~pde.grids.base.GridBase.get_image_data`.
+
+        Returns:
+            dict: Information useful for plotting an image representation of the field.
+        """
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
 

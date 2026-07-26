@@ -373,6 +373,29 @@ def test_merged_image_plotting(num):
     )
 
 
+@pytest.mark.parametrize("num", [1, 2, 3, 4])
+def test_merged_line_plotting(num):
+    """Test plotting of collections as merged lines."""
+    grid = UnitGrid([8])
+    fc = FieldCollection([ScalarField.random_uniform(grid) for _ in range(num)])
+
+    ref = fc._plot_merged_lines()
+    fc._update_merged_line_plot(ref)
+
+    refs = fc.plot("merged")
+    fc._update_plot(refs)
+
+    # use some more fancy options
+    fc.plot(
+        "merged",
+        scalar="abs",
+        extract="cut_0",
+        ylabel="Summary",
+        ylim=[0, 1],
+        legend=True,
+    )
+
+
 def test_collection_slice_project():
     """Test slicing and projection of field data."""
     grid = UnitGrid([8, 16])
