@@ -194,7 +194,7 @@ def test_wrong_format():
 
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
-@pytest.mark.parametrize("path", RESOURCES_PATH.glob("*.hdf5"))
+@pytest.mark.parametrize("path", list(RESOURCES_PATH.glob("*.hdf5")))
 def test_stored_files(path):
     """Test stored files."""
     file_reader = FileStorage(path)

@@ -276,7 +276,7 @@ def test_to_scalar(rng):
         sf.to_scalar("nonsense")
 
 
-@pytest.mark.parametrize("grid", (grid for grid in get_grids() if grid.num_axes > 1))
+@pytest.mark.parametrize("grid", [grid for grid in get_grids() if grid.num_axes > 1])
 @pytest.mark.parametrize("method", ["integral", "average", "max", "min"])
 def test_projection(grid, method, rng):
     """Test scalar projection."""
@@ -300,7 +300,7 @@ def test_projection(grid, method, rng):
         sf.project(grid.axes[0], method="nonsense")
 
 
-@pytest.mark.parametrize("grid", (grid for grid in get_grids() if grid.num_axes > 1))
+@pytest.mark.parametrize("grid", [grid for grid in get_grids() if grid.num_axes > 1])
 def test_slice(grid, rng):
     """Test scalar slicing."""
     sf = ScalarField(grid, 0.5)
