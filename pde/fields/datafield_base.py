@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import functools
 import json
-import warnings
 from abc import ABCMeta, abstractmethod
 from inspect import isabstract
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
@@ -431,69 +430,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 )
             # full dataset is product of values along axes
             data[index] = functools.reduce(axis_combination.outer, data_axis)
-
-        return cls(grid, data=data, label=label, dtype=dtype)
-
-    @classmethod
-    def random_colored(
-        cls,
-        grid: GridBase,
-        exponent: float = 0,
-        scale: float = 1,
-        *,
-        label: str | None = None,
-        dtype: DTypeLike | None = None,
-        rng: np.random.Generator | None = None,
-    ) -> Self:
-        r"""Create a field of random values with colored noise.
-
-        The spatially correlated values obey
-
-        .. math::
-            \langle c_i(\boldsymbol k) c_j(\boldsymbol k’) \rangle =
-                \Gamma^2 |\boldsymbol k|^\nu \delta_{ij}
-                \delta(\boldsymbol k - \boldsymbol k’)
-
-        in spectral space, where :math:`\boldsymbol k` is the wave vector. The special
-        case :math:`\nu = 0` corresponds to white noise. Note that the spatial
-        correlations always assume periodic boundary conditions (even if the underlying
-        grid does not) and that the components of tensor fields are uncorrelated.
-
-        Args:
-            grid (:class:`~pde.grids.base.GridBase`):
-                Grid defining the space on which this field is defined
-            exponent (float):
-                Exponent :math:`\nu` of the power spectrum
-            scale (float):
-                Scaling factor :math:`\Gamma` determining noise strength
-            label (str, optional):
-                Name of the returned field
-            dtype (numpy dtype):
-                The data type of the field. If omitted, it defaults to `double`.
-            rng (:class:`~numpy.random.Generator`):
-                Random number generator (default: :func:`~numpy.random.default_rng()`)
-        """
-        # deprecated since 2025-04-04
-        warnings.warn(
-            "`random_colored` method is deprecated. Use `random_normal` with "
-            "correlation='power law' instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        # get function making colored noise
-        from ..tools.spectral import make_colored_noise
-
-        make_scalar_field = make_colored_noise(
-            grid.shape, dx=grid.discretization, exponent=exponent, rng=rng
-        )
-
-        # create random fields for each tensor component
-        tensor_shape = (grid.dim,) * cls.rank
-        data = np.empty(tensor_shape + grid.shape)
-        # determine random field for each component
-        for index in np.ndindex(*tensor_shape):
-            data[index] = scale * make_scalar_field()
 
         return cls(grid, data=data, label=label, dtype=dtype)
 
