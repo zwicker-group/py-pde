@@ -3,7 +3,6 @@
 .. autosummary::
    :nosignatures:
 
-   make_colored_noise
    make_correlated_noise
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
@@ -12,7 +11,6 @@
 from __future__ import annotations
 
 import logging
-import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -24,12 +22,8 @@ if TYPE_CHECKING:
 
 try:
     from pyfftw.interfaces.numpy_fft import ifftn as np_ifftn
-    from pyfftw.interfaces.numpy_fft import irfftn as np_irfftn
-    from pyfftw.interfaces.numpy_fft import rfftn as np_rfftn
 except ImportError:
     from numpy.fft import ifftn as np_ifftn
-    from numpy.fft import irfftn as np_irfftn
-    from numpy.fft import rfftn as np_rfftn
 
 
 _logger = logging.getLogger(__name__)
@@ -265,88 +259,3 @@ def make_correlated_noise(
         dtype=dtype,
         rng=rng,
     )
-
-
-def make_colored_noise(
-    shape: tuple[int, ...],
-    dx=1.0,
-    exponent: float = 0,
-    scale: float = 1,
-    rng: np.random.Generator | None = None,
-) -> Callable[[], NumericArray]:
-    r"""Return a function creating an array of random values that obey.
-
-    .. math::
-        \langle c(\boldsymbol k) c(\boldsymbol k’) \rangle =
-            \Gamma^2 |\boldsymbol k|^\nu \delta(\boldsymbol k-\boldsymbol k’)
-
-    in spectral space on a Cartesian grid. The special case :math:`\nu = 0` corresponds
-    to white noise. For simplicity, the correlations respect periodic boundary
-    conditions.
-
-    Args:
-        shape (tuple of ints):
-            Number of supports points in each spatial dimension. The number of the list
-            defines the spatial dimension.
-        dx (float or list of floats):
-            Discretization along each dimension. A uniform discretization in each
-            direction can be indicated by a single number.
-        exponent:
-            Exponent :math:`\nu` of the power spectrum
-        scale:
-            Scaling factor :math:`\Gamma` determining noise strength
-        rng (:class:`~numpy.random.Generator`):
-            Random number generator (default: :func:`~numpy.random.default_rng()`)
-
-    Returns:
-        callable: a function returning a random realization
-    """
-    # deprecated since 2025-04-04
-    warnings.warn(
-        "`make_colored_noise` is deprecated. Use `make_correlated_noise` with "
-        "correlation='power law' instead",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    rng = np.random.default_rng(rng)
-
-    # extract some information about the grid
-    dim = len(shape)
-    dx = np.broadcast_to(dx, (dim,))
-
-    if exponent == 0:
-        # fast case of white noise
-        def noise_normal():
-            """Return array of colored noise."""
-            return scale * rng.normal(size=shape)
-
-        return noise_normal
-
-    # deal with colored noise in the following
-
-    # prepare wave vectors
-    k2s = np.array(0)
-    for i in range(dim):
-        if i == dim - 1:
-            k = np.fft.rfftfreq(shape[i], dx[i])
-        else:
-            k = np.fft.fftfreq(shape[i], dx[i])
-        k2s = np.add.outer(k2s, k**2)
-
-    # scaling of all modes with k != 0
-    k2s.flat[0] = 1.0
-    scaling: NumericArray = scale * k2s ** (0.25 * exponent)
-    scaling.flat[0] = 0.0
-
-    def noise_colored() -> NumericArray:
-        """Return array of colored noise."""
-        # random field
-        arr: NumericArray = rng.normal(size=shape)
-        # forward transform
-        arr = np_rfftn(arr)
-        # scale according to frequency
-        arr *= scaling  # type: ignore
-        # backwards transform
-        return np_irfftn(arr, s=shape, axes=range(dim))  # type: ignore
-
-    return noise_colored
