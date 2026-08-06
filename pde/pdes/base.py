@@ -569,9 +569,24 @@ class SDEBase(PDEBase):
     """Base class for defining stochastic partial differential equations (SDEs)
 
     Custom PDEs can be implemented by subclassing :class:`SDEBase` to specify the
-    evolution rate and an associated noise variance (or realization). Overwrite
+    evolution rate and an associated noise variance by overwriting
     :meth:`make_noise_variance` (together with :meth:`PDEBase.make_evolution_rate`)
-    to support all backends.
+    to support all backends. This simple interface supports colored noise (where the
+    noise variance depends on space and/or composition). In the case of colored noise,
+    the noise interpretation can be chosen with, the argument ``noise_interpretation``,
+    which defaults to `ito`.
+
+    More complex noise, which cannot be expressed by a simple variance (e.g., because it
+    involves differential operators) can be implemented using a different machinery: To
+    enable this, the class attribute :attr:`PDEBase.use_noise_realization` needs to be
+    set to `True`. In this case, solvers call the method ``make_noise_realization``,
+    which takes the state and the backend as arguments and is supposed to return a field
+    (of the same data type as the state), which is a realization of the stochastic noise
+    field that is added on the right hand side of the equation. For example, in a simple
+    Euler-Maruyama solver this term will be multiplied by square root of the time step
+    and then added to the current state. Because this extended method only returns the
+    noise field, it cannot be used in advanced stochastic solvers, such as the Milstein
+    solver.
     """
 
     use_noise_variance: bool = True
