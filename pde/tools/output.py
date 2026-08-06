@@ -135,7 +135,7 @@ def in_jupyter_notebook() -> bool:
         return False
 
     try:
-        ipython_config = get_ipython().config
+        ipython_config = get_ipython().config  # type: ignore
     except AttributeError:
         return False
 
