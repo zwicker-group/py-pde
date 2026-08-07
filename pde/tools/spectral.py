@@ -157,7 +157,7 @@ def make_correlated_noise(
         ============= ==================================================================
         ``none``      No correlation, :math:`C(k) = \delta(k)`
 
-        ``gaussian``  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length scale
+        ``gaussian``  :math:`C(k) = \exp(-\frac12 k^2 \lambda^2)` with the length scale
                       :math:`\lambda` set by argument ``length_scale``.
 
         ``power law`` :math:`C(k) = k^{\nu/2}` with exponent :math:`\nu` set by argument
