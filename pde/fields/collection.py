@@ -500,6 +500,51 @@ class FieldCollection(FieldBase):
             label=label,
         )
 
+    @classmethod
+    def scalar_random_normal(
+        cls,
+        num_fields: int,
+        grid: GridBase,
+        mean: float = 0,
+        std: float = 1,
+        *,
+        label: str | None = None,
+        labels: Sequence[str] | None = None,
+        **kwargs,
+    ) -> FieldCollection:
+        r"""Creates Gaussian random fields with normal distributed random values.
+
+        Details of methods and additional options are described in
+        :func:`~pde.fields.datafield_base.DataFieldBase.random_normal`.
+
+        Args:
+            num_fields (int):
+                The number of fields to create
+            grid (:class:`~pde.grids.base.GridBase`):
+                Grid defining the space on which this field is defined
+            mean (float):
+                Mean of the Gaussian distribution
+            std (float):
+                Standard deviation of the Gaussian distribution
+            label (str, optional):
+                Name of the returned field
+            labels (list of str, optional):
+                Names of the individual fields
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
+            **kwargs:
+                Additional parameters can affect details of the correlation function.
+        """
+        if labels is None:
+            labels = [None] * num_fields  # type: ignore
+        return cls(
+            [
+                ScalarField.random_normal(grid, mean, std, label=labels[i], **kwargs)
+                for i in range(num_fields)
+            ],
+            label=label,
+        )
+
     @property
     def attributes(self) -> dict[str, Any]:
         """dict: describes the state of the instance (without the data)"""

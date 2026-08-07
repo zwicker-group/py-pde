@@ -145,31 +145,33 @@ def make_correlated_noise(
         rng (:class:`~numpy.random.Generator`):
             Random number generator (default: :func:`~numpy.random.default_rng()`)
         **kwargs:
-            Additional parameters can affect details of the correlation function
+            Additional parameters can affect details of the correlation function.
+            Examples include ``length_scale``, ``exponent``, and ``sharpness``, which
+            are described in the table below.
 
     .. table:: Supported correlation functions
         :widths: 20 80
 
-        ================= ==============================================================
+        ============= ==================================================================
         Identifier        Correlation function
-        ================= ==============================================================
-        :code:`none`      No correlation, :math:`C(k) = \delta(k)`
+        ============= ==================================================================
+        ``none``      No correlation, :math:`C(k) = \delta(k)`
 
-        :code:`gaussian`  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length
-                          scale :math:`\lambda` set by argument :code:`length_scale`.
+        ``gaussian``  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length scale
+                      :math:`\lambda` set by argument ``length_scale``.
 
-        :code:`power law` :math:`C(k) = k^{\nu/2}` with exponent :math:`\nu` set by
-                          argument :code:`exponent`.
+        ``power law`` :math:`C(k) = k^{\nu/2}` with exponent :math:`\nu` set by argument
+                      ``exponent``.
 
-        :code:`cosine`    :math:`C(k) = \exp\bigl(-s^2(\lambda k - 1)^2\bigr)` with the
-                          length scale :math:`\lambda` set by argument
-                          :code:`length_scale`, whereas the sharpness parameter
-                          :math:`s` is set by :code:`sharpness` and defaults to 10.
-        ================= ==============================================================
+        ``cosine``    :math:`C(k) = \exp\bigl(-s^2(\lambda k - 1)^2\bigr)` with the
+                      length scale :math:`\lambda` set by argument ``length_scale``,
+                      whereas the sharpness parameter :math:`s` is set by ``sharpness``
+                      and defaults to 10.
+        ============= ==================================================================
 
     Note:
         The returned field only has unit variance for correlation functions that
-        decrease monotonously. In other cases (i.e., for :code:`cosine` correlation),
+        decrease monotonously. In other cases (i.e., for ``cosine`` correlation),
         the variance depends on details, like the resolution of the grid.
 
     Returns:
@@ -227,7 +229,10 @@ def make_correlated_noise(
             return np.exp(-sharpness2 * (length_scale * np.sqrt(k2s) - 1) ** 2)
 
     else:
-        msg = f"Unknown correlation `{correlation}`"
+        msg = (
+            f"Unknown correlation `{correlation}`. Valid names are `delta`, "
+            "`gaussian`, `power law`, or `cosine`."
+        )
         raise ValueError(msg)
 
     if kwargs:

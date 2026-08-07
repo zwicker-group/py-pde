@@ -161,7 +161,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         A complex field is returned when `vmin` or `vmax` is a complex number. In this
         case, the real and imaginary parts of these arguments are used to determine
         the distribution of the real and imaginary parts of the resulting field.
-        Consequently, :code:`ScalarField.random_uniform(grid, 0, 1 + 1j)` creates a
+        Consequently, ``ScalarField.random_uniform(grid, 0, 1 + 1j)`` creates a
         complex field where the real and imaginary parts are chosen from a standard
         uniform distribution.
 
@@ -218,7 +218,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         A complex field is returned when either `mean` or `std` is a complex number. In
         this case, the real and imaginary parts of these arguments are used to determine
         the distribution of the real and imaginary parts of the resulting field.
-        Consequently, :code:`ScalarField.random_normal(grid, 0, 1 + 1j)` creates a
+        Consequently, ``ScalarField.random_normal(grid, 0, 1 + 1j)`` creates a
         complex field where the real and imaginary parts are chosen from a standard
         normal distribution.
 
@@ -263,31 +263,33 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
             **kwargs:
                 Additional parameters can affect details of the correlation function.
+                Examples include ``length_scale``, ``exponent``, and ``sharpness``,
+                which are described in the table below.
 
         .. table:: Supported correlation functions
             :widths: 20 80
 
-            ================= ==========================================================
+            ============= ==============================================================
             Identifier        Correlation function
-            ================= ==========================================================
-            :code:`none`      No correlation, :math:`C(k) = \delta(k)`
+            ============= ==============================================================
+            ``none``      No correlation, :math:`C(k) = \delta(k)`
 
-            :code:`gaussian`  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length
-                              scale :math:`\lambda` set by argument :code:`length_scale`
+            ``gaussian``  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length
+                          scale :math:`\lambda` set by argument ``length_scale``
 
-            :code:`power law` :math:`C(k) = k^{\nu/2}` with exponent :math:`\nu` set by
-                              argument :code:`exponent`.
+            ``power law`` :math:`C(k) = k^{\nu/2}` with exponent :math:`\nu` set by
+                          argument ``exponent``.
 
-            :code:`cosine`    :math:`C(k) = \exp\bigl(-s^2(\lambda k - 1)^2\bigr)` with
-                              the length scale :math:`\lambda` set by argument
-                              :code:`length_scale`, whereas the sharpness parameter
-                              :math:`s` is set by :code:`sharpness` and defaults to 10.
-            ================= ==========================================================
+            ``cosine``    :math:`C(k) = \exp\bigl(-s^2(\lambda k - 1)^2\bigr)` with
+                          the length scale :math:`\lambda` set by argument
+                          ``length_scale``, whereas the sharpness parameter :math:`s` is
+                          set by ``sharpness`` and defaults to 10.
+            ============= ==============================================================
 
         Note:
             The returned field only has the correct standard deviation (set by `std`)
             for correlation functions that decrease monotonously. In other cases (i.e.,
-            for :code:`cosine` correlation), the variance depends on details, like the
+            for ``cosine`` correlation), the variance depends on details, like the
             resolution of the grid.
         """
         rng = np.random.default_rng(rng)
@@ -1373,7 +1375,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Tip:
             Typical additional arguments for the various plot kinds include
 
-            * :code:`kind == "line"`:
+            * ``kind == "line"``:
 
               - `scalar`: Sets method for extracting scalars as described in
                 :meth:`DataFieldBase.to_scalar`.
@@ -1382,7 +1384,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
               - `ylim`: Data limits of the y-axis.
               - Additional arguments are passed to :func:`matplotlib.pyplot.plot`
 
-            * :code:`kind == "image"`:
+            * ``kind == "image"``:
 
               - `colorbar`: Determines whether a colorbar is shown
               - `scalar`: Sets method for extracting scalars as described in
@@ -1390,7 +1392,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
               - `transpose` Determines whether the transpose of the data is plotted
               - Most remaining arguments are passed to :func:`matplotlib.pyplot.imshow`
 
-            * :code:`kind == `"vector"`:
+            * ``kind == "vector"``:
 
               - `method` Can be either `quiver` or `streamplot`
               - `transpose` Determines whether the transpose of the data is plotted
