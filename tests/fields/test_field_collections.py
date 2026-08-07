@@ -199,10 +199,14 @@ def test_smoothing_collection(rng):
         np.testing.assert_allclose(out[i].data, fields[i].smooth(sgm).data)
 
 
-def test_scalar_random_uniform():
-    """Test creating collections using scalar_random_uniform."""
+@pytest.mark.parametrize(
+    "method",
+    [FieldCollection.scalar_random_uniform, FieldCollection.scalar_random_normal],
+)
+def test_scalar_random_fields(method):
+    """Test creating collections of scalar random fields."""
     grid = UnitGrid([3, 4], periodic=[True, False])
-    fc = FieldCollection.scalar_random_uniform(2, grid, label="c", labels=["a", "b"])
+    fc = method(2, grid, label="c", labels=["a", "b"])
     assert fc.label == "c"
     assert fc[0].label == "a"
     assert fc[1].label == "b"
