@@ -163,11 +163,11 @@ class FieldBase(metaclass=ABCMeta):
     def _data_flat(self) -> NumericArray:
         """:class:`~numpy.ndarray`: flat version of discretized data with ghost
         cells."""
-        # flatten the first dimension of the internal data by creating a view and then
-        # setting the new shape. This disallows accidental copying of the data
-        data_flat = self._data_full.view()
-        data_flat.shape = (-1, *self.grid._shape_full)
-        return data_flat  # type: ignore
+        # Flatten the first dimension of the internal data by creating a view and then
+        # setting the new shape. This raises an error if such reshaping is impossible
+        # without making a copy of the array.
+        shape = (-1, *self.grid._shape_full)
+        return np.reshape(self._data_full, shape, copy=False)  # type: ignore
 
     @_data_flat.setter
     def _data_flat(self, value: NumericArray) -> None:
