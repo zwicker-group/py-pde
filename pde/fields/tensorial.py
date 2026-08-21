@@ -170,14 +170,13 @@ class Tensor2Field(DataFieldBase):
     @DataFieldBase._data_flat.setter  # type: ignore
     def _data_flat(self, value):
         """Set the data from a value from a collection."""
-        # create a view and reshape it to disallow copying
-        data_full = value.view()
+        # determine shape of flattened tensor field
         dim = self.grid.dim
         full_grid_shape = tuple(s + 2 for s in self.grid.shape)
-        data_full.shape = (dim, dim, *full_grid_shape)
+        shape = (dim, dim, *full_grid_shape)
 
-        # set the result as the full data array
-        self._data_full = data_full
+        # raise an error if such reshaping is impossible without making a copy
+        self._data_full = np.reshape(value, shape, copy=False)
 
         # ensure that no copying happened
         if not np.may_share_memory(self.data, value):
