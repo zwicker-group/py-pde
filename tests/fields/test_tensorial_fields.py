@@ -16,6 +16,7 @@ from pde import (
     get_backend,
 )
 from pde.fields.base import FieldBase
+from pde.grids.base import DimensionError
 
 
 def test_tensors_basic(rng):
@@ -294,3 +295,51 @@ def test_tensor_convert():
 
     with pytest.raises(ValueError):
         tf.convert("undefined")
+
+
+@pytest.mark.parametrize("angle", [0, 0.3, np.pi / 2, 2.5])
+def test_nematic_data(angle):
+    """Test the nematic data extracted from a tensor field."""
+    grid = UnitGrid([3, 4])
+    order = 1.5
+    director = np.array([np.cos(angle), np.sin(angle)])
+    tensor = order * (np.outer(director, director) - np.eye(2) / 2)
+    field = Tensor2Field(grid, np.einsum("ij,kl->ijkl", tensor, np.ones(grid.shape)))
+
+    data = field.get_nematic_data()
+    assert data["shape"] == grid.shape
+    np.testing.assert_allclose(np.hypot(data["data_x"], data["data_y"]), order)
+    angles = np.arctan2(data["data_y"], data["data_x"]) % np.pi
+    np.testing.assert_allclose(angles, angle % np.pi, atol=1e-14)
+
+    # anti-symmetric parts and the trace do not affect the nematic data
+    field += Tensor2Field.from_expression(grid, [["x", "y"], ["-y", "x"]])
+    data_mod = field.get_nematic_data()
+    np.testing.assert_allclose(data_mod["data_x"], data["data_x"], atol=1e-14)
+    np.testing.assert_allclose(data_mod["data_y"], data["data_y"], atol=1e-14)
+
+
+@pytest.mark.parametrize("transpose", [True, False])
+def test_nematic_plotting_2d(transpose, rng):
+    """Test plotting nematic tensor fields."""
+    grid = UnitGrid([3, 4])
+    field = Tensor2Field.random_uniform(grid, 0.1, 0.9, rng=rng)
+
+    ref = field.plot(kind="nematic", transpose=transpose)
+    field._update_plot(ref)
+
+    # test sub-sampling
+    grid = UnitGrid([32, 15])
+    field = Tensor2Field.random_uniform(grid, 0.1, 0.9, rng=rng)
+    ref = field.plot(kind="nematic", transpose=transpose, max_points=7)
+    assert len(ref.element.U) == 7 * 7
+
+
+def test_nematic_data_unsupported_grids():
+    """Test that nematic data is only supported for 2d Cartesian grids."""
+    with pytest.raises(DimensionError):
+        Tensor2Field(UnitGrid([3])).get_nematic_data()
+    with pytest.raises(DimensionError):
+        Tensor2Field(UnitGrid([3, 4, 5])).get_nematic_data()
+    with pytest.raises(DimensionError):
+        Tensor2Field(PolarSymGrid(3, 4)).get_nematic_data()
