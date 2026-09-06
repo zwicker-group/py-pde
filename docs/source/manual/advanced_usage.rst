@@ -485,8 +485,31 @@ Stochastic partial differential equation
 """"""""""""""""""""""""""""""""""""""""
 We also support stochastic differential equations, which can be a lot trickier to deal
 with then their deterministic counterparts.
-To support the most common use cases, we offer two different interfaces to define the
-noise that affects the evolution.
+The simplest way to define such an equation is the `noise` argument of the
+:class:`~pde.pdes.pde.PDE` class, which sets the variance of the Gaussian white noise
+that is added to each field:
+
+.. code-block:: python
+
+    eq = pde.PDE({"c": "laplace(c)"}, noise=0.1)
+
+Multiplicative noise, where the variance depends on the fields themselves, the position,
+or the time, is specified by an expression:
+
+.. code-block:: python
+
+    eq = pde.PDE({"c": "laplace(c)"}, noise={"c": "0.1 * c**2"})
+
+Here, the keys of the dictionary denote the fields, so different noise variances can be
+given for coupled equations; the wildcard key ``"*"`` sets the variance of all fields
+that are not mentioned explicitly.
+These expressions must be local, i.e., they cannot contain differential operators.
+Since the derivative of the variance is obtained by differentiating the expression
+symbolically, such equations can also be integrated using the
+:class:`~pde.solvers.milstein.MilsteinSolver` and with interpretations other than Itô.
+
+If the noise cannot be expressed like this, we offer two different interfaces to define
+the noise of a custom PDE class.
 In the simplest case, one inherits from :class:`~pde.pdes.base.SDEBase`, which already
 implements additive Gaussian white noise.
 The following listing is thus sufficient to enable noise
