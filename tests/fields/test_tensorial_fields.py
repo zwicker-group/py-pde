@@ -326,7 +326,9 @@ def test_nematic_plotting_2d(transpose, rng):
     field = Tensor2Field.random_uniform(grid, 0.1, 0.9, rng=rng)
 
     ref = field.plot(kind="nematic", transpose=transpose)
-    field._update_plot(ref)
+    arrows = np.array([ref.element.U, ref.element.V])
+    field._update_plot(ref)  # updating with the same data must not change arrows
+    np.testing.assert_allclose([ref.element.U, ref.element.V], arrows)
 
     # test sub-sampling
     grid = UnitGrid([32, 15])

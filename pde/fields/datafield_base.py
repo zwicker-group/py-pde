@@ -1394,12 +1394,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if method == "quiver":
             # update the data of a quiver plot
             data = self.get_vector_data(**data_kws)
-            reference.element.set_UVC(data["data_x"], data["data_y"])
+            reference.element.set_UVC(data["data_x"].T, data["data_y"].T)
 
         elif method == "nematic":
             # update the data of a quiver plot showing the nematic director
             data = self.get_nematic_data(**data_kws)
-            reference.element.set_UVC(data["data_x"], data["data_y"])
+            reference.element.set_UVC(data["data_x"].T, data["data_y"].T)
 
         elif method == "streamplot":
             # update a streamplot by redrawing it completely
