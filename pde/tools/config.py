@@ -790,6 +790,7 @@ def environment() -> dict[str, Any]:
     from pde import config
 
     from .. import __version__ as package_version
+    from ..backends import available_backends
     from ..backends.numba.utils import numba_environment
     from . import mpi
     from .plotting import get_plotting_context
@@ -837,11 +838,10 @@ def environment() -> dict[str, Any]:
     packages -= set(packages_min)
     result["optional packages"] = get_package_versions(sorted(packages))
 
-    backend = {}
+    backend = {"available": available_backends()}
     if module_available("numba"):
         backend["numba"] = numba_environment()
-    if backend:
-        result["backend"] = backend
+    result["backend"] = backend
 
     # add information about MPI environment
     if mpi.initialized:

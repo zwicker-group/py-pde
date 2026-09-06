@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
 
-from ..backends import BackendBase, get_backend
+from ..backends import BackendBase, backend_registry, get_backend
 from ..fields import FieldCollection
 from ..fields.datafield_base import DataFieldBase
 
@@ -387,7 +387,9 @@ class PDEBase(metaclass=ABCMeta):
 
         # choose backend automatically by trial and error to see which one works
         for backend in candidates:
-            # TODO: Could first add a check whether module is available; Issue #762
+            if not backend_registry.is_available(backend):
+                self._logger.info("Backend `%s` is not available", backend)
+                continue
             try:
                 self.make_pde_rhs(state, backend=backend)
             except (NotImplementedError, ModuleNotFoundError) as err:

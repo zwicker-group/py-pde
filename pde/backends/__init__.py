@@ -40,6 +40,7 @@ from pathlib import Path
 # load the registry, which manages all backends
 from .base import BackendBase
 from .registry import (
+    available_backends,
     backend_registry,
     get_backend,
     load_default_config,
@@ -48,23 +49,33 @@ from .registry import (
 
 # register backends without loading them
 BACKENDS_FOLDER = Path(__file__).parent
-backend_registry.register_package("numpy", "pde.backends.numpy")
+backend_registry.register_package("numpy", "pde.backends.numpy", requires=["numpy"])
 backend_registry.register_package(
     "numba",
     "pde.backends.numba",
     config=load_default_config(BACKENDS_FOLDER / "numba" / "config.py"),
+    requires=["numba"],
 )
-backend_registry.register_package("numba_mpi", "pde.backends.numba_mpi")
-backend_registry.register_package("scipy", "pde.backends.scipy")
+backend_registry.register_package(
+    "numba_mpi", "pde.backends.numba_mpi", requires=["numba", "numba_mpi"]
+)
+backend_registry.register_package("scipy", "pde.backends.scipy", requires=["scipy"])
 backend_registry.register_package(
     "jax",
     "pde.backends.jax",
     config=load_default_config(BACKENDS_FOLDER / "jax" / "config.py"),
+    requires=["jax"],
 )
 backend_registry.register_package(
     "torch",
     "pde.backends.torch",
     config=load_default_config(BACKENDS_FOLDER / "torch" / "config.py"),
+    requires=["torch"],
 )
 
-__all__ = ["BackendBase", "get_backend", "registered_backends"]
+__all__ = [
+    "BackendBase",
+    "available_backends",
+    "get_backend",
+    "registered_backends",
+]
