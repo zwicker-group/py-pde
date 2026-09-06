@@ -397,7 +397,8 @@ class PDEBase(metaclass=ABCMeta):
             else:
                 break  # found a suitable backend
         else:
-            msg = "Could not select a suitable backend"
+            candidates_str = ", ".join(f"`{name}`" for name in candidates)
+            msg = f"Could not select a suitable backend from {candidates_str}"
             raise RuntimeError(msg)
         return get_backend(backend)
 
