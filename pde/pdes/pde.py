@@ -133,7 +133,7 @@ class PDE(SDEBase):
                 A dictionary with user defined constants that can be used in the
                 expression. These can be either scalar numbers or fields defined on the
                 same grid as the actual simulation.
-            noise (float, :class:`~numpy.ndarray`, or dict):
+            noise (float, :class:`~numpy.ndarray`, str, or dict):
                 Variance of the Gaussian white noise. The default value of zero
                 implies deterministic partial differential equations will be solved.
                 Different noise magnitudes can be supplied for each field in coupled
@@ -345,9 +345,10 @@ class PDE(SDEBase):
         """bool: flag indicating whether this is a stochastic differential equation"""
         # do not assume `_noise_expr` is defined in case __init__ is not called
         noise_expr = getattr(self, "_noise_expr", None)
-        if noise_expr is not None:
-            return any(not expr.is_zero for expr in noise_expr.values())
-        return super().is_sde
+        if noise_expr is None:
+            return super().is_sde
+        has_noise_var = any(not expr.is_zero for expr in noise_expr.values())
+        return (self.use_noise_variance and has_noise_var) or self.use_noise_realization
 
     def _check_identifier(self, name: str) -> None:
         """Checks the identifier of a field name.

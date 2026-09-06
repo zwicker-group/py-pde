@@ -433,6 +433,25 @@ def test_pde_noise_variance_expression(backend):
     np.testing.assert_allclose(np.asarray(variance_diff), state.data)
 
 
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_pde_noise_expression_consts(backend):
+    """Test noise expressions using constants and user functions."""
+    grid = grids.UnitGrid([4])
+    state = ScalarField(grid, [1, 2, 3, 4])
+    field = ScalarField(grid, [4, 3, 2, 1])
+    eq = PDE(
+        {"c": 0},
+        noise={"c": "D * f(c) + E"},
+        consts={"D": field, "E": 0.5},
+        user_funcs={"f": lambda c: c**2},
+    )
+
+    make_var = eq.make_noise_variance(state, backend=backend)
+    noise_variance = backend.compile_function(make_var)
+    variance = noise_variance(backend.numpy_to_native(state.data), 0.0)
+    np.testing.assert_allclose(np.asarray(variance), field.data * state.data**2 + 0.5)
+
+
 def test_pde_noise_expression_setting():
     """Test setting the noise variance using expressions."""
     eq = PDE({"a": "0", "b": "0"}, noise={"a": "a**2"})
