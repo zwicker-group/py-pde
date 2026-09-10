@@ -383,7 +383,7 @@ class PDEBase(metaclass=ABCMeta):
         if use_mpi:
             candidates = ["numba_mpi"]
         else:
-            candidates = ["numba", "torch", "numpy"]
+            candidates = ["numba", "jax", "torch", "numpy"]
 
         # choose backend automatically by trial and error to see which one works
         for backend in candidates:

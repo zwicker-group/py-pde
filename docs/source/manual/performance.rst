@@ -64,12 +64,7 @@ costly.
 For small systems, it can thus be advisable to use the `numpy` backend.
 Since some backends rely on optional packages, the function
 :func:`~pde.backends.registry.available_backends` lists the backends that can actually
-be used in the current environment:
-
-.. code-block:: python
-
-    print(pde.available_backends())
-
+be used in the current environment.
 In contrast, :func:`~pde.backends.registry.registered_backends` lists all backends that
 the package knows about, including those whose packages are not installed.
 
