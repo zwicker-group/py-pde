@@ -43,57 +43,6 @@ if TYPE_CHECKING:
 TDataField = TypeVar("TDataField", bound="DataFieldBase")
 
 
-def _prepare_vector_data(
-    data: dict[str, Any],
-    *,
-    transpose: bool = False,
-    max_points: int | None = None,
-) -> dict[str, Any]:
-    """Adjust data of a 2d vector plot and add information about its shape.
-
-    Args:
-        data (dict):
-            Information about the vector field, which needs to contain the items `x`,
-            `y`, `data_x`, `data_y`, `label_x`, `label_y`, and `extent`. Note that this
-            dictionary is modified in place.
-        transpose (bool):
-            Determines whether the transpose of the data should be plotted.
-        max_points (int):
-            The maximal number of points that is used along each axis. This option can
-            be used to sub-sample the data. `None` indicates that all points are used.
-
-    Returns:
-        dict: The modified data
-    """
-    if transpose:
-        data["x"], data["y"] = data["y"], data["x"]
-        data["data_x"], data["data_y"] = data["data_y"].T, data["data_x"].T
-        data["label_x"], data["label_y"] = data["label_y"], data["label_x"]
-        data["extent"] = data["extent"][2:] + data["extent"][:2]
-
-    if max_points is not None:
-        # reduce the sampling of the vector points
-        for axis, size in enumerate(data["data_x"].shape):
-            if size > max_points:
-                # sub-sample the data
-                idx_f = np.linspace(0, size - 1, max_points)
-                idx_i = np.round(idx_f).astype(int)
-
-                data["data_x"] = np.take(data["data_x"], idx_i, axis=axis)
-                data["data_y"] = np.take(data["data_y"], idx_i, axis=axis)
-                if axis == 0:
-                    data["x"] = data["x"][idx_i]
-                elif axis == 1:
-                    data["y"] = data["y"][idx_i]
-                else:
-                    msg = "Only supports 2d grids"
-                    raise RuntimeError(msg)
-
-    data["shape"] = data["data_x"].shape
-    data["size"] = data["data_x"].size
-    return data
-
-
 class DataFieldBase(FieldBase, metaclass=ABCMeta):
     """Abstract base class for describing fields of single entities."""
 
@@ -1613,3 +1562,54 @@ def _symmetrize_vmin_vmax(
 
     # set the values if they are numeric
     return vmin, vmax  # type: ignore
+
+
+def _prepare_vector_data(
+    data: dict[str, Any],
+    *,
+    transpose: bool = False,
+    max_points: int | None = None,
+) -> dict[str, Any]:
+    """Adjust data of a 2d vector plot and add information about its shape.
+
+    Args:
+        data (dict):
+            Information about the vector field, which needs to contain the items `x`,
+            `y`, `data_x`, `data_y`, `label_x`, `label_y`, and `extent`. Note that this
+            dictionary is modified in place.
+        transpose (bool):
+            Determines whether the transpose of the data should be plotted.
+        max_points (int):
+            The maximal number of points that is used along each axis. This option can
+            be used to sub-sample the data. `None` indicates that all points are used.
+
+    Returns:
+        dict: The modified data
+    """
+    if transpose:
+        data["x"], data["y"] = data["y"], data["x"]
+        data["data_x"], data["data_y"] = data["data_y"].T, data["data_x"].T
+        data["label_x"], data["label_y"] = data["label_y"], data["label_x"]
+        data["extent"] = data["extent"][2:] + data["extent"][:2]
+
+    if max_points is not None:
+        # reduce the sampling of the vector points
+        for axis, size in enumerate(data["data_x"].shape):
+            if size > max_points:
+                # sub-sample the data
+                idx_f = np.linspace(0, size - 1, max_points)
+                idx_i = np.round(idx_f).astype(int)
+
+                data["data_x"] = np.take(data["data_x"], idx_i, axis=axis)
+                data["data_y"] = np.take(data["data_y"], idx_i, axis=axis)
+                if axis == 0:
+                    data["x"] = data["x"][idx_i]
+                elif axis == 1:
+                    data["y"] = data["y"][idx_i]
+                else:
+                    msg = "Only supports 2d grids"
+                    raise RuntimeError(msg)
+
+    data["shape"] = data["data_x"].shape
+    data["size"] = data["data_x"].size
+    return data
