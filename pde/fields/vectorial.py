@@ -14,7 +14,7 @@ from ..grids.cartesian import CartesianGrid
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
 from ..tools.plotting import PlotReference, plot_on_figure
-from .datafield_base import DataFieldBase
+from .datafield_base import DataFieldBase, _prepare_vector_data
 from .scalar import ScalarField
 
 if TYPE_CHECKING:
@@ -474,36 +474,7 @@ class VectorField(DataFieldBase):
         data = self.grid.get_vector_data(self.data.real, **kwargs)
         data["title"] = self.label
 
-        # transpose the data if requested
-        if transpose:
-            data["x"], data["y"] = data["y"], data["x"]
-            data["data_x"], data["data_y"] = data["data_y"].T, data["data_x"].T
-            data["label_x"], data["label_y"] = data["label_y"], data["label_x"]
-            data["extent"] = data["extent"][2:] + data["extent"][:2]
-
-        # reduce the sampling of the vector points
-        if max_points is not None:
-            shape = data["data_x"].shape
-            for axis, size in enumerate(shape):
-                if size > max_points:
-                    # sub-sample the data
-                    idx_f = np.linspace(0, size - 1, max_points)
-                    idx_i = np.round(idx_f).astype(int)
-
-                    data["data_x"] = np.take(data["data_x"], idx_i, axis=axis)
-                    data["data_y"] = np.take(data["data_y"], idx_i, axis=axis)
-                    if axis == 0:
-                        data["x"] = data["x"][idx_i]
-                    elif axis == 1:
-                        data["y"] = data["y"][idx_i]
-                    else:
-                        msg = "Only supports 2d grids"
-                        raise RuntimeError(msg)
-
-        data["shape"] = data["data_x"].shape
-        data["size"] = data["data_x"].size
-
-        return data
+        return _prepare_vector_data(data, transpose=transpose, max_points=max_points)
 
     @fill_in_docstring
     def interpolate_to_grid(

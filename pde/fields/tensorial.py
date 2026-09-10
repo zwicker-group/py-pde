@@ -5,15 +5,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
 
 from ..grids.base import DimensionError, GridBase
+from ..grids.cartesian import CartesianGrid
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
 from ..tools.plotting import PlotReference, plot_on_figure
-from .datafield_base import DataFieldBase
+from .datafield_base import DataFieldBase, _prepare_vector_data
 from .scalar import ScalarField
 from .vectorial import VectorField
 
@@ -493,6 +494,63 @@ class Tensor2Field(DataFieldBase):
         if make_traceless:
             res.convert("traceless", inplace=True)
         return res
+
+    def get_nematic_data(
+        self, transpose: bool = False, max_points: int | None = None, **kwargs
+    ) -> dict[str, Any]:
+        r"""Return data for a nematic plot of the field.
+
+        The tensor field is interpreted as a nematic order parameter, i.e., only the
+        symmetric, traceless part :math:`\boldsymbol{Q}` of the tensor is used. In two
+        dimensions, this part can be written as
+
+        .. math::
+            \boldsymbol{Q} = S \left(
+                \boldsymbol{n} \otimes \boldsymbol{n} - \frac{\mathbb{1}}{2}
+            \right)
+
+        where the director :math:`\boldsymbol{n}` is a unit vector and the nematic order
+        :math:`S \ge 0` is the difference of the two eigenvalues of
+        :math:`\boldsymbol{Q}`. The returned vectors are aligned with the director and
+        their length is given by the nematic order.
+
+        Note that the director is only defined up to its sign, so the returned vectors
+        should be plotted without arrow heads; see the `nematic` plot kind of
+        :meth:`~pde.fields.datafield_base.DataFieldBase.plot`.
+
+        Args:
+            transpose (bool):
+                Determines whether the transpose of the data should be plotted.
+            max_points (int):
+                The maximal number of points that is used along each axis. This
+                option can be used to sub-sample the data.
+            **kwargs:
+                Additional parameters forwarded to `grid.get_image_data`
+
+        Returns:
+            dict: Information useful for plotting a nematic field
+        """
+        if not isinstance(self.grid, CartesianGrid) or self.grid.dim != 2:
+            msg = "Nematic data is only available for 2d Cartesian grids"
+            raise DimensionError(msg)
+        if self.is_complex:
+            self._logger.warning("Only the real part of complex data is shown")
+
+        # extract the symmetric, traceless part, which reads [[a, b], [b, -a]]
+        tensor = self.data.real
+        a = 0.5 * (tensor[0, 0] - tensor[1, 1])
+        b = 0.5 * (tensor[0, 1] + tensor[1, 0])
+
+        # determine the nematic order and the orientation of the director
+        order = 2 * np.hypot(a, b)  # difference between the two eigenvalues
+        angle = 0.5 * np.arctan2(b, a)  # orientation of the leading eigenvector
+        director = np.array([order * np.cos(angle), order * np.sin(angle)])
+
+        # extract the image data
+        data = self.grid.get_vector_data(director, **kwargs)
+        data["title"] = self.label
+
+        return _prepare_vector_data(data, transpose=transpose, max_points=max_points)
 
     def _update_plot_components(self, reference: list[list[PlotReference]]) -> None:
         """Update a component plot with the current field values.

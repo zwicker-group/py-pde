@@ -1052,6 +1052,20 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         raise NotImplementedError
 
+    def get_nematic_data(self, transpose: bool = False, **kwargs) -> dict[str, Any]:
+        r"""Return data for a nematic plot of the field.
+
+        Args:
+            transpose (bool):
+                Determines whether the transpose of the data should be plotted.
+            **kwargs: Additional parameters are forwarded to
+                `grid.get_image_data`
+
+        Returns:
+            dict: Information useful for plotting a nematic field
+        """
+        raise NotImplementedError
+
     def _plot_line(
         self,
         ax,
@@ -1240,7 +1254,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         self,
         ax,
         *,
-        method: Literal["quiver", "streamplot"] = "quiver",
+        method: Literal["quiver", "streamplot", "nematic"] = "quiver",
         max_points: int | None = 16,
         **kwargs,
     ) -> PlotReference:
@@ -1250,10 +1264,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ax (:class:`matplotlib.axes.Axes`):
                 Figure axes to be used for plotting.
             method (str):
-                Plot type that is used. This can be either `quiver` or `streamplot`.
+                Plot type that is used. This can be `quiver`, `streamplot`, or
+                `nematic`. The latter draws headless arrows along the nematic director
+                and is only supported by :class:`~pde.fields.tensorial.Tensor2Field`.
             max_points (int):
                 The maximal number of points that is used along each axis. This argument
-                is only used for quiver plots. `None` indicates all points are used.
+                is not used for stream plots. `None` indicates all points are used.
             **kwargs:
                 Additional keyword arguments are passed to
                 :meth:`~pde.field.base.DataFieldBase.get_vector_data` and
@@ -1277,6 +1293,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # plot vector field using a quiver plot
             data_kws["max_points"] = max_points
             data = self.get_vector_data(**data_kws)
+            element = ax.quiver(
+                data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
+            )
+
+        elif method == "nematic":
+            # plot the nematic director using a quiver plot without arrow heads
+            data_kws["max_points"] = max_points
+            data = self.get_nematic_data(**data_kws)
+            kwargs.setdefault("pivot", "mid")
+            kwargs.setdefault("headwidth", 0)
+            kwargs.setdefault("headlength", 0)
+            kwargs.setdefault("headaxislength", 0)
             element = ax.quiver(
                 data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
             )
@@ -1315,7 +1343,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if method == "quiver":
             # update the data of a quiver plot
             data = self.get_vector_data(**data_kws)
-            reference.element.set_UVC(data["data_x"], data["data_y"])
+            reference.element.set_UVC(data["data_x"].T, data["data_y"].T)
+
+        elif method == "nematic":
+            # update the data of a quiver plot showing the nematic director
+            data = self.get_nematic_data(**data_kws)
+            reference.element.set_UVC(data["data_x"].T, data["data_y"].T)
 
         elif method == "streamplot":
             # update a streamplot by redrawing it completely
@@ -1361,7 +1394,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Args:
             kind (str):
                 Determines the visualizations. Supported values are `image`,
-                `line`, `vector`, or `interactive`. Alternatively, `auto`
+                `line`, `vector`, `nematic`, or `interactive`. Alternatively, `auto`
                 determines the best visualization based on the field itself.
             {PLOT_ARGS}
             **kwargs:
@@ -1399,6 +1432,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
               - `max_points` Sets max. number of points along each axis in quiver plots
               - Additional arguments are passed to :func:`matplotlib.pyplot.quiver` or
                 :func:`matplotlib.pyplot.streamplot`.
+
+            * ``kind == "nematic"``:
+
+              - `transpose` Determines whether the transpose of the data is plotted
+              - `max_points` Sets max. number of points along each axis
+              - Additional arguments are passed to :func:`matplotlib.pyplot.quiver`
         """
         # determine the correct kind of plotting
         if kind == "auto":
@@ -1422,6 +1461,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             kind = "vector"
             kwargs["method"] = "streamplot"
 
+        elif kind == "nematic":
+            kind = "vector"
+            kwargs["method"] = "nematic"
+
         # do the actual plotting
         if kind == "image":
             reference = self._plot_image(**kwargs)
@@ -1432,7 +1475,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             msg = (
                 f"Unsupported plot `{kind}`. Possible choices are `image`, `line`, "
-                "`vector`, or `auto`."
+                "`vector`, `nematic`, or `auto`."
             )
             raise ValueError(msg)
 
@@ -1519,3 +1562,54 @@ def _symmetrize_vmin_vmax(
 
     # set the values if they are numeric
     return vmin, vmax  # type: ignore
+
+
+def _prepare_vector_data(
+    data: dict[str, Any],
+    *,
+    transpose: bool = False,
+    max_points: int | None = None,
+) -> dict[str, Any]:
+    """Adjust data of a 2d vector plot and add information about its shape.
+
+    Args:
+        data (dict):
+            Information about the vector field, which needs to contain the items `x`,
+            `y`, `data_x`, `data_y`, `label_x`, `label_y`, and `extent`. Note that this
+            dictionary is modified in place.
+        transpose (bool):
+            Determines whether the transpose of the data should be plotted.
+        max_points (int):
+            The maximal number of points that is used along each axis. This option can
+            be used to sub-sample the data. `None` indicates that all points are used.
+
+    Returns:
+        dict: The modified data
+    """
+    if transpose:
+        data["x"], data["y"] = data["y"], data["x"]
+        data["data_x"], data["data_y"] = data["data_y"].T, data["data_x"].T
+        data["label_x"], data["label_y"] = data["label_y"], data["label_x"]
+        data["extent"] = data["extent"][2:] + data["extent"][:2]
+
+    if max_points is not None:
+        # reduce the sampling of the vector points
+        for axis, size in enumerate(data["data_x"].shape):
+            if size > max_points:
+                # sub-sample the data
+                idx_f = np.linspace(0, size - 1, max_points)
+                idx_i = np.round(idx_f).astype(int)
+
+                data["data_x"] = np.take(data["data_x"], idx_i, axis=axis)
+                data["data_y"] = np.take(data["data_y"], idx_i, axis=axis)
+                if axis == 0:
+                    data["x"] = data["x"][idx_i]
+                elif axis == 1:
+                    data["y"] = data["y"][idx_i]
+                else:
+                    msg = "Only supports 2d grids"
+                    raise RuntimeError(msg)
+
+    data["shape"] = data["data_x"].shape
+    data["size"] = data["data_x"].size
+    return data

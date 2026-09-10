@@ -251,6 +251,12 @@ def test_vector_plotting_2d(transpose, rng):
         ref = field.plot(method=method, transpose=transpose)
         field._update_plot(ref)
 
+    # updating a quiver plot with the same data must not change the arrows
+    ref = field.plot(method="quiver", transpose=transpose, max_points=None)
+    arrows = np.array([ref.element.U, ref.element.V])
+    field._update_plot(ref)
+    np.testing.assert_allclose([ref.element.U, ref.element.V], arrows)
+
     # test sub-sampling
     grid = UnitGrid([32, 15])
     field = VectorField.random_uniform(grid, 0.1, 0.9, rng=rng)
