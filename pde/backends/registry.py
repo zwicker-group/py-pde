@@ -7,6 +7,7 @@
    load_default_config
    get_backend
    registered_backends
+   available_backends
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -20,6 +21,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from .. import config as global_config
+from ..tools.misc import module_available
 from .base import _RESERVED_BACKEND_NAMES, BackendBase
 
 if TYPE_CHECKING:
@@ -44,6 +46,8 @@ class BackendRegistry:
 
     _packages: dict[str, str]
     """dict: backends whose packages have been registered"""
+    _requirements: dict[str, tuple[str, ...]]
+    """dict: python modules required by the backends whose packages are registered"""
     _classes: dict[str, type[BackendBase]]
     """dict: backends whose classes have been defined"""
     _backends: dict[str, BackendBase]
@@ -51,6 +55,7 @@ class BackendRegistry:
 
     def __init__(self):
         self._packages = {}
+        self._requirements = {}
         self._classes = {}
         self._backends = {}
 
@@ -60,6 +65,7 @@ class BackendRegistry:
         package_path: str,
         *,
         config: ConfigLike | Sequence[Parameter] | None = None,
+        requires: Sequence[str] = (),
     ) -> None:
         """Register a backend python package (without loading it yet)
 
@@ -70,6 +76,10 @@ class BackendRegistry:
                 Import path for the package
             config (list):
                 Configuration options for the package
+            requires (sequence of str):
+                Names of the python modules that need to be installed for this backend
+                to work. They are used by :meth:`BackendRegistry.is_available` to check
+                whether the backend can be used without importing it.
         """
         if name in _RESERVED_BACKEND_NAMES:
             _logger.warning("Reserved backend name `%s` should not be used.", name)
@@ -77,6 +87,7 @@ class BackendRegistry:
             msg = f"Cannot redefine backend `{name}`"
             raise RuntimeError(msg)
         self._packages[name] = package_path
+        self._requirements[name] = tuple(requires)
         with global_config.changed_mode(node="insert", leaf="insert"):
             if config is None:
                 global_config["backend"].create_node(name)
@@ -115,6 +126,32 @@ class BackendRegistry:
             else:
                 _logger.info("Reloading backend `%s`", backend.name)
         self._backends[backend.name] = backend
+
+    def is_available(self, name: str) -> bool:
+        """Check whether a backend can be used in the current environment.
+
+        The check is based on the python modules that were given as `requires` when the
+        backend was registered, so no backend is imported by this method.
+
+        Args:
+            name (str):
+                Name of the backend. Additional information given after a colon, e.g.,
+                in :code:`torch:cuda`, is ignored, so this method only checks whether
+                the backend itself could be loaded.
+
+        Returns:
+            bool: Whether the backend can be used. Backends that are not registered at
+            all are reported as being unavailable.
+        """
+        if name == "default":
+            name = global_config["default_backend"]
+        name = name.split(":", 1)[0]  # strip additional information from the name
+
+        if name in self._backends or name in self._classes:
+            return True  # backend has been loaded already, so it must be available
+        if name not in self._packages:
+            return False  # backend is not known at all
+        return all(module_available(module) for module in self._requirements[name])
 
     def _get_class(self, name: str) -> type[BackendBase]:
         """Get the class associated with a particular backend.
@@ -241,6 +278,8 @@ class BackendRegistry:
     def values(self) -> Iterator[BackendBase]:
         """Iterate over all backends that can be imported."""
         for name in self:
+            if not self.is_available(name):
+                continue
             with contextlib.suppress(ImportError):
                 yield self.get_backend(name)
 
@@ -323,3 +362,15 @@ def get_backend(
 def registered_backends() -> list[str]:
     """Returns all registered backends."""
     return list(backend_registry)
+
+
+def available_backends() -> list[str]:
+    """Returns all backends that can be used in the current environment.
+
+    In contrast to :func:`registered_backends`, this omits backends whose python
+    packages are not installed, e.g., the `torch` backend if :mod:`torch` is missing.
+
+    Returns:
+        list of str: The names of all backends that can be loaded
+    """
+    return [name for name in backend_registry if backend_registry.is_available(name)]

@@ -62,6 +62,11 @@ Here, compiled backends, like `numba` and `torch`, provide the fastest speed,
 particularly for larger systems, but they require an initial compilation, which can be
 costly.
 For small systems, it can thus be advisable to use the `numpy` backend.
+Since some backends rely on optional packages, the function
+:func:`~pde.backends.registry.available_backends` lists the backends that can actually
+be used in the current environment.
+In contrast, :func:`~pde.backends.registry.registered_backends` lists all backends that
+the package knows about, including those whose packages are not installed.
 
 As a rule of thumb, simulations run faster when there are fewer degrees of freedom.
 In the case of partial differential equations, this often means using a coarser grid
