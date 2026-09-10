@@ -138,7 +138,7 @@ class PDE(SDEBase):
                 implies deterministic partial differential equations will be solved.
                 Different noise magnitudes can be supplied for each field in coupled
                 PDEs by either specifying a sequence of numbers or a dictionary with
-                values for each field. In the latter case, the wildcard key "\*" sets
+                values for each field. In the latter case, the wildcard key "*" sets
                 the variance of all fields that are not specified explicitly.
                 Multiplicative noise is supported by specifying the variance as a
                 string that can be parsed by :mod:`sympy`. Such expressions may contain
@@ -149,9 +149,7 @@ class PDE(SDEBase):
                 Interpretation of the stochastic differential equation. Possible values
                 are `ito`, `stratonovich`, and `anti-ito`. Solvers can use this
                 information to implement drift terms that appear for multiplicative
-                noise, which typically only works when
-                :meth:`~pde.pdes.base.SDEBase.make_noise_variance` also returns the
-                derivative of the variance.
+                noise, i.e., when `noise` depends on composition.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
                 used for stochastic simulations. Note that this random number generator

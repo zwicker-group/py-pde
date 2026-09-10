@@ -2,12 +2,13 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import logging
 import platform
 
 import numpy as np
 import pytest
 
-from pde import ScalarField, UnitGrid, get_backend, pdes
+from pde import ScalarField, SDEBase, UnitGrid, get_backend, pdes
 from pde.solvers import EulerSolver
 from pde.tools.misc import module_available
 
@@ -80,3 +81,17 @@ def test_pde_automatic_adaptive_solver():
 
     eq.solve(solver="implicit", **args)
     assert not eq.diagnostics["solver"]["dt_adaptive"]
+
+
+def test_unavailable_noise_drift(caplog):
+    """Test whether we detect problematic noise interpretations."""
+
+    class MySDE(SDEBase):
+        use_noise_realization = True
+
+        def evolution_rate(state, t):
+            return state
+
+    with caplog.at_level(logging.WARNING):
+        MySDE(noise_interpretation="stratonovich")
+    assert "drift term" in caplog.text

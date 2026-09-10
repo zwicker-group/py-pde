@@ -498,7 +498,7 @@ or the time, is specified by an expression:
 
 .. code-block:: python
 
-    eq = pde.PDE({"c": "laplace(c)"}, noise={"c": "0.1 * c**2"})
+    eq = pde.PDE({"c": "laplace(c)"}, noise={"c": "0.1 * c**2"}, noise_interpretation="ito")
 
 Here, the keys of the dictionary denote the fields, so different noise variances can be
 given for coupled equations; the wildcard key ``"*"`` sets the variance of all fields
@@ -506,7 +506,8 @@ that are not mentioned explicitly.
 These expressions must be local, i.e., they cannot contain differential operators.
 Since the derivative of the variance is obtained by differentiating the expression
 symbolically, such equations can also be integrated using the
-:class:`~pde.solvers.milstein.MilsteinSolver` and with interpretations other than Itô.
+:class:`~pde.solvers.milstein.MilsteinSolver` and with interpretations other than Itô 
+(set by the ``noise_interpretation`` argument).
 
 If the noise cannot be expressed like this, we offer two different interfaces to define
 the noise of a custom PDE class.
@@ -586,12 +587,12 @@ needs to return the derivative of the noise variance with respect to the field v
 
     eq = NoisyPDE(noise_interpretation="stratonovich")
 
-Note that supplying the derivative is also required to use
+Note that supplying the derivative is also required to use the
 :class:`~pde.solvers.milstein.MilsteinSolver`, which has better convergence properties.
 
-Finally, we offer a completely different way of implementing noises, which is a bit more
+Finally, we offer a completely different way of implementing noise, which is a bit more
 low-level.
-Enabling the :attr:`use_noise_realization` of the PDE, the solvers look for
+Enabling the :attr:`use_noise_realization` flag of the PDE, the solvers look for
 :meth:`~pde.pdes.base.SDEBase.make_noise_realization`, which should return a function
 that can be called to determine a realization of the noise, which will be directly used
 during time stepping.
