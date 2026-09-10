@@ -633,6 +633,13 @@ class SDEBase(PDEBase):
         self.noise = np.asanyarray(noise)
         self.noise_interpretation = noise_interpretation
 
+        if self.use_noise_realization and self._noise_drift_factor != 0.0:
+            msg = (
+                "User-defined noise_realization does not allow determining drift term "
+                f"required for `{self.noise_interpretation}` interpretation."
+            )
+            self._logger.warning(msg)
+
     @property
     def is_sde(self) -> bool:
         """bool: flag indicating whether this is a stochastic differential equation

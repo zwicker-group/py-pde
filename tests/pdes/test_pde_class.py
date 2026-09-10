@@ -394,6 +394,102 @@ def test_pde_setting_noise():
         PDE({"a": 0}, noise=[1, 2])
 
 
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_pde_multiplicative_noise(backend, rng):
+    """Test noise variances given by expressions."""
+    grid = grids.UnitGrid([128, 128])
+
+    # multiplicative noise for a single field
+    state = ScalarField(grid, 2)
+    eq = PDE({"a": 0}, noise={"a": "0.25 * a**2"}, rng=rng)
+    assert eq.is_sde
+    assert eq.noise_expressions == {"a": "0.25*a**2"}
+    res = eq.solve(state, t_range=1, backend=backend, dt=1, tracker=None)
+    dist = stats.norm(loc=2, scale=np.sqrt(0.25 * 2**2)).cdf
+    assert stats.kstest(np.ravel(res.data), dist).pvalue > 0.001
+
+    # expressions and numbers can be mixed in a collection
+    state = FieldCollection([ScalarField(grid, 2), ScalarField(grid)])
+    eq = PDE({"a": 0, "b": 0}, noise={"a": "0.25 * a**2", "b": 0.01}, rng=rng)
+    res = eq.solve(state, t_range=1, backend=backend, dt=1, tracker=None)
+    dist_b = stats.norm(scale=np.sqrt(0.01)).cdf
+    assert stats.kstest(np.ravel(res[0].data), dist).pvalue > 0.001
+    assert stats.kstest(np.ravel(res[1].data), dist_b).pvalue > 0.001
+
+
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_pde_noise_variance_expression(backend):
+    """Test the noise variance and its derivative determined from an expression."""
+    grid = grids.UnitGrid([4])
+    state = ScalarField(grid, [1, 2, 3, 4])
+    eq = PDE({"c": 0}, noise={"c": "0.5 * c**2 + x"})
+
+    make_var = eq.make_noise_variance(state, backend=backend, ret_diff=True)
+    noise_variance = backend.compile_function(make_var)
+    variance, variance_diff = noise_variance(backend.numpy_to_native(state.data), 0.0)
+
+    x = grid.cell_coords[..., 0]
+    np.testing.assert_allclose(
+        backend.native_to_numpy(variance), 0.5 * state.data**2 + x
+    )
+    np.testing.assert_allclose(backend.native_to_numpy(variance_diff), state.data)
+
+
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_pde_noise_expression_consts(backend):
+    """Test noise expressions using constants and user functions."""
+    grid = grids.UnitGrid([4])
+    state = ScalarField(grid, [1, 2, 3, 4])
+    field = ScalarField(grid, [4, 3, 2, 1])
+    eq = PDE(
+        {"c": 0},
+        noise={"c": "D * f(c) + E"},
+        consts={"D": field, "E": 0.5},
+        user_funcs={"f": lambda c: c**2},
+    )
+
+    make_var = eq.make_noise_variance(state, backend=backend)
+    noise_variance = backend.compile_function(make_var)
+    variance = noise_variance(backend.numpy_to_native(state.data), 0.0)
+    np.testing.assert_allclose(
+        backend.native_to_numpy(variance), field.data * state.data**2 + 0.5
+    )
+
+
+def test_pde_noise_expression_setting():
+    """Test setting the noise variance using expressions."""
+    eq = PDE({"a": "0", "b": "0"}, noise={"a": "a**2"})
+    assert eq.is_sde
+    assert eq.noise_expressions == {"a": "a**2", "b": "0"}
+
+    # the wildcard sets the variance of all fields that are not given explicitly
+    eq = PDE({"a": "0", "b": "0"}, noise={"*": "a**2", "b": 0})
+    assert eq.noise_expressions == {"a": "a**2", "b": "0"}
+
+    # a single expression applies to all fields
+    eq = PDE({"a": "0", "b": "0"}, noise="a**2")
+    assert eq.noise_expressions == {"a": "a**2", "b": "a**2"}
+
+    # expressions that vanish do not turn the PDE into an SDE
+    eq = PDE({"a": "0"}, noise={"a": "0 * a"})
+    assert not eq.is_sde
+    assert eq.noise_expressions == {"a": "0"}
+
+    # constant noise is not described by expressions
+    assert PDE({"a": "0"}, noise=1).noise_expressions == {}
+
+    # noise expressions need to be local
+    with pytest.raises(ValueError):
+        PDE({"a": "0"}, noise={"a": "laplace(a)"})
+
+    # noise expressions can only depend on the fields, the coordinates, and time
+    eq = PDE({"a": "0"}, noise={"a": "undefined_variable"})
+    with pytest.raises(RuntimeError):
+        eq.make_noise_variance(
+            ScalarField(grids.UnitGrid([2])), backend=get_backend("numpy")
+        )
+
+
 def test_pde_consts():
     """Test using the consts argument in PDE."""
     field = ScalarField(grids.UnitGrid([3]), 1)
