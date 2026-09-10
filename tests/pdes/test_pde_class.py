@@ -429,8 +429,10 @@ def test_pde_noise_variance_expression(backend):
     variance, variance_diff = noise_variance(backend.numpy_to_native(state.data), 0.0)
 
     x = grid.cell_coords[..., 0]
-    np.testing.assert_allclose(np.asarray(variance), 0.5 * state.data**2 + x)
-    np.testing.assert_allclose(np.asarray(variance_diff), state.data)
+    np.testing.assert_allclose(
+        backend.native_to_numpy(variance), 0.5 * state.data**2 + x
+    )
+    np.testing.assert_allclose(backend.native_to_numpy(variance_diff), state.data)
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
@@ -449,7 +451,9 @@ def test_pde_noise_expression_consts(backend):
     make_var = eq.make_noise_variance(state, backend=backend)
     noise_variance = backend.compile_function(make_var)
     variance = noise_variance(backend.numpy_to_native(state.data), 0.0)
-    np.testing.assert_allclose(np.asarray(variance), field.data * state.data**2 + 0.5)
+    np.testing.assert_allclose(
+        backend.native_to_numpy(variance), field.data * state.data**2 + 0.5
+    )
 
 
 def test_pde_noise_expression_setting():
