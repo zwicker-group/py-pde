@@ -624,15 +624,8 @@ class DataTracker(CallbackTracker):
 
         Adding :code:`data_tracker` to the simulation will gather the statistics every
         10 time units. After the simulation, the final result will be accessible via the
-        :attr:`data` attribute or conveniently as a pandas from the :attr:`dataframe`
-        attribute.
-
-    Attributes:
-        times (list):
-            The time points at which the data is stored
-        data (list):
-            The actually stored data, which is a list of the objects returned by
-            the callback function.
+        :attr:`data` attribute or conveniently as a pandas dataframe via the
+        :attr:`dataframe` attribute.
     """
 
     @fill_in_docstring
@@ -877,9 +870,8 @@ class SteadyStateTracker(TrackerBase):
 class WalltimeTracker(TrackerBase):
     """Special tracker that records runtime of the simulation at regular intervals.
 
-    Attributes:
-        data (list):
-            A list of tuples (simulation_time, wall_time)
+    The tracker stores tuples of ``(simulation_time, wall_time)`` in its :attr:`data`
+    attribute as the simulation advances.
     """
 
     @fill_in_docstring
