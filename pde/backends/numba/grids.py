@@ -156,19 +156,18 @@ def make_interpolation_axis_data(
             else:
                 return -42, -42, 0.0, 0.0  # indicates out of bounds
 
+        # deal with edge cases using nearest-neighbor interpolation at boundary
+        elif 0 <= c_l + d_l < size - 1:  # in bulk part of domain
+            c_li = int(c_l)  # left support point
+            c_hi = c_li + 1  # right support point
+        elif size - 1 <= c_l + d_l <= size - 0.5:  # close to upper boundary
+            c_li = c_hi = int(c_l)  # both support points close to boundary
+            # This branch also covers the special case, where size == 1 and data
+            # is evaluated at the only support point (c_l == d_l == 0.)
+        elif -0.5 <= c_l + d_l <= 0:  # close to lower boundary
+            c_li = c_hi = int(c_l) + 1  # both support points close to boundary
         else:
-            # deal with edge cases using nearest-neighbor interpolation at boundary
-            if 0 <= c_l + d_l < size - 1:  # in bulk part of domain
-                c_li = int(c_l)  # left support point
-                c_hi = c_li + 1  # right support point
-            elif size - 1 <= c_l + d_l <= size - 0.5:  # close to upper boundary
-                c_li = c_hi = int(c_l)  # both support points close to boundary
-                # This branch also covers the special case, where size == 1 and data
-                # is evaluated at the only support point (c_l == d_l == 0.)
-            elif -0.5 <= c_l + d_l <= 0:  # close to lower boundary
-                c_li = c_hi = int(c_l) + 1  # both support points close to boundary
-            else:
-                return -42, -42, 0.0, 0.0  # indicates out of bounds
+            return -42, -42, 0.0, 0.0  # indicates out of bounds
 
         # determine the weights of the two cells
         w_l, w_h = 1 - d_l, d_l

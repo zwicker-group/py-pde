@@ -420,9 +420,7 @@ class TorchAdaptiveSolverBase(torch.nn.Module):
         else:
             # otherwise, adjust time step according to error
             dt_factor = 0.9 * error_rel.item() ** -0.2
-            if dt_factor < 0.1:
-                dt_factor = 0.1
-            dt *= dt_factor  # torch.clamp(dt_factor, 0.1, 10)
+            dt *= max(dt_factor, 0.1)  # torch.clamp(dt_factor, 0.1, 10)
 
         # limit time step to permissible bracket
         if dt > self.dt_max:

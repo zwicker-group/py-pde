@@ -97,15 +97,14 @@ def extract_field(
         field = fields
     elif callable(source):
         field = source(fields)
+    elif isinstance(fields, FieldCollection):
+        field = fields[source]
     else:
-        if isinstance(fields, FieldCollection):
-            field = fields[source]
-        else:
-            msg = (
-                f"Cannot extract component {source} from instance of "
-                f"{fields.__class__.__name__}"
-            )
-            raise TypeError(msg)
+        msg = (
+            f"Cannot extract component {source} from instance of "
+            f"{fields.__class__.__name__}"
+        )
+        raise TypeError(msg)
 
     if isinstance(field, FieldCollection):
         msg = "Extract field is a collection"
@@ -330,8 +329,8 @@ class ScalarFieldPlot:
                 Whether to call :func:`matplotlib.pyplot.tight_layout`. This
                 affects the layout of all plot elements.
         """
-        import matplotlib.cm as cm
         import matplotlib.pyplot as plt
+        from matplotlib import cm
 
         num_rows = len(self.quantities)
         num_cols = max(len(p) for p in self.quantities)
