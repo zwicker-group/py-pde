@@ -846,13 +846,12 @@ class GridBase(metaclass=ABCMeta):
             if i in self._axes_described:
                 res[..., i] = points[..., j]
                 j += 1
+            elif value == "min":
+                res[..., i] = self.c.coordinate_limits[i][0]
+            elif value == "max":
+                res[..., i] = self.c.coordinate_limits[i][1]
             else:
-                if value == "min":
-                    res[..., i] = self.c.coordinate_limits[i][0]
-                elif value == "max":
-                    res[..., i] = self.c.coordinate_limits[i][1]
-                else:
-                    res[..., i] = value
+                res[..., i] = value
         return res
 
     def transform(

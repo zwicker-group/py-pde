@@ -432,7 +432,7 @@ def main():
             for r in REQUIREMENTS
             if any(
                 group in r.groups
-                for group in {"full", "interactive", "multiprocessing"}
+                for group in ["full", "interactive", "multiprocessing"]
             )
             and "essential" not in r.groups
         ],
