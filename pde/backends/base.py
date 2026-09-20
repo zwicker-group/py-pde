@@ -519,6 +519,28 @@ class BackendBase(Generic[TNativeArray]):
         operator_info = self.get_operator_info(grid, operator)
         operator_raw = operator_info.factory(grid, **kwargs)
         shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
+        try:
+            signature = inspect.signature(operator_raw)
+        except (TypeError, ValueError):
+            signature = None
+
+        if signature is None:
+            supports_out = True
+            supports_args = False
+        else:
+            params = tuple(signature.parameters.values())
+            positional = tuple(
+                p
+                for p in params
+                if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+            )
+            supports_out = any(p.kind == p.VAR_POSITIONAL for p in params) or (
+                len(positional) >= 2
+            )
+            supports_args = any(
+                p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
+                for p in params
+            )
 
         def apply_operator(
             arr: TNativeArray, out: TNativeArray | None = None, args=None
@@ -527,20 +549,20 @@ class BackendBase(Generic[TNativeArray]):
             if out is None:
                 out = np.empty(shape_out, dtype=arr.dtype)  # type: ignore
 
-            try:
+            if args is not None and not supports_args:
+                msg = "Operator does not accept runtime `args`."
+                raise TypeError(msg)
+
+            if supports_out:
                 if args is None:
                     result = operator_raw(arr, out)  # type: ignore
                 else:
                     result = operator_raw(arr, out, args=args)  # type: ignore
-            except TypeError as err:
-                # some operators now only return their result and do not accept `out`
-                try:
-                    if args is None:
-                        result = operator_raw(arr)  # type: ignore
-                    else:
-                        result = operator_raw(arr, args=args)  # type: ignore
-                except TypeError:
-                    raise err
+            else:
+                if args is None:
+                    result = operator_raw(arr)  # type: ignore
+                else:
+                    result = operator_raw(arr, args=args)  # type: ignore
                 out[...] = result  # type: ignore
                 result = out
 

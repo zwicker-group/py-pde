@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import functools
 import itertools
+import inspect
 import json
 import logging
 import math
@@ -402,10 +403,40 @@ class GridBase(metaclass=ABCMeta):
             rank_full = bcs.rank
 
         shape_full = (self.dim,) * rank_full + self._shape_full
+        try:
+            params = tuple(inspect.signature(setter).parameters.values())
+        except (TypeError, ValueError):
+            params = ()
+        positional = tuple(
+            p
+            for p in params
+            if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+        )
+        setter_uses_output_arg = not params or any(
+            p.kind == p.VAR_POSITIONAL for p in params
+        ) or (
+            len(positional) >= 2
+        )
+        setter_supports_args = not params or any(
+            p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
+            for p in params
+        )
 
         def set_valid(data_full: NumericArray, data_valid: NumericArray, args=None):
             """Set valid data in full array and return the full array."""
-            setter(data_full, data_valid, args=args)
+            if args is not None and not setter_supports_args:
+                msg = "Data setter does not accept runtime `args`."
+                raise TypeError(msg)
+            if setter_uses_output_arg:
+                if args is None:
+                    setter(data_full, data_valid)
+                else:
+                    setter(data_full, data_valid, args=args)
+            else:
+                if args is None:
+                    data_full[...] = setter(data_valid)
+                else:
+                    data_full[...] = setter(data_valid, args=args)
             return data_full
 
         def set_valid_compat(
@@ -420,21 +451,11 @@ class GridBase(metaclass=ABCMeta):
                 data_valid = data_or_full
                 data_full = out
                 if data_full is None:
-                    if backend.implementation == "jax":
-                        return setter(data_valid, args=args)
                     data_full = np.empty(shape_full, dtype=data_valid.dtype)
             else:
                 data_full = data_or_full if out is None else out
 
-            try:
-                return set_valid(data_full, data_valid, args=args)
-            except TypeError as err:
-                try:
-                    result = setter(data_valid, args=args)
-                except TypeError:
-                    raise err
-                data_full[...] = result
-                return data_full
+            return set_valid(data_full, data_valid, args=args)
 
         return set_valid_compat
 
