@@ -525,7 +525,8 @@ class BackendBase(Generic[TNativeArray]):
             signature = None
 
         if signature is None:
-            supports_out = True
+            supports_out = False
+            requires_out = False
             supports_args = False
         else:
             params = tuple(signature.parameters.values())
@@ -536,6 +537,9 @@ class BackendBase(Generic[TNativeArray]):
             )
             supports_out = any(p.kind == p.VAR_POSITIONAL for p in params) or (
                 len(positional) >= 2
+            )
+            requires_out = supports_out and len(positional) >= 2 and (
+                positional[1].default is inspect.Signature.empty
             )
             supports_args = any(
                 p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
@@ -551,6 +555,11 @@ class BackendBase(Generic[TNativeArray]):
                 raise TypeError(msg)
 
             if supports_out:
+                if out is None and not requires_out:
+                    if args is None:
+                        return operator_raw(arr)  # type: ignore
+                    return operator_raw(arr, args=args)  # type: ignore
+
                 if out is None:
                     out = np.empty(shape_out, dtype=arr.dtype)  # type: ignore
                 if args is None:
