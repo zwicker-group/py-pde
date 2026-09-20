@@ -420,10 +420,9 @@ class GridBase(metaclass=ABCMeta):
                 data_valid = data_or_full
                 data_full = out
                 if data_full is None:
-                    try:
+                    if backend.implementation == "jax":
                         return setter(data_valid, args=args)
-                    except TypeError:
-                        data_full = np.empty(shape_full, dtype=data_valid.dtype)
+                    data_full = np.empty(shape_full, dtype=data_valid.dtype)
             else:
                 data_full = data_or_full if out is None else out
 

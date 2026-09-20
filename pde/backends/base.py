@@ -528,11 +528,17 @@ class BackendBase(Generic[TNativeArray]):
                 out = np.empty(shape_out, dtype=arr.dtype)  # type: ignore
 
             try:
-                result = operator_raw(arr, out)  # type: ignore
+                if args is None:
+                    result = operator_raw(arr, out)  # type: ignore
+                else:
+                    result = operator_raw(arr, out, args=args)  # type: ignore
             except TypeError as err:
                 # some operators now only return their result and do not accept `out`
                 try:
-                    result = operator_raw(arr)  # type: ignore
+                    if args is None:
+                        result = operator_raw(arr)  # type: ignore
+                    else:
+                        result = operator_raw(arr, args=args)  # type: ignore
                 except TypeError:
                     raise err
                 out[...] = result  # type: ignore
