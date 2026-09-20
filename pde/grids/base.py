@@ -387,17 +387,57 @@ class GridBase(metaclass=ABCMeta):
 
         Returns:
             callable:
-                Takes two numpy arrays, setting the valid data in the first one, using
-                the second array. The arrays need to be allocated already and they need
-                to have the correct dimensions, which are not checked. If `bcs` are
-                given, a third argument is allowed, which sets arguments for the BCs.
+                Function setting valid data in a full array. The function supports both
+                `set_valid(data_full, data_valid, args=None)` and
+                `set_valid(data_valid, out=None, args=None)`.
         """
         from ..backends import get_backend
 
         backend = get_backend(backend)
         if bcs is None:
-            return backend.make_valid_data_setter(self, rank=rank)
-        return backend.make_full_data_setter(bcs)
+            setter = backend.make_valid_data_setter(self, rank=rank)
+            rank_full = rank
+        else:
+            setter = backend.make_full_data_setter(bcs)
+            rank_full = bcs.rank
+
+        shape_full = (self.dim,) * rank_full + self._shape_full
+
+        def set_valid(data_full: NumericArray, data_valid: NumericArray, args=None):
+            """Set valid data in full array and return the full array."""
+            setter(data_full, data_valid, args=args)
+            return data_full
+
+        def set_valid_compat(
+            data_or_full: NumericArray,
+            data_valid: NumericArray | None = None,
+            *,
+            out: NumericArray | None = None,
+            args=None,
+        ) -> NumericArray:
+            """Set valid data in full array and optionally return a new array."""
+            if data_valid is None:
+                data_valid = data_or_full
+                data_full = out
+                if data_full is None:
+                    try:
+                        return setter(data_valid, args=args)
+                    except TypeError:
+                        data_full = np.empty(shape_full, dtype=data_valid.dtype)
+            else:
+                data_full = data_or_full if out is None else out
+
+            try:
+                return set_valid(data_full, data_valid, args=args)
+            except TypeError as err:
+                try:
+                    result = setter(data_valid, args=args)
+                except TypeError:
+                    raise err
+                data_full[...] = result
+                return data_full
+
+        return set_valid_compat
 
     @property
     @abstractmethod

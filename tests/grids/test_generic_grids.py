@@ -163,6 +163,40 @@ def test_registered_operators():
         assert all(op in grid_class_ops for op in ops)
 
 
+def test_operator_no_bc_returns_result():
+    """Test operator without BCs returning allocated result arrays."""
+    grid = grids.UnitGrid([4], periodic=True)
+    op_no_bc = grid.make_operator_no_bc("laplace", backend="numpy")
+
+    data_full = np.ones(grid._shape_full)
+    result = op_no_bc(data_full)
+    np.testing.assert_allclose(result, 0)
+
+    out = np.empty(grid.shape)
+    result_out = op_no_bc(data_full, out=out)
+    assert result_out is out
+    np.testing.assert_allclose(out, 0)
+
+
+def test_make_set_valid_return_style():
+    """Test `_make_set_valid` with return-style usage and optional `out`."""
+    grid = grids.UnitGrid([4], periodic=False)
+    data_valid = np.arange(4.0)
+    setter = grid._make_set_valid(rank=0, backend="numpy")
+
+    data_full = setter(data_valid)
+    np.testing.assert_allclose(data_full[1:-1], data_valid)
+
+    out = np.empty(grid._shape_full)
+    data_full_out = setter(data_valid, out=out)
+    assert data_full_out is out
+    np.testing.assert_allclose(out, data_full)
+
+    data_full_legacy = np.empty(grid._shape_full)
+    data_full_legacy_ret = setter(data_full_legacy, data_valid)
+    assert data_full_legacy_ret is data_full_legacy
+    np.testing.assert_allclose(data_full_legacy, data_full)
+
 @pytest.mark.parametrize("grid", get_grids())
 def test_cell_volumes(grid):
     """Test calculation of cell volumes."""

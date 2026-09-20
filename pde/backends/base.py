@@ -513,12 +513,36 @@ class BackendBase(Generic[TNativeArray]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray), so they `out` array need
-            to be supplied explicitly.
+            signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
-        return operator_info.factory(grid, **kwargs)
+        operator_raw = operator_info.factory(grid, **kwargs)
+        shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
+
+        def apply_operator(
+            arr: TNativeArray, out: TNativeArray | None = None, args=None
+        ) -> TNativeArray:
+            """Apply operator to full data without setting boundary conditions."""
+            if out is None:
+                out = np.empty(shape_out, dtype=arr.dtype)  # type: ignore
+
+            try:
+                result = operator_raw(arr, out)  # type: ignore
+            except TypeError as err:
+                # some operators now only return their result and do not accept `out`
+                try:
+                    result = operator_raw(arr)  # type: ignore
+                except TypeError:
+                    raise err
+                out[...] = result  # type: ignore
+                result = out
+
+            if result is None:
+                return out
+            return result
+
+        return apply_operator
 
     def make_operator(
         self,
