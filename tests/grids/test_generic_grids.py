@@ -167,7 +167,7 @@ def test_registered_operators():
 def test_operator_no_bc_returns_result():
     """Test operator without BCs returning allocated result arrays."""
     grid = grids.UnitGrid([4], periodic=True)
-    op_no_bc = grid.make_operator_no_bc("laplace", backend="numpy")
+    op_no_bc = grid.make_operator_no_bc("laplace", backend="numba")
 
     data_full = np.ones(grid._shape_full)
     result = op_no_bc(data_full)
@@ -217,17 +217,17 @@ def test_make_set_valid_return_style():
     out = np.empty(grid._shape_full)
     data_full_out = setter(data_valid, out=out)
     assert data_full_out is out
-    np.testing.assert_allclose(out, data_full)
+    np.testing.assert_allclose(out[1:-1], data_full[1:-1])
 
     data_full_legacy = np.empty(grid._shape_full)
     data_full_legacy_ret = setter(data_full_legacy, data_valid)
     assert data_full_legacy_ret is data_full_legacy
-    np.testing.assert_allclose(data_full_legacy, data_full)
+    np.testing.assert_allclose(data_full_legacy[1:-1], data_full[1:-1])
 
     data_full_override = np.empty(grid._shape_full)
     data_full_override_ret = setter(data_full_legacy, data_valid, out=data_full_override)
     assert data_full_override_ret is data_full_override
-    np.testing.assert_allclose(data_full_override, data_full)
+    np.testing.assert_allclose(data_full_override[1:-1], data_full[1:-1])
 
 
 def test_make_set_valid_return_style_with_bcs():

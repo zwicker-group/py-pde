@@ -530,16 +530,15 @@ class BackendBase(Generic[TNativeArray]):
             supports_args = False
         else:
             params = tuple(signature.parameters.values())
-            positional = tuple(
-                p
-                for p in params
-                if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-            )
-            supports_out = any(p.kind == p.VAR_POSITIONAL for p in params) or (
-                len(positional) >= 2
-            )
-            requires_out = supports_out and len(positional) >= 2 and (
-                positional[1].default is inspect.Signature.empty
+            has_out_kw = any(p.name == "out" for p in params)
+            supports_out = any(p.kind == p.VAR_POSITIONAL for p in params) or has_out_kw
+            requires_out = (
+                supports_out
+                and has_out_kw
+                and next(
+                    p.default for p in params if p.name == "out"
+                )
+                is inspect.Signature.empty
             )
             supports_args = any(
                 p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
