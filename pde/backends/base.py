@@ -11,6 +11,7 @@ import warnings
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, overload
 
+import numpy as np
 from typing_extensions import Self
 
 from ..tools.config import _OMITTED, Config, ConfigLike
