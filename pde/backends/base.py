@@ -546,14 +546,13 @@ class BackendBase(Generic[TNativeArray]):
             arr: TNativeArray, out: TNativeArray | None = None, args=None
         ) -> TNativeArray:
             """Apply operator to full data without setting boundary conditions."""
-            if out is None:
-                out = np.empty(shape_out, dtype=arr.dtype)  # type: ignore
-
             if args is not None and not supports_args:
                 msg = "Operator does not accept runtime `args`."
                 raise TypeError(msg)
 
             if supports_out:
+                if out is None:
+                    out = np.empty(shape_out, dtype=arr.dtype)  # type: ignore
                 if args is None:
                     result = operator_raw(arr, out)  # type: ignore
                 else:
@@ -563,6 +562,8 @@ class BackendBase(Generic[TNativeArray]):
                     result = operator_raw(arr)  # type: ignore
                 else:
                     result = operator_raw(arr, args=args)  # type: ignore
+                if out is None:
+                    return result
                 out[...] = result  # type: ignore
                 result = out
 
