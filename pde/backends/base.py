@@ -580,7 +580,7 @@ class BackendBase(Generic[TNativeArray]):
 
                 if out is None:
                     out = self.numpy_to_native(
-                        np.empty(shape_out, dtype=self.native_to_numpy(arr).dtype)
+                        np.empty(shape_out, dtype=arr.dtype)
                     )
                 if args is None:
                     result = operator_raw(arr, out)  # type: ignore
@@ -594,8 +594,7 @@ class BackendBase(Generic[TNativeArray]):
                 if out is None:
                     return result
                 if result is None:
-                    msg = "Operator did not return data for supplied `out` array."
-                    raise RuntimeError(msg)
+                    return out
                 out[...] = result  # type: ignore
                 result = out
 

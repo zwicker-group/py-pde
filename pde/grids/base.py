@@ -451,7 +451,9 @@ class GridBase(metaclass=ABCMeta):
                 data_valid = data_or_full
                 data_full = out
                 if data_full is None:
-                    data_full = np.empty(shape_full, dtype=data_valid.dtype)
+                    data_full = backend.numpy_to_native(
+                        np.empty(shape_full, dtype=data_valid.dtype)
+                    )
             else:
                 data_full = data_or_full if out is None else out
 
