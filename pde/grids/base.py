@@ -388,9 +388,12 @@ class GridBase(metaclass=ABCMeta):
 
         Returns:
             callable:
-                Function setting valid data in a full array. The function supports both
+                Function setting valid data in a full array and returning that full
+                array. The returned callable supports both legacy and functional styles:
                 `set_valid(data_full, data_valid, args=None)` and
-                `set_valid(data_valid, out=None, args=None)`.
+                `set_valid(data_valid, out=None, args=None)`. In both styles, `args`
+                are optional runtime values forwarded to backend setters and boundary
+                condition handling.
         """
         from ..backends import get_backend
 

@@ -109,7 +109,7 @@ class OperatorImplType(Protocol, Generic[TNativeArray]):
         arr: TNativeArray,
         out: TNativeArray,
         args: Any | None = None,
-    ) -> TNativeArray | None: ...
+    ) -> TNativeArray: ...
 
     @overload
     def __call__(
@@ -118,7 +118,7 @@ class OperatorImplType(Protocol, Generic[TNativeArray]):
         *,
         out: TNativeArray,
         args: Any | None = None,
-    ) -> TNativeArray | None: ...
+    ) -> TNativeArray: ...
 
 BinaryOperatorImplType = Callable[
     [TNativeArray, TNativeArray, TNativeArray | None], TNativeArray

@@ -532,9 +532,9 @@ class BackendBase(Generic[TNativeArray]):
             signature = None
 
         if signature is None:
-            supports_out = False
+            supports_out = True
             requires_out = False
-            supports_args = False
+            supports_args = True
             has_out_kw = False
         else:
             params = tuple(signature.parameters.values())
