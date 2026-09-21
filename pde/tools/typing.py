@@ -153,6 +153,7 @@ class OperatorType(Protocol, Generic[TNativeArray]):
     def __call__(
         self,
         arr: TNativeArray,
+        *,
         out: TNativeArray | None = None,
         args: dict[str, Any] | None = None,
     ) -> TNativeArray:

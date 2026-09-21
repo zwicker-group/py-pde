@@ -453,7 +453,7 @@ class NumbaBackend(NumpyBackend):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            signature ``(arr, *, out=None, args=None)``.
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
@@ -557,8 +557,14 @@ class NumbaBackend(NumpyBackend):
             """Set boundary conditions and apply operator."""
             return apply_op(arr, out, args)
 
+        def apply_op_public(
+            arr: NumericArray, *, out: NumericArray | None = None, args=None
+        ) -> NumericArray:
+            """Set boundary conditions and apply operator with keyword-only options."""
+            return apply_op_compiled(arr, out, args)
+
         # return the compiled versions of the operator
-        return apply_op_compiled
+        return apply_op_public
 
     def _make_local_integrator(
         self, grid: GridBase

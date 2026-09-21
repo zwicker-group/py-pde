@@ -489,7 +489,7 @@ class BackendBase(Generic[TNativeArray]):
         """Return a compiled function applying an operator without boundary conditions.
 
         The returned function has public signature
-        ``(arr, out=None, args=None) -> result``.
+        ``(arr, *, out=None, args=None) -> result``.
 
         Note:
             The resulting function does not check whether the ghost cells of the input
@@ -517,7 +517,7 @@ class BackendBase(Generic[TNativeArray]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            signature ``(arr, *, out=None, args=None)``.
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
@@ -584,7 +584,7 @@ class BackendBase(Generic[TNativeArray]):
             )
 
         def apply_operator(
-            arr: TNativeArray, out: TNativeArray | None = None, args=None
+            arr: TNativeArray, *, out: TNativeArray | None = None, args=None
         ) -> TNativeArray:
             """Apply operator to full data without setting boundary conditions."""
             if args is not None and not supports_args:
@@ -628,7 +628,13 @@ class BackendBase(Generic[TNativeArray]):
                 if args is None:
                     result = operator_raw(arr)  # type: ignore
                 else:
-                    result = operator_raw(arr, args=args)  # type: ignore
+                    if args_keyword_supported:
+                        result = operator_raw(arr, args=args)  # type: ignore
+                    elif args_positional_supported:
+                        result = operator_raw(arr, args)  # type: ignore
+                    else:
+                        msg = "Operator does not accept runtime `args`."
+                        raise TypeError(msg)
                 if out is None:
                     return result
                 if result is None:
@@ -686,11 +692,11 @@ class BackendBase(Generic[TNativeArray]):
         ``op(arr, args=None) -> result`` (functional) or ``op(arr, out, args=None)``
         (in-place). The backend-specific implementation of :meth:`make_operator`
         adapts this internal style to the public call convention
-        ``(arr, out=None, args=None)``.
+        ``(arr, *, out=None, args=None)``.
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            signature ``(arr, *, out=None, args=None)``.
         """
         msg = f"Operators not defined for backend {self.name}"
         raise NotImplementedError(msg)

@@ -526,7 +526,7 @@ class JaxBackend(BackendBase[jax.Array]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None). Since
+            signature ``(arr, *, out=None, args=None)``. Since
             `jax` arrays are immutable, supplying `out` raises an error.
 
         Internally, the raw implementation is expected to follow
@@ -556,6 +556,7 @@ class JaxBackend(BackendBase[jax.Array]):
 
         def apply_op_jax(
             arr: jax.Array,
+            *,
             out: jax.Array | None = None,
             args: dict[str, Any] | None = None,
         ) -> jax.Array:
@@ -619,7 +620,7 @@ class JaxBackend(BackendBase[jax.Array]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            signature ``(arr, *, out=None, args=None)``.
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
@@ -631,6 +632,7 @@ class JaxBackend(BackendBase[jax.Array]):
         @self.compile_function
         def apply_op_jax(
             arr: jax.Array,
+            *,
             out: jax.Array | None = None,
             args: dict[str, Any] | None = None,
         ) -> jax.Array:

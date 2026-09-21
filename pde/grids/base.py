@@ -1297,7 +1297,7 @@ class GridBase(metaclass=ABCMeta):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            signature ``(arr, *, out=None, args=None)``.
         """
         from ..backends import get_backend
 
@@ -1358,7 +1358,7 @@ class GridBase(metaclass=ABCMeta):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            signature ``(arr, *, out=None, args=None)``.
         """
         from ..backends import get_backend
 

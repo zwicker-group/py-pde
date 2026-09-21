@@ -49,6 +49,11 @@ def test_operator_no_bc_functional_call(backend):
     np.testing.assert_allclose(result, 0)
 
     out = backend.numpy_to_native(np.empty(grid.shape))
+    with pytest.raises(TypeError):
+        op(data_full_native, out)
+    with pytest.raises(TypeError):
+        op(data_full_native, None, {"shift": 1})
+
     if backend.implementation in {"jax", "torch"}:
         with pytest.raises(RuntimeError):
             op(data_full_native, out=out)
@@ -73,6 +78,11 @@ def test_operator_functional_call_with_bc(backend):
     np.testing.assert_allclose(result, 0)
 
     out = backend.numpy_to_native(np.empty(grid.shape))
+    with pytest.raises(TypeError):
+        op(data_native, out)
+    with pytest.raises(TypeError):
+        op(data_native, None, {"shift": 1})
+
     if backend.implementation in {"jax", "torch"}:
         with pytest.raises(RuntimeError):
             op(data_native, out=out)
@@ -105,6 +115,11 @@ def test_operator_no_bc_optional_out_with_args(backend):
     np.testing.assert_allclose(result, np.arange(1, 5, dtype=float) + 2)
 
     out = backend.numpy_to_native(np.empty(grid.shape))
+    with pytest.raises(TypeError):
+        op(data_full, out)
+    with pytest.raises(TypeError):
+        op(data_full, None, {"shift": 1})
+
     result_out = op(data_full, out=out, args={"shift": -1})
     assert result_out is out
     np.testing.assert_allclose(
@@ -147,5 +162,10 @@ def test_operator_no_bc_args_and_out_on_immutable_backends(backend):
     np.testing.assert_allclose(result, np.arange(1, 5, dtype=float) + 3)
 
     out = backend.numpy_to_native(np.empty(grid.shape))
+    with pytest.raises(TypeError):
+        op(data_full, out)
+    with pytest.raises(TypeError):
+        op(data_full, None, {"shift": 1})
+
     with pytest.raises(RuntimeError):
         op(data_full, out=out, args={"shift": -1})

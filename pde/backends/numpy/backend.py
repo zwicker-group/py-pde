@@ -222,7 +222,7 @@ class NumpyBackend(BackendBase[NumericArray]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            signature ``(arr, *, out=None, args=None)``.
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
@@ -234,7 +234,7 @@ class NumpyBackend(BackendBase[NumericArray]):
         shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
 
         def apply_operator(
-            arr: NumericArray, out: NumericArray | None = None, args=None
+            arr: NumericArray, *, out: NumericArray | None = None, args=None
         ) -> NumericArray:
             """Set boundary conditions and apply operator."""
             # check input array
