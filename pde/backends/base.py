@@ -536,6 +536,8 @@ class BackendBase(Generic[TNativeArray]):
             requires_out = False
             supports_args = True
             has_out_kw = False
+            args_keyword_supported = True
+            args_positional_supported = True
         else:
             params = tuple(signature.parameters.values())
             positional = tuple(
@@ -570,6 +572,12 @@ class BackendBase(Generic[TNativeArray]):
                 p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
                 for p in params
             )
+            args_keyword_supported = any(
+                p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
+            )
+            args_positional_supported = any(p.kind == p.VAR_POSITIONAL for p in params) or (
+                len(positional) >= 3 and positional[2].name != "out"
+            )
 
         def apply_operator(
             arr: TNativeArray, out: TNativeArray | None = None, args=None
@@ -585,7 +593,12 @@ class BackendBase(Generic[TNativeArray]):
                         return operator_raw(arr)  # type: ignore
                     if has_out_kw:
                         return operator_raw(arr, out=None, args=args)  # type: ignore
-                    return operator_raw(arr, args=args)  # type: ignore
+                    if args_keyword_supported:
+                        return operator_raw(arr, args=args)  # type: ignore
+                    if args_positional_supported:
+                        return operator_raw(arr, args)  # type: ignore
+                    msg = "Operator does not accept runtime `args`."
+                    raise TypeError(msg)
 
                 if out is None:
                     arr_dtype = getattr(arr, "dtype", None)
@@ -600,7 +613,13 @@ class BackendBase(Generic[TNativeArray]):
                 if args is None:
                     result = operator_raw(arr, out)  # type: ignore
                 else:
-                    result = operator_raw(arr, out, args=args)  # type: ignore
+                    if args_keyword_supported:
+                        result = operator_raw(arr, out, args=args)  # type: ignore
+                    elif args_positional_supported:
+                        result = operator_raw(arr, out, args)  # type: ignore
+                    else:
+                        msg = "Operator does not accept runtime `args`."
+                        raise TypeError(msg)
             else:
                 if args is None:
                     result = operator_raw(arr)  # type: ignore

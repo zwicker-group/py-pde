@@ -424,6 +424,12 @@ class GridBase(metaclass=ABCMeta):
             p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
             for p in params
         )
+        setter_args_keyword = not params or any(
+            p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
+        )
+        setter_args_positional = not params or any(
+            p.kind == p.VAR_POSITIONAL for p in params
+        ) or (len(positional) >= 3 and positional[2].name != "out")
 
         def set_valid(data_full: NumericArray, data_valid: NumericArray, args=None):
             """Set valid data in full array and return the full array."""
@@ -434,12 +440,24 @@ class GridBase(metaclass=ABCMeta):
                 if args is None:
                     setter(data_full, data_valid)
                 else:
-                    setter(data_full, data_valid, args=args)
+                    if setter_args_keyword:
+                        setter(data_full, data_valid, args=args)
+                    elif setter_args_positional:
+                        setter(data_full, data_valid, args)
+                    else:
+                        msg = "Data setter does not accept runtime `args`."
+                        raise TypeError(msg)
             else:
                 if args is None:
                     data_full[...] = setter(data_valid)
                 else:
-                    data_full[...] = setter(data_valid, args=args)
+                    if setter_args_keyword:
+                        data_full[...] = setter(data_valid, args=args)
+                    elif setter_args_positional:
+                        data_full[...] = setter(data_valid, args)
+                    else:
+                        msg = "Data setter does not accept runtime `args`."
+                        raise TypeError(msg)
             return data_full
 
         def set_valid_compat(
