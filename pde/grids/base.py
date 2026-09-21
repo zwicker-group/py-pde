@@ -446,7 +446,21 @@ class GridBase(metaclass=ABCMeta):
             out: NumericArray | None = None,
             args=None,
         ) -> NumericArray:
-            """Set valid data in full array and optionally return a new array."""
+            """Set valid data in a full array using legacy or functional calling style.
+
+            Args:
+                data_or_full (:class:`~numpy.ndarray`):
+                    Either the full data array (legacy style) or the valid data array
+                    (functional style).
+                data_valid (:class:`~numpy.ndarray`, optional):
+                    Valid data to write in legacy style. If omitted, `data_or_full` is
+                    interpreted as the valid data array.
+                out (:class:`~numpy.ndarray`, optional):
+                    Full destination array used in functional style. If omitted, a new
+                    full array is allocated.
+                args (dict):
+                    Extra arguments affecting optional boundary-condition handling.
+            """
             if data_valid is None:
                 data_valid = data_or_full
                 data_full = out

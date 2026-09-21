@@ -529,6 +529,7 @@ class BackendBase(Generic[TNativeArray]):
             supports_out = False
             requires_out = False
             supports_args = False
+            has_out_kw = False
         else:
             params = tuple(signature.parameters.values())
             positional = tuple(
@@ -576,6 +577,8 @@ class BackendBase(Generic[TNativeArray]):
                 if out is None and not requires_out:
                     if args is None:
                         return operator_raw(arr)  # type: ignore
+                    if has_out_kw:
+                        return operator_raw(arr, out=None, args=args)  # type: ignore
                     return operator_raw(arr, args=args)  # type: ignore
 
                 if out is None:
