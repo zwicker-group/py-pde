@@ -459,7 +459,8 @@ class GridBase(metaclass=ABCMeta):
                     Full destination array used in functional style. If omitted, a new
                     full array is allocated.
                 args:
-                    Extra arguments affecting optional boundary-condition handling.
+                    Optional runtime arguments forwarded to backend setters and boundary
+                    condition handling (for instance time-dependent BC parameters).
 
             Returns:
                 :class:`~numpy.ndarray`:
@@ -470,8 +471,11 @@ class GridBase(metaclass=ABCMeta):
                 data_valid = data_or_full
                 data_full = out
                 if data_full is None:
+                    data_valid_dtype = getattr(data_valid, "dtype", None)
+                    if data_valid_dtype is None:
+                        data_valid_dtype = backend.native_to_numpy(data_valid).dtype
                     data_full = backend.numpy_to_native(
-                        np.empty(shape_full, dtype=data_valid.dtype)
+                        np.empty(shape_full, dtype=data_valid_dtype)
                     )
             else:
                 data_full = data_or_full if out is None else out

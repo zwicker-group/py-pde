@@ -75,6 +75,7 @@ class OperatorImplType(Protocol, Generic[TNativeArray]):
     def __call__(
         self,
         arr: TNativeArray,
+        *,
         args: Any,
     ) -> TNativeArray: ...
 
@@ -90,6 +91,15 @@ class OperatorImplType(Protocol, Generic[TNativeArray]):
     def __call__(
         self,
         arr: TNativeArray,
+        *,
+        out: None = None,
+        args: Any | None = None,
+    ) -> TNativeArray: ...
+
+    @overload
+    def __call__(
+        self,
+        arr: TNativeArray,
         out: TNativeArray,
     ) -> TNativeArray | None: ...
 
@@ -97,6 +107,15 @@ class OperatorImplType(Protocol, Generic[TNativeArray]):
     def __call__(
         self,
         arr: TNativeArray,
+        out: TNativeArray,
+        args: Any | None = None,
+    ) -> TNativeArray | None: ...
+
+    @overload
+    def __call__(
+        self,
+        arr: TNativeArray,
+        *,
         out: TNativeArray,
         args: Any | None = None,
     ) -> TNativeArray | None: ...
