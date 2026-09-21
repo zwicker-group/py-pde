@@ -531,15 +531,33 @@ class BackendBase(Generic[TNativeArray]):
             supports_args = False
         else:
             params = tuple(signature.parameters.values())
+            positional = tuple(
+                p
+                for p in params
+                if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+            )
             has_out_kw = any(p.name == "out" for p in params)
-            supports_out = any(p.kind == p.VAR_POSITIONAL for p in params) or has_out_kw
+            has_out_positional = len(positional) >= 2 and positional[1].name != "args"
+            supports_out = (
+                any(p.kind == p.VAR_POSITIONAL for p in params)
+                or has_out_kw
+                or has_out_positional
+            )
             requires_out = (
                 supports_out
-                and has_out_kw
-                and next(
-                    p.default for p in params if p.name == "out"
+                and (
+                    (
+                        has_out_kw
+                        and next(
+                            p.default for p in params if p.name == "out"
+                        )
+                        is inspect.Signature.empty
+                    )
+                    or (
+                        has_out_positional
+                        and positional[1].default is inspect.Signature.empty
+                    )
                 )
-                is inspect.Signature.empty
             )
             supports_args = any(
                 p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
@@ -561,7 +579,9 @@ class BackendBase(Generic[TNativeArray]):
                     return operator_raw(arr, args=args)  # type: ignore
 
                 if out is None:
-                    out = np.empty(shape_out, dtype=arr.dtype)  # type: ignore
+                    out = self.numpy_to_native(
+                        np.empty(shape_out, dtype=self.native_to_numpy(arr).dtype)
+                    )
                 if args is None:
                     result = operator_raw(arr, out)  # type: ignore
                 else:
@@ -573,6 +593,9 @@ class BackendBase(Generic[TNativeArray]):
                     result = operator_raw(arr, args=args)  # type: ignore
                 if out is None:
                     return result
+                if result is None:
+                    msg = "Operator did not return data for supplied `out` array."
+                    raise RuntimeError(msg)
                 out[...] = result  # type: ignore
                 result = out
 
