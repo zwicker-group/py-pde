@@ -545,8 +545,12 @@ class BackendBase(Generic[TNativeArray]):
                 for p in params
                 if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
             )
+            second_pos_name = positional[1].name if len(positional) >= 2 else None
             has_out_kw = any(p.name == "out" for p in params)
-            has_out_positional = len(positional) >= 2 and positional[1].name != "args"
+            has_out_positional = second_pos_name == "out"
+            has_args_positional_no_out = (
+                len(positional) >= 2 and second_pos_name != "out"
+            )
             supports_out = (
                 any(p.kind == p.VAR_POSITIONAL for p in params)
                 or has_out_kw
@@ -571,12 +575,16 @@ class BackendBase(Generic[TNativeArray]):
             supports_args = any(
                 p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
                 for p in params
-            )
+            ) or has_args_positional_no_out
             args_keyword_supported = any(
                 p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
             )
-            args_positional_supported = any(p.kind == p.VAR_POSITIONAL for p in params) or (
+            args_positional_supported = any(
+                p.kind == p.VAR_POSITIONAL for p in params
+            ) or (
                 len(positional) >= 3 and positional[2].name != "out"
+                if supports_out
+                else has_args_positional_no_out
             )
 
         def apply_operator(

@@ -10,6 +10,7 @@ operators on this backend.
 
 from __future__ import annotations
 
+import inspect
 import numbers
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
@@ -344,6 +345,21 @@ class TorchBackend(BackendBase[torch.Tensor]):
 
         # compile the function and move it to the device
         torch_operator = self.compile_function(torch_operator, to_device=True)  # type: ignore
+        try:
+            params = tuple(inspect.signature(torch_operator).parameters.values())
+        except (TypeError, ValueError):
+            params = ()
+        positional = tuple(
+            p
+            for p in params
+            if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+        )
+        args_keyword_supported = not params or any(
+            p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
+        )
+        args_positional_supported = not params or any(
+            p.kind == p.VAR_POSITIONAL for p in params
+        ) or len(positional) >= 2
 
         def apply_op_torch(
             arr: torch.Tensor,
@@ -354,7 +370,14 @@ class TorchBackend(BackendBase[torch.Tensor]):
             if out is not None:
                 msg = "`torch` arrays are immutable and cannot use `out`"
                 raise RuntimeError(msg)
-            return torch_operator(arr, args=args)
+            if args is None:
+                return torch_operator(arr)
+            if args_keyword_supported:
+                return torch_operator(arr, args=args)
+            if args_positional_supported:
+                return torch_operator(arr, args)
+            msg = "Torch operator does not accept runtime `args`."
+            raise TypeError(msg)
 
         return apply_op_torch
 

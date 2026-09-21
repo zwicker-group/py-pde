@@ -415,21 +415,26 @@ class GridBase(metaclass=ABCMeta):
             for p in params
             if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
         )
+        second_pos_name = positional[1].name if len(positional) >= 2 else None
         setter_uses_output_arg = not params or any(
             p.kind == p.VAR_POSITIONAL for p in params
         ) or (
-            len(positional) >= 2
+            len(positional) >= 2 and second_pos_name != "args"
         )
         setter_supports_args = not params or any(
             p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
             for p in params
-        )
+        ) or (len(positional) >= 2 and second_pos_name == "args")
         setter_args_keyword = not params or any(
             p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
         )
         setter_args_positional = not params or any(
             p.kind == p.VAR_POSITIONAL for p in params
-        ) or (len(positional) >= 3 and positional[2].name != "out")
+        ) or (
+            len(positional) >= 3 and positional[2].name != "out"
+            if setter_uses_output_arg
+            else len(positional) >= 2 and second_pos_name == "args"
+        )
 
         def set_valid(data_full: NumericArray, data_valid: NumericArray, args=None):
             """Set valid data in full array and return the full array."""
