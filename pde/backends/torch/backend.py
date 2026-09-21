@@ -32,7 +32,14 @@ if TYPE_CHECKING:
     from ...solvers import SolverBase
     from ...tools.config import ConfigLike
     from ...tools.expressions import ExpressionBase
-    from ...tools.typing import NumberOrArray, NumericArray, StepperType, TField, TFunc
+    from ...tools.typing import (
+        NumberOrArray,
+        NumericArray,
+        OperatorType,
+        StepperType,
+        TField,
+        TFunc,
+    )
     from ..numpy.backend import OperatorInfo
     from .operators.common import TorchDifferentialOperator
 
@@ -286,7 +293,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         *,
         dtype: DTypeLike | None = None,
         **kwargs,
-    ) -> TorchDifferentialOperator:
+    ) -> OperatorType:
         """Return a compiled function applying an operator without boundary conditions.
 
         A function that takes the discretized full data as an input and an array of
@@ -313,8 +320,9 @@ class TorchBackend(BackendBase[torch.Tensor]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray), so they `out` array need
-            to be supplied explicitly.
+            signature (arr: NumericArray, out: NumericArray = None, args=None). Since
+            `torch` arrays are immutable in this context, supplying `out` raises an
+            error.
         """
         # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)
@@ -327,7 +335,20 @@ class TorchBackend(BackendBase[torch.Tensor]):
         torch_operator.eval()
 
         # compile the function and move it to the device
-        return self.compile_function(torch_operator, to_device=True)  # type: ignore
+        torch_operator = self.compile_function(torch_operator, to_device=True)  # type: ignore
+
+        def apply_op_torch(
+            arr: torch.Tensor,
+            out: torch.Tensor | None = None,
+            args: dict[str, Any] | None = None,
+        ) -> torch.Tensor:
+            """Apply operator without boundary conditions."""
+            if out is not None:
+                msg = "`torch` arrays are immutable and cannot use `out`"
+                raise RuntimeError(msg)
+            return torch_operator(arr, args=args)
+
+        return apply_op_torch
 
     def make_operator(
         self,

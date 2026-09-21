@@ -1216,7 +1216,7 @@ class GridBase(metaclass=ABCMeta):
         backend: str | BackendBase = "default",
         dtype: DTypeLike | None = None,
         **kwargs,
-    ) -> OperatorImplType:
+    ) -> OperatorType:
         """Return a compiled function applying an operator without boundary conditions.
 
         A function that takes the discretized full data as an input and an array of
@@ -1243,8 +1243,7 @@ class GridBase(metaclass=ABCMeta):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray), so they `out` array need
-            to be supplied explicitly.
+            signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
         from ..backends import get_backend
 

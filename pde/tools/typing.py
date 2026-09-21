@@ -65,6 +65,7 @@ class OperatorInfo(NamedTuple):
 # operators act on an array and either return result or write it into supplied array
 OperatorImplType = (
     Callable[[TNativeArray], TNativeArray]
+    | Callable[[TNativeArray, TNativeArray], None]
     | Callable[[TNativeArray, TNativeArray], TNativeArray]
 )
 BinaryOperatorImplType = Callable[

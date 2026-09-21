@@ -487,7 +487,7 @@ class BackendBase(Generic[TNativeArray]):
         *,
         dtype: DTypeLike | None = None,
         **kwargs,
-    ) -> OperatorImplType:
+    ) -> OperatorType:
         """Return a compiled function applying an operator without boundary conditions.
 
         A function that takes the discretized full data as an input and an array of
@@ -577,6 +577,9 @@ class BackendBase(Generic[TNativeArray]):
                 result = out
 
             if result is None:
+                return out
+            if out is not None and result is not out:
+                out[...] = result
                 return out
             return result
 

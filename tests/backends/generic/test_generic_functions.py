@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 from scipy import stats
 
@@ -30,3 +31,45 @@ def test_random_noise_basic(backend, rng):
     data = backend.native_to_numpy(noise())
     test_res = stats.kstest(data, stats.norm(loc=0, scale=1).cdf)
     assert test_res.pvalue > 0.01  # expect Gaussian distribution
+
+
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_operator_no_bc_functional_call(backend):
+    """Test no-BC operators support functional call and optional `out`."""
+    grid = UnitGrid([4], periodic=True)
+    op = grid.make_operator_no_bc("laplace", backend=backend)
+
+    data_full = np.ones(grid._shape_full)
+    data_full_native = backend.numpy_to_native(data_full)
+    result = backend.native_to_numpy(op(data_full_native))
+    np.testing.assert_allclose(result, 0)
+
+    out = backend.numpy_to_native(np.empty(grid.shape))
+    if backend.implementation in {"jax", "torch"}:
+        with pytest.raises(RuntimeError):
+            op(data_full_native, out=out)
+    else:
+        result_out = op(data_full_native, out=out)
+        assert result_out is out
+        np.testing.assert_allclose(backend.native_to_numpy(out), 0)
+
+
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_operator_functional_call_with_bc(backend):
+    """Test operators with BCs support functional call and optional `out`."""
+    grid = UnitGrid([4], periodic=True)
+    op = grid.make_operator("laplace", bc="periodic", backend=backend)
+
+    data = np.ones(grid.shape)
+    data_native = backend.numpy_to_native(data)
+    result = backend.native_to_numpy(op(data_native))
+    np.testing.assert_allclose(result, 0)
+
+    out = backend.numpy_to_native(np.empty(grid.shape))
+    if backend.implementation in {"jax", "torch"}:
+        with pytest.raises(RuntimeError):
+            op(data_native, out=out)
+    else:
+        result_out = op(data_native, out=out)
+        assert result_out is out
+        np.testing.assert_allclose(backend.native_to_numpy(out), 0)

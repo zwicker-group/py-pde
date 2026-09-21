@@ -494,7 +494,7 @@ class JaxBackend(BackendBase[jax.Array]):
         *,
         dtype: DTypeLike | None = None,
         **kwargs,
-    ) -> OperatorImplType:
+    ) -> OperatorType:
         """Return a compiled function applying an operator without boundary conditions.
 
         A function that takes the discretized full data as an input and an array of
@@ -521,18 +521,30 @@ class JaxBackend(BackendBase[jax.Array]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray), so they `out` array need
-            to be supplied explicitly.
+            signature (arr: NumericArray, out: NumericArray = None, args=None). Since
+            `jax` arrays are immutable, supplying `out` raises an error.
         """
         # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)
         dtype = self.get_jax_dtype(dtype or np.double)
 
-        # create an operator with or without BCs
-        jax_operator = operator_info.factory(grid, **kwargs)
+        # create and compile an operator without BCs
+        jax_operator = self.compile_function(operator_info.factory(grid, **kwargs))
 
-        # compile the function and move it to the device
-        return self.compile_function(jax_operator)
+        def apply_op_jax(
+            arr: jax.Array,
+            out: jax.Array | None = None,
+            args: dict[str, Any] | None = None,
+        ) -> jax.Array:
+            """Apply operator without boundary conditions."""
+            if out is not None:
+                msg = "`jax` arrays are immutable and cannot use `out`"
+                raise RuntimeError(msg)
+            if args is None:
+                return jax_operator(arr)
+            return jax_operator(arr, args=args)
+
+        return apply_op_jax
 
     @cached_method()
     def make_operator(
