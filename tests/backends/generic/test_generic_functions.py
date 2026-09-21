@@ -102,3 +102,42 @@ def test_operator_no_bc_optional_out_with_args(backend):
     result_out = op(data_full, out=out, args={"shift": -1})
     assert result_out is out
     np.testing.assert_allclose(backend.native_to_numpy(out), np.arange(1, 5, dtype=float) - 1)
+
+
+@pytest.mark.parametrize("backend", ["jax-cpu", "torch-cpu"], indirect=True)
+def test_operator_no_bc_args_and_out_on_immutable_backends(backend):
+    """Test args forwarding and `out` rejection for immutable backends."""
+    grid = UnitGrid([4], periodic=True)
+
+    if backend.implementation == "jax":
+
+        def factory(grid, **kwargs):
+            def operator(arr, args=None):
+                shift = 0 if args is None else args["shift"]
+                return arr[1:-1] + shift
+
+            return operator
+
+    elif backend.implementation == "torch":
+        import torch
+
+        class CustomOp(torch.nn.Module):
+            def forward(self, arr, args=None):
+                shift = 0 if args is None else args["shift"]
+                return arr[1:-1] + shift
+
+        def factory(grid, bcs=None, dtype=None, **kwargs):
+            return CustomOp()
+
+    else:
+        raise NotImplementedError
+
+    op = backend.make_operator_no_bc(grid, OperatorInfo(factory, rank_in=0, rank_out=0))
+    data_full = backend.numpy_to_native(np.arange(grid._shape_full[0], dtype=float))
+
+    result = backend.native_to_numpy(op(data_full, args={"shift": 3}))
+    np.testing.assert_allclose(result, np.arange(1, 5, dtype=float) + 3)
+
+    out = backend.numpy_to_native(np.empty(grid.shape))
+    with pytest.raises(RuntimeError):
+        op(data_full, out=out, args={"shift": -1})

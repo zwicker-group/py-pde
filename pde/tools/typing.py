@@ -19,7 +19,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Generic, NamedTuple, Protocol, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Generic, NamedTuple, Protocol, TypeVar, Union, overload
 
 import numpy as np
 from numpy.typing import ArrayLike  # noqa: F401
@@ -62,15 +62,25 @@ class OperatorInfo(NamedTuple):
     name: str = ""  # attach a unique name to help caching
 
 
-# operators act on an array and either return result or write it into supplied array
-OperatorImplType = (
-    Callable[[TNativeArray], TNativeArray]
-    | Callable[[TNativeArray, Any], TNativeArray]
-    | Callable[[TNativeArray, TNativeArray], None]
-    | Callable[[TNativeArray, TNativeArray], TNativeArray]
-    | Callable[[TNativeArray, TNativeArray, Any], None]
-    | Callable[[TNativeArray, TNativeArray, Any], TNativeArray]
-)
+class OperatorImplType(Protocol, Generic[TNativeArray]):
+    """Operator implementation accepting optional output and runtime arguments."""
+
+    @overload
+    def __call__(
+        self,
+        arr: TNativeArray,
+        out: None = None,
+        args: Any | None = None,
+    ) -> TNativeArray: ...
+
+    @overload
+    def __call__(
+        self,
+        arr: TNativeArray,
+        out: TNativeArray,
+        args: Any | None = None,
+    ) -> TNativeArray | None: ...
+
 BinaryOperatorImplType = Callable[
     [TNativeArray, TNativeArray, TNativeArray | None], TNativeArray
 ]

@@ -520,6 +520,7 @@ class BackendBase(Generic[TNativeArray]):
         operator_info = self.get_operator_info(grid, operator)
         operator_raw = operator_info.factory(grid, **kwargs)
         shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
+        out_dtype = np.dtype(dtype) if dtype is not None else None
         try:
             signature = inspect.signature(operator_raw)
         except (TypeError, ValueError):
@@ -583,7 +584,7 @@ class BackendBase(Generic[TNativeArray]):
 
                 if out is None:
                     out = self.numpy_to_native(
-                        np.empty(shape_out, dtype=arr.dtype)
+                        np.empty(shape_out, dtype=arr.dtype if out_dtype is None else out_dtype)
                     )
                 if args is None:
                     result = operator_raw(arr, out)  # type: ignore
