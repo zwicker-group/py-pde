@@ -14,8 +14,8 @@ from pde.grids.base import (
     discretize_interval,
     registered_operators,
 )
-from pde.tools.typing import OperatorInfo
 from pde.tools.misc import module_available
+from pde.tools.typing import OperatorInfo
 
 
 def get_grids():
@@ -225,7 +225,9 @@ def test_make_set_valid_return_style():
     np.testing.assert_allclose(data_full_legacy[1:-1], data_full[1:-1])
 
     data_full_override = np.empty(grid._shape_full)
-    data_full_override_ret = setter(data_full_legacy, data_valid, out=data_full_override)
+    data_full_override_ret = setter(
+        data_full_legacy, data_valid, out=data_full_override
+    )
     assert data_full_override_ret is data_full_override
     np.testing.assert_allclose(data_full_override[1:-1], data_full[1:-1])
 
@@ -249,6 +251,7 @@ def test_make_set_valid_return_style_with_bcs():
     data_full_out = setter(data_valid, out=out)
     assert data_full_out is out
     np.testing.assert_allclose(data_full_out, data_full)
+
 
 @pytest.mark.parametrize("grid", get_grids())
 def test_cell_volumes(grid):

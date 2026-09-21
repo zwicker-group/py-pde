@@ -43,7 +43,6 @@ if TYPE_CHECKING:
     from ...tools.typing import (
         NumberOrArray,
         NumericArray,
-        OperatorImplType,
         OperatorInfo,
         OperatorType,
         StepperType,
@@ -544,16 +543,16 @@ class JaxBackend(BackendBase[jax.Array]):
         except (TypeError, ValueError):
             params = ()
         positional = tuple(
-            p
-            for p in params
-            if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+            p for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
         )
         args_keyword_supported = not params or any(
             p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
         )
-        args_positional_supported = not params or any(
-            p.kind == p.VAR_POSITIONAL for p in params
-        ) or len(positional) >= 2
+        args_positional_supported = (
+            not params
+            or any(p.kind == p.VAR_POSITIONAL for p in params)
+            or len(positional) >= 2
+        )
 
         def apply_op_jax(
             arr: jax.Array,

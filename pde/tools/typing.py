@@ -19,7 +19,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Generic, NamedTuple, Protocol, TypeVar, Union, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    NamedTuple,
+    Protocol,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import numpy as np
 from numpy.typing import ArrayLike  # noqa: F401
@@ -119,6 +128,7 @@ class OperatorImplType(Protocol, Generic[TNativeArray]):
         out: TNativeArray,
         args: Any | None = None,
     ) -> TNativeArray: ...
+
 
 BinaryOperatorImplType = Callable[
     [TNativeArray, TNativeArray, TNativeArray | None], TNativeArray

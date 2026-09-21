@@ -33,7 +33,6 @@ if TYPE_CHECKING:
     import types
     from collections.abc import Callable
 
-    import numpy as np
     from numpy.typing import DTypeLike
 
     from ..fields import DataFieldBase
@@ -43,7 +42,6 @@ if TYPE_CHECKING:
     from ..tools.expressions import ExpressionBase
     from ..tools.typing import (
         BinaryOperatorImplType,
-        OperatorImplType,
         StepperType,
         TFunc,
     )
@@ -556,26 +554,24 @@ class BackendBase(Generic[TNativeArray]):
                 or has_out_kw
                 or has_out_positional
             )
-            requires_out = (
-                supports_out
-                and (
-                    (
-                        has_out_kw
-                        and next(
-                            p.default for p in params if p.name == "out"
-                        )
-                        is inspect.Signature.empty
-                    )
-                    or (
-                        has_out_positional
-                        and positional[1].default is inspect.Signature.empty
-                    )
+            requires_out = supports_out and (
+                (
+                    has_out_kw
+                    and next(p.default for p in params if p.name == "out")
+                    is inspect.Signature.empty
+                )
+                or (
+                    has_out_positional
+                    and positional[1].default is inspect.Signature.empty
                 )
             )
-            supports_args = any(
-                p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
-                for p in params
-            ) or has_args_positional_no_out
+            supports_args = (
+                any(
+                    p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
+                    for p in params
+                )
+                or has_args_positional_no_out
+            )
             args_keyword_supported = any(
                 p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
             )

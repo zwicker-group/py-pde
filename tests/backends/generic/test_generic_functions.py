@@ -9,7 +9,6 @@ import numpy as np
 import pytest
 from scipy import stats
 
-from pde.backends.base import BackendError
 from pde import ScalarField, UnitGrid
 from pde.tools.typing import OperatorInfo
 
@@ -41,7 +40,7 @@ def test_operator_no_bc_functional_call(backend):
     grid = UnitGrid([4], periodic=True)
     try:
         op = grid.make_operator_no_bc("laplace", backend=backend)
-    except (BackendError, NotImplementedError):
+    except NotImplementedError:
         pytest.skip(f"Backend {backend.name!r} does not define this laplace operator")
 
     data_full = np.ones(grid._shape_full)
@@ -65,7 +64,7 @@ def test_operator_functional_call_with_bc(backend):
     grid = UnitGrid([4], periodic=True)
     try:
         op = grid.make_operator("laplace", bc="periodic", backend=backend)
-    except (BackendError, NotImplementedError):
+    except NotImplementedError:
         pytest.skip(f"Backend {backend.name!r} does not define this laplace operator")
 
     data = np.ones(grid.shape)
@@ -108,7 +107,9 @@ def test_operator_no_bc_optional_out_with_args(backend):
     out = backend.numpy_to_native(np.empty(grid.shape))
     result_out = op(data_full, out=out, args={"shift": -1})
     assert result_out is out
-    np.testing.assert_allclose(backend.native_to_numpy(out), np.arange(1, 5, dtype=float) - 1)
+    np.testing.assert_allclose(
+        backend.native_to_numpy(out), np.arange(1, 5, dtype=float) - 1
+    )
 
 
 @pytest.mark.parametrize("backend", ["jax-cpu", "torch-cpu"], indirect=True)

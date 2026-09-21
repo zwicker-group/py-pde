@@ -350,16 +350,16 @@ class TorchBackend(BackendBase[torch.Tensor]):
         except (TypeError, ValueError):
             params = ()
         positional = tuple(
-            p
-            for p in params
-            if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+            p for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
         )
         args_keyword_supported = not params or any(
             p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
         )
-        args_positional_supported = not params or any(
-            p.kind == p.VAR_POSITIONAL for p in params
-        ) or len(positional) >= 2
+        args_positional_supported = (
+            not params
+            or any(p.kind == p.VAR_POSITIONAL for p in params)
+            or len(positional) >= 2
+        )
 
         def apply_op_torch(
             arr: torch.Tensor,
@@ -432,7 +432,23 @@ class TorchBackend(BackendBase[torch.Tensor]):
         torch_operator.eval()
 
         # compile the function and move it to the device
-        return self.compile_function(torch_operator, to_device=True)  # type: ignore
+        torch_operator = self.compile_function(torch_operator, to_device=True)  # type: ignore
+
+        def apply_op_torch(
+            arr: torch.Tensor,
+            args: dict[str, Any] | None = None,
+            *,
+            out: torch.Tensor | None = None,
+        ) -> torch.Tensor:
+            """Apply operator with boundary conditions."""
+            if out is not None:
+                msg = "`torch` arrays are immutable and cannot use `out`"
+                raise RuntimeError(msg)
+            if args is None:
+                return torch_operator(arr)
+            return torch_operator(arr, args=args)
+
+        return apply_op_torch
 
     def make_integrator(
         self, grid: GridBase, *, dtype: DTypeLike = np.double
