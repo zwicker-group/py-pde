@@ -453,7 +453,7 @@ class NumbaBackend(NumpyBackend):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature ``(arr, *, out=None, args=None)``.
+            signature ``(arr, out=None, args=None)``.
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
@@ -558,9 +558,25 @@ class NumbaBackend(NumpyBackend):
             return apply_op(arr, out, args)
 
         def apply_op_public(
-            arr: NumericArray, *, out: NumericArray | None = None, args=None
+            arr: NumericArray,
+            *operator_args,
+            out: NumericArray | None = None,
+            args=None,
         ) -> NumericArray:
-            """Set boundary conditions and apply operator with keyword-only options."""
+            """Set boundary conditions and apply operator."""
+            if len(operator_args) > 2:
+                msg = "Operator accepts at most two positional arguments after `arr`."
+                raise TypeError(msg)
+            if len(operator_args) >= 1:
+                if out is not None:
+                    msg = "`out` passed both positionally and by keyword."
+                    raise TypeError(msg)
+                out = operator_args[0]
+            if len(operator_args) == 2:
+                if args is not None:
+                    msg = "`args` passed both positionally and by keyword."
+                    raise TypeError(msg)
+                args = operator_args[1]
             return apply_op_compiled(arr, out, args)
 
         # return the compiled versions of the operator

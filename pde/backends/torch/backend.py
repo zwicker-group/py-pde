@@ -326,7 +326,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature ``(arr, *, out=None, args=None)``. Since
+            signature ``(arr, out=None, args=None)``. Since
             `torch` arrays are immutable in this context, supplying `out` raises an
             error.
 
@@ -355,11 +355,24 @@ class TorchBackend(BackendBase[torch.Tensor]):
 
         def apply_op_torch(
             arr: torch.Tensor,
-            *,
+            *operator_args,
             out: torch.Tensor | None = None,
             args: dict[str, Any] | None = None,
         ) -> torch.Tensor:
             """Apply operator without boundary conditions."""
+            if len(operator_args) > 2:
+                msg = "Operator accepts at most two positional arguments after `arr`."
+                raise TypeError(msg)
+            if len(operator_args) >= 1:
+                if out is not None:
+                    msg = "`out` passed both positionally and by keyword."
+                    raise TypeError(msg)
+                out = operator_args[0]
+            if len(operator_args) == 2:
+                if args is not None:
+                    msg = "`args` passed both positionally and by keyword."
+                    raise TypeError(msg)
+                args = operator_args[1]
             if out is not None:
                 msg = "`torch` arrays are immutable and cannot use `out`"
                 raise RuntimeError(msg)
@@ -406,7 +419,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature ``(arr, *, out=None, args=None)``.
+            signature ``(arr, out=None, args=None)``.
 
         Internally, raw operator implementations are expected to use the functional
         signature ``operator_raw(arr_full[, args]) -> result``.
@@ -427,11 +440,24 @@ class TorchBackend(BackendBase[torch.Tensor]):
 
         def apply_op_torch(
             arr: torch.Tensor,
-            *,
+            *operator_args,
             out: torch.Tensor | None = None,
             args: dict[str, Any] | None = None,
         ) -> torch.Tensor:
             """Apply operator with boundary conditions."""
+            if len(operator_args) > 2:
+                msg = "Operator accepts at most two positional arguments after `arr`."
+                raise TypeError(msg)
+            if len(operator_args) >= 1:
+                if out is not None:
+                    msg = "`out` passed both positionally and by keyword."
+                    raise TypeError(msg)
+                out = operator_args[0]
+            if len(operator_args) == 2:
+                if args is not None:
+                    msg = "`args` passed both positionally and by keyword."
+                    raise TypeError(msg)
+                args = operator_args[1]
             if out is not None:
                 msg = "`torch` arrays are immutable and cannot use `out`"
                 raise RuntimeError(msg)

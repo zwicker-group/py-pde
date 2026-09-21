@@ -150,10 +150,20 @@ class OperatorFactory(Protocol):
 class OperatorType(Protocol, Generic[TNativeArray]):
     """An operator that acts on an array."""
 
+    @overload
+    def __call__(self, arr: TNativeArray) -> TNativeArray: ...
+
+    @overload
     def __call__(
         self,
         arr: TNativeArray,
-        *,
+        out: TNativeArray | None,
+        args: dict[str, Any] | None = None,
+    ) -> TNativeArray: ...
+
+    def __call__(
+        self,
+        arr: TNativeArray,
         out: TNativeArray | None = None,
         args: dict[str, Any] | None = None,
     ) -> TNativeArray:

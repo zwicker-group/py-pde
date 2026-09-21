@@ -526,7 +526,7 @@ class JaxBackend(BackendBase[jax.Array]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature ``(arr, *, out=None, args=None)``. Since
+            signature ``(arr, out=None, args=None)``. Since
             `jax` arrays are immutable, supplying `out` raises an error.
 
         Internally, the raw implementation is expected to follow
@@ -548,11 +548,24 @@ class JaxBackend(BackendBase[jax.Array]):
 
         def apply_op_jax(
             arr: jax.Array,
-            *,
+            *operator_args,
             out: jax.Array | None = None,
             args: dict[str, Any] | None = None,
         ) -> jax.Array:
             """Apply operator without boundary conditions."""
+            if len(operator_args) > 2:
+                msg = "Operator accepts at most two positional arguments after `arr`."
+                raise TypeError(msg)
+            if len(operator_args) >= 1:
+                if out is not None:
+                    msg = "`out` passed both positionally and by keyword."
+                    raise TypeError(msg)
+                out = operator_args[0]
+            if len(operator_args) == 2:
+                if args is not None:
+                    msg = "`args` passed both positionally and by keyword."
+                    raise TypeError(msg)
+                args = operator_args[1]
             if out is not None:
                 msg = "`jax` arrays are immutable and cannot use `out`"
                 raise RuntimeError(msg)
@@ -610,7 +623,7 @@ class JaxBackend(BackendBase[jax.Array]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature ``(arr, *, out=None, args=None)``.
+            signature ``(arr, out=None, args=None)``.
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
@@ -620,9 +633,8 @@ class JaxBackend(BackendBase[jax.Array]):
         set_valid_and_bcs = self.make_full_data_setter(bcs=bcs)
 
         @self.compile_function
-        def apply_op_jax(
+        def apply_op_jax_impl(
             arr: jax.Array,
-            *,
             out: jax.Array | None = None,
             args: dict[str, Any] | None = None,
         ) -> jax.Array:
@@ -634,6 +646,28 @@ class JaxBackend(BackendBase[jax.Array]):
             arr_full = set_valid_and_bcs(arr, args=args)
             # apply operator
             return operator_raw(arr_full)  # type: ignore
+
+        def apply_op_jax(
+            arr: jax.Array,
+            *operator_args,
+            out: jax.Array | None = None,
+            args: dict[str, Any] | None = None,
+        ) -> jax.Array:
+            """Set boundary conditions and apply operator."""
+            if len(operator_args) > 2:
+                msg = "Operator accepts at most two positional arguments after `arr`."
+                raise TypeError(msg)
+            if len(operator_args) >= 1:
+                if out is not None:
+                    msg = "`out` passed both positionally and by keyword."
+                    raise TypeError(msg)
+                out = operator_args[0]
+            if len(operator_args) == 2:
+                if args is not None:
+                    msg = "`args` passed both positionally and by keyword."
+                    raise TypeError(msg)
+                args = operator_args[1]
+            return apply_op_jax_impl(arr, out=out, args=args)
 
         return apply_op_jax
 
