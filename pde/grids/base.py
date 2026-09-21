@@ -409,34 +409,21 @@ class GridBase(metaclass=ABCMeta):
             params = tuple(inspect.signature(setter).parameters.values())
         except (TypeError, ValueError):
             params = ()
-        positional = tuple(
-            p for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-        )
-        second_pos_name = positional[1].name if len(positional) >= 2 else None
+        parameter_names = {p.name for p in params}
         setter_uses_output_arg = (
             not params
-            or any(p.kind == p.VAR_POSITIONAL for p in params)
-            or (len(positional) >= 2 and second_pos_name != "args")
+            or "data_full" in parameter_names
+            or "out" in parameter_names
         )
         setter_supports_args = (
             not params
             or any(
-                p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
+                p.kind == p.VAR_KEYWORD or p.name == "args"
                 for p in params
             )
-            or (len(positional) >= 2 and second_pos_name == "args")
         )
         setter_args_keyword = not params or any(
             p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
-        )
-        setter_args_positional = (
-            not params
-            or any(p.kind == p.VAR_POSITIONAL for p in params)
-            or (
-                len(positional) >= 3 and positional[2].name != "out"
-                if setter_uses_output_arg
-                else len(positional) >= 2 and second_pos_name == "args"
-            )
         )
 
         def set_valid(data_full: NumericArray, data_valid: NumericArray, args=None):
@@ -450,8 +437,6 @@ class GridBase(metaclass=ABCMeta):
                 else:
                     if setter_args_keyword:
                         setter(data_full, data_valid, args=args)
-                    elif setter_args_positional:
-                        setter(data_full, data_valid, args)
                     else:
                         msg = "Data setter does not accept runtime `args`."
                         raise TypeError(msg)
@@ -461,8 +446,6 @@ class GridBase(metaclass=ABCMeta):
                 else:
                     if setter_args_keyword:
                         data_full[...] = setter(data_valid, args=args)
-                    elif setter_args_positional:
-                        data_full[...] = setter(data_valid, args)
                     else:
                         msg = "Data setter does not accept runtime `args`."
                         raise TypeError(msg)

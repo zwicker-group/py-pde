@@ -535,52 +535,23 @@ class BackendBase(Generic[TNativeArray]):
             supports_args = True
             has_out_kw = False
             args_keyword_supported = True
-            args_positional_supported = True
         else:
             params = tuple(signature.parameters.values())
-            positional = tuple(
-                p
-                for p in params
-                if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-            )
-            second_pos_name = positional[1].name if len(positional) >= 2 else None
             has_out_kw = any(p.name == "out" for p in params)
-            has_out_positional = second_pos_name == "out"
-            has_args_positional_no_out = (
-                len(positional) >= 2 and second_pos_name != "out"
-            )
-            supports_out = (
-                any(p.kind == p.VAR_POSITIONAL for p in params)
-                or has_out_kw
-                or has_out_positional
-            )
+            supports_out = has_out_kw or any(p.kind == p.VAR_KEYWORD for p in params)
             requires_out = supports_out and (
-                (
-                    has_out_kw
-                    and next(p.default for p in params if p.name == "out")
-                    is inspect.Signature.empty
-                )
-                or (
-                    has_out_positional
-                    and positional[1].default is inspect.Signature.empty
-                )
+                has_out_kw
+                and next(p.default for p in params if p.name == "out")
+                is inspect.Signature.empty
             )
             supports_args = (
                 any(
-                    p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
+                    p.kind == p.VAR_KEYWORD or p.name == "args"
                     for p in params
                 )
-                or has_args_positional_no_out
             )
             args_keyword_supported = any(
                 p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
-            )
-            args_positional_supported = any(
-                p.kind == p.VAR_POSITIONAL for p in params
-            ) or (
-                len(positional) >= 3 and positional[2].name != "out"
-                if supports_out
-                else has_args_positional_no_out
             )
 
         def apply_operator(
@@ -599,8 +570,6 @@ class BackendBase(Generic[TNativeArray]):
                         return operator_raw(arr, out=None, args=args)  # type: ignore
                     if args_keyword_supported:
                         return operator_raw(arr, args=args)  # type: ignore
-                    if args_positional_supported:
-                        return operator_raw(arr, args)  # type: ignore
                     msg = "Operator does not accept runtime `args`."
                     raise TypeError(msg)
 
@@ -615,12 +584,10 @@ class BackendBase(Generic[TNativeArray]):
                         )
                     )
                 if args is None:
-                    result = operator_raw(arr, out)  # type: ignore
+                    result = operator_raw(arr, out=out)  # type: ignore
                 else:
                     if args_keyword_supported:
-                        result = operator_raw(arr, out, args=args)  # type: ignore
-                    elif args_positional_supported:
-                        result = operator_raw(arr, out, args)  # type: ignore
+                        result = operator_raw(arr, out=out, args=args)  # type: ignore
                     else:
                         msg = "Operator does not accept runtime `args`."
                         raise TypeError(msg)
@@ -630,8 +597,6 @@ class BackendBase(Generic[TNativeArray]):
                 else:
                     if args_keyword_supported:
                         result = operator_raw(arr, args=args)  # type: ignore
-                    elif args_positional_supported:
-                        result = operator_raw(arr, args)  # type: ignore
                     else:
                         msg = "Operator does not accept runtime `args`."
                         raise TypeError(msg)

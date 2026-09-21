@@ -542,16 +542,8 @@ class JaxBackend(BackendBase[jax.Array]):
             params = tuple(inspect.signature(jax_operator).parameters.values())
         except (TypeError, ValueError):
             params = ()
-        positional = tuple(
-            p for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-        )
         args_keyword_supported = not params or any(
             p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
-        )
-        args_positional_supported = (
-            not params
-            or any(p.kind == p.VAR_POSITIONAL for p in params)
-            or len(positional) >= 2
         )
 
         def apply_op_jax(
@@ -568,8 +560,6 @@ class JaxBackend(BackendBase[jax.Array]):
                 return jax_operator(arr)
             if args_keyword_supported:
                 return jax_operator(arr, args=args)
-            if args_positional_supported:
-                return jax_operator(arr, args)
             msg = "JAX operator does not accept runtime `args`."
             raise TypeError(msg)
 

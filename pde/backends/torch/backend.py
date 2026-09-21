@@ -349,16 +349,8 @@ class TorchBackend(BackendBase[torch.Tensor]):
             params = tuple(inspect.signature(torch_operator).parameters.values())
         except (TypeError, ValueError):
             params = ()
-        positional = tuple(
-            p for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-        )
         args_keyword_supported = not params or any(
             p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
-        )
-        args_positional_supported = (
-            not params
-            or any(p.kind == p.VAR_POSITIONAL for p in params)
-            or len(positional) >= 2
         )
 
         def apply_op_torch(
@@ -375,8 +367,6 @@ class TorchBackend(BackendBase[torch.Tensor]):
                 return torch_operator(arr)
             if args_keyword_supported:
                 return torch_operator(arr, args=args)
-            if args_positional_supported:
-                return torch_operator(arr, args)
             msg = "Torch operator does not accept runtime `args`."
             raise TypeError(msg)
 
