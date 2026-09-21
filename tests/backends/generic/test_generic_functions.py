@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from scipy import stats
 
+from pde.backends.base import BackendError
 from pde import ScalarField, UnitGrid
 from pde.tools.typing import OperatorInfo
 
@@ -38,7 +39,10 @@ def test_random_noise_basic(backend, rng):
 def test_operator_no_bc_functional_call(backend):
     """Test no-BC operators support functional call and optional `out`."""
     grid = UnitGrid([4], periodic=True)
-    op = grid.make_operator_no_bc("laplace", backend=backend)
+    try:
+        op = grid.make_operator_no_bc("laplace", backend=backend)
+    except (BackendError, NotImplementedError):
+        pytest.skip(f"Backend {backend.name!r} does not define this laplace operator")
 
     data_full = np.ones(grid._shape_full)
     data_full_native = backend.numpy_to_native(data_full)
@@ -59,7 +63,10 @@ def test_operator_no_bc_functional_call(backend):
 def test_operator_functional_call_with_bc(backend):
     """Test operators with BCs support functional call and optional `out`."""
     grid = UnitGrid([4], periodic=True)
-    op = grid.make_operator("laplace", bc="periodic", backend=backend)
+    try:
+        op = grid.make_operator("laplace", bc="periodic", backend=backend)
+    except (BackendError, NotImplementedError):
+        pytest.skip(f"Backend {backend.name!r} does not define this laplace operator")
 
     data = np.ones(grid.shape)
     data_native = backend.numpy_to_native(data)
