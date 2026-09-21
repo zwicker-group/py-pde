@@ -1,5 +1,10 @@
 """Defines the :mod:`jax` backend class.
 
+This backend prefers functional internal operator implementations because JAX arrays
+are immutable. Raw operators are expected to follow ``operator_raw(arr[, args]) ->
+result`` and return newly created data. The public interface supports functional calls
+directly and rejects `out` for operators on this backend.
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -523,6 +528,9 @@ class JaxBackend(BackendBase[jax.Array]):
             callable: the function that applies the operator. This function has the
             signature (arr: NumericArray, out: NumericArray = None, args=None). Since
             `jax` arrays are immutable, supplying `out` raises an error.
+
+        Internally, the raw implementation is expected to follow
+        ``operator_raw(arr_full[, args]) -> result``.
         """
         # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)
@@ -585,6 +593,9 @@ class JaxBackend(BackendBase[jax.Array]):
         parameters, like time. When this backend is used together with JAX'
         just-in-time compilation (e.g. via :func:`jax.jit`), the values passed
         through `args` need to be compatible with JAX's JIT tracing rules.
+
+        Internally, the raw operator implementation is expected to follow
+        ``operator_raw(arr_full[, args]) -> result``.
 
         Returns:
             callable: the function that applies the operator. This function has the

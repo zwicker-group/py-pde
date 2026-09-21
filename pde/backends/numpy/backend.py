@@ -1,4 +1,9 @@
-"""Defines base class of backends that implement computations.
+"""Defines the :mod:`numpy` backend.
+
+This backend prefers in-place internal operator implementations for performance and
+compatibility with :mod:`numba`. Consequently, raw operators created by factories are
+typically expected to follow ``op(arr_full, out[, args])`` and write results into
+``out``. The public operator interface remains functional-first with optional `out`.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -211,6 +216,9 @@ class NumpyBackend(BackendBase[NumericArray]):
         The function also accepts an optional parameter `args`, which is forwarded to
         `set_ghost_cells`. This allows setting boundary conditions based on external
         parameters, like time.
+
+        The internal raw operator implementation is expected to follow the in-place
+        style ``operator_raw(arr_full, out[, args])``.
 
         Returns:
             callable: the function that applies the operator. This function has the

@@ -1,4 +1,9 @@
-"""Defines base class of backends that implement computations.
+"""Defines the :mod:`torch` backend.
+
+This backend prefers functional internal operator implementations. Raw operators are
+expected to follow ``operator_raw(arr_full[, args]) -> result`` and return new data.
+The public interface remains functional-first and rejects `out` for differential
+operators on this backend.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -323,6 +328,9 @@ class TorchBackend(BackendBase[torch.Tensor]):
             signature (arr: NumericArray, out: NumericArray = None, args=None). Since
             `torch` arrays are immutable in this context, supplying `out` raises an
             error.
+
+        Internally, raw operator implementations are expected to use the functional
+        signature ``operator_raw(arr_full[, args]) -> result``.
         """
         # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)
@@ -385,6 +393,9 @@ class TorchBackend(BackendBase[torch.Tensor]):
         Returns:
             callable: the function that applies the operator. This function has the
             signature (arr: NumericArray, out: NumericArray = None, args=None).
+
+        Internally, raw operator implementations are expected to use the functional
+        signature ``operator_raw(arr_full[, args]) -> result``.
         """
         # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)

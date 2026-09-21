@@ -1,5 +1,10 @@
 """Defines the :mod:`numba` backend class.
 
+This backend prefers in-place internal operator implementations for speed in jitted
+kernels. Raw operators are generally expected to follow
+``operator_raw(arr_full, out[, args])`` and write to ``out`` directly. The public
+operator interface still supports both functional calls and optional `out`.
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -442,6 +447,9 @@ class NumbaBackend(NumpyBackend):
         parameters, like time. Note that since the returned operator will always be
         compiled by Numba, the arguments need to be compatible with Numba. The
         following example shows how to pass the current time `t`:
+
+        The internal raw operator implementation is expected to use the in-place
+        signature ``operator_raw(arr_full, out[, args])``.
 
         Returns:
             callable: the function that applies the operator. This function has the

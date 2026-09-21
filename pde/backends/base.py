@@ -490,8 +490,8 @@ class BackendBase(Generic[TNativeArray]):
     ) -> OperatorType:
         """Return a compiled function applying an operator without boundary conditions.
 
-        A function that takes the discretized full data as an input and an array of
-        valid data points to which the result of applying the operator is written.
+        The returned function has public signature
+        ``(arr, out=None, args=None) -> result``.
 
         Note:
             The resulting function does not check whether the ghost cells of the input
@@ -499,6 +499,11 @@ class BackendBase(Generic[TNativeArray]):
             the user to set the values of the ghost cells beforehand. Use this function
             only if you absolutely know what you're doing. In all other cases,
             :meth:`make_operator` is probably the better choice.
+
+            Backends can choose whether their internal operator implementation uses a
+            functional style ``op(arr, args=None) -> result`` or an in-place style
+            ``op(arr, out, args=None)``. This wrapper normalizes both styles to the
+            public signature above.
 
         Args:
             grid (:class:`~pde.grid.base.GridBase`):
@@ -647,6 +652,12 @@ class BackendBase(Generic[TNativeArray]):
         The function also accepts an optional parameter `args`, which is forwarded to
         `set_ghost_cells`. This allows setting boundary conditions based on external
         parameters, like time.
+
+        Backends can internally implement the raw operator in either style
+        ``op(arr, args=None) -> result`` (functional) or ``op(arr, out, args=None)``
+        (in-place). The backend-specific implementation of :meth:`make_operator`
+        adapts this internal style to the public call convention
+        ``(arr, out=None, args=None)``.
 
         Returns:
             callable: the function that applies the operator. This function has the
