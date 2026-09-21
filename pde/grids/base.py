@@ -458,8 +458,13 @@ class GridBase(metaclass=ABCMeta):
                 out (:class:`~numpy.ndarray`, optional):
                     Full destination array used in functional style. If omitted, a new
                     full array is allocated.
-                args (dict):
+                args:
                     Extra arguments affecting optional boundary-condition handling.
+
+            Returns:
+                :class:`~numpy.ndarray`:
+                    Full data array containing updated valid cells (and boundary values,
+                    when BC handling is active).
             """
             if data_valid is None:
                 data_valid = data_or_full

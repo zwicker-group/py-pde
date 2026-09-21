@@ -588,8 +588,14 @@ class BackendBase(Generic[TNativeArray]):
                     return operator_raw(arr, args=args)  # type: ignore
 
                 if out is None:
+                    arr_dtype = getattr(arr, "dtype", None)
+                    if arr_dtype is None:
+                        arr_dtype = self.native_to_numpy(arr).dtype
                     out = self.numpy_to_native(
-                        np.empty(shape_out, dtype=arr.dtype if out_dtype is None else out_dtype)
+                        np.empty(
+                            shape_out,
+                            dtype=arr_dtype if out_dtype is None else out_dtype,
+                        )
                     )
                 if args is None:
                     result = operator_raw(arr, out)  # type: ignore
