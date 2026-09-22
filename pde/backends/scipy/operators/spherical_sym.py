@@ -21,7 +21,8 @@ from .common import make_general_poisson_solver
 
 if TYPE_CHECKING:
     from ....grids.boundaries.axes import BoundariesList
-    from ....tools.typing import NumericArray, OperatorImplType
+    from ....tools.typing import NumericArray
+    from ..typing import ScipyOperatorImplType
 
 
 @fill_in_docstring
@@ -92,7 +93,7 @@ def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray
 @fill_in_docstring
 def make_poisson_solver(
     bcs: BoundariesList, *, method: Literal["auto", "scipy"] = "auto"
-) -> OperatorImplType:
+) -> ScipyOperatorImplType:
     """Make a operator that solves Poisson's equation.
 
     {DESCR_POLAR_GRID}

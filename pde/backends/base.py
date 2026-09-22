@@ -11,7 +11,6 @@ import warnings
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, overload
 
-import numpy as np
 from typing_extensions import Self
 
 from ..tools.config import _OMITTED, Config, ConfigLike
@@ -33,6 +32,7 @@ if TYPE_CHECKING:
     import types
     from collections.abc import Callable
 
+    import numpy as np
     from numpy.typing import DTypeLike
 
     from ..fields import DataFieldBase
@@ -41,9 +41,9 @@ if TYPE_CHECKING:
     from ..solvers.base import SolverBase
     from ..tools.expressions import ExpressionBase
     from ..tools.typing import (
-        BinaryOperatorImplType,
         StepperType,
         TFunc,
+        _BinaryOperatorImplType,
     )
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
@@ -499,9 +499,9 @@ class BackendBase(Generic[TNativeArray]):
             :meth:`make_operator` is probably the better choice.
 
             Backends can choose whether their internal operator implementation uses a
-            functional style ``op(arr, args=None) -> result`` or an in-place style
-            ``op(arr, out, args=None)``. This wrapper normalizes both styles to the
-            public signature above.
+            functional style ``op(arr, *, args=None) -> result`` or an in-place style
+            ``op(arr, out, *, args=None)``. This wrapper must thus normalizes both
+            styles to the public signature above.
 
         Args:
             grid (:class:`~pde.grid.base.GridBase`):
@@ -517,133 +517,10 @@ class BackendBase(Generic[TNativeArray]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            signature (arr: NumericArray, out: NumericArray=None, args=None).
         """
-        # determine the operator for the chosen backend
-        operator_info = self.get_operator_info(grid, operator)
-        operator_raw = operator_info.factory(grid, **kwargs)
-        shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
-        out_dtype = np.dtype(dtype) if dtype is not None else None
-        try:
-            signature = inspect.signature(operator_raw)
-        except (TypeError, ValueError):
-            signature = None
-
-        if signature is None:
-            supports_out = True
-            requires_out = False
-            supports_args = True
-            has_out_kw = False
-            args_keyword_supported = True
-            args_positional_supported = True
-        else:
-            params = tuple(signature.parameters.values())
-            positional = tuple(
-                p
-                for p in params
-                if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-            )
-            second_pos_name = positional[1].name if len(positional) >= 2 else None
-            has_out_kw = any(p.name == "out" for p in params)
-            has_out_positional = second_pos_name == "out"
-            has_args_positional_no_out = (
-                len(positional) >= 2 and second_pos_name != "out"
-            )
-            supports_out = (
-                any(p.kind == p.VAR_POSITIONAL for p in params)
-                or has_out_kw
-                or has_out_positional
-            )
-            requires_out = supports_out and (
-                (
-                    has_out_kw
-                    and next(p.default for p in params if p.name == "out")
-                    is inspect.Signature.empty
-                )
-                or (
-                    has_out_positional
-                    and positional[1].default is inspect.Signature.empty
-                )
-            )
-            supports_args = (
-                any(
-                    p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
-                    for p in params
-                )
-                or has_args_positional_no_out
-            )
-            args_keyword_supported = any(
-                p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
-            )
-            args_positional_supported = any(
-                p.kind == p.VAR_POSITIONAL for p in params
-            ) or (
-                len(positional) >= 3 and positional[2].name != "out"
-                if supports_out
-                else has_args_positional_no_out
-            )
-
-        def apply_operator(
-            arr: TNativeArray, out: TNativeArray | None = None, args=None
-        ) -> TNativeArray:
-            """Apply operator to full data without setting boundary conditions."""
-            if args is not None and not supports_args:
-                msg = "Operator does not accept runtime `args`."
-                raise TypeError(msg)
-
-            if supports_out:
-                if out is None and not requires_out:
-                    if args is None:
-                        return operator_raw(arr)  # type: ignore
-                    if has_out_kw:
-                        return operator_raw(arr, out=None, args=args)  # type: ignore
-                    if args_keyword_supported:
-                        return operator_raw(arr, args=args)  # type: ignore
-                    if args_positional_supported:
-                        return operator_raw(arr, args)  # type: ignore
-                    msg = "Operator does not accept runtime `args`."
-                    raise TypeError(msg)
-
-                if out is None:
-                    arr_dtype = getattr(arr, "dtype", None)
-                    if arr_dtype is None:
-                        arr_dtype = self.native_to_numpy(arr).dtype
-                    out = self.numpy_to_native(
-                        np.empty(
-                            shape_out,
-                            dtype=arr_dtype if out_dtype is None else out_dtype,
-                        )
-                    )
-                if args is None:
-                    result = operator_raw(arr, out)  # type: ignore
-                else:
-                    if args_keyword_supported:
-                        result = operator_raw(arr, out, args=args)  # type: ignore
-                    elif args_positional_supported:
-                        result = operator_raw(arr, out, args)  # type: ignore
-                    else:
-                        msg = "Operator does not accept runtime `args`."
-                        raise TypeError(msg)
-            else:
-                if args is None:
-                    result = operator_raw(arr)  # type: ignore
-                else:
-                    result = operator_raw(arr, args=args)  # type: ignore
-                if out is None:
-                    return result
-                if result is None:
-                    return out
-                out[...] = result  # type: ignore
-                result = out
-
-            if result is None:
-                return out
-            if out is not None and result is not out:
-                out[...] = result
-                return out
-            return result
-
-        return apply_operator
+        msg = f"Operators not implemented for backend {self.name}"
+        raise NotImplementedError(msg)
 
     def make_operator(
         self,
@@ -686,18 +563,18 @@ class BackendBase(Generic[TNativeArray]):
         ``op(arr, args=None) -> result`` (functional) or ``op(arr, out, args=None)``
         (in-place). The backend-specific implementation of :meth:`make_operator`
         adapts this internal style to the public call convention
-        ``(arr, out=None, args=None)``.
+        ``(arr, *, out=None, args=None)``.
 
         Returns:
             callable: the function that applies the operator. This function has the
             signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
-        msg = f"Operators not defined for backend {self.name}"
+        msg = f"Operators not implemented for backend {self.name}"
         raise NotImplementedError(msg)
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> BinaryOperatorImplType:
+    ) -> _BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -717,7 +594,7 @@ class BackendBase(Generic[TNativeArray]):
         msg = f"Inner product not defined for backend {self.name}"
         raise NotImplementedError(msg)
 
-    def make_outer_prod_operator(self, field: DataFieldBase) -> BinaryOperatorImplType:
+    def make_outer_prod_operator(self, field: DataFieldBase) -> _BinaryOperatorImplType:
         """Return operator calculating the outer product between two fields.
 
         This supports typically only supports products between two vector fields.

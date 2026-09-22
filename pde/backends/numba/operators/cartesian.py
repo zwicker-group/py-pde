@@ -30,7 +30,8 @@ from ..utils import jit
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ....tools.typing import NumericArray, OperatorImplType
+    from ....tools.typing import NumericArray
+    from ..typing import NumbaOperatorImplType
 
 
 def make_corner_point_setter_2d(
@@ -80,7 +81,7 @@ def make_corner_point_setter_2d(
 
 def _make_laplace_numba_1d(
     grid: CartesianGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 1d Laplace operator using numba compilation.
 
     Args:
@@ -111,7 +112,7 @@ def _make_laplace_numba_2d(
     *,
     backend: NumbaBackend,
     corner_weight: float | None = None,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 2d Laplace operator using numba compilation.
 
     Args:
@@ -194,7 +195,7 @@ def _make_laplace_numba_2d(
 
 def _make_laplace_numba_3d(
     grid: CartesianGrid, *, backend: NumbaBackend
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 3d Laplace operator using numba compilation.
 
     Args:
@@ -231,7 +232,7 @@ def _make_laplace_numba_3d(
 
 def _make_laplace_numba_spectral_1d(
     grid: CartesianGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 1d spectral Laplace operator using numba compilation.
 
     Args:
@@ -281,7 +282,7 @@ def _make_laplace_numba_spectral_1d(
 
 def _make_laplace_numba_spectral_2d(
     grid: CartesianGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 2d spectral Laplace operator using numba compilation.
 
     Args:
@@ -336,7 +337,7 @@ def make_laplace(
     backend: NumbaBackend | None = None,
     spectral: bool | None = None,
     **kwargs,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a Laplace operator on a Cartesian grid.
 
     Args:
@@ -388,7 +389,7 @@ def _make_gradient_numba_1d(
     method: Literal["central", "forward", "backward"] = "central",
     *,
     backend: NumbaBackend | None = None,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 1d gradient operator using numba compilation.
 
     Args:
@@ -431,7 +432,7 @@ def _make_gradient_numba_2d(
     method: Literal["central", "forward", "backward"] = "central",
     *,
     backend: NumbaBackend,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 2d gradient operator using numba compilation.
 
     Args:
@@ -481,7 +482,7 @@ def _make_gradient_numba_3d(
     method: Literal["central", "forward", "backward"] = "central",
     *,
     backend: NumbaBackend,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 3d gradient operator using numba compilation.
 
     Args:
@@ -556,7 +557,7 @@ def make_gradient(
     *,
     backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a gradient operator on a Cartesian grid.
 
     Args:
@@ -589,7 +590,7 @@ def make_gradient(
 
 def _make_gradient_squared_numba_1d(
     grid: CartesianGrid, central: bool = True, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 1d squared gradient operator using numba compilation.
 
     Args:
@@ -640,7 +641,7 @@ def _make_gradient_squared_numba_2d(
     central: bool = True,
     *,
     backend: NumbaBackend,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 2d squared gradient operator using numba compilation.
 
     Args:
@@ -702,7 +703,7 @@ def _make_gradient_squared_numba_3d(
     central: bool = True,
     *,
     backend: NumbaBackend,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 3d squared gradient operator using numba compilation.
 
     Args:
@@ -776,7 +777,7 @@ def make_gradient_squared(
     *,
     backend: NumbaBackend | None = None,
     central: bool = True,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a gradient operator on a Cartesian grid.
 
     Args:
@@ -814,7 +815,7 @@ def _make_divergence_numba_1d(
     method: Literal["central", "forward", "backward"] = "central",
     *,
     backend: NumbaBackend | None = None,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 1d divergence operator using numba compilation.
 
     Args:
@@ -856,7 +857,7 @@ def _make_divergence_numba_2d(
     method: Literal["central", "forward", "backward"] = "central",
     *,
     backend: NumbaBackend,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 2d divergence operator using numba compilation.
 
     Args:
@@ -907,7 +908,7 @@ def _make_divergence_numba_3d(
     method: Literal["central", "forward", "backward"] = "central",
     *,
     backend: NumbaBackend,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a 3d divergence operator using numba compilation.
 
     Args:
@@ -965,7 +966,7 @@ def make_divergence(
     *,
     backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a divergence operator on a Cartesian grid.
 
     Args:
@@ -998,7 +999,7 @@ def make_divergence(
 
 def _vectorize_operator(
     make_operator: Callable, grid: CartesianGrid, **kwargs
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Apply an operator to on all dimensions of a vector.
 
     Args:
@@ -1029,7 +1030,7 @@ def make_vector_gradient(
     *,
     backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a vector gradient operator on a Cartesian grid.
 
     Args:
@@ -1054,7 +1055,7 @@ def make_vector_gradient(
 @NumbaBackend.register_operator(CartesianGrid, "vector_laplace", rank_in=1, rank_out=1)
 def make_vector_laplace(
     grid: CartesianGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a vector Laplacian on a Cartesian grid.
 
     Args:
@@ -1081,7 +1082,7 @@ def make_tensor_divergence(
     *,
     backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a tensor divergence operator on a Cartesian grid.
 
     Args:

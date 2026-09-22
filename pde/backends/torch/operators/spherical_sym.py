@@ -87,7 +87,7 @@ class SphericalLaplacian(TorchDifferentialOperator):
         else:
             self.register_array("factor", 1 / (rs * dr))
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
 
@@ -146,7 +146,7 @@ class SphericalGradient(TorchDifferentialOperator):
             msg = f"Unknown derivative type `{method}`"
             raise ValueError(msg)
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
         result = torch.zeros(self.result_shape, dtype=arr.dtype, device=arr.device)
@@ -203,7 +203,7 @@ class SphericalGradientSquared(TorchDifferentialOperator):
         else:
             self.scale = 0.5 / dr**2
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
 
@@ -277,7 +277,7 @@ class SphericalDivergence(TorchDifferentialOperator):
         else:
             self.register_array("factor", 1 / (rs * dr))
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
         arr_r = data_full[0]
@@ -352,7 +352,7 @@ class SphericalVectorGradient(TorchDifferentialOperator):
             msg = f"Unknown derivative type `{method}`"
             raise ValueError(msg)
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
         result = torch.zeros(self.result_shape, dtype=arr.dtype, device=arr.device)
@@ -424,7 +424,7 @@ class SphericalTensorDivergence(TorchDifferentialOperator):
             self.register_array("factor_h", rh**2 / (2 * volumes))
             self.register_array("area_factor", (rh**2 - rl**2) / volumes)
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
 

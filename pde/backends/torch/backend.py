@@ -1,7 +1,7 @@
 """Defines the :mod:`torch` backend.
 
 This backend prefers functional internal operator implementations. Raw operators are
-expected to follow ``operator_raw(arr_full[, args]) -> result`` and return new data.
+expected to follow ``operator_raw(arr_full, *[, args]) -> result`` and return new data.
 The public interface remains functional-first and rejects `out` for differential
 operators on this backend.
 
@@ -10,7 +10,6 @@ operators on this backend.
 
 from __future__ import annotations
 
-import inspect
 import numbers
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
@@ -47,7 +46,6 @@ if TYPE_CHECKING:
         TFunc,
     )
     from ..numpy.backend import OperatorInfo
-    from .operators.common import TorchDifferentialOperator
 
 
 class TorchBackend(BackendBase[torch.Tensor]):
@@ -326,7 +324,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None). Since
+            signature (arr: NumericArray, out: NumericArray=None, args=None). Since
             `torch` arrays are immutable in this context, supplying `out` raises an
             error.
 
@@ -344,22 +342,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         torch_operator.eval()
 
         # compile the function and move it to the device
-        torch_operator = self.compile_function(torch_operator, to_device=True)  # type: ignore
-        try:
-            params = tuple(inspect.signature(torch_operator).parameters.values())
-        except (TypeError, ValueError):
-            params = ()
-        positional = tuple(
-            p for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-        )
-        args_keyword_supported = not params or any(
-            p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
-        )
-        args_positional_supported = (
-            not params
-            or any(p.kind == p.VAR_POSITIONAL for p in params)
-            or len(positional) >= 2
-        )
+        torch_operator = self.compile_function(torch_operator, to_device=True)
 
         def apply_op_torch(
             arr: torch.Tensor,
@@ -371,13 +354,8 @@ class TorchBackend(BackendBase[torch.Tensor]):
                 msg = "`torch` arrays are immutable and cannot use `out`"
                 raise RuntimeError(msg)
             if args is None:
-                return torch_operator(arr)
-            if args_keyword_supported:
-                return torch_operator(arr, args=args)
-            if args_positional_supported:
-                return torch_operator(arr, args)
-            msg = "Torch operator does not accept runtime `args`."
-            raise TypeError(msg)
+                return torch_operator(arr)  # type: ignore
+            return torch_operator(arr, args=args)  # type: ignore
 
         return apply_op_torch
 
@@ -389,7 +367,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         bcs: BoundariesBase,
         dtype: DTypeLike | None = None,
         **kwargs,
-    ) -> TorchDifferentialOperator:
+    ) -> OperatorType:
         """Return a torch function applying an operator with boundary conditions.
 
         Args:
@@ -432,21 +410,20 @@ class TorchBackend(BackendBase[torch.Tensor]):
         torch_operator.eval()
 
         # compile the function and move it to the device
-        torch_operator = self.compile_function(torch_operator, to_device=True)  # type: ignore
+        torch_operator = self.compile_function(torch_operator, to_device=True)
 
         def apply_op_torch(
             arr: torch.Tensor,
-            args: dict[str, Any] | None = None,
-            *,
             out: torch.Tensor | None = None,
+            args: dict[str, Any] | None = None,
         ) -> torch.Tensor:
             """Apply operator with boundary conditions."""
             if out is not None:
                 msg = "`torch` arrays are immutable and cannot use `out`"
                 raise RuntimeError(msg)
             if args is None:
-                return torch_operator(arr)
-            return torch_operator(arr, args=args)
+                return torch_operator(arr)  # type: ignore
+            return torch_operator(arr, args=args)  # type: ignore
 
         return apply_op_torch
 

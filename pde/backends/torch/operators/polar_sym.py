@@ -61,7 +61,7 @@ class PolarLaplacian(TorchDifferentialOperator):
         self.register_array("factor_r", factor_r)
         self.dr_2 = 1 / dr**2
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
 
@@ -114,7 +114,7 @@ class PolarGradient(TorchDifferentialOperator):
             msg = f"Unknown derivative type `{method}`"
             raise ValueError(msg)
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
 
@@ -168,7 +168,7 @@ class PolarGradientSquared(TorchDifferentialOperator):
         else:
             self.scale = 0.5 / dr**2
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
 
@@ -209,7 +209,7 @@ class PolarDivergence(TorchDifferentialOperator):
         self.register_array("rs", self.grid.axes_coords[0])
         self.scale_r = 1 / (2 * dr)
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
 
@@ -247,7 +247,7 @@ class PolarVectorGradient(TorchDifferentialOperator):
         self.register_array("rs", self.grid.axes_coords[0])
         self.scale_r = 1 / (2 * dr)
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
         result = torch.empty(self.result_shape, dtype=arr.dtype, device=arr.device)
@@ -290,7 +290,7 @@ class PolarTensorDivergence(TorchDifferentialOperator):
         self.register_array("rs", self.grid.axes_coords[0])
         self.scale_r = 1 / (2 * dr)
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
 

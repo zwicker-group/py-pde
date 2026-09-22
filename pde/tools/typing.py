@@ -4,7 +4,7 @@
    :nosignatures:
 
    OperatorInfo
-   OperatorImplType
+   _OperatorImplType
    OperatorFactory
    OperatorType
    CellVolume
@@ -25,9 +25,9 @@ from typing import (
     Generic,
     NamedTuple,
     Protocol,
+    TypeAlias,
     TypeVar,
     Union,
-    overload,
 )
 
 import numpy as np
@@ -62,6 +62,50 @@ TNativeArray = TypeVar("TNativeArray", NumericArray, "Tensor", "Array")
 TFunc = TypeVar("TFunc", bound=Callable)
 
 
+class _OperatorImplStreamBareType(Protocol, Generic[TNativeArray]):
+    """Operator implementation accepting directly calculating output."""
+
+    def __call__(self, arr: TNativeArray) -> TNativeArray: ...
+
+
+class _OperatorImplStreamArgsType(Protocol, Generic[TNativeArray]):
+    """Operator implementation accepting directly calculating output."""
+
+    def __call__(
+        self, arr: TNativeArray, *, args: Any | None = None
+    ) -> TNativeArray: ...
+
+
+class _OperatorImplUpdateType(Protocol):
+    """Operator implementation writing output to given numpy array."""
+
+    def __call__(self, arr: NumericArray, out: NumericArray) -> None: ...
+
+
+# internal operator implementations, which can occur in different forms depending on
+# the backend
+_OperatorImplType: TypeAlias = (
+    _OperatorImplStreamBareType[TNativeArray]
+    | _OperatorImplStreamArgsType[TNativeArray]
+    | _OperatorImplUpdateType
+)
+_BinaryOperatorImplType = Callable[
+    [TNativeArray, TNativeArray, TNativeArray | None], TNativeArray
+]
+
+
+class OperatorFactory(Protocol):
+    """A factory function that creates an operator for a particular grid."""
+
+    def __call__(self, grid: GridBase, **kwargs) -> _OperatorImplType:
+        """Create the operator.
+
+        Args:
+            grid: The grid for which the operator is created
+            **kwargs: Additional keyword arguments
+        """
+
+
 class OperatorInfo(NamedTuple):
     """Stores information about an operator."""
 
@@ -71,82 +115,7 @@ class OperatorInfo(NamedTuple):
     name: str = ""  # attach a unique name to help caching
 
 
-class OperatorImplType(Protocol, Generic[TNativeArray]):
-    """Operator implementation accepting optional output and runtime arguments."""
-
-    @overload
-    def __call__(
-        self,
-        arr: TNativeArray,
-    ) -> TNativeArray: ...
-
-    @overload
-    def __call__(
-        self,
-        arr: TNativeArray,
-        *,
-        args: Any,
-    ) -> TNativeArray: ...
-
-    @overload
-    def __call__(
-        self,
-        arr: TNativeArray,
-        out: None = None,
-        args: Any | None = None,
-    ) -> TNativeArray: ...
-
-    @overload
-    def __call__(
-        self,
-        arr: TNativeArray,
-        *,
-        out: None = None,
-        args: Any | None = None,
-    ) -> TNativeArray: ...
-
-    @overload
-    def __call__(
-        self,
-        arr: TNativeArray,
-        out: TNativeArray,
-    ) -> TNativeArray | None: ...
-
-    @overload
-    def __call__(
-        self,
-        arr: TNativeArray,
-        out: TNativeArray,
-        args: Any | None = None,
-    ) -> TNativeArray: ...
-
-    @overload
-    def __call__(
-        self,
-        arr: TNativeArray,
-        *,
-        out: TNativeArray,
-        args: Any | None = None,
-    ) -> TNativeArray: ...
-
-
-BinaryOperatorImplType = Callable[
-    [TNativeArray, TNativeArray, TNativeArray | None], TNativeArray
-]
-
-
-class OperatorFactory(Protocol):
-    """A factory function that creates an operator for a particular grid."""
-
-    def __call__(self, grid: GridBase, **kwargs) -> OperatorImplType:
-        """Create the operator.
-
-        Args:
-            grid: The grid for which the operator is created
-            **kwargs: Additional keyword arguments
-        """
-
-
+# public operator implementation with a single interface independent of backends
 class OperatorType(Protocol, Generic[TNativeArray]):
     """An operator that acts on an array."""
 

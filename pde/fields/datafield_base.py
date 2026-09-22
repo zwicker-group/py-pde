@@ -31,11 +31,11 @@ if TYPE_CHECKING:
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import (
         ArrayLike,
-        BinaryOperatorImplType,
         FloatingArray,
         Number,
         NumberOrArray,
         NumericArray,
+        _BinaryOperatorImplType,
     )
     from .scalar import ScalarField
 
@@ -902,7 +902,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     def make_dot_operator(
         self, backend: str | BackendBase = "default", *, conjugate: bool = True
-    ) -> BinaryOperatorImplType:
+    ) -> _BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products

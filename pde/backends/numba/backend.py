@@ -38,7 +38,6 @@ if TYPE_CHECKING:
     from ...solvers.base import SolverBase
     from ...tools.expressions import ExpressionBase, TensorExpression
     from ...tools.typing import (
-        BinaryOperatorImplType,
         FloatingArray,
         GhostCellSetter,
         InexactArray,
@@ -49,6 +48,7 @@ if TYPE_CHECKING:
         StepperType,
         TField,
         TFunc,
+        _BinaryOperatorImplType,
     )
 
 
@@ -661,7 +661,7 @@ class NumbaBackend(NumpyBackend):
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> BinaryOperatorImplType:
+    ) -> _BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -800,7 +800,7 @@ class NumbaBackend(NumpyBackend):
 
         return dot_compiled
 
-    def make_outer_prod_operator(self, field: DataFieldBase) -> BinaryOperatorImplType:
+    def make_outer_prod_operator(self, field: DataFieldBase) -> _BinaryOperatorImplType:
         """Return operator calculating the outer product between two fields.
 
         This supports typically only supports products between two vector fields.

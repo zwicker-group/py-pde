@@ -62,7 +62,7 @@ class CylindricalLaplacian(TorchDifferentialOperator):
         factor_r = 1 / (2 * grid.axes_coords[0] * dr)
         self.register_array("factor_r", factor_r[:, None])
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
 
@@ -104,7 +104,7 @@ class CylindricalGradient(TorchDifferentialOperator):
         self.result_shape = (3, *grid.shape)
         self.scale_r, self.scale_z = 1 / (2 * grid.discretization)
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
         result = torch.zeros(self.result_shape, dtype=arr.dtype, device=arr.device)
@@ -156,7 +156,7 @@ class CylindricalGradientSquared(TorchDifferentialOperator):
         else:
             self.scale_r, self.scale_z = 0.5 / grid.discretization**2
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
 
@@ -202,7 +202,7 @@ class CylindricalDivergence(TorchDifferentialOperator):
         rs = grid.axes_coords[0]
         self.register_array("rs", rs[:, None])
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
         arr_r, arr_z = data_full[0], data_full[1]
@@ -244,7 +244,7 @@ class CylindricalVectorGradient(TorchDifferentialOperator):
         rs = grid.axes_coords[0]
         self.register_array("rs", rs[:, None])
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
         result = torch.zeros(self.result_shape, dtype=arr.dtype, device=arr.device)
@@ -302,7 +302,7 @@ class CylindricalVectorLaplacian(TorchDifferentialOperator):
         self.s2 = 1 / dr**2
         self.scale_z = 1 / dz**2
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
         result = torch.empty(self.result_shape, dtype=arr.dtype, device=arr.device)
@@ -371,7 +371,7 @@ class CylindricalTensorDivergence(TorchDifferentialOperator):
         self.register_array("rs", rs[:, None])
         self.scale_r, self.scale_z = 0.5 / grid.discretization
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
         result = torch.empty(self.result_shape, dtype=arr.dtype, device=arr.device)

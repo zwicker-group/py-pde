@@ -52,7 +52,7 @@ class CartesianLaplacian(TorchDifferentialOperator):
         super().__init__(grid, bcs, dtype=dtype)
         self.scale = self.grid.discretization**-2
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
 
@@ -106,7 +106,7 @@ class CartesianGradient(TorchDifferentialOperator):
         super().__init__(grid, bcs, dtype=dtype)
         self.scale = 0.5 / self.grid.discretization
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
 
@@ -168,7 +168,7 @@ class CartesianGradientSquared(TorchDifferentialOperator):
         else:
             self.scale = 0.5 / self.grid.discretization**2
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         if self.central:
             # simple squared sum of central differences
@@ -234,7 +234,7 @@ class CartesianDivergence(TorchDifferentialOperator):
         super().__init__(grid, bcs, dtype=dtype)
         self.scale = 0.5 / self.grid.discretization
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         data_full = self.get_full_data(arr, args=args)
 
@@ -280,7 +280,7 @@ class CartesianVectorGradient(TorchDifferentialOperator):
         self.result_shape = (grid.dim, grid.dim, *grid.shape)
         self.grad = CartesianGradient(grid, bcs=None, dtype=dtype)
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         # apply boundary conditions and get full data array
         data_full = self.get_full_data(arr, args=args)
@@ -314,7 +314,7 @@ class CartesianVectorLaplacian(TorchDifferentialOperator):
         self.result_shape = (grid.dim, *grid.shape)
         self.lap = CartesianLaplacian(grid, bcs=None, dtype=dtype)
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         # apply boundary conditions and get full data array
         data_full = self.get_full_data(arr, args=args)
@@ -350,7 +350,7 @@ class CartesianTensorDivergence(TorchDifferentialOperator):
         self.result_shape = (grid.dim, *grid.shape)
         self.div = CartesianDivergence(grid, bcs=None, dtype=dtype)
 
-    def forward(self, arr: Tensor, args=None) -> Tensor:
+    def forward(self, arr: Tensor, *, args=None) -> Tensor:
         """Fill internal data array, apply operator, and return valid data."""
         # apply boundary conditions and get full data array
         data_full = self.get_full_data(arr, args=args)
@@ -359,10 +359,6 @@ class CartesianTensorDivergence(TorchDifferentialOperator):
         for i in range(self.grid.num_axes):
             result[i] = self.div(data_full[i], args=args)
         return result
-        # apply differential operators for all dimensions
-        return torch.stack(
-            tuple(self.div(data_full[i], args=args) for i in range(self.grid.num_axes))
-        )
 
 
 __all__ = [

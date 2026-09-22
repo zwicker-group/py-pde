@@ -28,13 +28,13 @@ from ..backend import JaxBackend
 if TYPE_CHECKING:
     import jax
 
-    from ....tools.typing import OperatorImplType
+    from ..typing import JaxOperatorImplType
 
 
 @JaxBackend.register_operator(SphericalSymGrid, "laplace", rank_in=0, rank_out=0)
 def make_laplace(
     grid: SphericalSymGrid, *, conservative: bool | None = None
-) -> OperatorImplType:
+) -> JaxOperatorImplType:
     """Make a discretized laplace operator for a spherical grid.
 
     Args:
@@ -92,7 +92,7 @@ def make_gradient(
     grid: SphericalSymGrid,
     *,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorImplType:
+) -> JaxOperatorImplType:
     """Make a discretized gradient operator for a spherical grid.
 
     Args:
@@ -135,7 +135,7 @@ def make_gradient(
 )
 def make_gradient_squared(
     grid: SphericalSymGrid, *, central: bool = True
-) -> OperatorImplType:
+) -> JaxOperatorImplType:
     """Make a discretized gradient squared operator for a spherical grid.
 
     Args:
@@ -180,7 +180,7 @@ def make_divergence(
     *,
     conservative: bool | None = None,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorImplType:
+) -> JaxOperatorImplType:
     """Make a discretized divergence operator for a spherical grid.
 
     Warning:
@@ -258,7 +258,7 @@ def make_vector_gradient(
     grid: SphericalSymGrid,
     *,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorImplType:
+) -> JaxOperatorImplType:
     """Make a discretized vector gradient operator for a spherical grid.
 
     Warning:
@@ -320,7 +320,7 @@ def make_tensor_divergence(
     grid: SphericalSymGrid,
     *,
     conservative: bool | None = False,
-) -> OperatorImplType:
+) -> JaxOperatorImplType:
     """Make a discretized tensor divergence operator for a spherical grid.
 
     Args:
@@ -396,7 +396,7 @@ def make_tensor_double_divergence(
     grid: SphericalSymGrid,
     *,
     conservative: bool | None = None,
-) -> OperatorImplType:
+) -> JaxOperatorImplType:
     """Make a discretized tensor double divergence operator for a spherical grid.
 
     Args:

@@ -443,17 +443,12 @@ class PDE(SDEBase):
                 )
                 raise
 
-            if backend.implementation == "torch":
-                # Torch operators have signature (arr, args=None), no output array slot
-                # -> pass bc_args directly as the second argument (args slot)
-                def func_call(expr):
-                    return expr.func(*expr.args, Symbol("bc_args"))
-            else:
-                # For numpy, numba, jax, and other backends, add None and bc_args as
-                # arguments. The `None` indicates that we do not supply an output array,
-                # but expect the operator to construct this itself.
-                def func_call(expr):
-                    return expr.func(*expr.args, Symbol("none"), Symbol("bc_args"))
+            # Backends generically support `out` and `bc_args`` as arguments. Since we
+            # cannot use keyword arguments in sympy (at least we did not figure out how)
+            # we supply the arguments by position. Here, `None` indicates that we do not
+            # supply an output array, but we have the option to add arguments for BCs.
+            def func_call(expr):
+                return expr.func(*expr.args, Symbol("none"), Symbol("bc_args"))
 
             # replace the call of undefined functions with the correct arguments
             expr._sympy_expr = expr._sympy_expr.replace(

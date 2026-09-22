@@ -1,7 +1,7 @@
 """Defines the :mod:`jax` backend class.
 
 This backend prefers functional internal operator implementations because JAX arrays
-are immutable. Raw operators are expected to follow ``operator_raw(arr[, args]) ->
+are immutable. Raw operators are expected to follow ``operator_raw(arr, *[, args]) ->
 result`` and return newly created data. The public interface supports functional calls
 directly and rejects `out` for operators on this backend.
 
@@ -10,7 +10,6 @@ directly and rejects `out` for operators on this backend.
 
 from __future__ import annotations
 
-import inspect
 import numbers
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
@@ -530,7 +529,7 @@ class JaxBackend(BackendBase[jax.Array]):
             `jax` arrays are immutable, supplying `out` raises an error.
 
         Internally, the raw implementation is expected to follow
-        ``operator_raw(arr_full[, args]) -> result``.
+        ``operator_raw(arr_full, *[, args]) -> result``.
         """
         # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)
@@ -538,21 +537,6 @@ class JaxBackend(BackendBase[jax.Array]):
 
         # create and compile an operator without BCs
         jax_operator = self.compile_function(operator_info.factory(grid, **kwargs))
-        try:
-            params = tuple(inspect.signature(jax_operator).parameters.values())
-        except (TypeError, ValueError):
-            params = ()
-        positional = tuple(
-            p for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-        )
-        args_keyword_supported = not params or any(
-            p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
-        )
-        args_positional_supported = (
-            not params
-            or any(p.kind == p.VAR_POSITIONAL for p in params)
-            or len(positional) >= 2
-        )
 
         def apply_op_jax(
             arr: jax.Array,
@@ -564,13 +548,8 @@ class JaxBackend(BackendBase[jax.Array]):
                 msg = "`jax` arrays are immutable and cannot use `out`"
                 raise RuntimeError(msg)
             if args is None:
-                return jax_operator(arr)
-            if args_keyword_supported:
-                return jax_operator(arr, args=args)
-            if args_positional_supported:
-                return jax_operator(arr, args)
-            msg = "JAX operator does not accept runtime `args`."
-            raise TypeError(msg)
+                return jax_operator(arr)  # type: ignore
+            return jax_operator(arr, args=args)  # type: ignore
 
         return apply_op_jax
 

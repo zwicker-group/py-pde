@@ -185,9 +185,9 @@ def test_operator_no_bc_returns_result_with_args():
     backend = get_backend("numpy")
 
     def factory(grid, **kwargs):
-        def operator(arr, args=None):
+        def operator(arr, out, args=None):
             shift = 0 if args is None else args["shift"]
-            return arr[1:-1] + shift
+            out[:] = arr[1:-1] + shift
 
         return operator
 
