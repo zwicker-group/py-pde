@@ -205,54 +205,6 @@ def test_operator_no_bc_returns_result_with_args():
     np.testing.assert_allclose(out, data_full[1:-1] - 1)
 
 
-def test_make_set_valid_return_style():
-    """Test `_make_set_valid` with return-style usage and optional `out`."""
-    grid = grids.UnitGrid([4], periodic=False)
-    data_valid = np.arange(4.0)
-    setter = grid._make_set_valid(rank=0, backend="numpy")
-
-    data_full = setter(data_valid)
-    np.testing.assert_allclose(data_full[1:-1], data_valid)
-
-    out = np.empty(grid._shape_full)
-    data_full_out = setter(data_valid, out=out)
-    assert data_full_out is out
-    np.testing.assert_allclose(out[1:-1], data_full[1:-1])
-
-    data_full_legacy = np.empty(grid._shape_full)
-    data_full_legacy_ret = setter(data_full_legacy, data_valid)
-    assert data_full_legacy_ret is data_full_legacy
-    np.testing.assert_allclose(data_full_legacy[1:-1], data_full[1:-1])
-
-    data_full_override = np.empty(grid._shape_full)
-    data_full_override_ret = setter(
-        data_full_legacy, data_valid, out=data_full_override
-    )
-    assert data_full_override_ret is data_full_override
-    np.testing.assert_allclose(data_full_override[1:-1], data_full[1:-1])
-
-
-def test_make_set_valid_return_style_with_bcs():
-    """Test `_make_set_valid` with boundary conditions in both call styles."""
-    grid = grids.UnitGrid([4], periodic=False)
-    data_valid = np.arange(4.0)
-    bcs = grid.get_boundary_conditions({"value": 0})
-    setter = grid._make_set_valid(bcs=bcs, backend="numpy")
-
-    data_full = setter(data_valid)
-    np.testing.assert_allclose(data_full[1:-1], data_valid)
-
-    data_full_legacy = np.empty(grid._shape_full)
-    data_full_legacy_ret = setter(data_full_legacy, data_valid)
-    assert data_full_legacy_ret is data_full_legacy
-    np.testing.assert_allclose(data_full_legacy, data_full)
-
-    out = np.empty(grid._shape_full)
-    data_full_out = setter(data_valid, out=out)
-    assert data_full_out is out
-    np.testing.assert_allclose(data_full_out, data_full)
-
-
 @pytest.mark.parametrize("grid", get_grids())
 def test_cell_volumes(grid):
     """Test calculation of cell volumes."""

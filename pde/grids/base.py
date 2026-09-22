@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import functools
-import inspect
 import itertools
 import json
 import logging
@@ -40,6 +39,7 @@ if TYPE_CHECKING:
     from ..backends.base import BackendBase, OperatorInfo
     from ..tools.typing import (
         CellVolume,
+        DataSetter,
         FloatingArray,
         FloatOrArray,
         Number,
@@ -373,7 +373,7 @@ class GridBase(metaclass=ABCMeta):
         *,
         rank: int = 0,
         backend: str | BackendBase = "default",
-    ) -> Callable:
+    ) -> DataSetter:
         """Create a function to set the valid part of a full data array.
 
         Args:
@@ -398,120 +398,8 @@ class GridBase(metaclass=ABCMeta):
 
         backend = get_backend(backend)
         if bcs is None:
-            setter = backend.make_valid_data_setter(self, rank=rank)
-            rank_full = rank
-        else:
-            setter = backend.make_full_data_setter(bcs)
-            rank_full = bcs.rank
-
-        shape_full = (self.dim,) * rank_full + self._shape_full
-        try:
-            params = tuple(inspect.signature(setter).parameters.values())
-        except (TypeError, ValueError):
-            params = ()
-        positional = tuple(
-            p for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
-        )
-        second_pos_name = positional[1].name if len(positional) >= 2 else None
-        setter_uses_output_arg = (
-            not params
-            or any(p.kind == p.VAR_POSITIONAL for p in params)
-            or (len(positional) >= 2 and second_pos_name != "args")
-        )
-        setter_supports_args = (
-            not params
-            or any(
-                p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD) or p.name == "args"
-                for p in params
-            )
-            or (len(positional) >= 2 and second_pos_name == "args")
-        )
-        setter_args_keyword = not params or any(
-            p.kind == p.VAR_KEYWORD or p.name == "args" for p in params
-        )
-        setter_args_positional = (
-            not params
-            or any(p.kind == p.VAR_POSITIONAL for p in params)
-            or (
-                len(positional) >= 3 and positional[2].name != "out"
-                if setter_uses_output_arg
-                else len(positional) >= 2 and second_pos_name == "args"
-            )
-        )
-
-        def set_valid(data_full: NumericArray, data_valid: NumericArray, args=None):
-            """Set valid data in full array and return the full array."""
-            if args is not None and not setter_supports_args:
-                msg = "Data setter does not accept runtime `args`."
-                raise TypeError(msg)
-            if setter_uses_output_arg:
-                if args is None:
-                    setter(data_full, data_valid)
-                else:
-                    if setter_args_keyword:
-                        setter(data_full, data_valid, args=args)
-                    elif setter_args_positional:
-                        setter(data_full, data_valid, args)
-                    else:
-                        msg = "Data setter does not accept runtime `args`."
-                        raise TypeError(msg)
-            else:
-                if args is None:
-                    data_full[...] = setter(data_valid)
-                else:
-                    if setter_args_keyword:
-                        data_full[...] = setter(data_valid, args=args)
-                    elif setter_args_positional:
-                        data_full[...] = setter(data_valid, args)
-                    else:
-                        msg = "Data setter does not accept runtime `args`."
-                        raise TypeError(msg)
-            return data_full
-
-        def set_valid_compat(
-            data_or_full: NumericArray,
-            data_valid: NumericArray | None = None,
-            *,
-            out: NumericArray | None = None,
-            args=None,
-        ) -> NumericArray:
-            """Set valid data in a full array using legacy or functional calling style.
-
-            Args:
-                data_or_full (:class:`~numpy.ndarray`):
-                    Either the full data array (legacy style) or the valid data array
-                    (functional style).
-                data_valid (:class:`~numpy.ndarray`, optional):
-                    Valid data to write in legacy style. If omitted, `data_or_full` is
-                    interpreted as the valid data array.
-                out (:class:`~numpy.ndarray`, optional):
-                    Full destination array used in functional style. If omitted, a new
-                    full array is allocated.
-                args:
-                    Optional runtime arguments forwarded to backend setters and boundary
-                    condition handling (for instance time-dependent BC parameters).
-
-            Returns:
-                :class:`~numpy.ndarray`:
-                    Full data array containing updated valid cells (and boundary values,
-                    when BC handling is active).
-            """
-            if data_valid is None:
-                data_valid = data_or_full
-                data_full = out
-                if data_full is None:
-                    data_valid_dtype = getattr(data_valid, "dtype", None)
-                    if data_valid_dtype is None:
-                        data_valid_dtype = backend.native_to_numpy(data_valid).dtype
-                    data_full = backend.numpy_to_native(
-                        np.empty(shape_full, dtype=data_valid_dtype)
-                    )
-            else:
-                data_full = data_or_full if out is None else out
-
-            return set_valid(data_full, data_valid, args=args)
-
-        return set_valid_compat
+            return backend.make_valid_data_setter(self, rank=rank)
+        return backend.make_full_data_setter(bcs)
 
     @property
     @abstractmethod
