@@ -82,12 +82,21 @@ class _OperatorImplUpdateType(Protocol):
     def __call__(self, arr: NumericArray, out: NumericArray) -> None: ...
 
 
+class _OperatorImplUpdateArgsType(Protocol):
+    """Operator implementation writing output to given numpy array."""
+
+    def __call__(
+        self, arr: NumericArray, out: NumericArray, *, args: Any | None = None
+    ) -> None: ...
+
+
 # internal operator implementations, which can occur in different forms depending on
 # the backend
 _OperatorImplType: TypeAlias = (
     _OperatorImplStreamBareType[TNativeArray]
     | _OperatorImplStreamArgsType[TNativeArray]
     | _OperatorImplUpdateType
+    | _OperatorImplUpdateArgsType
 )
 _BinaryOperatorImplType = Callable[
     [TNativeArray, TNativeArray, TNativeArray | None], TNativeArray

@@ -89,7 +89,7 @@ def test_operator_no_bc_optional_out_with_args(backend):
 
     def factory(grid, **kwargs):
         def operator(arr, out=None, args=None):
-            shift = 0 if args is None else args["shift"]
+            shift = 0 if args is None else args
             result = arr[1:-1] + shift
             if out is None:
                 return result
@@ -101,11 +101,11 @@ def test_operator_no_bc_optional_out_with_args(backend):
     op = backend.make_operator_no_bc(grid, OperatorInfo(factory, rank_in=0, rank_out=0))
     data_full = backend.numpy_to_native(np.arange(grid._shape_full[0], dtype=float))
 
-    result = backend.native_to_numpy(op(data_full, args={"shift": 2}))
+    result = backend.native_to_numpy(op(data_full, args=2))
     np.testing.assert_allclose(result, np.arange(1, 5, dtype=float) + 2)
 
     out = backend.numpy_to_native(np.empty(grid.shape))
-    result_out = op(data_full, out=out, args={"shift": -1})
+    result_out = op(data_full, out=out, args=-1)
     assert result_out is out
     np.testing.assert_allclose(
         backend.native_to_numpy(out), np.arange(1, 5, dtype=float) - 1
