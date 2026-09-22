@@ -229,6 +229,7 @@ class NumpyBackend(BackendBase[NumericArray]):
         operator_raw = operator_info.factory(grid, **kwargs)
         shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
 
+        @self.compile_function
         def apply_operator(
             arr: NumericArray, out: NumericArray | None = None, args=None
         ) -> NumericArray:

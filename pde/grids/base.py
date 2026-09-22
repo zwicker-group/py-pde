@@ -1161,8 +1161,8 @@ class GridBase(metaclass=ABCMeta):
     ) -> OperatorType:
         """Return a compiled function applying an operator without boundary conditions.
 
-        A function that takes the discretized full data as an input and an array of
-        valid data points to which the result of applying the operator is written.
+        The returned function takes the discretized full data as an input and returns
+        an array of valid data points.
 
         Note:
             The resulting function does not check whether the ghost cells of the input
