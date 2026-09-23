@@ -536,8 +536,9 @@ class JaxBackend(BackendBase[jax.Array]):
         dtype = self.get_jax_dtype(dtype or np.double)
 
         # create and compile an operator without BCs
-        jax_operator = self.compile_function(operator_info.factory(grid, **kwargs))
+        jax_operator = operator_info.factory(grid, **kwargs)
 
+        @self.compile_function
         def apply_op_jax(
             arr: jax.Array,
             out: jax.Array | None = None,
