@@ -21,6 +21,7 @@ import os
 import sys
 import traceback
 from typing import TYPE_CHECKING, TypeVar
+import warnings
 
 import numpy as np
 
@@ -93,6 +94,9 @@ else:
     MPIOperator.register("MAX", MPI.MAX)
     MPIOperator.register("MIN", MPI.MIN)
     MPIOperator.register("SUM", MPI.SUM)
+
+    if 'PMI_SIZE' not in os.environ:
+        warnings.warn("MPI backend used, but no mpiexec/mpirun run detected")
 
 parallel_run: bool = size > 1
 """bool: Flag indicating whether the current run is using multiprocessing"""
