@@ -41,10 +41,9 @@ if TYPE_CHECKING:
     from ..solvers.base import SolverBase
     from ..tools.expressions import ExpressionBase
     from ..tools.typing import (
-        BinaryOperatorImplType,
-        OperatorImplType,
         StepperType,
         TFunc,
+        _BinaryOperatorImplType,
     )
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
@@ -486,11 +485,11 @@ class BackendBase(Generic[TNativeArray]):
         *,
         dtype: DTypeLike | None = None,
         **kwargs,
-    ) -> OperatorImplType:
+    ) -> OperatorType:
         """Return a compiled function applying an operator without boundary conditions.
 
-        A function that takes the discretized full data as an input and an array of
-        valid data points to which the result of applying the operator is written.
+        The returned function has public signature
+        ``(arr, out=None, args=None) -> result``.
 
         Note:
             The resulting function does not check whether the ghost cells of the input
@@ -498,6 +497,11 @@ class BackendBase(Generic[TNativeArray]):
             the user to set the values of the ghost cells beforehand. Use this function
             only if you absolutely know what you're doing. In all other cases,
             :meth:`make_operator` is probably the better choice.
+
+            Backends can choose whether their internal operator implementation uses a
+            functional style ``op(arr, *, args=None) -> result`` or an in-place style
+            ``op(arr, out, *, args=None)``. This wrapper must thus normalizes both
+            styles to the public signature above.
 
         Args:
             grid (:class:`~pde.grid.base.GridBase`):
@@ -513,12 +517,10 @@ class BackendBase(Generic[TNativeArray]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray), so they `out` array need
-            to be supplied explicitly.
+            signature (arr: NumericArray, out: NumericArray=None, args=None).
         """
-        # determine the operator for the chosen backend
-        operator_info = self.get_operator_info(grid, operator)
-        return operator_info.factory(grid, **kwargs)
+        msg = f"Operators not implemented for backend {self.name}"
+        raise NotImplementedError(msg)
 
     def make_operator(
         self,
@@ -557,16 +559,22 @@ class BackendBase(Generic[TNativeArray]):
         `set_ghost_cells`. This allows setting boundary conditions based on external
         parameters, like time.
 
+        Backends can internally implement the raw operator in either style
+        ``op(arr, args=None) -> result`` (functional) or ``op(arr, out, args=None)``
+        (in-place). The backend-specific implementation of :meth:`make_operator`
+        adapts this internal style to the public call convention
+        ``(arr, *, out=None, args=None)``.
+
         Returns:
             callable: the function that applies the operator. This function has the
             signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
-        msg = f"Operators not defined for backend {self.name}"
+        msg = f"Operators not implemented for backend {self.name}"
         raise NotImplementedError(msg)
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> BinaryOperatorImplType:
+    ) -> _BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -586,7 +594,7 @@ class BackendBase(Generic[TNativeArray]):
         msg = f"Inner product not defined for backend {self.name}"
         raise NotImplementedError(msg)
 
-    def make_outer_prod_operator(self, field: DataFieldBase) -> BinaryOperatorImplType:
+    def make_outer_prod_operator(self, field: DataFieldBase) -> _BinaryOperatorImplType:
         """Return operator calculating the outer product between two fields.
 
         This supports typically only supports products between two vector fields.

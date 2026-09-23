@@ -1,11 +1,17 @@
 """Defines the :mod:`numba` backend class.
 
+This backend prefers in-place internal operator implementations for speed in jitted
+kernels. Raw operators are generally expected to follow
+``operator_raw(arr_full, out[, args])`` and write to ``out`` directly. The public
+operator interface still supports both functional calls and optional `out`.
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
 
 import functools
+import inspect
 import warnings
 from typing import TYPE_CHECKING, Any
 
@@ -33,7 +39,6 @@ if TYPE_CHECKING:
     from ...solvers.base import SolverBase
     from ...tools.expressions import ExpressionBase, TensorExpression
     from ...tools.typing import (
-        BinaryOperatorImplType,
         FloatingArray,
         GhostCellSetter,
         InexactArray,
@@ -44,6 +49,7 @@ if TYPE_CHECKING:
         StepperType,
         TField,
         TFunc,
+        _BinaryOperatorImplType,
     )
 
 
@@ -403,6 +409,96 @@ class NumbaBackend(NumpyBackend):
         msg = f"Cannot handle following boundary conditions: {bcs}"
         raise NotImplementedError(msg)
 
+    def make_operator_no_bc(
+        self,
+        grid: GridBase,
+        operator: str | OperatorInfo,
+        *,
+        dtype: DTypeLike | None = None,
+        **kwargs,
+    ) -> OperatorType:
+        """Return a compiled function applying an operator without boundary conditions.
+
+        The returned function has public signature
+        ``(arr, out=None, args=None) -> result``.
+
+        Note:
+            The resulting function does not check whether the ghost cells of the input
+            array have been supplied with sensible values. It is the responsibility of
+            the user to set the values of the ghost cells beforehand. Use this function
+            only if you absolutely know what you're doing. In all other cases,
+            :meth:`make_operator` is probably the better choice.
+
+            Backends can choose whether their internal operator implementation uses a
+            functional style ``op(arr, *, args=None) -> result`` or an in-place style
+            ``op(arr, out, *, args=None)``. This wrapper normalizes both styles to the
+            public signature above.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the operator is needed
+            operator (str):
+                Identifier for the operator. Some examples are 'laplace', 'gradient', or
+                'divergence'. The registered operators for this grid can be obtained
+                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            dtype (numpy dtype):
+                The data type of the field.
+            **kwargs:
+                Specifies extra arguments influencing how the operator is created.
+
+        Returns:
+            callable: the function that applies the operator. This function has the
+            signature (arr: NumericArray, out: NumericArray=None, args=None).
+
+        Internally, raw operator implementations are expected to use the functional
+        signature ``operator_raw(arr_full, out[, args])``.
+        """
+        # determine the operator for the chosen backend
+        operator_info = self.get_operator_info(grid, operator)
+        operator_raw = self.compile_function(operator_info.factory(grid, **kwargs))
+        shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
+
+        # determine whether the operator supports arguments based on number of arguments
+        sig = inspect.signature(operator_raw)
+        num_args = len(sig.parameters)
+
+        if num_args == 2:
+            # simple case of just input and output
+
+            def apply_operator(
+                arr: NumericArray, out: NumericArray | None = None, args=None
+            ) -> NumericArray:
+                """Apply operator to full data without setting boundary conditions."""
+                if args is not None:
+                    msg = "Operator does not support arguments"
+                    raise ValueError(msg)
+                if out is None:
+                    out = np.empty(
+                        shape_out, dtype=arr.dtype if dtype is None else dtype
+                    )
+                operator_raw(arr, out)  # type: ignore
+                return out
+
+        elif num_args == 3:
+            # operator additionally supports an args argument
+
+            def apply_operator(
+                arr: NumericArray, out: NumericArray | None = None, args=None
+            ) -> NumericArray:
+                """Apply operator to full data without setting boundary conditions."""
+                if out is None:
+                    out = np.empty(
+                        shape_out, dtype=arr.dtype if dtype is None else dtype
+                    )
+                operator_raw(arr, out, args=args)  # type: ignore
+                return out
+
+        else:
+            msg = f"Expect 2 or 3 arguments for operator, found {num_args}"
+            raise TypeError(msg)
+
+        return self.compile_function(apply_operator)
+
     @cached_method()
     def make_operator(
         self,
@@ -442,6 +538,9 @@ class NumbaBackend(NumpyBackend):
         parameters, like time. Note that since the returned operator will always be
         compiled by Numba, the arguments need to be compatible with Numba. The
         following example shows how to pass the current time `t`:
+
+        The internal raw operator implementation is expected to use the in-place
+        signature ``operator_raw(arr_full, out[, args])``.
 
         Returns:
             callable: the function that applies the operator. This function has the
@@ -653,7 +752,7 @@ class NumbaBackend(NumpyBackend):
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> BinaryOperatorImplType:
+    ) -> _BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -792,7 +891,7 @@ class NumbaBackend(NumpyBackend):
 
         return dot_compiled
 
-    def make_outer_prod_operator(self, field: DataFieldBase) -> BinaryOperatorImplType:
+    def make_outer_prod_operator(self, field: DataFieldBase) -> _BinaryOperatorImplType:
         """Return operator calculating the outer product between two fields.
 
         This supports typically only supports products between two vector fields.

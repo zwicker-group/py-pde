@@ -8,13 +8,14 @@ from copy import copy, deepcopy
 import numpy as np
 import pytest
 
-from pde import grids
+from pde import get_backend, grids
 from pde.grids.base import (
     GridBase,
     discretize_interval,
     registered_operators,
 )
 from pde.tools.misc import module_available
+from pde.tools.typing import OperatorInfo
 
 
 def get_grids():
@@ -161,6 +162,47 @@ def test_registered_operators():
     for grid_name, ops in registered_operators().items():
         grid_class_ops = getattr(grids, grid_name).operators
         assert all(op in grid_class_ops for op in ops)
+
+
+def test_operator_no_bc_returns_result():
+    """Test operator without BCs returning allocated result arrays."""
+    grid = grids.UnitGrid([4], periodic=True)
+    op_no_bc = grid.make_operator_no_bc("laplace", backend="numba")
+
+    data_full = np.ones(grid._shape_full)
+    result = op_no_bc(data_full)
+    np.testing.assert_allclose(result, 0)
+
+    out = np.empty(grid.shape)
+    result_out = op_no_bc(data_full, out=out)
+    assert result_out is out
+    np.testing.assert_allclose(out, 0)
+
+
+def test_operator_no_bc_returns_result_with_args():
+    """Test no-BC operators that return results and consume runtime args."""
+    grid = grids.UnitGrid([4], periodic=True)
+    backend = get_backend("numpy")
+
+    def factory(grid, **kwargs):
+        def operator(arr, out, args=None):
+            shift = 0 if args is None else args["shift"]
+            out[:] = arr[1:-1] + shift
+
+        return operator
+
+    op_no_bc = backend.make_operator_no_bc(
+        grid, OperatorInfo(factory=factory, rank_in=0, rank_out=0)
+    )
+    data_full = np.arange(grid._shape_full[0], dtype=float)
+
+    result = op_no_bc(data_full, args={"shift": 2})
+    np.testing.assert_allclose(result, data_full[1:-1] + 2)
+
+    out = np.empty(grid.shape)
+    result_out = op_no_bc(data_full, out=out, args={"shift": -1})
+    assert result_out is out
+    np.testing.assert_allclose(out, data_full[1:-1] - 1)
 
 
 @pytest.mark.parametrize("grid", get_grids())

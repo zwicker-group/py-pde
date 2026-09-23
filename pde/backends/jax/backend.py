@@ -1,5 +1,10 @@
 """Defines the :mod:`jax` backend class.
 
+This backend prefers functional internal operator implementations because JAX arrays
+are immutable. Raw operators are expected to follow ``operator_raw(arr, *[, args]) ->
+result`` and return newly created data. The public interface supports functional calls
+directly and rejects `out` for operators on this backend.
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -37,7 +42,6 @@ if TYPE_CHECKING:
     from ...tools.typing import (
         NumberOrArray,
         NumericArray,
-        OperatorImplType,
         OperatorInfo,
         OperatorType,
         StepperType,
@@ -494,7 +498,7 @@ class JaxBackend(BackendBase[jax.Array]):
         *,
         dtype: DTypeLike | None = None,
         **kwargs,
-    ) -> OperatorImplType:
+    ) -> OperatorType:
         """Return a compiled function applying an operator without boundary conditions.
 
         A function that takes the discretized full data as an input and an array of
@@ -521,18 +525,34 @@ class JaxBackend(BackendBase[jax.Array]):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray), so they `out` array need
-            to be supplied explicitly.
+            signature (arr: NumericArray, out: NumericArray = None, args=None). Since
+            `jax` arrays are immutable, supplying `out` raises an error.
+
+        Internally, the raw implementation is expected to follow
+        ``operator_raw(arr_full, *[, args]) -> result``.
         """
         # obtain details about the operator
         operator_info = self.get_operator_info(grid, operator)
         dtype = self.get_jax_dtype(dtype or np.double)
 
-        # create an operator with or without BCs
+        # create and compile an operator without BCs
         jax_operator = operator_info.factory(grid, **kwargs)
 
-        # compile the function and move it to the device
-        return self.compile_function(jax_operator)
+        @self.compile_function
+        def apply_op_jax(
+            arr: jax.Array,
+            out: jax.Array | None = None,
+            args: dict[str, Any] | None = None,
+        ) -> jax.Array:
+            """Apply operator without boundary conditions."""
+            if out is not None:
+                msg = "`jax` arrays are immutable and cannot use `out`"
+                raise RuntimeError(msg)
+            if args is None:
+                return jax_operator(arr)  # type: ignore
+            return jax_operator(arr, args=args)  # type: ignore
+
+        return apply_op_jax
 
     @cached_method()
     def make_operator(
@@ -573,6 +593,9 @@ class JaxBackend(BackendBase[jax.Array]):
         parameters, like time. When this backend is used together with JAX'
         just-in-time compilation (e.g. via :func:`jax.jit`), the values passed
         through `args` need to be compatible with JAX's JIT tracing rules.
+
+        Internally, the raw operator implementation is expected to follow
+        ``operator_raw(arr_full[, args]) -> result``.
 
         Returns:
             callable: the function that applies the operator. This function has the

@@ -262,7 +262,7 @@ class GridMesh:
         for axis, chunks in enumerate(decomposition):
             # iterate over all grids that have been determined already
             for idx, subgrid in np.ndenumerate(subgrids[tuple(idx_set)]):
-                i = idx + (slice(None, None),) + (0,) * (subgrids.ndim - axis - 1)
+                i = idx + (slice(None, None),) + (0,) * (subgrids.ndim - axis - 1)  # type: ignore
                 divison = _subdivide_along_axis(subgrid, axis=axis, chunks=chunks)
                 subgrids[i] = divison
 
@@ -279,7 +279,7 @@ class GridMesh:
     @property
     def shape(self) -> tuple[int, ...]:
         """tuple: the number of subgrids along each axis"""
-        return self.subgrids.shape
+        return self.subgrids.shape  # type: ignore
 
     def __len__(self) -> int:
         """Total number of subgrids."""

@@ -162,7 +162,7 @@ def _make_adams_bashforth_stepper(
             rhs_prev = rhs_pde(state_prev, t - dt).copy()
             rhs_cur = rhs_pde(state_data, t)
             state_prev[:] = state_data  # save the previous state
-            state_data += dt * (1.5 * rhs_cur - 0.5 * rhs_prev)
+            state_data += dt * (1.5 * rhs_cur - 0.5 * rhs_prev)  # type: ignore
             state_data, post_step_data = post_step_hook(state_data, t, post_step_data)
 
         return t + dt, post_step_data

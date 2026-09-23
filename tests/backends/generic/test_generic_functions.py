@@ -5,10 +5,12 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 from scipy import stats
 
 from pde import ScalarField, UnitGrid
+from pde.tools.typing import OperatorInfo
 
 ALL_BACKENDS = [
     "numpy",
@@ -30,3 +32,120 @@ def test_random_noise_basic(backend, rng):
     data = backend.native_to_numpy(noise())
     test_res = stats.kstest(data, stats.norm(loc=0, scale=1).cdf)
     assert test_res.pvalue > 0.01  # expect Gaussian distribution
+
+
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_operator_no_bc_functional_call(backend):
+    """Test no-BC operators support functional call and optional `out`."""
+    grid = UnitGrid([4], periodic=True)
+    try:
+        op = grid.make_operator_no_bc("laplace", backend=backend)
+    except NotImplementedError:
+        pytest.skip(f"Backend {backend.name!r} does not define this laplace operator")
+
+    data_full = np.ones(grid._shape_full)
+    data_full_native = backend.numpy_to_native(data_full)
+    result = backend.native_to_numpy(op(data_full_native))
+    np.testing.assert_allclose(result, 0)
+
+    out = backend.numpy_to_native(np.empty(grid.shape))
+    if backend.implementation in {"jax", "torch"}:
+        with pytest.raises(RuntimeError):
+            op(data_full_native, out=out)
+    else:
+        result_out = op(data_full_native, out=out)
+        assert result_out is out
+        np.testing.assert_allclose(backend.native_to_numpy(out), 0)
+
+
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_operator_functional_call_with_bc(backend):
+    """Test operators with BCs support functional call and optional `out`."""
+    grid = UnitGrid([4], periodic=True)
+    try:
+        op = grid.make_operator("laplace", bc="periodic", backend=backend)
+    except NotImplementedError:
+        pytest.skip(f"Backend {backend.name!r} does not define this laplace operator")
+
+    data = np.ones(grid.shape)
+    data_native = backend.numpy_to_native(data)
+    result = backend.native_to_numpy(op(data_native))
+    np.testing.assert_allclose(result, 0)
+
+    out = backend.numpy_to_native(np.empty(grid.shape))
+    if backend.implementation in {"jax", "torch"}:
+        with pytest.raises(RuntimeError):
+            op(data_native, out=out)
+    else:
+        result_out = op(data_native, out=out)
+        assert result_out is out
+        np.testing.assert_allclose(backend.native_to_numpy(out), 0)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba"], indirect=True)
+def test_operator_no_bc_optional_out_with_args(backend):
+    """Test no-BC operator wrapper with optional `out` and runtime `args`."""
+    grid = UnitGrid([4], periodic=True)
+
+    def factory(grid, **kwargs):
+        def operator(arr, out=None, args=None):
+            shift = 0 if args is None else args
+            result = arr[1:-1] + shift
+            if out is None:
+                return result
+            out[...] = result
+            return out
+
+        return operator
+
+    op = backend.make_operator_no_bc(grid, OperatorInfo(factory, rank_in=0, rank_out=0))
+    data_full = backend.numpy_to_native(np.arange(grid._shape_full[0], dtype=float))
+
+    result = backend.native_to_numpy(op(data_full, args=2))
+    np.testing.assert_allclose(result, np.arange(1, 5, dtype=float) + 2)
+
+    out = backend.numpy_to_native(np.empty(grid.shape))
+    result_out = op(data_full, out=out, args=-1)
+    assert result_out is out
+    np.testing.assert_allclose(
+        backend.native_to_numpy(out), np.arange(1, 5, dtype=float) - 1
+    )
+
+
+@pytest.mark.parametrize("backend", ["jax-cpu", "torch-cpu"], indirect=True)
+def test_operator_no_bc_args_and_out_on_immutable_backends(backend):
+    """Test args forwarding and `out` rejection for immutable backends."""
+    grid = UnitGrid([4], periodic=True)
+
+    if backend.implementation == "jax":
+
+        def factory(grid, **kwargs):
+            def operator(arr, args=None):
+                shift = 0 if args is None else args["shift"]
+                return arr[1:-1] + shift
+
+            return operator
+
+    elif backend.implementation == "torch":
+        import torch
+
+        class CustomOp(torch.nn.Module):
+            def forward(self, arr, args=None):
+                shift = 0 if args is None else args["shift"]
+                return arr[1:-1] + shift
+
+        def factory(grid, bcs=None, dtype=None, **kwargs):
+            return CustomOp()
+
+    else:
+        raise NotImplementedError
+
+    op = backend.make_operator_no_bc(grid, OperatorInfo(factory, rank_in=0, rank_out=0))
+    data_full = backend.numpy_to_native(np.arange(grid._shape_full[0], dtype=float))
+
+    result = backend.native_to_numpy(op(data_full, args={"shift": 3}))
+    np.testing.assert_allclose(result, np.arange(1, 5, dtype=float) + 3)
+
+    out = backend.numpy_to_native(np.empty(grid.shape))
+    with pytest.raises(RuntimeError):
+        op(data_full, out=out, args={"shift": -1})

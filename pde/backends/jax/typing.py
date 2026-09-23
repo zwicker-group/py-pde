@@ -3,39 +3,25 @@
 .. autosummary::
    :nosignatures:
 
-   JaxOperatorType
+   JaxOperatorImplType
    JaxDataSetter
    JaxGhostCellSetter
    JaxVirtualPointEvaluator
+   JaxInnerStepperType
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Protocol, TypeAlias
+
+from ...tools.typing import _OperatorImplStreamBareType
 
 if TYPE_CHECKING:
     from jax import Array
 
-
-class JaxOperatorType(Protocol):
-    """An operator that acts on an array."""
-
-    def __call__(
-        self,
-        arr: Array,
-        args: dict[str, Any] | None = None,
-    ) -> Array:
-        """Evaluate the operator.
-
-        Args:
-            arr: Input array
-            args: Additional arguments (optional)
-
-        Returns:
-            Output array
-        """
+JaxOperatorImplType: TypeAlias = _OperatorImplStreamBareType["Array"]
 
 
 class JaxDataSetter(Protocol):

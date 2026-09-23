@@ -88,7 +88,7 @@ class TorchDifferentialOperator(TorchOperatorBase):
         else:
             raise NotImplementedError
 
-    def get_full_data(self, arr: Tensor, args=None) -> Tensor:
+    def get_full_data(self, arr: Tensor, *, args=None) -> Tensor:
         """Get full data array including ghost cells.
 
         Args:

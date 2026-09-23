@@ -4,7 +4,7 @@
    :nosignatures:
 
    OperatorInfo
-   OperatorImplType
+   _OperatorImplType
    OperatorFactory
    OperatorType
    CellVolume
@@ -19,7 +19,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Generic, NamedTuple, Protocol, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    NamedTuple,
+    Protocol,
+    TypeAlias,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 from numpy.typing import ArrayLike  # noqa: F401
@@ -53,6 +62,59 @@ TNativeArray = TypeVar("TNativeArray", NumericArray, "Tensor", "Array")
 TFunc = TypeVar("TFunc", bound=Callable)
 
 
+class _OperatorImplStreamBareType(Protocol, Generic[TNativeArray]):
+    """Operator implementation accepting directly calculating output."""
+
+    def __call__(self, arr: TNativeArray) -> TNativeArray: ...
+
+
+class _OperatorImplStreamArgsType(Protocol, Generic[TNativeArray]):
+    """Operator implementation accepting directly calculating output."""
+
+    def __call__(
+        self, arr: TNativeArray, *, args: Any | None = None
+    ) -> TNativeArray: ...
+
+
+class _OperatorImplUpdateType(Protocol):
+    """Operator implementation writing output to given numpy array."""
+
+    def __call__(self, arr: NumericArray, out: NumericArray) -> None: ...
+
+
+class _OperatorImplUpdateArgsType(Protocol):
+    """Operator implementation writing output to given numpy array."""
+
+    def __call__(
+        self, arr: NumericArray, out: NumericArray, *, args: Any | None = None
+    ) -> None: ...
+
+
+# internal operator implementations, which can occur in different forms depending on
+# the backend
+_OperatorImplType: TypeAlias = (
+    _OperatorImplStreamBareType[TNativeArray]
+    | _OperatorImplStreamArgsType[TNativeArray]
+    | _OperatorImplUpdateType
+    | _OperatorImplUpdateArgsType
+)
+_BinaryOperatorImplType = Callable[
+    [TNativeArray, TNativeArray, TNativeArray | None], TNativeArray
+]
+
+
+class OperatorFactory(Protocol):
+    """A factory function that creates an operator for a particular grid."""
+
+    def __call__(self, grid: GridBase, **kwargs) -> _OperatorImplType:
+        """Create the operator.
+
+        Args:
+            grid: The grid for which the operator is created
+            **kwargs: Additional keyword arguments
+        """
+
+
 class OperatorInfo(NamedTuple):
     """Stores information about an operator."""
 
@@ -62,28 +124,7 @@ class OperatorInfo(NamedTuple):
     name: str = ""  # attach a unique name to help caching
 
 
-# operators act on an array and either return result or write it into supplied array
-OperatorImplType = (
-    Callable[[TNativeArray], TNativeArray]
-    | Callable[[TNativeArray, TNativeArray], TNativeArray]
-)
-BinaryOperatorImplType = Callable[
-    [TNativeArray, TNativeArray, TNativeArray | None], TNativeArray
-]
-
-
-class OperatorFactory(Protocol):
-    """A factory function that creates an operator for a particular grid."""
-
-    def __call__(self, grid: GridBase, **kwargs) -> OperatorImplType:
-        """Create the operator.
-
-        Args:
-            grid: The grid for which the operator is created
-            **kwargs: Additional keyword arguments
-        """
-
-
+# public operator implementation with a single interface independent of backends
 class OperatorType(Protocol, Generic[TNativeArray]):
     """An operator that acts on an array."""
 

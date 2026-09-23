@@ -39,12 +39,12 @@ if TYPE_CHECKING:
     from ..backends.base import BackendBase, OperatorInfo
     from ..tools.typing import (
         CellVolume,
+        DataSetter,
         FloatingArray,
         FloatOrArray,
         Number,
         NumberOrArray,
         NumericArray,
-        OperatorImplType,
         OperatorType,
         TNativeArray,
     )
@@ -373,7 +373,7 @@ class GridBase(metaclass=ABCMeta):
         *,
         rank: int = 0,
         backend: str | BackendBase = "default",
-    ) -> Callable:
+    ) -> DataSetter:
         """Create a function to set the valid part of a full data array.
 
         Args:
@@ -387,10 +387,12 @@ class GridBase(metaclass=ABCMeta):
 
         Returns:
             callable:
-                Takes two numpy arrays, setting the valid data in the first one, using
-                the second array. The arrays need to be allocated already and they need
-                to have the correct dimensions, which are not checked. If `bcs` are
-                given, a third argument is allowed, which sets arguments for the BCs.
+                Function setting valid data in a full array and returning that full
+                array. The returned callable supports both legacy and functional styles:
+                `set_valid(data_full, data_valid, args=None)` and
+                `set_valid(data_valid, out=None, args=None)`. In both styles, `args`
+                are optional runtime values forwarded to backend setters and boundary
+                condition handling.
         """
         from ..backends import get_backend
 
@@ -972,7 +974,7 @@ class GridBase(metaclass=ABCMeta):
             the grid
         """
         cell_coords = self.transform(points, source=coords, target="cell")
-        return np.all((cell_coords >= 0) & (cell_coords <= self.shape), axis=-1)  # type: ignore
+        return np.all((cell_coords >= 0) & (cell_coords <= self.shape), axis=-1)
 
     def iter_mirror_points(
         self, point: FloatingArray, with_self: bool = False, only_periodic: bool = True
@@ -1156,11 +1158,11 @@ class GridBase(metaclass=ABCMeta):
         backend: str | BackendBase = "default",
         dtype: DTypeLike | None = None,
         **kwargs,
-    ) -> OperatorImplType:
+    ) -> OperatorType:
         """Return a compiled function applying an operator without boundary conditions.
 
-        A function that takes the discretized full data as an input and an array of
-        valid data points to which the result of applying the operator is written.
+        The returned function takes the discretized full data as an input and returns
+        an array of valid data points.
 
         Note:
             The resulting function does not check whether the ghost cells of the input
@@ -1183,8 +1185,7 @@ class GridBase(metaclass=ABCMeta):
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray), so they `out` array need
-            to be supplied explicitly.
+            signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
         from ..backends import get_backend
 

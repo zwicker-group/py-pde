@@ -31,11 +31,11 @@ if TYPE_CHECKING:
     from ..grids.boundaries.axes import BoundariesData
     from ..tools.typing import (
         ArrayLike,
-        BinaryOperatorImplType,
         FloatingArray,
         Number,
         NumberOrArray,
         NumericArray,
+        _BinaryOperatorImplType,
     )
     from .scalar import ScalarField
 
@@ -721,7 +721,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             raise DomainError(msg)
 
         # alter each point in second iteration
-        for coords, weight in cells:
+        for coords, weight in cells:  # type: ignore
             chng = weight * amount / (total_weight * grid.cell_volumes[coords])
             self.data[(Ellipsis, *coords)] += chng
 
@@ -817,7 +817,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         scaled_data = self.data * np.sqrt(self.grid.cell_volumes)
         axes = tuple(range(self.rank, self.data.ndim))
-        return np.std(scaled_data, axis=axes)  # type: ignore
+        return np.std(scaled_data, axis=axes)
 
     @property
     def magnitude(self) -> float:
@@ -902,7 +902,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     def make_dot_operator(
         self, backend: str | BackendBase = "default", *, conjugate: bool = True
-    ) -> BinaryOperatorImplType:
+    ) -> _BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products

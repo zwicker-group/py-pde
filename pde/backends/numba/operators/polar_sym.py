@@ -24,14 +24,15 @@ from ..backend import NumbaBackend
 from ..utils import jit
 
 if TYPE_CHECKING:
-    from ....tools.typing import NumericArray, OperatorImplType
+    from ....tools.typing import NumericArray
+    from ..typing import NumbaOperatorImplType
 
 
 @NumbaBackend.register_operator(PolarSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(
     grid: PolarSymGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized laplace operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -73,7 +74,7 @@ def make_gradient(
     *,
     backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized gradient operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -127,7 +128,7 @@ def make_gradient_squared(
     *,
     backend: NumbaBackend | None = None,
     central: bool = True,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized gradient squared operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -183,7 +184,7 @@ def make_gradient_squared(
 @fill_in_docstring
 def make_divergence(
     grid: PolarSymGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized divergence operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -223,7 +224,7 @@ def make_divergence(
 @fill_in_docstring
 def make_vector_gradient(
     grid: PolarSymGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized vector gradient operator for a polar grid.
 
     {DESCR_POLAR_GRID}
@@ -271,7 +272,7 @@ def make_vector_gradient(
 @fill_in_docstring
 def make_tensor_divergence(
     grid: PolarSymGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized tensor divergence operator for a polar grid.
 
     {DESCR_POLAR_GRID}

@@ -1,4 +1,9 @@
-"""Defines base class of backends that implement computations.
+"""Defines the :mod:`numpy` backend.
+
+This backend prefers in-place internal operator implementations for performance and
+compatibility with :mod:`numba`. Consequently, raw operators created by factories are
+typically expected to follow ``op(arr_full, out[, args])`` and write results into
+``out``. The public operator interface remains functional-first with optional `out`.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -23,13 +28,13 @@ if TYPE_CHECKING:
     from ...pdes import PDEBase
     from ...tools.expressions import ExpressionBase
     from ...tools.typing import (
-        BinaryOperatorImplType,
         DataSetter,
         GhostCellSetter,
         NumberOrArray,
         OperatorType,
         TField,
         TFunc,
+        _BinaryOperatorImplType,
     )
 
 
@@ -175,6 +180,72 @@ class NumpyBackend(BackendBase[NumericArray]):
 
         return set_valid_and_bcs
 
+    def make_operator_no_bc(
+        self,
+        grid: GridBase,
+        operator: str | OperatorInfo,
+        *,
+        dtype: DTypeLike | None = None,
+        **kwargs,
+    ) -> OperatorType:
+        """Return a compiled function applying an operator without boundary conditions.
+
+        The returned function has public signature
+        ``(arr, out=None, args=None) -> result``.
+
+        Note:
+            The resulting function does not check whether the ghost cells of the input
+            array have been supplied with sensible values. It is the responsibility of
+            the user to set the values of the ghost cells beforehand. Use this function
+            only if you absolutely know what you're doing. In all other cases,
+            :meth:`make_operator` is probably the better choice.
+
+            Backends can choose whether their internal operator implementation uses a
+            functional style ``op(arr, *, args=None) -> result`` or an in-place style
+            ``op(arr, out, *, args=None)``. This wrapper normalizes both styles to the
+            public signature above.
+
+        Args:
+            grid (:class:`~pde.grid.base.GridBase`):
+                Grid for which the operator is needed
+            operator (str):
+                Identifier for the operator. Some examples are 'laplace', 'gradient', or
+                'divergence'. The registered operators for this grid can be obtained
+                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            dtype (numpy dtype):
+                The data type of the field.
+            **kwargs:
+                Specifies extra arguments influencing how the operator is created.
+
+        Returns:
+            callable: the function that applies the operator. This function has the
+            signature (arr: NumericArray, out: NumericArray=None, args=None).
+
+        Internally, raw operator implementations are expected to use the functional
+        signature ``operator_raw(arr_full, out[, args])``.
+        """
+        # determine the operator for the chosen backend
+        operator_info = self.get_operator_info(grid, operator)
+        operator_raw = operator_info.factory(grid, **kwargs)
+        shape_out = (grid.dim,) * operator_info.rank_out + grid.shape
+
+        @self.compile_function
+        def apply_operator(
+            arr: NumericArray, out: NumericArray | None = None, args=None
+        ) -> NumericArray:
+            """Apply operator to full data without setting boundary conditions."""
+            if out is None:
+                out = np.empty(shape_out, dtype=arr.dtype if dtype is None else dtype)
+
+            if args is None:
+                operator_raw(arr, out)  # type: ignore
+            else:
+                operator_raw(arr, out, args=args)  # type: ignore
+
+            return out
+
+        return apply_operator
+
     def make_operator(
         self,
         grid: GridBase,
@@ -211,6 +282,9 @@ class NumpyBackend(BackendBase[NumericArray]):
         The function also accepts an optional parameter `args`, which is forwarded to
         `set_ghost_cells`. This allows setting boundary conditions based on external
         parameters, like time.
+
+        The internal raw operator implementation is expected to follow the in-place
+        style ``operator_raw(arr_full, out[, args])``.
 
         Returns:
             callable: the function that applies the operator. This function has the
@@ -284,7 +358,7 @@ class NumpyBackend(BackendBase[NumericArray]):
 
     def make_inner_prod_operator(
         self, field: DataFieldBase, *, conjugate: bool = True
-    ) -> BinaryOperatorImplType:
+    ) -> _BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -336,7 +410,7 @@ class NumpyBackend(BackendBase[NumericArray]):
 
         return dot
 
-    def make_outer_prod_operator(self, field: DataFieldBase) -> BinaryOperatorImplType:
+    def make_outer_prod_operator(self, field: DataFieldBase) -> _BinaryOperatorImplType:
         """Return operator calculating the outer product between two fields.
 
         This supports typically only supports products between two vector fields.

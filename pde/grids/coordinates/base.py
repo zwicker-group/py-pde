@@ -170,7 +170,7 @@ class CoordinatesBase:
 
     def _volume_factor(self, points: FloatingArray) -> ArrayLike:
         # default implementation based on scale factors
-        return np.prod(self._scale_factors(points), axis=0)  # type: ignore
+        return np.prod(self._scale_factors(points), axis=0)
 
     def volume_factor(self, points: FloatingArray) -> ArrayLike:
         """Calculate the volume factors at various points.

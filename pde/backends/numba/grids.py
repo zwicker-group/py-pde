@@ -79,7 +79,7 @@ def make_cell_volume_getter(
 
         @backend.compile_function
         def get_cell_volume(*args) -> float:
-            return cell_volume  # type: ignore
+            return cell_volume
 
     else:
         # some cells have a different volume

@@ -26,14 +26,15 @@ from ..backend import NumbaBackend
 from ..utils import jit
 
 if TYPE_CHECKING:
-    from ....tools.typing import NumericArray, OperatorImplType
+    from ....tools.typing import NumericArray
+    from ..typing import NumbaOperatorImplType
 
 
 @NumbaBackend.register_operator(CylindricalSymGrid, "laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(
     grid: CylindricalSymGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized laplace operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -80,7 +81,7 @@ def make_laplace(
 @fill_in_docstring
 def make_gradient(
     grid: CylindricalSymGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized gradient operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -126,7 +127,7 @@ def make_gradient_squared(
     *,
     backend: NumbaBackend | None = None,
     central: bool = True,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized gradient squared operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -187,7 +188,7 @@ def make_gradient_squared(
 @fill_in_docstring
 def make_divergence(
     grid: CylindricalSymGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized divergence operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -235,7 +236,7 @@ def make_divergence(
 @fill_in_docstring
 def make_vector_gradient(
     grid: CylindricalSymGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized vector gradient operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -293,7 +294,7 @@ def make_vector_gradient(
 @fill_in_docstring
 def make_vector_laplace(
     grid: CylindricalSymGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized vector laplace operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
@@ -362,7 +363,7 @@ def make_vector_laplace(
 @fill_in_docstring
 def make_tensor_divergence(
     grid: CylindricalSymGrid, *, backend: NumbaBackend | None = None
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized tensor divergence operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}

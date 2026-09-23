@@ -27,7 +27,8 @@ from ..backend import NumbaBackend
 from ..utils import jit
 
 if TYPE_CHECKING:
-    from ....tools.typing import NumericArray, OperatorImplType
+    from ....tools.typing import NumericArray
+    from ..typing import NumbaOperatorImplType
 
 
 @NumbaBackend.register_operator(SphericalSymGrid, "laplace", rank_in=0, rank_out=0)
@@ -37,7 +38,7 @@ def make_laplace(
     *,
     backend: NumbaBackend | None = None,
     conservative: bool | None = None,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized laplace operator for a spherical grid.
 
     {DESCR_SPHERICAL_GRID}
@@ -107,7 +108,7 @@ def make_gradient(
     *,
     backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized gradient operator for a spherical grid.
 
     {DESCR_SPHERICAL_GRID}
@@ -162,7 +163,7 @@ def make_gradient_squared(
     *,
     backend: NumbaBackend | None = None,
     central: bool = True,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized gradient squared operator for a spherical grid.
 
     {DESCR_SPHERICAL_GRID}
@@ -222,7 +223,7 @@ def make_divergence(
     safe: bool | None = None,
     conservative: bool | None = None,
     method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized divergence operator for a spherical grid.
 
     {DESCR_SPHERICAL_GRID}
@@ -333,7 +334,7 @@ def make_vector_gradient(
     backend: NumbaBackend | None = None,
     method: Literal["central", "forward", "backward"] = "central",
     safe: bool | None = None,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized vector gradient operator for a spherical grid.
 
     Warning:
@@ -422,7 +423,7 @@ def make_tensor_divergence(
     backend: NumbaBackend | None = None,
     safe: bool | None = None,
     conservative: bool | None = False,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized tensor divergence operator for a spherical grid.
 
     {DESCR_SPHERICAL_GRID}
@@ -541,7 +542,7 @@ def make_tensor_double_divergence(
     backend: NumbaBackend | None = None,
     safe: bool | None = None,
     conservative: bool | None = None,
-) -> OperatorImplType:
+) -> NumbaOperatorImplType:
     """Make a discretized tensor double divergence operator for a spherical grid.
 
     {DESCR_SPHERICAL_GRID}
