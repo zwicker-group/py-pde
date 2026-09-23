@@ -167,7 +167,7 @@ class FieldBase(metaclass=ABCMeta):
         # setting the new shape. This raises an error if such reshaping is impossible
         # without making a copy of the array.
         shape = (-1, *self.grid._shape_full)
-        return np.reshape(self._data_full, shape, copy=False)  # type: ignore
+        return np.reshape(self._data_full, shape, copy=False)
 
     @_data_flat.setter
     def _data_flat(self, value: NumericArray) -> None:

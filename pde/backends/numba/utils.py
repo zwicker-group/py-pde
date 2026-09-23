@@ -280,7 +280,7 @@ def flat_idx(arr: NumericArray, i: int) -> Number:
     """
     if np.isscalar(arr):
         return arr  # type: ignore
-    return arr.flat[i]  # type: ignore
+    return arr.flat[i]
 
 
 @nb_overload(flat_idx)

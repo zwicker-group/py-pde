@@ -974,7 +974,7 @@ class GridBase(metaclass=ABCMeta):
             the grid
         """
         cell_coords = self.transform(points, source=coords, target="cell")
-        return np.all((cell_coords >= 0) & (cell_coords <= self.shape), axis=-1)  # type: ignore
+        return np.all((cell_coords >= 0) & (cell_coords <= self.shape), axis=-1)
 
     def iter_mirror_points(
         self, point: FloatingArray, with_self: bool = False, only_periodic: bool = True

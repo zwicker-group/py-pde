@@ -1100,7 +1100,7 @@ class PDE(SDEBase):
         msg = f"Unsupported field {state.__class__.__name__}"
         raise TypeError(msg)
 
-    def make_noise_variance(
+    def make_noise_variance(  # type: ignore
         self,
         state: TField,
         *,
@@ -1127,7 +1127,7 @@ class PDE(SDEBase):
         """
         if self._noise_expr is None:
             # the noise variance is a constant, which the base class handles
-            return super().make_noise_variance(
+            return super().make_noise_variance(  # type: ignore
                 state, backend=backend, ret_diff=ret_diff
             )
 

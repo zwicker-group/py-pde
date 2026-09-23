@@ -1429,7 +1429,7 @@ class ConstBCBase(BCBase):
                 coords[self.grid.axes[self.axis]] = self.axis_coord
                 for idx in np.ndindex(*result.shape):
                     for i, name in enumerate(bc_vars):
-                        coords[name] = bc_coords[i][idx]
+                        coords[name] = bc_coords[i][idx]  # type: ignore
                     result[idx] = expr(**coords)
 
             else:

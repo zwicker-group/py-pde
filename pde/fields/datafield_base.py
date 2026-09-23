@@ -721,7 +721,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             raise DomainError(msg)
 
         # alter each point in second iteration
-        for coords, weight in cells:
+        for coords, weight in cells:  # type: ignore
             chng = weight * amount / (total_weight * grid.cell_volumes[coords])
             self.data[(Ellipsis, *coords)] += chng
 
@@ -817,7 +817,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         scaled_data = self.data * np.sqrt(self.grid.cell_volumes)
         axes = tuple(range(self.rank, self.data.ndim))
-        return np.std(scaled_data, axis=axes)  # type: ignore
+        return np.std(scaled_data, axis=axes)
 
     @property
     def magnitude(self) -> float:

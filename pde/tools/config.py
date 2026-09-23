@@ -838,7 +838,7 @@ def environment() -> dict[str, Any]:
     packages -= set(packages_min)
     result["optional packages"] = get_package_versions(sorted(packages))
 
-    backend = {"available": available_backends()}
+    backend: dict[str, Any] = {"available": available_backends()}
     if module_available("numba"):
         backend["numba"] = numba_environment()
     result["backend"] = backend
