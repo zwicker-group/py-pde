@@ -39,7 +39,7 @@ class FieldCollection(FieldBase):
         self,
         fields: Sequence[DataFieldBase] | Mapping[str, DataFieldBase],
         *,
-        copy_fields: bool = False,
+        copy_fields: bool = True,
         label: str | None = None,
         labels: list[str | None] | _FieldLabels | None = None,
         dtype: DTypeLike | None = None,
@@ -54,9 +54,10 @@ class FieldCollection(FieldBase):
                 copied. Note that fields are always copied if some of the supplied
                 fields are identical. If fields are copied the original fields will be
                 left untouched. Conversely, if `copy_fields == False`, the original
-                fields are modified so their data points to the collection. It is thus
-                basically impossible to have fields that are linked to multiple
-                collections at the same time.
+                fields are modified so their data points to the collection and
+                manipulating either field thus also affects the other. Note that it is
+                impossible to have fields that are linked to multiple collections at the
+                same time.
             label (str):
                 Label of the field collection
             labels (list of str):

@@ -3,6 +3,7 @@
 This package provides classes and methods for solving partial differential equations
 (PDEs) on various grids using different numerical methods. Key components include:
 
+- **Backends**: Concrete implementations using various numerical computing backends
 - **Fields**: Data structures representing scalar, vector, and tensor fields on grids
 - **Grids**: Spatial discretizations including Cartesian and curvilinear coordinates
 - **PDEs**: Pre-defined PDEs and a framework for defining custom PDEs

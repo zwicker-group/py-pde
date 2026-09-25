@@ -51,7 +51,7 @@ class SIRPDE(PDEBase):
         ds_dt = diff * s.laplace(self.bc) - self.beta * i * s
         di_dt = diff * i.laplace(self.bc) + self.beta * i * s - self.gamma * i
         dr_dt = diff * r.laplace(self.bc) + self.gamma * i
-        return FieldCollection([ds_dt, di_dt, dr_dt])
+        return FieldCollection([ds_dt, di_dt, dr_dt], copy_fields=False)
 
 
 eq = SIRPDE(beta=2, gamma=0.1)
