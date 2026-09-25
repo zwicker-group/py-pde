@@ -124,7 +124,7 @@ class KleinGordonPDE(PDEBase):
         u, v = state
         u_t = v.copy()
         v_t = self.speed**2 * u.laplace(self.bc, args={"t": t}) - self.mass**2 * u  # type: ignore
-        return FieldCollection([u_t, v_t])
+        return FieldCollection([u_t, v_t], copy_fields=False)
 
     def make_evolution_rate(
         self, state: FieldCollection, backend: BackendBase

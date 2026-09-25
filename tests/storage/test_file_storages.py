@@ -19,7 +19,7 @@ def test_storage_persistence(collection, tmp_path):
     scalar = ScalarField(grid)
     vector = pde.VectorField(grid)
     if collection:
-        state = pde.FieldCollection([scalar, vector])
+        state = pde.FieldCollection([scalar, vector], copy_fields=False)
     else:
         state = scalar
 

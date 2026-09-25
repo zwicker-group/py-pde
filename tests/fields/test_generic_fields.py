@@ -166,7 +166,7 @@ def test_scalar_arithmetics(rng):
 
 
 @pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
-def test_data_managment(field_class):
+def test_data_management(field_class):
     """Test how data is set."""
     grid = UnitGrid([2, 2])
     s1 = field_class(grid, data=1)
@@ -175,7 +175,7 @@ def test_data_managment(field_class):
     s2 = field_class(grid)
     np.testing.assert_allclose(s2.data, 0)
 
-    c = FieldCollection([s1, s2])
+    c = FieldCollection([s1, s2], copy_fields=False)
     s1.data = 0
     np.testing.assert_allclose(c.data, 0)
 
@@ -194,6 +194,11 @@ def test_data_managment(field_class):
 
     c[0] = s2
     np.testing.assert_allclose(c.data, 6)
+
+    s1.data = 16
+    c = FieldCollection([s1, s2], copy_fields=True)
+    s1.data = 17
+    np.testing.assert_allclose(c.data[0], 16)
 
     # nested collections
     with pytest.raises(TypeError):
