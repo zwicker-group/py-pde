@@ -331,6 +331,7 @@ class CylindricalSymGrid(GridBase):
             "extent_x": self.axes_bounds[axis],
             "label_x": self.axes[axis],
             "label_y": label_y,
+            "periodic_x": self.periodic[axis],
         }
 
     def get_image_data(self, data: NumericArray) -> dict[str, Any]:
@@ -360,6 +361,8 @@ class CylindricalSymGrid(GridBase):
             "extent": extent,
             "label_x": self.axes[0],
             "label_y": self.axes[1],
+            "periodic_x": self.periodic[0],
+            "periodic_y": self.periodic[1],
         }
 
     def iter_mirror_points(

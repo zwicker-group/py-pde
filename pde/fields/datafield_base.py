@@ -18,7 +18,7 @@ from ..grids.base import DimensionError, DomainError, GridBase, discretize_inter
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import number_array
-from ..tools.plotting import PlotReference, plot_on_axes
+from ..tools.plotting import PlotReference, indicate_axes_periodicity, plot_on_axes
 from ..tools.spectral import CorrelationType, make_correlated_noise
 from .base import FieldBase, RankError
 
@@ -1108,7 +1108,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         (line2d,) = ax.plot(line_data["data_x"], line_data["data_y"].real, **kwargs)
 
         # set some default properties
+        indicate_axes_periodicity(ax, line_data)
         ax.set_xlabel(line_data["label_x"])
+        ax.set_xlim(*line_data["extent_x"])
         if ylabel is None:
             ylabel = line_data.get("label_y", self.label)
         if ylabel:
@@ -1209,6 +1211,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         axes_image = ax.imshow(data["data"].T, extent=data["extent"], **args)
 
         # set some default properties
+        indicate_axes_periodicity(ax, data)
         ax.set_xlabel(data["label_x"])
         ax.set_ylabel(data["label_y"])
         ax.set_title(data.get("title", self.label))
@@ -1322,6 +1325,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         parameters["data_kws"] = data_kws  # save data parameters
 
         # set some default properties of the plot
+        indicate_axes_periodicity(ax, data)
         ax.set_aspect("equal")
         ax.set_xlabel(data["label_x"])
         ax.set_ylabel(data["label_y"])

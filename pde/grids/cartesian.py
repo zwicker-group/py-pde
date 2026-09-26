@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from ..tools.cuboid import Cuboid
-from ..tools.plotting import plot_on_axes
+from ..tools.plotting import indicate_axes_periodicity, plot_on_axes
 from .base import (
     CoordsType,
     DimensionError,
@@ -370,6 +370,17 @@ class CartesianGrid(GridBase):
             "extent_x": self.axes_bounds[axis],
             "label_x": self.axes[axis],
             "label_y": label_y,
+            "periodic_x": self.periodic[axis],
+        }
+
+    def _add_2d_axes_data(self, data: dict[str, Any]) -> dict[str, Any]:
+        return data | {
+            "x": self.axes_coords[0],
+            "y": self.axes_coords[1],
+            "label_x": self.axes[0],
+            "label_y": self.axes[1],
+            "periodic_x": self.periodic[0],
+            "periodic_y": self.periodic[1],
         }
 
     def get_image_data(self, data: NumericArray) -> dict[str, Any]:
@@ -392,14 +403,7 @@ class CartesianGrid(GridBase):
         for c in self.axes_bounds[:2]:
             extent.extend(c)
 
-        return {
-            "data": image_data,
-            "x": self.axes_coords[0],
-            "y": self.axes_coords[1],
-            "extent": extent,
-            "label_x": self.axes[0],
-            "label_y": self.axes[1],
-        }
+        return self._add_2d_axes_data({"data": image_data, "extent": extent})
 
     def get_vector_data(self, data: NumericArray, **kwargs) -> dict[str, Any]:
         if self.dim != 2:
@@ -412,15 +416,13 @@ class CartesianGrid(GridBase):
             )
             raise ValueError(msg)
 
-        return {
-            "data_x": data[0],
-            "data_y": data[1],
-            "x": self.axes_coords[0],
-            "y": self.axes_coords[1],
-            "extent": np.ravel(self.axes_bounds).tolist(),
-            "label_x": self.axes[0],
-            "label_y": self.axes[1],
-        }
+        return self._add_2d_axes_data(
+            {
+                "data_x": data[0],
+                "data_y": data[1],
+                "extent": np.ravel(self.axes_bounds).tolist(),
+            }
+        )
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):
@@ -450,6 +452,13 @@ class CartesianGrid(GridBase):
             ax.set_ylabel(self.axes[1])
 
             ax.set_aspect(1)
+
+        # indicate the periodicity of the grid
+        if self.dim == 1:
+            data = {"periodic_x": self.periodic[0], "periodic_y": False}
+        else:
+            data = {"periodic_x": self.periodic[0], "periodic_y": self.periodic[1]}
+        indicate_axes_periodicity(ax, data)
 
     def slice(self, indices: Sequence[int]) -> CartesianGrid:
         """Return a subgrid of only the specified axes.
