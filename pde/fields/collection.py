@@ -31,16 +31,17 @@ class FieldCollection(FieldBase):
     """Collection of fields defined on the same grid.
 
     Note:
-        All fields in a collection must have the same data type. This might lead to
-        up-casting, where for instance a combination of a real-valued and a
-        complex-valued field will be both stored as complex fields.
+        Collections are initialized with a list of individual fields, whose data is
+        copied into the collection, so that changing the original fields will not change
+        the collection. All fields in a collection must have the same data type. This
+        might lead to up-casting, where for instance a combination of a real-valued and
+        a complex-valued field will be both stored as complex fields.
     """
 
     def __init__(
         self,
         fields: Sequence[DataFieldBase] | Mapping[str, DataFieldBase],
         *,
-        link_data: bool = False,
         label: str | None = None,
         labels: list[str | None] | _FieldLabels | None = None,
         dtype: DTypeLike | None = None,
@@ -51,10 +52,6 @@ class FieldCollection(FieldBase):
             fields (sequence or mapping of :class:`DataFieldBase`):
                 Sequence or mapping of the individual fields. If a mapping is used, the
                 keys set the names of the individual fields.
-            link_data (bool):
-                Flag determining whether the fields in the collection share data with
-                the original fields. Note that fields can never share data with multiple
-                collections at the same time.
             label (str):
                 Label of the field collection
             labels (list of str):
@@ -62,7 +59,7 @@ class FieldCollection(FieldBase):
                 `fields` argument are used.
             dtype (numpy dtype):
                 The data type of the field. All the numpy dtypes are supported. If
-                omitted, it will be determined from `data` automatically.
+                omitted, it will be  automatically determined from the given fields.
             copy_fields (bool):
                 Deprecated option.
         """
@@ -83,25 +80,17 @@ class FieldCollection(FieldBase):
         # `copy_fields` is deprecated since 2026-09-26
         if copy_fields is not None:
             warnings.warn(
-                "The `copy_fields` argument is deprecated. Use `link_data` instead.",
+                "The `copy_fields` argument is deprecated and linking fields is no "
+                "longer supported.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-            if link_data:
-                msg = "Cannot specify both `link_data` and the deprecated `copy_fields`"
-                raise ValueError(msg)
-            link_data = not copy_fields
 
         # check if grids are compatible
         grid = fields[0].grid
         if any(grid != f.grid for f in fields[1:]):
             grids = [f.grid for f in fields]
             msg = f"Grids are incompatible: {grids}"
-            raise RuntimeError(msg)
-
-        # check whether some fields are identical (remove this when we control links)
-        if link_data and len(fields) != len({id(field) for field in fields}):
-            msg = "Cannot link identical fields in the collection"
             raise RuntimeError(msg)
 
         # collect data from individual fields and store it in a flattened array
@@ -142,10 +131,6 @@ class FieldCollection(FieldBase):
                 msg = "Spurious copy of data detected!"
                 raise RuntimeError(msg)
             self._fields.append(internal_field)
-
-            # link the data of the original fields back to self._data if requested
-            if link_data:
-                external_field._data_flat = self._data_full[self._slices[i]]
 
         if labels is not None:
             self.labels = labels  # type: ignore
@@ -196,7 +181,7 @@ class FieldCollection(FieldBase):
 
         if isinstance(index, slice):
             # range of indices -> collection is returned
-            return FieldCollection(self.fields[index], link_data=False)
+            return FieldCollection(self.fields[index])
 
         msg = f"Unsupported index `{index}`"
         raise TypeError(msg)
@@ -283,7 +268,6 @@ class FieldCollection(FieldBase):
         if "class" in attributes:
             class_name = attributes.pop("class")
             assert class_name == cls.__name__
-        attributes["link_data"] = False  # fields will be created from scratch
 
         # restore the individual fields (without data)
         fields = [
@@ -360,7 +344,7 @@ class FieldCollection(FieldBase):
             fields.append(field)
             start = end
 
-        return cls(fields, link_data=False, label=label, labels=labels, dtype=dtype)
+        return cls(fields, label=label, labels=labels, dtype=dtype)
 
     @classmethod
     def _from_hdf_dataset(cls, dataset) -> FieldCollection:
@@ -628,7 +612,7 @@ class FieldCollection(FieldBase):
         fields = [f.copy() for f in self.fields]
 
         # create the collection from the copied fields
-        return self.__class__(fields, link_data=False, label=label, dtype=dtype)
+        return self.__class__(fields, label=label, dtype=dtype)
 
     def append(
         self,
@@ -665,10 +649,7 @@ class FieldCollection(FieldBase):
                 _labels.append(field.label)
 
         return FieldCollection(
-            _fields,
-            link_data=False,
-            label=self.label if label is None else label,
-            labels=_labels,
+            _fields, label=self.label if label is None else label, labels=_labels
         )
 
     def _apply_to_fields(

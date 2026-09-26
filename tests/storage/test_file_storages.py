@@ -19,7 +19,7 @@ def test_storage_persistence(collection, tmp_path):
     scalar = ScalarField(grid)
     vector = pde.VectorField(grid)
     if collection:
-        state = pde.FieldCollection([scalar, vector], link_data=True)
+        state = pde.FieldCollection([scalar, vector])
     else:
         state = scalar
 
@@ -39,11 +39,9 @@ def test_storage_persistence(collection, tmp_path):
         with FileStorage(path, info={"a": 1}, write_mode=write_mode) as writer:
             # first batch
             writer.start_writing(state, info={"b": 2})
-            scalar.data = np.arange(dim)
-            vector.data[:] = np.arange(dim)
+            state.data[:] = np.arange(dim)
             writer.append(state, 0)
-            scalar.data = np.arange(dim, 2 * dim)
-            vector.data[:] = np.arange(dim, 2 * dim)
+            state.data[:] = np.arange(dim, 2 * dim)
             writer.append(state)
             writer.end_writing()
 
@@ -54,8 +52,7 @@ def test_storage_persistence(collection, tmp_path):
 
             # second batch
             writer.start_writing(state, info={"c": 3})
-            scalar.data = np.arange(2 * dim, 3 * dim)
-            vector.data[:] = np.arange(2 * dim, 3 * dim)
+            state.data[:] = np.arange(2 * dim, 3 * dim)
             writer.append(state, 2)
             writer.end_writing()
 

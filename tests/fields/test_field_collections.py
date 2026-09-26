@@ -33,11 +33,11 @@ def test_collections(rng):
     sf = ScalarField.random_uniform(grid, label="sf", rng=rng)
     vf = VectorField.random_uniform(grid, label="vf", rng=rng)
     tf = Tensor2Field.random_uniform(grid, label="tf", rng=rng)
-    fields = FieldCollection([sf, vf, tf], link_data=True)
+    fields = FieldCollection([sf, vf, tf])
     assert fields.data.shape == (7, 3, 4)
     assert isinstance(str(fields), str)
 
-    fields2 = FieldCollection({"s": sf, "v": vf, "t": tf}, link_data=False)
+    fields2 = FieldCollection({"s": sf, "v": vf, "t": tf})
     assert fields == fields2
     assert fields2.labels == ["s", "v", "t"]
     assert not np.shares_memory(fields[0].data, fields2[0].data)
@@ -56,24 +56,11 @@ def test_collections(rng):
     np.testing.assert_equal(copy[0].data, tf.data)
     assert not np.may_share_memory(copy[0].data, tf.data)
 
-    fields.data[:] = 0
-    np.testing.assert_allclose(sf.data, 0)
-    np.testing.assert_allclose(vf.data, 0)
-    np.testing.assert_allclose(tf.data, 0)
-
     assert fields[0] is fields["sf"]
     assert fields[1] is fields["vf"]
     assert fields[2] is fields["tf"]
     with pytest.raises(KeyError):
         fields["42"]
-
-    sf.data = 1
-    vf.data = 1
-    tf.data = 1
-    np.testing.assert_allclose(fields.data, 1)
-    assert all(np.allclose(i, 12) for i in fields.integrals)
-    assert all(np.allclose(i, 1) for i in fields.averages)
-    assert np.allclose(fields.magnitudes, np.sqrt([1, 2, 4]))
 
     assert sf.data.shape == (3, 4)
     assert vf.data.shape == (2, 3, 4)
@@ -89,7 +76,7 @@ def test_collections(rng):
     assert c2.grid is not grid
 
     fields["sf"] = 2.0
-    np.testing.assert_allclose(sf.data, 2)
+    np.testing.assert_allclose(fields[0].data, 2)
     with pytest.raises(KeyError):
         fields["42"] = 0
 
@@ -102,7 +89,7 @@ def test_collections_copy():
     grid = UnitGrid([2, 2])
     sf = ScalarField(grid, 0)
     vf = VectorField(grid, 1)
-    fc = FieldCollection([sf, vf], link_data=False)
+    fc = FieldCollection([sf, vf])
 
     data = np.r_[np.zeros(4), np.ones(8)]
     np.testing.assert_allclose(fc.data.flat, data)
@@ -118,7 +105,7 @@ def test_collections_copy():
     np.testing.assert_allclose(fc2.data.flat, data)
 
     # special case
-    fc = FieldCollection([sf, sf], link_data=False)
+    fc = FieldCollection([sf, sf])
     fc[0] = 2
     np.testing.assert_allclose(fc[0].data, 2)
     np.testing.assert_allclose(fc[1].data, 1)
@@ -164,12 +151,12 @@ def test_collections_operators():
     grid = UnitGrid([3, 4])
     sf = ScalarField(grid, 1)
     vf = VectorField(grid, 1)
-    fields = FieldCollection([sf, vf], link_data=True)
+    fields = FieldCollection([sf, vf])
 
     fields += fields
     np.testing.assert_allclose(fields.data, 2)
-    np.testing.assert_allclose(sf.data, 2)
-    np.testing.assert_allclose(vf.data, 2)
+    np.testing.assert_allclose(sf.data, 1)
+    np.testing.assert_allclose(vf.data, 1)
 
     fields = fields - 1
     np.testing.assert_allclose(fields.data, 1)

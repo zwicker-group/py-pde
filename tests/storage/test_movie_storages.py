@@ -51,7 +51,7 @@ def test_movie_storage_collection(dim, num_fields, tmp_path):
     path = tmp_path / f"test_movie_storage_collection_{dim}_{num_fields}.avi"
 
     grid = pde.UnitGrid([8] * dim)
-    field = pde.FieldCollection([pde.ScalarField(grid)] * num_fields, link_data=False)
+    field = pde.FieldCollection([pde.ScalarField(grid)] * num_fields)
     eq = pde.PDE(dict([("a", "1"), ("b", "2"), ("c", "3")][:num_fields]))
     writer = MovieStorage(path, vmax=[5, 10, 15])
     eq.solve(field, t_range=3.5, dt=0.1, backend="numpy", tracker=writer.tracker(1))
