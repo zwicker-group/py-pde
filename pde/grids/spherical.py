@@ -275,6 +275,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             "data_y": data,
             "extent_x": self.axes_bounds[0],
             "label_x": self.axes[0],
+            "periodic_x": False,
         }
 
     def get_image_data(
@@ -353,6 +354,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             "extent": (-r_outer, r_outer, -r_outer, r_outer),
             "label_x": "x",
             "label_y": "y",
+            "periodic_x": False,
+            "periodic_y": False,
         }
 
     def get_cartesian_grid(

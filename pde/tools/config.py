@@ -642,6 +642,12 @@ with config.changed_mode(node="insert", leaf="insert"):
         "https://en.wikipedia.org/wiki/Nine-point_stencil. Note that some backends "
         "might ignore this option.",
     )
+    config["plotting.indicate_grid_periodicity"] = Parameter(
+        value=True,
+        cls=bool,
+        description="Determines whether plots indicate periodic axes of grids via "
+        "dotted axes spines.",
+    )
     config["boundaries.accept_lists"] = Parameter(
         value=True,
         cls=bool,

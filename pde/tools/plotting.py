@@ -25,11 +25,13 @@ import sys
 import warnings
 from typing import TYPE_CHECKING, Any, Literal
 
+from .. import config
 from ..tools.docstrings import replace_in_docstring
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
+    import matplotlib as mpl
     import matplotlib.cm
     import matplotlib.figure as mpl_figure
     import napari
@@ -540,6 +542,35 @@ def plot_on_figure(wrapped=None, update_method=None):
     wrapper.update_method = update_method
 
     return wrapper
+
+
+def indicate_axes_periodicity(ax: mpl.axes.Axes, data: dict[str, Any]) -> None:
+    """Set spine styles to indicate periodic boundary conditions.
+
+    This function visually indicates which axes have periodic boundary conditions
+    by changing the spine linestyle to a dotted pattern. For periodic x-axes, the
+    left and right spines are styled; for periodic y-axes, the top and bottom
+    spines are styled.
+
+    Args:
+        ax (:class:`matplotlib.axes.Axes`):
+            The axes object to modify.
+        data (dict):
+            Dictionary containing plotting information. This function looks for keys
+            ``"periodic_x"`` and ``"periodic_y"``, which indicate whether the
+            corresponding axes have periodic boundary conditions.
+
+    Note:
+        The function uses a dotted line style to indicate periodic boundaries.
+        Non-periodic axes are not touched.
+    """
+    if config["plotting.indicate_grid_periodicity"]:
+        if data.get("periodic_x", False):
+            ax.spines["left"].set_linestyle((0, (4, 4)))
+            ax.spines["right"].set_linestyle((0, (4, 4)))
+        if data.get("periodic_y", False):
+            ax.spines["top"].set_linestyle((0, (4, 4)))
+            ax.spines["bottom"].set_linestyle((0, (4, 4)))
 
 
 class PlottingContextBase:
