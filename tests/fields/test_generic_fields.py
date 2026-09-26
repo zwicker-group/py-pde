@@ -175,7 +175,7 @@ def test_data_management(field_class):
     s2 = field_class(grid)
     np.testing.assert_allclose(s2.data, 0)
 
-    c = FieldCollection([s1, s2], copy_fields=False)
+    c = FieldCollection([s1, s2], link_data=True)
     s1.data = 0
     np.testing.assert_allclose(c.data, 0)
 
@@ -196,7 +196,7 @@ def test_data_management(field_class):
     np.testing.assert_allclose(c.data, 6)
 
     s1.data = 16
-    c = FieldCollection([s1, s2], copy_fields=True)
+    c = FieldCollection([s1, s2], link_data=False)
     s1.data = 17
     np.testing.assert_allclose(c.data[0], 16)
 

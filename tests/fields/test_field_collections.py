@@ -33,11 +33,11 @@ def test_collections(rng):
     sf = ScalarField.random_uniform(grid, label="sf", rng=rng)
     vf = VectorField.random_uniform(grid, label="vf", rng=rng)
     tf = Tensor2Field.random_uniform(grid, label="tf", rng=rng)
-    fields = FieldCollection([sf, vf, tf], copy_fields=False)
+    fields = FieldCollection([sf, vf, tf], link_data=True)
     assert fields.data.shape == (7, 3, 4)
     assert isinstance(str(fields), str)
 
-    fields2 = FieldCollection({"s": sf, "v": vf, "t": tf}, copy_fields=True)
+    fields2 = FieldCollection({"s": sf, "v": vf, "t": tf}, link_data=False)
     assert fields == fields2
     assert fields2.labels == ["s", "v", "t"]
     assert not np.shares_memory(fields[0].data, fields2[0].data)
@@ -102,7 +102,7 @@ def test_collections_copy():
     grid = UnitGrid([2, 2])
     sf = ScalarField(grid, 0)
     vf = VectorField(grid, 1)
-    fc = FieldCollection([sf, vf], copy_fields=False)
+    fc = FieldCollection([sf, vf], link_data=False)
 
     data = np.r_[np.zeros(4), np.ones(8)]
     np.testing.assert_allclose(fc.data.flat, data)
@@ -113,11 +113,12 @@ def test_collections_copy():
     assert fc[1].data is not fc2[1].data
 
     sf.data = 1
-    np.testing.assert_allclose(fc.data.flat, np.ones(12))
+    np.testing.assert_allclose(fc[0].data, 0)
+    np.testing.assert_allclose(fc[1].data, 1)
     np.testing.assert_allclose(fc2.data.flat, data)
 
     # special case
-    fc = FieldCollection([sf, sf], copy_fields=False)
+    fc = FieldCollection([sf, sf], link_data=False)
     fc[0] = 2
     np.testing.assert_allclose(fc[0].data, 2)
     np.testing.assert_allclose(fc[1].data, 1)
@@ -163,7 +164,7 @@ def test_collections_operators():
     grid = UnitGrid([3, 4])
     sf = ScalarField(grid, 1)
     vf = VectorField(grid, 1)
-    fields = FieldCollection([sf, vf], copy_fields=False)
+    fields = FieldCollection([sf, vf], link_data=True)
 
     fields += fields
     np.testing.assert_allclose(fields.data, 2)
@@ -459,25 +460,3 @@ def test_field_collection_plotting():
         get_panel_count((4, 0))
     with pytest.raises(TypeError):
         get_panel_count(4)
-
-
-def test_linking_fields():
-    """Test ensuring that linking works the way we intend it to."""
-    grid = UnitGrid([1])
-    s = ScalarField(grid, 0)
-    c1 = FieldCollection([s], copy_fields=False)
-    c2 = FieldCollection([s], copy_fields=False)
-
-    np.testing.assert_allclose(s.data, 0)
-    np.testing.assert_allclose(c1.data, 0)
-    np.testing.assert_allclose(c2.data, 0)
-
-    c1.data = 1
-    np.testing.assert_allclose(s.data, 0)
-    np.testing.assert_allclose(c1.data, 1)
-    np.testing.assert_allclose(c2.data, 0)
-
-    c2.data = 2
-    np.testing.assert_allclose(s.data, 2)
-    np.testing.assert_allclose(c1.data, 1)
-    np.testing.assert_allclose(c2.data, 2)

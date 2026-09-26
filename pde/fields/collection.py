@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import math
+import warnings
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, overload
 
@@ -39,25 +40,21 @@ class FieldCollection(FieldBase):
         self,
         fields: Sequence[DataFieldBase] | Mapping[str, DataFieldBase],
         *,
-        copy_fields: bool = True,
+        link_data: bool = False,
         label: str | None = None,
         labels: list[str | None] | _FieldLabels | None = None,
         dtype: DTypeLike | None = None,
+        copy_fields: bool | None = None,
     ):
         """
         Args:
             fields (sequence or mapping of :class:`DataFieldBase`):
                 Sequence or mapping of the individual fields. If a mapping is used, the
                 keys set the names of the individual fields.
-            copy_fields (bool):
-                Flag determining whether the individual fields given in `fields` are
-                copied. Note that fields are always copied if some of the supplied
-                fields are identical. If fields are copied the original fields will be
-                left untouched. Conversely, if `copy_fields == False`, the original
-                fields are modified so their data points to the collection and
-                manipulating either field thus also affects the other. Note that it is
-                impossible to have fields that are linked to multiple collections at the
-                same time.
+            link_data (bool):
+                Flag determining whether the fields in the collection share data with
+                the original fields. Note that fields can never share data with multiple
+                collections at the same time.
             label (str):
                 Label of the field collection
             labels (list of str):
@@ -66,6 +63,8 @@ class FieldCollection(FieldBase):
             dtype (numpy dtype):
                 The data type of the field. All the numpy dtypes are supported. If
                 omitted, it will be determined from `data` automatically.
+            copy_fields (bool):
+                Deprecated option.
         """
         if isinstance(fields, FieldCollection):
             # support assigning a field collection for convenience
@@ -81,6 +80,18 @@ class FieldCollection(FieldBase):
             msg = "At least one field must be defined"
             raise ValueError(msg)
 
+        # `copy_fields` is deprecated since 2026-09-26
+        if copy_fields is not None:
+            warnings.warn(
+                "The `copy_fields` argument is deprecated. Use `link_data` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if link_data:
+                msg = "Cannot specify both `link_data` and the deprecated `copy_fields`"
+                raise ValueError(msg)
+            link_data = not copy_fields
+
         # check if grids are compatible
         grid = fields[0].grid
         if any(grid != f.grid for f in fields[1:]):
@@ -88,21 +99,15 @@ class FieldCollection(FieldBase):
             msg = f"Grids are incompatible: {grids}"
             raise RuntimeError(msg)
 
-        # check whether some fields are identical
-        if not copy_fields and len(fields) != len({id(field) for field in fields}):
-            self._logger.warning("Creating a copy of identical fields in collection")
-            copy_fields = True
+        # check whether some fields are identical (remove this when we control links)
+        if link_data and len(fields) != len({id(field) for field in fields}):
+            msg = "Cannot link identical fields in the collection"
+            raise RuntimeError(msg)
 
-        # create the list of underlying fields
-        if copy_fields:
-            self._fields = [field.copy() for field in fields]
-        else:
-            self._fields = fields  # type: ignore
-
-        # extract data from individual fields
+        # collect data from individual fields and store it in a flattened array
         fields_data: list[NumericArray] = []
         self._slices: list[slice] = []
-        for field in self.fields:
+        for field in fields:
             if not isinstance(field, DataFieldBase):
                 msg = (
                     "Individual fields must be of type `DataFieldBase`. Field "
@@ -115,25 +120,32 @@ class FieldCollection(FieldBase):
             self._slices.append(slice(start, len(fields_data)))
 
         # initialize the data from the individual fields
-        data_arr = number_array(fields_data, dtype=dtype, copy=None)
+        data_arr = number_array(fields_data, dtype=dtype, copy=True)
         self.data_shape = (len(data_arr),)
 
         # initialize the class
         super().__init__(grid, data_arr, label=label)
 
-        if not copy_fields:
-            # link the data of the original fields back to self._data
-            for i, field in enumerate(self.fields):
-                field_shape = field.data.shape
-                field._data_flat = self._data_full[self._slices[i]]
+        # link the data of the original fields back to self._data
+        self._fields = []
+        for i, external_field in enumerate(fields):
+            # generate internal field object
+            data_shape = external_field._data_full.shape
+            internal_field = external_field.__class__(
+                self.grid,
+                data=self._data_full[self._slices[i]].reshape(data_shape),
+                label=external_field.label,
+                with_ghost_cells=True,
+            )
+            # check whether the field data is based on our data field
+            if not np.may_share_memory(internal_field._data_full, self._data_full):
+                msg = "Spurious copy of data detected!"
+                raise RuntimeError(msg)
+            self._fields.append(internal_field)
 
-                # check whether the field data is based on our data field
-                if field.data.shape != field_shape:
-                    msg = "Field shapes have changed!"
-                    raise RuntimeError(msg)
-                if not np.may_share_memory(field._data_full, self._data_full):
-                    msg = "Spurious copy of data detected!"
-                    raise RuntimeError(msg)
+            # link the data of the original fields back to self._data if requested
+            if link_data:
+                external_field._data_flat = self._data_full[self._slices[i]]
 
         if labels is not None:
             self.labels = labels  # type: ignore
@@ -184,7 +196,7 @@ class FieldCollection(FieldBase):
 
         if isinstance(index, slice):
             # range of indices -> collection is returned
-            return FieldCollection(self.fields[index], copy_fields=True)
+            return FieldCollection(self.fields[index], link_data=False)
 
         msg = f"Unsupported index `{index}`"
         raise TypeError(msg)
@@ -271,7 +283,7 @@ class FieldCollection(FieldBase):
         if "class" in attributes:
             class_name = attributes.pop("class")
             assert class_name == cls.__name__
-        attributes["copy_fields"] = False  # fields will be created from scratch
+        attributes["link_data"] = False  # fields will be created from scratch
 
         # restore the individual fields (without data)
         fields = [
@@ -348,7 +360,7 @@ class FieldCollection(FieldBase):
             fields.append(field)
             start = end
 
-        return cls(fields, copy_fields=False, label=label, labels=labels, dtype=dtype)
+        return cls(fields, link_data=False, label=label, labels=labels, dtype=dtype)
 
     @classmethod
     def _from_hdf_dataset(cls, dataset) -> FieldCollection:
@@ -616,7 +628,7 @@ class FieldCollection(FieldBase):
         fields = [f.copy() for f in self.fields]
 
         # create the collection from the copied fields
-        return self.__class__(fields, copy_fields=False, label=label, dtype=dtype)
+        return self.__class__(fields, link_data=False, label=label, dtype=dtype)
 
     def append(
         self,
@@ -624,6 +636,11 @@ class FieldCollection(FieldBase):
         label: str | None = None,
     ) -> FieldCollection:
         """Create new collection with appended field(s)
+
+        Warning:
+            Appending fields requires a full copy of the data. Moreover, links to other
+            fields will not be copied, but these links stay with the original
+            collection.
 
         Args:
             *fields (`FieldCollection` or `DataFieldBase`):
@@ -649,7 +666,7 @@ class FieldCollection(FieldBase):
 
         return FieldCollection(
             _fields,
-            copy_fields=True,
+            link_data=False,
             label=self.label if label is None else label,
             labels=_labels,
         )
