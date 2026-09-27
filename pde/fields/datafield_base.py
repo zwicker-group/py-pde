@@ -1031,10 +1031,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         if transpose:
             # adjust image data such that the transpose is plotted
-            data["x"], data["y"] = data["y"], data["x"]
-            data["data"] = data["data"].T
-            data["label_x"], data["label_y"] = data["label_y"], data["label_x"]
-            data["extent"] = data["extent"][2:] + data["extent"][:2]
+            data.update(
+                {
+                    "x": data["y"],
+                    "y": data["x"],
+                    "data": data["data"].T,
+                    "label_x": data["label_y"],
+                    "label_y": data["label_x"],
+                    "periodic_x": data.get("periodic_y", False),
+                    "periodic_y": data.get("periodic_x", False),
+                    "extent": data["extent"][2:] + data["extent"][:2],
+                }
+            )
 
         return data
 

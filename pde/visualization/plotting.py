@@ -29,6 +29,7 @@ from ..tools.misc import module_available
 from ..tools.output import display_progress
 from ..tools.plotting import (
     PlotReference,
+    indicate_axes_periodicity,
     napari_add_layers,
     napari_viewer,
     plot_on_axes,
@@ -657,6 +658,8 @@ def _plot_kymograph(
             "data": img_data["data"].T,
             "label_x": img_data["label_y"],
             "label_y": img_data["label_x"],
+            "periodic_x": img_data.get("periodic_y", False),
+            "periodic_y": img_data.get("periodic_x", False),
         }
     else:
         extent = np.r_[img_data["extent_x"], img_data["extent_y"]]
@@ -671,6 +674,7 @@ def _plot_kymograph(
     )
 
     # adjust some settings
+    indicate_axes_periodicity(ax, img_data)
     ax.set_xlabel(img_data["label_x"])
     ax.set_ylabel(img_data["label_y"])
     ax.set_aspect("auto")
@@ -699,17 +703,16 @@ def plot_kymograph(
 ) -> PlotReference:
     r"""Plots a single kymograph from stored data.
 
-    The kymograph shows line data stacked along time. Consequently, the
-    resulting image shows space along the horizontal axis and time along the
-    vertical axis.
+    The kymograph shows line data stacked along time. Consequently, the resulting image
+    shows space along one axis and time along the other axis.
 
     Args:
         storage (:class:`~droplets.simulation.storage.StorageBase`):
             The storage instance that contains all the data
         field_index (int, optional):
-            An index to choose a single field out of many in a collection
-            stored in `storage`. This option should not be used if only a single
-            field is stored in a collection.
+            An index to choose a single field out of many in a collection stored in
+            `storage`. This option should not be used if only a single field is stored
+            in a collection.
         scalar (str):
             The method for extracting scalars as described in
             :meth:`DataFieldBase.to_scalar`.
@@ -775,9 +778,8 @@ def plot_kymographs(
 ) -> list[PlotReference]:
     r"""Plots kymographs for all fields stored in `storage`
 
-    The kymograph shows line data stacked along time. Consequently, the
-    resulting image shows space along the horizontal axis and time along the
-    vertical axis.
+    Kymographs line data stacked along time. Consequently, the resulting image shows
+    space along one axis and time along the other axis.
 
     Args:
         storage (:class:`~droplets.simulation.storage.StorageBase`):
