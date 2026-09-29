@@ -240,9 +240,8 @@ def plot_on_axes(wrapped=None, update_method=None):
         wrapped (callable):
             Function to be wrapped
         update_method (callable or str):
-            Method to call to update the plot. The argument of the new
-            method will be the result of the initial call of the wrapped
-            method.
+            Method to call to update the plot. The argument of the new method will be
+            the result of the initial call of the wrapped method.
     """
     if wrapped is None:
         # handle the case where decorator was called without brackets
@@ -284,15 +283,22 @@ def plot_on_axes(wrapped=None, update_method=None):
             new figure, while "reuse" attempts to reuse an existing figure, which is
             the default.
         """
-        # Note on docstring: This docstring replaces the token {PLOT_ARGS} in
-        # the wrapped function
+        # NOTE: The docstring replaces the token {PLOT_ARGS} in the wrapped function
         import matplotlib as mpl
         import matplotlib.pyplot as plt
 
+        if action == "auto":
+            # decide automatically what to do with the figure
+            if isinstance(ax, mpl.axes.Axes) or ax == "reuse":
+                action = "none"  # do nothing if explicit axes are given
+            elif in_ipython():
+                action = "sca"  # set to current axis in interactive environment
+            else:
+                action = "show"  # show plot when nothing is specified
         if ax_style is None:
             ax_style = {}
 
-        # some logic to check for nested plotting calls:
+        # retrieve an axis object, depending on what is supplied by the `ax` argument
         if ax is None:
             # create new figure
             backend = mpl.get_backend()
@@ -328,7 +334,8 @@ def plot_on_axes(wrapped=None, update_method=None):
             fig.savefig(filename)
 
         # decide what to do with the final plot
-        if action in {"auto", "sca"}:
+
+        if action == "sca":
             # set the axes as the current axes, so subsequent plot calls modify it
             plt.sca(ax)
 
@@ -392,9 +399,9 @@ def plot_on_figure(wrapped=None, update_method=None):
     text. Note that the decorator can be used on both functions and methods.
 
     Example:
-        The following example illustrates how this decorator can be used to
-        implement plotting for a given class. In particular, supplying the
-        `update_method` will allow efficient dynamical plotting::
+        The following example illustrates how this decorator can be used to implement
+        plotting for a given class. In particular, supplying the `update_method` will
+        allow efficient dynamical plotting::
 
             class State:
                 def __init__(self) -> None:
@@ -417,18 +424,15 @@ def plot_on_figure(wrapped=None, update_method=None):
             def make_plot(fig): ...
 
 
-        When `update_method` is not supplied, the method can still be used for
-        plotting, but dynamic updating, e.g., by
-        :class:`pde.trackers.PlotTracker`, is not possible.
-
+        When `update_method` is not supplied, the method can still be used for plotting,
+        but dynamic updating, e.g., by :class:`pde.trackers.PlotTracker`, is impossible.
 
     Args:
         wrapped (callable):
             Function to be wrapped
         update_method (callable or str):
-            Method to call to update the plot. The argument of the new
-            method will be the result of the initial call of the wrapped
-            method.
+            Method to call to update the plot. The argument of the new method will be
+            the result of the initial call of the wrapped method.
     """
     if wrapped is None:
         # handle the case where decorator was called without brackets
@@ -471,10 +475,16 @@ def plot_on_figure(wrapped=None, update_method=None):
         fig (:class:`matplotlib.figures.Figure`):
             Figure that is used for plotting. If omitted, a new figure is created.
         """
-        # Note on docstring: This docstring replaces the token {PLOT_ARGS} in
-        # the wrapped function
+        # NOTE: The docstring replaces the token {PLOT_ARGS} in the wrapped function
         import matplotlib as mpl
         import matplotlib.pyplot as plt
+
+        if action == "auto":
+            # decide automatically what to do with the figure
+            if fig is not None or in_ipython():
+                action = "none"  # do nothing if explicit axes are given
+            else:
+                action = "show"  # show plot when nothing is specified
 
         if fig is None:
             # create new figure
@@ -695,8 +705,8 @@ class JupyterPlottingContext(PlottingContextBase):
     """Flag indicating whether the context supports that plots can be updated with out
     redrawing the entire plot.
 
-    The jupyter backend (`inline`) requires
-    replotting of the entire figure, so an update is not supported.
+    The jupyter backend (`inline`) requires replotting of the entire figure, so an
+    update is not supported.
     """
 
     def __enter__(self):
@@ -772,7 +782,7 @@ def get_plotting_context(
     if context is None:
         # figure out whether plots are shown in jupyter notebook
 
-        if "backend_inline" in mpl.get_backend():
+        if mpl.get_backend() in {"inline", "backend_inline"}:
             # special context to support the `inline` backend
             try:
                 from IPython.display import display  # noqa: F401
