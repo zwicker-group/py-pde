@@ -11,9 +11,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, MutableMapping
-from typing import Any, Generic, Literal, TypeAlias, TypeVar, Union, overload
-
-from typing_extensions import Self
+from typing import Any, Generic, Literal, Self, TypeAlias, TypeVar, Union, overload
 
 # values are of generic type TValue, which will be specified
 TValue = TypeVar("TValue")

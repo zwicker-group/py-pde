@@ -23,7 +23,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: '3.11'
 
     - name: Install dependencies
       # install packages in the exact version given in requirements.txt
@@ -38,4 +38,4 @@ jobs:
         MPLBACKEND: agg
       run: |
         cd scripts
-        python run_tests.py --unit --runslow --num_cores auto --showconfig -- -v -rP -o log_cli=true
+        python run_tests.py --unit --runslow --num_cores auto --showconfig -- -rP -o log_cli=true

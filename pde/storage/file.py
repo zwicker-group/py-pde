@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 import numpy as np
-from typing_extensions import Self
 
 from ..tools.misc import ensure_directory_exists, hdf_write_attributes
 from .base import InfoDict, StorageBase, WriteModeType

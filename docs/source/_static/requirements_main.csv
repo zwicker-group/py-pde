@@ -5,4 +5,3 @@ numpy,2,Handling numerical data
 scipy,1.10,Miscellaneous scientific functions
 sympy,1.9,Dealing with user-defined mathematical expressions
 tqdm,4.66,Display progress bars during calculations
-typing_extensions,4.10,Backports of typing features

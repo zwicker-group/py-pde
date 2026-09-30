@@ -19,14 +19,14 @@ sys.path.insert(0, os.path.abspath("../.."))  # noqa: PTH100
 sys.path.insert(0, os.path.abspath("../../scripts"))  # noqa: PTH100
 sys.path.insert(0, os.path.abspath("../sphinx_ext/"))  # noqa: PTH100
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # -- Project information -----------------------------------------------------
 
 project = "py-pde"
 module_name = "pde"
 author = "Zwicker Group"
-copyright = f"{datetime.now(timezone.utc).year}, {author}"  # noqa: A001
+copyright = f"{datetime.now(UTC).year}, {author}"  # noqa: A001
 html_logo = "_images/logo_small.png"
 
 # Determine the version from the actual package

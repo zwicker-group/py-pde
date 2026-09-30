@@ -9,10 +9,9 @@ import functools
 import json
 from abc import ABCMeta, abstractmethod
 from inspect import isabstract
-from typing import TYPE_CHECKING, Any, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, Self, TypeVar
 
 import numpy as np
-from typing_extensions import Self
 
 from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
 from ..tools.cache import cached_method

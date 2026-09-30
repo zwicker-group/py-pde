@@ -22,11 +22,10 @@ import functools
 import logging
 import numbers
 from hashlib import sha1
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 import numpy as np
 from scipy import sparse
-from typing_extensions import Self
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable

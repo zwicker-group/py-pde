@@ -23,7 +23,7 @@ config["backend.numba.multithreading"] = "never"
 import functools
 import json
 import timeit
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -125,7 +125,7 @@ def get_single_run(backend: str, size: int, periodic=False) -> float:
         data = {
             "runtime": runtime,
             "version": pde.__version__,
-            "date": datetime.now(timezone.utc).isoformat(),
+            "date": datetime.now(UTC).isoformat(),
         }
 
         # write  performance data

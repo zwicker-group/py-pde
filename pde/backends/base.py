@@ -9,9 +9,7 @@ import inspect
 import logging
 import warnings
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, overload
-
-from typing_extensions import Self
+from typing import TYPE_CHECKING, Any, Generic, Self, TypeVar, overload
 
 from ..tools.config import _OMITTED, Config, ConfigLike
 from ..tools.typing import (

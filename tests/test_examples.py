@@ -50,12 +50,23 @@ def test_example_scripts(path):
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + env.get("PYTHONPATH", "")
     env["MPLBACKEND"] = "agg"  # select a backend without a GUI
-    proc = sp.Popen([sys.executable, path], env=env, stdout=sp.PIPE, stderr=sp.PIPE)
     try:
-        outs, errs = proc.communicate(timeout=30)
-    except sp.TimeoutExpired:
-        proc.kill()
-        outs, errs = proc.communicate()
+        proc = sp.run(
+            [sys.executable, path], env=env, capture_output=True, timeout=120, text=True
+        )
+    except sp.TimeoutExpired as err:
+        pytest.fail(
+            f"Example `{path}` exceeded the 120 second timeout.\n"
+            f"STDOUT:\n{err.stdout}\nSTDERR:\n{err.stderr}"
+        )
+
+    # prepare output
+    if proc.returncode != 0:
+        pytest.fail(
+            f"Script `{path}` failed with exit code {proc.returncode}.\n"
+            f"STDOUT:\n{proc.stdout}\n"
+            f"STDERR:\n{proc.stderr}"
+        )
 
     # delete files that might be created by the test
     try:
@@ -64,14 +75,6 @@ def test_example_scripts(path):
         (PACKAGE_PATH / "allen_cahn.hdf").unlink()
     except OSError:
         pass
-
-    # prepare output
-    msg = f"Script `{path}` failed with following output:"
-    if outs:
-        msg = f"{msg}\nSTDOUT:\n{outs}"
-    if errs:
-        msg = f"{msg}\nSTDERR:\n{errs}"
-    assert proc.returncode <= 0, msg
 
 
 @pytest.mark.slow

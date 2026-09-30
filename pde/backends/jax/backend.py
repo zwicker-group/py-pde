@@ -12,12 +12,11 @@ from __future__ import annotations
 
 import numbers
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 import jax
 import jax.numpy as jnp
 import numpy as np
-from typing_extensions import Self
 
 from ...fields import VectorField
 from ...grids import GridBase

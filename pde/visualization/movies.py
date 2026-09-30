@@ -15,9 +15,7 @@ from __future__ import annotations
 
 import pathlib
 import warnings
-from typing import TYPE_CHECKING, Any
-
-from typing_extensions import Self
+from typing import TYPE_CHECKING, Any, Self
 
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress

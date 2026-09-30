@@ -10,7 +10,7 @@ from pathlib import Path
 from string import Template
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
-MIN_PYTHON_VERSION = "3.10"
+MIN_PYTHON_VERSION = "3.11"
 MAX_PYTHON_VERSION = "3.14"
 
 
@@ -87,12 +87,6 @@ REQUIREMENTS = [
         name="tqdm",
         version_min="4.66",
         usage="Display progress bars during calculations",
-        groups={"essential"},
-    ),
-    Requirement(
-        name="typing_extensions",
-        version_min="4.10",
-        usage="Backports of typing features",
         groups={"essential"},
     ),
     # general, optional requirements

@@ -189,7 +189,7 @@ class Controller:
         # store intermediate profiling information before starting simulation
         prof_start_tracker = get_time()
         profiler["compilation"] = prof_start_tracker - prof_start_compile
-        solver_start = datetime.datetime.now(datetime.timezone.utc)
+        solver_start = datetime.datetime.now(datetime.UTC)
         self.info["solver_start"] = str(solver_start)
 
         if dt is None:
@@ -278,7 +278,7 @@ class Controller:
 
         # calculate final statistics
         profiler["tracker"] += get_time() - prof_start_tracker
-        duration = datetime.datetime.now(datetime.timezone.utc) - solver_start
+        duration = datetime.datetime.now(datetime.UTC) - solver_start
         self.info["solver_duration"] = str(duration)
         self.info["t_final"] = t
         self.trackers.finalize(info=self.diagnostics)
