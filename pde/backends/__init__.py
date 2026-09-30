@@ -47,28 +47,34 @@ from .registry import (
     registered_backends,
 )
 
-# register backends without loading them
+# register all backends without loading them
 BACKENDS_FOLDER = Path(__file__).parent
-backend_registry.register_package("numpy", "pde.backends.numpy", requires=["numpy"])
 backend_registry.register_package(
-    "numba",
-    "pde.backends.numba",
-    config=load_default_config(BACKENDS_FOLDER / "numba" / "config.py"),
-    requires=["numba"],
-)
-backend_registry.register_package(
-    "numba_mpi", "pde.backends.numba_mpi", requires=["numba", "numba_mpi"]
-)
-backend_registry.register_package("scipy", "pde.backends.scipy", requires=["scipy"])
-backend_registry.register_package(
-    "jax",
-    "pde.backends.jax",
+    name="jax",
+    package_path="pde.backends.jax",
     config=load_default_config(BACKENDS_FOLDER / "jax" / "config.py"),
     requires=["jax"],
 )
 backend_registry.register_package(
-    "torch",
-    "pde.backends.torch",
+    name="numba",
+    package_path="pde.backends.numba",
+    config=load_default_config(BACKENDS_FOLDER / "numba" / "config.py"),
+    requires=["numba"],
+)
+backend_registry.register_package(
+    name="numba_mpi",
+    package_path="pde.backends.numba_mpi",
+    requires=["numba", "numba_mpi"],
+)
+backend_registry.register_package(
+    name="numpy", package_path="pde.backends.numpy", config=None, requires=["numpy"]
+)
+backend_registry.register_package(
+    name="scipy", package_path="pde.backends.scipy", config=None, requires=["scipy"]
+)
+backend_registry.register_package(
+    name="torch",
+    package_path="pde.backends.torch",
     config=load_default_config(BACKENDS_FOLDER / "torch" / "config.py"),
     requires=["torch"],
 )
