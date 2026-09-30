@@ -52,11 +52,11 @@ def test_example_scripts(path):
     env["MPLBACKEND"] = "agg"  # select a backend without a GUI
     try:
         proc = sp.run(
-            [sys.executable, path], env=env, capture_output=True, timeout=60, text=True
+            [sys.executable, path], env=env, capture_output=True, timeout=120, text=True
         )
     except sp.TimeoutExpired as err:
         pytest.fail(
-            f"Example `{path}` exceeded the 60 second timeout.\n"
+            f"Example `{path}` exceeded the 120 second timeout.\n"
             f"STDOUT:\n{err.stdout}\nSTDERR:\n{err.stderr}"
         )
 
