@@ -30,9 +30,7 @@ from collections.abc import Iterable, MutableMapping, Sequence
 from dataclasses import KW_ONLY, dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Literal, Union
-
-from typing_extensions import Self
+from typing import Any, Literal, Self, Union
 
 from .misc import module_available
 from .nested_dict import NestedDict

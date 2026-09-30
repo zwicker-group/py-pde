@@ -16,10 +16,9 @@ import logging
 import warnings
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, Self, TypeVar
 
 import numpy as np
-from typing_extensions import Self
 
 from ..tools.plotting import napari_add_layers, napari_viewer
 

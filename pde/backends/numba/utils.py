@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 import os
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 import numba as nb
 import numpy as np
@@ -28,7 +28,6 @@ from numba.core.types import npytypes, scalars
 from numba.extending import is_jitted, register_jitable
 from numba.extending import overload as nb_overload
 from numba.typed import Dict as NumbaDict
-from typing_extensions import Self
 
 from ...tools.misc import decorator_arguments
 from ...tools.typing import NumericArray

@@ -61,10 +61,9 @@ from __future__ import annotations
 import logging
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Literal, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Literal, Self, TypeVar, Union
 
 import numpy as np
-from typing_extensions import Self
 
 from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring

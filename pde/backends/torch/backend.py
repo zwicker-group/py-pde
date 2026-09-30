@@ -12,11 +12,10 @@ from __future__ import annotations
 
 import numbers
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 import numpy as np
 import torch
-from typing_extensions import Self
 
 from ...fields import VectorField
 from ...grids import GridBase

@@ -78,9 +78,7 @@ def parse_number(
     try:
         value = number(expr.subs(variables))
     except TypeError as err:
-        if not err.args:
-            err.args = ("",)
-        err.args = (*err.args, f"Expression: `{expr}`")
+        err.add_note(f"Expression: `{expr}`")
         raise
 
     return value

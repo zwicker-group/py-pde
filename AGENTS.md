@@ -27,7 +27,7 @@ When making changes, favor the existing module layout and keep new functionality
 
 ## Coding Conventions
 
-- Write Python code compatible with the supported versions declared in `pyproject.toml` (currently Python >=3.10 and <3.15).
+- Write Python code compatible with the supported versions declared in `pyproject.toml` (currently Python >=3.11 and <3.15).
 - Prefer idiomatic, readable Python over clever one-liners.
 - Public methods and functions should have docstrings documenting arguments and behavior; the first line should summarize the purpose.
 - Maintain the project’s existing naming conventions and type usage patterns.

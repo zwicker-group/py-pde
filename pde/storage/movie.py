@@ -13,10 +13,9 @@ import shlex
 import warnings
 from fractions import Fraction
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 import numpy as np
-from typing_extensions import Self
 
 from ..fields import FieldCollection
 from ..tools import ffmpeg as FFmpeg
@@ -50,29 +49,24 @@ def _get_limits(value: float | ArrayLike, dim: int) -> NumericArray:
 def _import_ffmpeg() -> types.ModuleType:
     """Import `ffmpeg` package, warning when incorrect package is installed."""
     # try to figure out which `ffmpeg` package is installed
-    try:
-        from importlib.metadata import packages_distributions
+    from importlib.metadata import packages_distributions
 
-    except ImportError:
-        pass  # the packages_distributions function was only added in python 3.10
-
-    else:
-        # check whether `ffmpeg` refers to the correct package
-        packages = packages_distributions().get("ffmpeg", [])
-        if len(packages) == 1:
-            name = packages[0]
-            if name != "ffmpeg-python":
-                warnings.warn(
-                    f"Expected `ffmpeg-python` package, but found `{name}`",
-                    ImportWarning,
-                    stacklevel=2,
-                )
-        elif len(packages) > 1:
+    # check whether `ffmpeg` refers to the correct package
+    packages = packages_distributions().get("ffmpeg", [])
+    if len(packages) == 1:
+        name = packages[0]
+        if name != "ffmpeg-python":
             warnings.warn(
-                f"Expected `ffmpeg-python` package, but found {packages}",
+                f"Expected `ffmpeg-python` package, but found `{name}`",
                 ImportWarning,
                 stacklevel=2,
             )
+    elif len(packages) > 1:
+        warnings.warn(
+            f"Expected `ffmpeg-python` package, but found {packages}",
+            ImportWarning,
+            stacklevel=2,
+        )
 
     # import package
     import ffmpeg

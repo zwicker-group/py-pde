@@ -10,7 +10,7 @@ authors = [
 license = "MIT"
 license-files = ["LICENSE"]
 readme = "README.md"
-requires-python = ">=3.10,<3.15"
+requires-python = ">=3.11,<3.15"
 dynamic = ["version"]
 
 keywords = ["pdes", "partial-differential-equations", "dynamical-systems"]
@@ -20,7 +20,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -28,7 +27,7 @@ classifiers = [
 ]
 
 # Requirements for setuptools
-dependencies = ["matplotlib>=3.1", "numba>=0.59", "numpy>=2.0", "scipy>=1.10", "sympy>=1.9", "tqdm>=4.66", "typing_extensions>=4.10"]
+dependencies = ["matplotlib>=3.1", "numba>=0.59", "numpy>=2.0", "scipy>=1.10", "sympy>=1.9", "tqdm>=4.66"]
 
 [project.optional-dependencies]
 io = ["h5py>=2.10", "pandas>=2", "ffmpeg-python>=0.2", "py-modelrunner>=0.19"]
@@ -59,7 +58,7 @@ namespaces = false
 write_to = "pde/_version.py"
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 exclude = ["scripts/templates"]
 
 [tool.ruff.format]
@@ -124,7 +123,7 @@ section-order = ["future", "standard-library", "third-party", "first-party", "se
 self = ["pde", "fixtures"]
 
 [tool.black]
-target_version = ["py310"]
+target_version = ["py311"]
 exclude = "scripts/templates"
 
 [tool.isort]
@@ -144,7 +143,7 @@ filterwarnings = [
 ]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 warn_unused_ignores = true
