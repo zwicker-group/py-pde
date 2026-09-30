@@ -50,9 +50,23 @@ def test_example_scripts(path):
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + env.get("PYTHONPATH", "")
     env["MPLBACKEND"] = "agg"  # select a backend without a GUI
-    proc = sp.run(
-        [sys.executable, path], env=env, check=True, capture_output=True, timeout=30
-    )
+    try:
+        proc = sp.run(
+            [sys.executable, path], env=env, capture_output=True, timeout=60, text=True
+        )
+    except sp.TimeoutExpired as err:
+        pytest.fail(
+            f"Example `{path}` exceeded the 60 second timeout.\n"
+            f"STDOUT:\n{err.stdout}\nSTDERR:\n{err.stderr}"
+        )
+
+    # prepare output
+    if proc.returncode != 0:
+        pytest.fail(
+            f"Script `{path}` failed with exit code {proc.returncode}.\n"
+            f"STDOUT:\n{proc.stdout}\n"
+            f"STDERR:\n{proc.stderr}"
+        )
 
     # delete files that might be created by the test
     try:
@@ -61,14 +75,6 @@ def test_example_scripts(path):
         (PACKAGE_PATH / "allen_cahn.hdf").unlink()
     except OSError:
         pass
-
-    # prepare output
-    msg = f"Script `{path}` failed with following output:"
-    if proc.stdout:
-        msg = f"{msg}\nSTDOUT:\n{proc.stdout}"
-    if proc.stderr:
-        msg = f"{msg}\nSTDERR:\n{proc.stderr}"
-    assert proc.returncode <= 0, msg
 
 
 @pytest.mark.slow
