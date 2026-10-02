@@ -4,6 +4,7 @@
 """
 
 import platform
+import time
 from pathlib import Path
 
 import numpy as np
@@ -339,10 +340,13 @@ def test_modelrunner_storage_many(tmp_path):
     )
     assert num_jobs == 2
 
+    # temporary fix of problem where storage was not immediately available for reading
+    time.sleep(1)
+
     # read storage manually
     for path in tmp_path.iterdir():
         if path.is_file() and not path.name.endswith("txt"):
-            with mr.open_storage(path) as storage:
+            with mr.open_storage(path, mode="read") as storage:
                 assert "initial_state" in storage["storage"]
                 assert "trajectory" in storage["storage"]
                 assert "result" in storage

@@ -10,8 +10,6 @@
 
 from __future__ import annotations
 
-from typing import TypeAlias
-
 from ...tools.typing import _OperatorImplUpdateType
 
-NumbaOperatorImplType: TypeAlias = _OperatorImplUpdateType
+type NumbaOperatorImplType = _OperatorImplUpdateType
