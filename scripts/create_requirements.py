@@ -10,7 +10,7 @@ from pathlib import Path
 from string import Template
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
-MIN_PYTHON_VERSION = "3.11"
+MIN_PYTHON_VERSION = "3.12"
 MAX_PYTHON_VERSION = "3.14"
 
 

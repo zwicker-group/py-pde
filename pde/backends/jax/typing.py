@@ -14,14 +14,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, TypeAlias
+from typing import TYPE_CHECKING, Protocol
 
 from ...tools.typing import _OperatorImplStreamBareType
 
 if TYPE_CHECKING:
     from jax import Array
 
-JaxOperatorImplType: TypeAlias = _OperatorImplStreamBareType["Array"]
+type JaxOperatorImplType = _OperatorImplStreamBareType["Array"]
 
 
 class JaxDataSetter(Protocol):

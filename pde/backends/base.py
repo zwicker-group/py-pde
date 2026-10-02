@@ -9,7 +9,7 @@ import inspect
 import logging
 import warnings
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Generic, Self, TypeVar, overload
+from typing import TYPE_CHECKING, Any, LiteralString, Self, TypeVar, overload
 
 from ..tools.config import _OMITTED, Config, ConfigLike
 from ..tools.typing import (
@@ -59,14 +59,14 @@ _RESERVED_BACKEND_NAMES: set[str] = {
 TValue = TypeVar("TValue")
 
 
-class BackendBase(Generic[TNativeArray]):
+class BackendBase[TNativeArray]:
     """Basic backend from which all other backends inherit.
 
     The generic type parameter `TNativeArray` determines the type of the native data
     representation of the backend.
     """
 
-    implementation: str = "undefined"
+    implementation: LiteralString = "undefined"
     """str: The name of the python module that is used to implement this backend. This
     information can be used to distinguish the general implementation of backends."""
 

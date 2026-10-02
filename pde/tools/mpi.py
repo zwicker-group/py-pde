@@ -20,14 +20,13 @@ from __future__ import annotations
 import os
 import sys
 import traceback
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 if TYPE_CHECKING:
     from .typing import NumericArray
 
-T = TypeVar("T")
 
 # Initialize assuming that we run serial code if `mpi4py` is not available
 initialized: bool = False
@@ -123,7 +122,7 @@ def mpi_recv(data: NumericArray, source: int, tag: int) -> None:
     data[...] = MPI.COMM_WORLD.recv(source=source, tag=tag)
 
 
-def mpi_bcast(data: T, root: int = 0) -> T:
+def mpi_bcast[T](data: T, root: int = 0) -> T:
     """Broadcast data from root node to all other MPI nodes.
 
     Args:

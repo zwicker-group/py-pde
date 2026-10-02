@@ -21,7 +21,7 @@ jobs:
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.12'
 
     - name: Setup FFmpeg
       uses: AnimMouse/setup-ffmpeg@v1

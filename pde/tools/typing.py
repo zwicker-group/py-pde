@@ -19,16 +19,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Generic,
-    NamedTuple,
-    Protocol,
-    TypeAlias,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, NamedTuple, Protocol, TypeVar, Union
 
 import numpy as np
 from numpy.typing import ArrayLike  # noqa: F401
@@ -62,13 +53,13 @@ TNativeArray = TypeVar("TNativeArray", NumericArray, "Tensor", "Array")
 TFunc = TypeVar("TFunc", bound=Callable)
 
 
-class _OperatorImplStreamBareType(Protocol, Generic[TNativeArray]):
+class _OperatorImplStreamBareType[TNativeArray](Protocol):
     """Operator implementation accepting directly calculating output."""
 
     def __call__(self, arr: TNativeArray) -> TNativeArray: ...
 
 
-class _OperatorImplStreamArgsType(Protocol, Generic[TNativeArray]):
+class _OperatorImplStreamArgsType[TNativeArray](Protocol):
     """Operator implementation accepting directly calculating output."""
 
     def __call__(
@@ -92,7 +83,7 @@ class _OperatorImplUpdateArgsType(Protocol):
 
 # internal operator implementations, which can occur in different forms depending on
 # the backend
-_OperatorImplType: TypeAlias = (
+type _OperatorImplType[TNativeArray] = (
     _OperatorImplStreamBareType[TNativeArray]
     | _OperatorImplStreamArgsType[TNativeArray]
     | _OperatorImplUpdateType
@@ -125,7 +116,7 @@ class OperatorInfo(NamedTuple):
 
 
 # public operator implementation with a single interface independent of backends
-class OperatorType(Protocol, Generic[TNativeArray]):
+class OperatorType[TNativeArray](Protocol):
     """An operator that acts on an array."""
 
     def __call__(
@@ -186,7 +177,7 @@ class DataSetter(Protocol):
         """
 
 
-class PostStepHook(Protocol, Generic[TNativeArray]):
+class PostStepHook[TNativeArray](Protocol):
     def __call__(self, state_data: TNativeArray, t: float) -> TNativeArray:
         """Function analyzing and potentially modifying the current state.
 
@@ -199,7 +190,7 @@ class PostStepHook(Protocol, Generic[TNativeArray]):
         """
 
 
-class StepperHook(Protocol, Generic[TNativeArray]):
+class StepperHook[TNativeArray](Protocol):
     def __call__(
         self, state_data: TNativeArray, t: float, post_step_data: Any
     ) -> tuple[TNativeArray, Any]:

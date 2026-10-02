@@ -10,8 +10,6 @@
 
 from __future__ import annotations
 
-from typing import TypeAlias
-
 from ...tools.typing import _OperatorImplUpdateType
 
-ScipyOperatorImplType: TypeAlias = _OperatorImplUpdateType
+type ScipyOperatorImplType = _OperatorImplUpdateType

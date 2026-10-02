@@ -31,7 +31,9 @@ from .coordinates import PolarCoordinates, SphericalCoordinates
 TNumArr = TypeVar("TNumArr", float, NumericArray)
 
 
-def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
+def volume_from_radius[TNumArr: (float, NumericArray)](
+    radius: TNumArr, dim: int
+) -> TNumArr:
     """Return the volume of a sphere with a given radius.
 
     Args:

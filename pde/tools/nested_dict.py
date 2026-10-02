@@ -11,41 +11,35 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, MutableMapping
-from typing import Any, Generic, Literal, Self, TypeAlias, TypeVar, Union, overload
+from typing import Any, Literal, LiteralString, Self, TypeVar, overload
 
-# values are of generic type TValue, which will be specified
+# values are of generic type TValue, which will be specified by the subclass
 TValue = TypeVar("TValue")
-# trees are nested dicts
-TNestedDict: TypeAlias = "NestedDict[TValue]"
-# nodes are trees or values
-TNestedDictValue = Union[TValue, TNestedDict]  # noqa: UP007
-# the dictionary version of the entire tree can have subtrees
-TDictTree = dict[str, Union[TValue, "TDictTree"]]
-
-T = TypeVar
+# a node is either a value or another nested dictionary
+type TNestedDictValue[TValue] = TValue | "NestedDict[TValue]"
+# nested dictionaries can also be converted to pure python dictionaries with type:
+type TDictTree[TValue] = dict[str, TValue | "TDictTree[TValue]"]
 
 
-class NestedDict(MutableMapping[str, TNestedDictValue], Generic[TValue]):
+class NestedDict[TValue](MutableMapping[str, TNestedDictValue[TValue]]):
     """Stores hierarchical mappings with string paths as keys.
 
-    `NestedDict` wraps nested mappings and supports reading and writing nested
-    values using a separator-based key syntax (for example ``"a.b.c"``). It can
-    convert between flat and nested representations and recursively traverses
-    children when requested.
+    `NestedDict` wraps nested mappings and supports reading and writing nested values
+    using a separator-based key syntax (for example ``"a.b.c"``). It can convert between
+    flat and nested representations and recursively traverses children when requested.
 
     Note:
-        Equivalent entries can overwrite each other during initialization.
-        For instance, ``NestedDict({'a.b': 1, 'a': {'b': 2}})`` stores only one
-        final value for ``a.b``.
+        Equivalent entries overwrite each other during initialization. For instance,
+        ``NestedDict({'a.b': 1, 'a': {'b': 2}})`` stores only one value for ``a.b``.
     """
 
-    sep: str = "."
+    sep: LiteralString = "."
     """str: Separator used in key paths to traverse nested levels."""
-    data: MutableMapping[str, TNestedDictValue]
+    data: MutableMapping[str, TNestedDictValue[TValue]]
     """dict: Internal mapping storing top-level keys and values for this instance."""
 
     def __init__(
-        self, data: MutableMapping[str, TNestedDictValue] | None = None
+        self, data: MutableMapping[str, TNestedDictValue[TValue]] | None = None
     ) -> None:
         """Initializes a nested dictionary from an optional mapping.
 
@@ -58,7 +52,7 @@ class NestedDict(MutableMapping[str, TNestedDictValue], Generic[TValue]):
         if data is not None:
             self.update_recursive(data)
 
-    def _make_dict(self) -> MutableMapping[str, TNestedDictValue]:
+    def _make_dict(self) -> MutableMapping[str, TNestedDictValue[TValue]]:
         """Create the backing mapping used to store top-level entries."""
         return {}
 
@@ -66,7 +60,9 @@ class NestedDict(MutableMapping[str, TNestedDictValue], Generic[TValue]):
         """Create an empty child node of the current mapping type."""
         return self.__class__()
 
-    def _node(self, key: str, *, parent: str = "") -> tuple[TNestedDict, str, bool]:
+    def _node(
+        self, key: str, *, parent: str = ""
+    ) -> tuple[NestedDict[TValue], str, bool]:
         """Resolve a key path to the owning node and local key.
 
         Args:
@@ -108,7 +104,7 @@ class NestedDict(MutableMapping[str, TNestedDictValue], Generic[TValue]):
         # traverse branch recursively
         return node._node(grandchildren, parent=parent + key + self.sep)
 
-    def __getitem__(self, key: str) -> TNestedDictValue:
+    def __getitem__(self, key: str) -> TNestedDictValue[TValue]:
         """Returns an item using dictionary indexing syntax.
 
         Args:
@@ -123,7 +119,7 @@ class NestedDict(MutableMapping[str, TNestedDictValue], Generic[TValue]):
         res = node.data[subkey]
         return res
 
-    def __setitem__(self, key: str, value: TNestedDictValue) -> None:
+    def __setitem__(self, key: str, value: TNestedDictValue[TValue]) -> None:
         """Assigns a value to a key or nested key path.
 
         Args:
@@ -149,16 +145,22 @@ class NestedDict(MutableMapping[str, TNestedDictValue], Generic[TValue]):
             if self.sep in key:
                 # create parents
                 node_key, value_key = key.rsplit(self.sep, 1)
-                subnode: TNestedDict = self.create_node(node_key)
+                subnode: NestedDict[TValue] = self.create_node(node_key)
             else:
                 subnode, value_key = self, key
             subnode.data[value_key] = value
         else:
             # update existing entry
             if is_tree:
-                node.data[subkey].update_recursive(value)
+                child = node.data[subkey]
+                if not isinstance(child, NestedDict) or not isinstance(
+                    value, MutableMapping
+                ):
+                    msg = "Cannot replace tree with a normal value"
+                    raise TypeError(msg)
+                child.update_recursive(value)
             elif isinstance(value, MutableMapping):
-                msg = "Cannot replace normal value with tree"
+                msg = "Cannot replace normal value with a tree"
                 raise TypeError(msg)
             else:
                 node.data[subkey] = value
@@ -190,10 +192,10 @@ class NestedDict(MutableMapping[str, TNestedDictValue], Generic[TValue]):
         """
         if not isinstance(key, str):
             return False
-        node = self
+        node: TNestedDictValue[TValue] = self
         for node_key in key.split(self.sep):
             try:
-                node = node[node_key]
+                node = node[node_key]  # type: ignore[index]
             except (KeyError, TypeError):
                 return False
         return True
@@ -223,11 +225,11 @@ class NestedDict(MutableMapping[str, TNestedDictValue], Generic[TValue]):
     @overload  # type: ignore
     def values(
         self, *, flatten: Literal[False] = False
-    ) -> Iterator[TNestedDictValue]: ...
+    ) -> Iterator[TNestedDictValue[TValue]]: ...
     @overload
     def values(self, *, flatten: Literal[True]) -> Iterator[TValue]: ...
 
-    def values(self, *, flatten: bool = False) -> Iterator[TNestedDictValue]:
+    def values(self, *, flatten: bool = False) -> Iterator[TNestedDictValue[TValue]]:
         """Iterates over values, optionally recursing into nested children.
 
         Args:
@@ -278,11 +280,13 @@ class NestedDict(MutableMapping[str, TNestedDictValue], Generic[TValue]):
     @overload  # type: ignore
     def items(
         self, *, flatten: Literal[False] = False
-    ) -> Iterator[tuple[str, TNestedDictValue]]: ...
+    ) -> Iterator[tuple[str, TNestedDictValue[TValue]]]: ...
     @overload
     def items(self, *, flatten: Literal[True]) -> Iterator[tuple[str, TValue]]: ...
 
-    def items(self, *, flatten: bool = False) -> Iterator[tuple[str, TNestedDictValue]]:
+    def items(
+        self, *, flatten: bool = False
+    ) -> Iterator[tuple[str, TNestedDictValue[TValue]]]:
         """Iterates over key-value pairs, optionally flattening nested paths.
 
         Args:
@@ -376,7 +380,7 @@ class NestedDict(MutableMapping[str, TNestedDictValue], Generic[TValue]):
         """
         self.update_recursive(other)
 
-    def copy(self) -> TNestedDict:
+    def copy(self) -> NestedDict[TValue]:
         """Creates a structural copy with copied nested mappings.
 
         Child dictionaries and child `NestedDict` instances are copied, while
@@ -391,11 +395,11 @@ class NestedDict(MutableMapping[str, TNestedDictValue], Generic[TValue]):
         return res
 
     @overload
-    def to_dict(self, *, flatten: Literal[False] = False) -> TDictTree: ...
+    def to_dict(self, *, flatten: Literal[False] = False) -> TDictTree[TValue]: ...
     @overload
     def to_dict(self, *, flatten: Literal[True]) -> dict[str, TValue]: ...
 
-    def to_dict(self, *, flatten: bool = False) -> TDictTree:  # type: ignore
+    def to_dict(self, *, flatten: bool = False) -> TDictTree[TValue]:  # type: ignore
         """Converts this object to a plain dictionary representation.
 
         Args:
