@@ -352,7 +352,7 @@ class Tensor2Field(DataFieldBase):
             data = self.data.trace(axis1=0, axis2=1)
 
         elif scalar == "invariant2":
-            data = np.zeros(self.grid.shape)
+            data = np.zeros(self.grid.shape, dtype=get_common_dtype(self))
             for i in range(self.grid.dim):
                 for j in range(i):
                     data += (
@@ -365,7 +365,7 @@ class Tensor2Field(DataFieldBase):
             if self.grid.dim == 1:
                 data = self.data[0, 0]
             else:
-                data = np.zeros(self.grid.shape)
+                data = np.zeros(self.grid.shape, dtype=get_common_dtype(self))
                 # this iterates over all of space and might thus be slow, but
                 # the interface of np.linalg.det is not very flexible. We could
                 # in principle use the definition of np.linalg.det without the
