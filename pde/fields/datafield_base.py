@@ -951,7 +951,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         # allocate memory for storing output
         if out is None:
-            out = self.__class__(self.grid, label=self.label)
+            out = self.__class__(
+                self.grid,
+                label=self.label,
+                dtype=self.dtype if self.is_complex else None,
+            )
         else:
             self.assert_field_compatible(out)
 
