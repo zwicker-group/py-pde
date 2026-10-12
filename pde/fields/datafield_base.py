@@ -417,14 +417,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         tensor_shape = (grid.dim,) * cls.rank
 
-        data = np.empty(tensor_shape + grid.shape)
+        data = np.empty(tensor_shape + grid.shape, dtype=dtype)
+        is_complex = np.iscomplexobj(data)
         # determine random field for each component
         for index in np.ndindex(*tensor_shape):
             data_axis = []
             # random harmonic function along each axis
             for i in range(len(grid.axes)):
-                # choose wave vectors
-                ampl = rng.random(size=modes)  # amplitudes
+                # choose amplitudes and wave vectors
+                if is_complex:
+                    ampl = rng.random(size=modes) + 1j * rng.random(size=modes)
+                else:
+                    ampl = rng.random(size=modes)
                 x = discretize_interval(0, 2 * np.pi, grid.shape[i])[0]
                 data_axis.append(
                     sum(a * harmonic(n * x) for n, a in enumerate(ampl, 1))

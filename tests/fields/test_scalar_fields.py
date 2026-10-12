@@ -210,6 +210,10 @@ def test_random_harmonic(rng):
     y = -x.laplace("auto_periodic_neumann") / scaling
     np.testing.assert_allclose(x.data, y.data, rtol=1e-2, atol=1e-2)
 
+    z = ScalarField.random_harmonic(grid, dtype=complex)
+    assert not np.allclose(z.data.real, z.data.imag)
+    assert not np.allclose(z.data.imag, 0)
+
 
 def test_get_line_data(rng):
     """Test different extraction methods for line data."""
