@@ -652,11 +652,11 @@ class FieldBase(metaclass=ABCMeta):
     def apply(
         self,
         func: Callable | str,
-        out: Self | None = None,
+        out: FieldBase | None = None,
         *,
         label: str | None = None,
         evaluate_args: dict[str, Any] | None = None,
-    ) -> Self:
+    ) -> FieldBase:
         """Applies a function/expression to the data and returns it as a field.
 
         Args:
@@ -697,20 +697,20 @@ class FieldBase(metaclass=ABCMeta):
                 raise TypeError(msg)
 
             if out is None:
-                out = result  # type: ignore
+                out = result
             else:
                 result.assert_field_compatible(out)
                 out.data[...] = result.data
 
         elif callable(func):
             # function should directly be applied to the data
+            data = func(self.data)
             if out is None:
-                data = func(self.data)
                 dtype = np.result_type(self.dtype, np.asarray(data).dtype)
                 out = self.copy(label=label, dtype=dtype)
             else:
                 self.assert_field_compatible(out)
-                data = func(self.data)
+            assert isinstance(out, FieldBase)
             out.data[...] = data
 
         else:
