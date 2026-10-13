@@ -25,8 +25,7 @@ def test_tensor_invariants_complex_values(dim, dtype, kind):
     for index in np.ndindex(grid.shape):
         point = field.data[(..., *index)].astype(np.complex128)
         if kind == "invariant2":
-            # Preserve the package's established half-scaled convention.
-            expected[index] = (np.trace(point) ** 2 - np.trace(point @ point)) / 4
+            expected[index] = (np.trace(point) ** 2 - np.trace(point @ point)) / 2
         else:
             determinant = 0j
             for permutation in itertools.permutations(range(dim)):
