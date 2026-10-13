@@ -705,10 +705,13 @@ class FieldBase(metaclass=ABCMeta):
         elif callable(func):
             # function should directly be applied to the data
             if out is None:
-                out = self.copy(label=label)
+                data = func(self.data)
+                dtype = np.result_type(self.dtype, np.asarray(data).dtype)
+                out = self.copy(label=label, dtype=dtype)
             else:
                 self.assert_field_compatible(out)
-            out.data[...] = func(self.data)
+                data = func(self.data)
+            out.data[...] = data
 
         else:
             msg = "`func` must be string or callable"
