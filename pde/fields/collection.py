@@ -124,6 +124,7 @@ class FieldCollection(FieldBase):
                 self.grid,
                 data=self._data_full[self._slices[i]].reshape(data_shape),
                 label=external_field.label,
+                dtype=self.dtype,
                 with_ghost_cells=True,
             )
             # check whether the field data is based on our data field
