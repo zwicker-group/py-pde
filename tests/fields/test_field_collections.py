@@ -330,6 +330,28 @@ def test_from_data(rng):
     np.testing.assert_allclose(f1.data, f2.data)
 
 
+@pytest.mark.parametrize("dtype", [np.float32, np.float64, np.complex64, np.complex128])
+def test_collection_member_dtype(dtype):
+    """Members share the collection buffer with its explicitly requested dtype."""
+    grid = UnitGrid([3, 5])
+    scalar = ScalarField(grid, 2, label="scalar")
+    vector = VectorField(grid, np.array([1, 3])[:, None, None], label="vector")
+    scalar.set_ghost_cells("auto_periodic_neumann", set_corners=True)
+    vector.set_ghost_cells("auto_periodic_neumann", set_corners=True)
+    collection = FieldCollection([scalar, vector], dtype=dtype)
+    assert collection.dtype == np.dtype(dtype)
+    for field in collection:
+        assert field.dtype == collection.dtype
+        assert np.shares_memory(field.data, collection.data)
+    collection["scalar"].data = 7
+    np.testing.assert_array_equal(collection.data[0], 7)
+    np.testing.assert_array_equal(scalar.data, 2)
+    copied = collection.copy(dtype=dtype)
+    assert copied.dtype == collection.dtype
+    np.testing.assert_array_equal(copied.data, collection.data)
+    assert not np.shares_memory(copied.data, collection.data)
+
+
 def test_collection_apply(rng):
     """Test the `apply` method."""
     grid = UnitGrid([3, 5])
