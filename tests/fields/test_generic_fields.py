@@ -132,6 +132,108 @@ def test_arithmetics(field_class):
     np.testing.assert_allclose(f1_out.data, 8)
 
 
+@pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
+@pytest.mark.parametrize("dtype", [np.float32, np.float64, np.complex64])
+def test_apply_callable_complex_result_single_field(field_class, dtype):
+    """Default output must retain complex results and evaluate the callable once."""
+    grid = UnitGrid([3, 4])
+    field = field_class(grid, 0.5, dtype=dtype, label="input")
+    original = field.data.copy()
+    calls = []
+
+    def transform(data):
+        calls.append(data)
+        return np.exp(1j * data)
+
+    expected = np.exp(1j * original)
+    result = field.apply(transform, label="result")
+    assert len(calls) == 1
+    assert result.dtype == expected.dtype
+    assert result.label == "result"
+    np.testing.assert_allclose(result.data, expected)
+    np.testing.assert_array_equal(field.data, original)
+    assert not np.shares_memory(result.data, field.data)
+
+    out = field.copy(dtype=expected.dtype)
+    assert field.apply(transform, out=out) is out
+    assert len(calls) == 2
+    np.testing.assert_allclose(out.data, expected)
+
+
+@pytest.mark.parametrize("dtype", [np.float64, np.complex128])
+def test_apply_callable_complex_result_collection(dtype):
+    """Default output must retain complex results and evaluate the callable once."""
+    grid = UnitGrid([3, 4])
+    field = ScalarField(grid, 0.5, dtype=dtype, label="input")
+    field = FieldCollection([field, field.copy(label="other")], dtype=dtype)
+    original = field.data.copy()
+    calls = []
+
+    def transform(data):
+        calls.append(data)
+        return np.exp(1j * data)
+
+    expected = np.exp(1j * original)
+    result = field.apply(transform, label="result")
+    assert len(calls) == 1
+    assert result.dtype == expected.dtype
+    assert result.label == "result"
+    np.testing.assert_allclose(result.data, expected)
+    np.testing.assert_array_equal(field.data, original)
+    assert not np.shares_memory(result.data, field.data)
+
+    out = VectorField(grid, dtype=expected.dtype)
+    assert field.apply(transform, out=out) is out
+    assert len(calls) == 2
+    np.testing.assert_allclose(out.data, expected)
+
+
+@pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
+@pytest.mark.parametrize("dtype", [np.float32, np.float64, np.complex128])
+def test_apply_expression_single_field_complex_result(field_class, dtype):
+    """Default output must retain complex results and evaluate the callable once."""
+    grid = UnitGrid([3, 4])
+    field = field_class(grid, 0.5, dtype=dtype, label="input")
+    original = field.data.copy()
+
+    expected = np.exp(1j * original)
+    result = field.apply("exp(1j * c)", label="result")
+    if dtype == np.float32:
+        assert result.dtype == np.complex128
+    else:
+        assert result.dtype == expected.dtype
+    assert result.label == "result"
+    np.testing.assert_allclose(result.data, expected)
+    np.testing.assert_array_equal(field.data, original)
+    assert not np.shares_memory(result.data, field.data)
+
+    out = field.copy(dtype=expected.dtype)
+    assert field.apply("exp(1j * c)", out=out) is out
+    np.testing.assert_allclose(out.data, expected)
+
+
+@pytest.mark.parametrize("dtype", [np.float64, np.complex128])
+def test_apply_expression_collection_complex_result(dtype):
+    """Default output must retain complex results and evaluate the callable once."""
+    grid = UnitGrid([3, 4])
+    scalar = ScalarField(grid, 0.5, dtype=dtype, label="input")
+    field = FieldCollection({"a": scalar, "b": scalar.copy(label="other")}, dtype=dtype)
+    original = field.data.copy()
+
+    expected = np.exp(1j * scalar.data)
+    result = field.apply("exp(1j * a)", label="result")
+    assert isinstance(result, ScalarField)
+    assert result.dtype == expected.dtype
+    assert result.label == "result"
+    np.testing.assert_allclose(result.data, expected)
+    np.testing.assert_array_equal(field.data, original)
+    assert not np.shares_memory(result.data, field.data)
+
+    out = scalar.copy(dtype=expected.dtype)
+    assert field.apply("exp(1j * a)", out=out) is out
+    np.testing.assert_allclose(out.data, expected)
+
+
 def test_scalar_arithmetics(rng):
     """Test simple arithmetics involving scalar fields."""
     grid = UnitGrid([3, 4])

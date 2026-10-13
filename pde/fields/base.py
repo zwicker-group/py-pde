@@ -29,6 +29,8 @@ if TYPE_CHECKING:
 
     from ..grids.base import GridBase
     from ..tools.typing import NumberOrArray, NumericArray
+    from .datafield_base import DataFieldBase
+
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for fields."""
@@ -368,7 +370,7 @@ class FieldBase(metaclass=ABCMeta):
         """
 
     def assert_field_compatible(
-        self, other: FieldBase, accept_scalar: bool = False
+        self, other: FieldBase, *, accept_scalar: bool = False
     ) -> None:
         """Checks whether `other` is compatible with the current field.
 
@@ -396,7 +398,7 @@ class FieldBase(metaclass=ABCMeta):
     @property
     def dtype(self) -> DTypeLike:
         """:class:`~DTypeLike`: the numpy dtype of the underlying data."""
-        # this property is necessary to support np.iscomplexobj for DataFieldBases
+        # this property is necessary to support np.iscomplexobj for DataFieldBase
         return self.data.dtype
 
     @property
@@ -652,12 +654,18 @@ class FieldBase(metaclass=ABCMeta):
     def apply(
         self,
         func: Callable | str,
-        out: Self | None = None,
+        out: DataFieldBase | None = None,
         *,
         label: str | None = None,
         evaluate_args: dict[str, Any] | None = None,
-    ) -> Self:
+    ) -> DataFieldBase:
         """Applies a function/expression to the data and returns it as a field.
+
+        Note:
+            This function doesn't support field collections very well. While collections
+            can be passed as input (so this method can be called on collections), the
+            output is expected to be a single field, i.e., an instance of
+            :class:`~pde.fields.datafield_base.DataFieldBase`.
 
         Args:
             func (callable or str):
@@ -665,7 +673,7 @@ class FieldBase(metaclass=ABCMeta):
                 that can be parsed using sympy (:func:`~pde.tools.expressions.evaluate`
                 is used in this case). The local field values can be accessed using the
                 field labels for a field collection and via the variable `c` otherwise.
-            out (FieldBase, optional):
+            out (:class:`DataFieldBase`, optional):
                 Optional field into which the data is written
             label (str, optional):
                 Name of the returned field
@@ -674,7 +682,7 @@ class FieldBase(metaclass=ABCMeta):
                 Only used when `func` is a string.
 
         Returns:
-            :class:`FieldBase`: Field with new data. Identical to `out` if given.
+            :class:`DataFieldBase`: Field with new data. Identical to `out` if given.
         """
         from .datafield_base import DataFieldBase  # avoid circular import
 
@@ -697,18 +705,33 @@ class FieldBase(metaclass=ABCMeta):
                 raise TypeError(msg)
 
             if out is None:
-                out = result  # type: ignore
+                out = result
             else:
                 result.assert_field_compatible(out)
                 out.data[...] = result.data
 
         elif callable(func):
             # function should directly be applied to the data
+            if out is not None and not self.grid.compatible_with(out.grid):
+                msg = f"Grids {self.grid} and {out.grid} are incompatible"
+                raise ValueError(msg)
+
+            data = func(self.data)
+            rank = data.ndim - self.grid.num_axes
             if out is None:
-                out = self.copy(label=label)
+                # create a output field of appropriate rank
+                dtype = np.result_type(self.dtype, np.asarray(data).dtype)
+                cls = DataFieldBase.get_class_by_rank(rank)
+                out = cls(grid=self.grid, data=data, label=label, dtype=dtype)
+            elif isinstance(out, DataFieldBase):
+                # store result in given output
+                if out.rank != rank:
+                    msg = f"Output field has incompatible rank ({out.rank} != {rank})"
+                    raise ValueError(msg)
+                out.data[...] = data
             else:
-                self.assert_field_compatible(out)
-            out.data[...] = func(self.data)
+                msg = "Output field must be a single field"
+                raise TypeError(msg)
 
         else:
             msg = "`func` must be string or callable"

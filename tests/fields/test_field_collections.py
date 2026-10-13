@@ -359,7 +359,13 @@ def test_collection_apply(rng):
     v = VectorField.random_uniform(grid, label="v2", rng=rng)
     f1 = FieldCollection([s, v])
 
-    np.testing.assert_allclose(f1.apply("s1 * v2").data, v.data * 2)
+    res = f1.apply("s1 ** 2")
+    assert isinstance(res, ScalarField)
+    np.testing.assert_allclose(res.data, 4)
+
+    res = f1.apply("s1 * v2")
+    assert isinstance(res, VectorField)
+    np.testing.assert_allclose(res.data, v.data * 2)
 
 
 @pytest.mark.parametrize("num", [1, 2, 3, 4])
