@@ -133,22 +133,11 @@ def test_arithmetics(field_class):
 
 
 @pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
-@pytest.mark.parametrize(
-    ("dtype", "collection"),
-    [
-        (np.float32, False),
-        (np.float64, False),
-        (np.complex64, False),
-        (np.float64, True),
-        (np.complex128, True),
-    ],
-)
-def test_apply_callable_complex_result(field_class, dtype, collection):
+@pytest.mark.parametrize("dtype", [np.float32, np.float64, np.complex64])
+def test_apply_callable_complex_result_single_field(field_class, dtype):
     """Default output must retain complex results and evaluate the callable once."""
     grid = UnitGrid([3, 4])
     field = field_class(grid, 0.5, dtype=dtype, label="input")
-    if collection:
-        field = FieldCollection([field, field.copy(label="other")], dtype=dtype)
     original = field.data.copy()
     calls = []
 
@@ -166,6 +155,34 @@ def test_apply_callable_complex_result(field_class, dtype, collection):
     assert not np.shares_memory(result.data, field.data)
 
     out = field.copy(dtype=expected.dtype)
+    assert field.apply(transform, out=out) is out
+    assert len(calls) == 2
+    np.testing.assert_allclose(out.data, expected)
+
+
+@pytest.mark.parametrize("dtype", [np.float64, np.complex128])
+def test_apply_callable_complex_result_collection(dtype):
+    """Default output must retain complex results and evaluate the callable once."""
+    grid = UnitGrid([3, 4])
+    field = ScalarField(grid, 0.5, dtype=dtype, label="input")
+    field = FieldCollection([field, field.copy(label="other")], dtype=dtype)
+    original = field.data.copy()
+    calls = []
+
+    def transform(data):
+        calls.append(data)
+        return np.exp(1j * data)
+
+    expected = np.exp(1j * original)
+    result = field.apply(transform, label="result")
+    assert len(calls) == 1
+    assert result.dtype == expected.dtype
+    assert result.label == "result"
+    np.testing.assert_allclose(result.data, expected)
+    np.testing.assert_array_equal(field.data, original)
+    assert not np.shares_memory(result.data, field.data)
+
+    out = VectorField(grid, dtype=expected.dtype)
     assert field.apply(transform, out=out) is out
     assert len(calls) == 2
     np.testing.assert_allclose(out.data, expected)
