@@ -57,7 +57,7 @@ def test_tensors_basic(rng):
         ("norm_squared", 30),
         ("trace", 5),
         ("invariant1", 5),
-        ("invariant2", -1),
+        ("invariant2", -2),
     ]:
         p1 = t1.to_scalar(method)
         assert p1.data.shape == grid.shape
@@ -162,7 +162,7 @@ def test_tensor_invariants(rng):
     # dim == 2
     f = Tensor2Field.random_uniform(UnitGrid([3, 3]), rng=rng)
     invs = [f.to_scalar(f"invariant{i}").data for i in range(1, 4)]
-    np.testing.assert_allclose(2 * invs[1], invs[2])
+    np.testing.assert_allclose(invs[1], invs[2])
 
     a = rng.uniform(0, 2 * np.pi)  # pick random rotation angle
     rot = Tensor2Field(f.grid)
@@ -196,6 +196,20 @@ def test_tensor_invariants(rng):
 
     with pytest.raises(ValueError):
         f.to_scalar("undefined")
+
+
+@pytest.mark.parametrize("dim", [1, 2, 3])
+@pytest.mark.parametrize("complex_data", [False, True])
+def test_second_invariant_characteristic_polynomial(dim, complex_data):
+    """The second invariant is the quadratic characteristic coefficient."""
+    grid = UnitGrid([2] * dim)
+    matrix = np.arange(1, dim * dim + 1).reshape(dim, dim).astype(float)
+    matrix += np.diag(np.arange(1, dim + 1))
+    if complex_data:
+        matrix = matrix + 1j * np.diag(np.arange(1, dim + 1))
+    field = Tensor2Field(grid, matrix.reshape(dim, dim, *([1] * dim)))
+    expected = 0 if dim == 1 else np.poly(matrix)[2]
+    np.testing.assert_allclose(field.to_scalar("invariant2").data, expected)
 
 
 @pytest.mark.parametrize("backend", ["numba", "numpy"])
