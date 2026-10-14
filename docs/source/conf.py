@@ -63,6 +63,32 @@ extensions = [
     "simplify_typehints",
 ]
 
+
+# add autoclasstoc in the HTML documentation
+# -- Extension setup ---------------------------------------------------------
+def setup(app):
+    # Connect to the 'builder-inited' event
+    # This fires after the builder is created
+    app.connect("builder-inited", lambda app: add_autoclasstoc_if_html(app))
+
+
+def add_autoclasstoc_if_html(app):
+    # Now app.builder is available
+    if app.builder.name == "html":
+        app.setup_extension("autoclasstoc")
+
+
+# configure autoclasstoc
+autosummary_generate = True
+
+autodoc_default_options = {
+    "members": True,
+    "special-members": False,
+    "private-members": False,
+    "inherited-members": True,
+    "undoc-members": False,
+}
+
 templates_path = ["_templates"]
 source_suffix = ".rst"
 

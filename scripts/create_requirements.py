@@ -164,6 +164,7 @@ REQUIREMENTS = [
         groups={"multiprocessing", "docs"},
     ),
     # mostly for documentation
+    Requirement(name="autoclasstoc", version_min="1.6", groups={"docs"}),
     Requirement(name="Sphinx", version_min="4", groups={"docs"}),
     Requirement(name="sphinx-autodoc-annotation", version_min="1.0", groups={"docs"}),
     Requirement(name="sphinx-gallery", version_min="0.6", groups={"docs"}),
