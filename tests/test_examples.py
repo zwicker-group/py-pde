@@ -17,21 +17,21 @@ PACKAGE_PATH = Path(__file__).resolve().parents[1]
 EXAMPLES = list((PACKAGE_PATH / "examples").glob("*/*.py"))
 NOTEBOOKS = list((PACKAGE_PATH / "examples").glob("*/*.ipynb"))
 
-SKIP_EXAMPLES: list[str] = []
+SKIP_EXAMPLES: set[str] = set()
 if not Movie.is_available():
-    SKIP_EXAMPLES.extend(["make_movie_live.py", "make_movie_storage.py", "storages.py"])
+    SKIP_EXAMPLES.update(["make_movie_live.py", "make_movie_storage.py", "storages.py"])
 if not module_available("mpi4py"):
-    SKIP_EXAMPLES.extend(["mpi_parallel_run"])
+    SKIP_EXAMPLES.update(["mpi_parallel_run"])
 if not module_available("napari"):
-    SKIP_EXAMPLES.extend(["tracker_interactive", "show_3d_field_interactively"])
+    SKIP_EXAMPLES.update(["tracker_interactive", "show_3d_field_interactively"])
 if not module_available("h5py"):
-    SKIP_EXAMPLES.extend(["trajectory_io"])
+    SKIP_EXAMPLES.update(["trajectory_io", "storages"])
 if True:  # not all(module_available(m) for m in ["modelrunner", "h5py", "zarr"]):
-    SKIP_EXAMPLES.extend(["py_modelrunner"])
+    SKIP_EXAMPLES.update(["py_modelrunner"])
 if not module_available("utilitiez"):
-    SKIP_EXAMPLES.extend(["logarithmic_kymograph"])
+    SKIP_EXAMPLES.update(["logarithmic_kymograph"])
 if not module_available("ffmpeg"):
-    SKIP_EXAMPLES.extend(["storages"])
+    SKIP_EXAMPLES.update(["storages"])
 
 
 @pytest.mark.slow
@@ -83,7 +83,7 @@ def test_example_scripts(path):
 @pytest.mark.skipif(not module_available("jupyter"), reason="requires `jupyter`")
 @pytest.mark.skipif(not module_available("notebook"), reason="requires `notebook`")
 @pytest.mark.parametrize("path", NOTEBOOKS)
-def test_jupyter_notebooks(path, tmp_path):
+def test_jupyter_notebooks(path):
     """Run the jupyter notebooks."""
     import notebook as jupyter_notebook
 
