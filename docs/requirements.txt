@@ -1,5 +1,4 @@
 -r ../requirements.txt
-autoclasstoc>=1.6
 ffmpeg-python>=0.2
 h5py>=2.10
 jax>=0.7
