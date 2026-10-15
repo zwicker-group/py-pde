@@ -34,11 +34,17 @@ def _most_severe_exit_code(retcodes: Sequence[int]) -> int:
 
 def show_config():
     """Show package configuration."""
-    from importlib.machinery import SourceFileLoader
+    import importlib.util
 
     # imports the package from the package path
-    mod_path = f"{PACKAGE_PATH / PACKAGE}/__init__.py"
-    mod = SourceFileLoader(PACKAGE, mod_path).load_module()
+    mod_path = PACKAGE_PATH / PACKAGE / "__init__.py"
+    spec = importlib.util.spec_from_file_location(PACKAGE, mod_path)
+    if spec is None or spec.loader is None:
+        msg = f"Could not load module spec for {mod_path}"
+        raise ImportError(msg)
+
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
     # obtain the package environment
     env = mod.environment()
 
