@@ -11,7 +11,7 @@ from string import Template
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
 MIN_PYTHON_VERSION = "3.12"
-MAX_PYTHON_VERSION = "3.14"
+MAX_PYTHON_VERSION = "3.15"
 
 
 @dataclass

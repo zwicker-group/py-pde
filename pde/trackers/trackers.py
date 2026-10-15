@@ -50,7 +50,7 @@ from .interrupts import InterruptData, RealtimeInterrupts
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    import pandas  # noqa: ICN001
+    import pandas as pd
 
     from ..fields.base import FieldBase
     from ..tools.typing import NumericArray, Real
@@ -690,7 +690,7 @@ class DataTracker(CallbackTracker):
             self.to_file(self.filename)
 
     @property
-    def dataframe(self) -> pandas.DataFrame:
+    def dataframe(self) -> pd.DataFrame:
         """:class:`pandas.DataFrame`: the data in a dataframe.
 
         If `func` returns a dictionary, the keys are used as column names. Otherwise,
