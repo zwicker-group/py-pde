@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from __future__ import annotations
 
-import datetime
+import datetime  # noqa: ICN001
 import re
 
 standard_duration_re = re.compile(

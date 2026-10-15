@@ -690,10 +690,10 @@ class PDE(SDEBase):
                 raise TypeError(msg)
 
             for rhs in self._rhs_expr.values():
-                rhs.consts[name] = value  # type: ignore
+                rhs.consts[name] = value
             if self._noise_expr is not None:
                 for noise_expr in self._noise_expr.values():
-                    noise_expr.consts[name] = value  # type: ignore
+                    noise_expr.consts[name] = value
 
         # obtain functions used in the expression
         ops_general: dict[str, Callable] = {}

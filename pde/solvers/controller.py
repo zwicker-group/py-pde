@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-import datetime
+import datetime  # noqa: ICN001
 import logging
 import math
 import time

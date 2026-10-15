@@ -1,15 +1,8 @@
 # Configuration file for the Sphinx documentation builder.
 #
-# This file does only contain a selection of the most common options. For a
-# full list see the documentation:
 # http://www.sphinx-doc.org/en/master/config
 
 # -- Path setup --------------------------------------------------------------
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-
 
 import os.path
 import sys
@@ -21,6 +14,11 @@ sys.path.insert(0, os.path.abspath("../sphinx_ext/"))  # noqa: PTH100
 
 from datetime import UTC, datetime
 
+from create_requirements import MAX_PYTHON_VERSION, MIN_PYTHON_VERSION
+from run_autodoc import main, skip_external_inherited_members
+
+import pde
+
 # -- Project information -----------------------------------------------------
 
 project = "py-pde"
@@ -29,13 +27,10 @@ author = "Zwicker Group"
 copyright = f"{datetime.now(UTC).year}, {author}"  # noqa: A001
 html_logo = "_images/logo_small.png"
 
-# Determine the version from the actual package
-import pde
 
 version = pde.__version__.split("-")[0]
 release = pde.__version__
 
-from create_requirements import MAX_PYTHON_VERSION, MIN_PYTHON_VERSION
 
 # make the parameters available in RST
 rst_prolog = f"""
@@ -62,6 +57,15 @@ extensions = [
     "package_config",
     "simplify_typehints",
 ]
+
+
+autodoc_default_options = {
+    "members": True,
+    "special-members": False,
+    "private-members": False,
+    "inherited-members": True,
+    "undoc-members": False,
+}
 
 templates_path = ["_templates"]
 source_suffix = ".rst"
@@ -132,9 +136,7 @@ html_static_path = ["_static"]
 #
 # html_sidebars = {}
 
-html_css_files = [
-    "custom.css",
-]
+html_css_files = ["custom.css"]
 
 # -- Options for HTMLHelp output ---------------------------------------------
 
@@ -195,7 +197,7 @@ texinfo_documents = [
         f"{project} Documentation",
         author,
         project,
-        "One line description of project.",
+        "Python package for solving partial differential equations.",
         "Miscellaneous",
     ),
 ]
@@ -278,10 +280,11 @@ sphinx_gallery_conf = {
     "download_all_examples": False,
 }
 
-# run autodoc
-autodoc_typehints = "description"
+# setup and run autodoc
 
 
-from run_autodoc import main
+def setup(app):
+    app.connect("autodoc-skip-member", skip_external_inherited_members)
+
 
 main()

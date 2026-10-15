@@ -278,7 +278,7 @@ def flat_idx(arr: NumericArray, i: int) -> Number:
             Index to access
     """
     if np.isscalar(arr):
-        return arr  # type: ignore
+        return arr
     return arr.flat[i]
 
 

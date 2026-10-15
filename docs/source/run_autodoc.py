@@ -1,10 +1,81 @@
 #!/usr/bin/env python3
+"""Generate and post-process the package API documentation with Sphinx."""
 
+import contextlib
+import inspect
 import logging
 import subprocess as sp
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
+
+
+PACKAGE_NAME = "pde"
+
+
+def is_from_this_package(obj) -> bool:
+    """Check whether an object is defined in the ``pde`` package.
+
+    Args:
+        obj: Object or descriptor whose defining module should be checked.
+
+    Returns:
+        Whether the object is defined in ``pde`` or one of its submodules.
+    """
+    # A property itself often has no useful __module__; inspect its accessor.
+    if isinstance(obj, property):
+        obj = obj.fget or obj.fset or obj.fdel
+
+    # Handle @classmethod and @staticmethod descriptors.
+    obj = getattr(obj, "__func__", obj)
+
+    # Resolve decorators using functools.wraps, where possible.
+    with contextlib.suppress(ValueError):
+        obj = inspect.unwrap(obj)
+
+    module = getattr(obj, "__module__", None)
+
+    # Some C-extension descriptors expose their defining class instead.
+    if module is None:
+        owner = getattr(obj, "__objclass__", None)
+        module = getattr(owner, "__module__", None)
+
+    return module == PACKAGE_NAME or (
+        module is not None and module.startswith(PACKAGE_NAME + ".")
+    )
+
+
+def skip_external_inherited_members(app, what, name, obj, skip, options) -> bool | None:
+    """Tell Sphinx to omit inherited members that are not defined by ``pde``.
+
+    Args:
+        app: The Sphinx application instance.
+        what: The type of object being documented.
+        name: The name of the object being documented.
+        obj: The object being documented.
+        skip: Sphinx's existing decision about whether to skip the object.
+        options: The options supplied for the documented object.
+
+    Returns:
+        ``True`` to skip an external class member, or ``None`` to preserve
+        Sphinx's normal decision.
+    """
+    # Restrict this rule to members displayed by autoclass.
+    if what != "class":
+        return None
+
+    # Returning True forces Sphinx to skip the member.
+    #
+    # Objects with no identifiable module are treated as external. This
+    # excludes e.g. built-in/object/C-extension members unless they identify
+    # themselves as flory members.
+    if not is_from_this_package(obj):
+        return True
+
+    # Preserve Sphinx's normal decision for local members: private-member
+    # handling, undocumented-member handling, etc.
+    return None
+
 
 OUTPUT_PATH = "packages"
 REPLACEMENTS = {
@@ -14,18 +85,16 @@ REPLACEMENTS = {
 }
 
 
-def replace_in_file(infile, replacements, outfile=None):
-    """Reads in a file, replaces the given data using python formatting and writes back
-    the result to a file.
+def replace_in_file(infile, replacements, outfile=None) -> None:
+    """Replace text in a file and write the result to an output file.
 
     Args:
-        infile (str):
-            File to be read
-        replacements (dict):
-            The replacements old => new in a dictionary format {old: new}
-        outfile (str):
-            Output file to which the data is written. If it is omitted, the
-            input file will be overwritten instead
+        infile: Path to the file to read.
+        replacements: Mapping of text to replace to its replacement text.
+        outfile: Path to write the result to. If omitted, overwrite ``infile``.
+
+    Returns:
+        None.
     """
     if outfile is None:
         outfile = infile
@@ -40,8 +109,8 @@ def replace_in_file(infile, replacements, outfile=None):
         fp.write(content)
 
 
-def main():
-    """Run the autodoc call."""
+def main() -> None:
+    """Generate Sphinx API documentation and apply project-specific edits."""
     logger = logging.getLogger("autodoc")
 
     # remove old files
