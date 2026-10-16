@@ -200,7 +200,7 @@ class MemoryStorage(StorageBase):
         elif self.write_mode != "append":
             msg = (
                 f"Unknown write mode `{self.write_mode}`. Possible values are "
-                "`truncate_once`, `truncate`, and `append`"
+                "`append`, `readonly`, `truncate_once`, and `truncate`."
             )
             raise ValueError(msg)
 

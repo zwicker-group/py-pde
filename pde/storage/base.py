@@ -98,7 +98,7 @@ class StorageBase(metaclass=ABCMeta):
             RuntimeError: if data_shape was not set
         """
         if self._data_shape is None:
-            msg = "data_shape was not set"
+            msg = "data_shape was not set; storage is likely not initialized"
             raise RuntimeError(msg)
         # use the else clause to help typing
         return self._data_shape
@@ -137,11 +137,16 @@ class StorageBase(metaclass=ABCMeta):
         if time is None:
             time = 0 if len(self) == 0 else self.times[-1] + 1
 
+        if self._data_shape is None and self.write_mode != "readonly":
+            # silently initialize storage to allow simpler usage
+            self.start_writing(field)
+
         if self._grid is None:
             self._grid = field.grid
         elif self._grid != field.grid:
             msg = f"Grids incompatible ({self._grid} != {field.grid})"
             raise ValueError(msg)
+
         return self._append_data(field.data, time)
 
     def clear(self, clear_data_shape: bool = False) -> None:
