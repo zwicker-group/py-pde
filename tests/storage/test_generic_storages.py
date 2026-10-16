@@ -409,3 +409,21 @@ def test_storage_view(atol, can_clear, storage_factory, rng):
     np.testing.assert_allclose(field.data, f2.data, atol=atol)
     field = StorageView(storage, field=1)[0]
     np.testing.assert_allclose(field.data, f2.data, atol=atol)
+
+
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
+def test_storage_simple_append(atol, can_clear, storage_factory):
+    """Test writing to storage without calling start_writing."""
+    grid = UnitGrid([2])
+    field = ScalarField(grid, [1, 2])
+
+    # store some data
+    storage = storage_factory()
+    storage.append(field, 0)
+    storage.append(field, 1)
+    storage.end_writing()
+
+    # read some data
+    assert len(storage) == 2
+    assert storage[0] == field
+    assert storage[1] == field
