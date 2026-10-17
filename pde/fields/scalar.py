@@ -268,7 +268,7 @@ class ScalarField(DataFieldBase):
 
     def project(
         self,
-        axes: str | Sequence[str],
+        axes: int | str | Sequence[int | str],
         *,
         method: Literal[
             "integral", "average", "mean", "maximum", "max", "minimum", "min"
@@ -278,10 +278,10 @@ class ScalarField(DataFieldBase):
         """Project scalar field along given axes.
 
         Args:
-            axes (list of str):
-                The names of the axes that are removed by the projection operation. The
-                valid names for a given grid are the ones in the :attr:`GridBase.axes`
-                attribute.
+            axes (list of int or str):
+                The indices or names of the axes that are removed by the projection
+                operation. The valid names for a given grid are the ones in the
+                :attr:`GridBase.axes` attribute.
             method (str):
                 The projection method. Supported values are:
 
@@ -296,18 +296,9 @@ class ScalarField(DataFieldBase):
             :class:`~pde.fields.scalar.ScalarField`: The projected data is a scalar
             field defined on a subgrid of the original grid.
         """
-        if isinstance(axes, str):
-            axes = [axes]
-        if any(ax not in self.grid.axes for ax in axes):
-            msg = (
-                f"The axes {axes} are not all contained in {self.grid} with axes "
-                f"{self.grid.axes}"
-            )
-            raise ValueError(msg)
-
         # determine the axes after projection
         ax_all = range(self.grid.num_axes)
-        ax_remove = tuple(self.grid.axes.index(ax) for ax in axes)
+        ax_remove = self.grid.get_axis_tuple(axes, allow_symmetric=False)
         ax_retain = tuple(sorted(set(ax_all) - set(ax_remove)))
 
         # determine the new grid
@@ -337,7 +328,7 @@ class ScalarField(DataFieldBase):
 
     def slice(
         self,
-        position: dict[str, float],
+        position: dict[int | str, float],
         *,
         method: Literal["nearest"] = "nearest",
         label: str | None = None,
@@ -374,14 +365,7 @@ class ScalarField(DataFieldBase):
         ax_remove, pos_values = [], np.zeros(grid.num_axes)
         for ax, pos in position.items():
             # check the axis
-            try:
-                i = grid.axes.index(ax)
-            except ValueError:
-                msg = (
-                    f"The axes {ax} is not contained in "
-                    f"{self.grid} with axes {self.grid.axes}"
-                )
-                raise ValueError(msg) from None
+            i = self.grid.get_axis_index(ax, allow_symmetric=False)
             ax_remove.append(i)
 
             # check the position

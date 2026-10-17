@@ -245,33 +245,67 @@ class GridBase(metaclass=ABCMeta):
         """tuple: coordinates of the cells for each axis"""
         return self._axes_coords
 
-    def get_axis_index(self, key: int | str, allow_symmetric: bool = True) -> int:
+    def get_axis_index(
+        self, axis_id: int | str, *, allow_symmetric: bool = False
+    ) -> int:
         """Return the index belonging to an axis.
 
         Args:
-            key (int or str):
+            axis_id (int or str):
                 The index or name of an axis
             allow_symmetric (bool):
-                Whether axes with assumed symmetry are included
+                Whether axes with assumed symmetry are included. This particular affects
+                negative `axis_id`
 
         Returns:
-            int: The index of the axis
+            The non-negative index of the axis.
+
+        Raises:
+            ValueError: If `axis_id` is a name that is not present on this grid.
+            IndexError: If `axis_id` is an out-of-range integer index.
         """
-        if isinstance(key, str):
-            # determine key index from name of the axis
-            if allow_symmetric:
-                axes = self.axes + self.axes_symmetric
-            else:
-                axes = self.axes
-            if key in axes:
-                return axes.index(key)
-            msg = f"`{key}` is not in the axes {axes}"
+        # determine the list of allowed axes
+        if allow_symmetric:
+            axes = self.axes + self.axes_symmetric
+        else:
+            axes = self.axes
+
+        if isinstance(axis_id, str):
+            # determine index from name of the axis
+            if axis_id in axes:
+                return axes.index(axis_id)
+            msg = f"`{axis_id}` is not in the axes {axes}"
             raise IndexError(msg)
-        if isinstance(key, int):
-            # assume that it is already an index
-            return key
-        msg = "Index must be an integer or the name of an axes"
+        if isinstance(axis_id, (int, np.integer)):
+            # normalize index (particularly when it is negative)
+            return np.lib.array_utils.normalize_axis_index(axis_id, len(axes))
+        msg = f"Index `{axis_id}` must be an integer or the name of an axes {axes}"
         raise IndexError(msg)
+
+    def get_axis_tuple(
+        self, axes: int | str | Sequence[int | str], *, allow_symmetric: bool = False
+    ) -> tuple[int, ...]:
+        """Convert axis indices or names to normalized axis indices.
+
+        Args:
+            axes:
+                A single axis index or name, or a sequence of them.
+            allow_symmetric (bool):
+                Whether axes with assumed symmetry are included. This particular affects
+                negative `axis_id`
+
+        Returns:
+            The non-negative indices of the axes, in the order given.
+
+        Raises:
+            ValueError: If an axis name is not present on this grid.
+            IndexError: If an integer axis index is out of range.
+        """
+        if isinstance(axes, (int, str)):
+            return (self.get_axis_index(axes, allow_symmetric=allow_symmetric),)
+        return tuple(
+            self.get_axis_index(ax, allow_symmetric=allow_symmetric) for ax in axes
+        )
 
     def _get_boundary_index(self, index: str | tuple[int, bool]) -> tuple[int, bool]:
         """Return the index of a boundary belonging to an axis.
@@ -1284,7 +1318,7 @@ class GridBase(metaclass=ABCMeta):
         return np.mean(self.discretization)  # type: ignore
 
     def integrate(
-        self, data: NumberOrArray, axes: int | Sequence[int] | None = None
+        self, data: NumberOrArray, axes: int | str | Sequence[int | str] | None = None
     ) -> NumberOrArray:
         """Integrates the discretized data over the grid.
 
@@ -1292,32 +1326,37 @@ class GridBase(metaclass=ABCMeta):
             data (:class:`~numpy.ndarray`):
                 The values at the support points of the grid that need to be
                 integrated.
-            axes (list of int, optional):
+            axes (list of int or str, optional):
                 The axes along which the integral is performed. If omitted, all
                 axes are integrated over.
 
         Returns:
             :class:`~numpy.ndarray`: The values integrated over the entire grid
         """
-        # determine the volumes of the individual cells
-        if self.cell_volume_data is None:
-            if axes is None:
-                cell_volumes = self.cell_volumes
-            else:
-                raise NotImplementedError
+        # determine the axes to integrate over
+        if axes is None:
+            axes = tuple(range(self.num_axes))  # default is all axes
         else:
-            if axes is None:
-                volume_list = self.cell_volume_data
-            else:
-                # use stored value for the default case of integrating over all axes
-                axes = np.lib.array_utils.normalize_axis_tuple(axes, self.num_axes)
-                volume_list = [
-                    cell_vol if ax in axes else 1
-                    for ax, cell_vol in enumerate(self.cell_volume_data)
-                ]
+            axes = self.get_axis_tuple(axes, allow_symmetric=False)
+
+        # determine the volumes of the individual cells
+        if axes == tuple(range(self.num_axes)):
+            cell_volumes = self.cell_volumes  # use cached values
+        elif self.cell_volume_data is None:
+            # some grids cannot decompose the volume of cells into orthogonal
+            # contributions. In this case, we just support integration over the entire
+            # domain.
+            msg = "Grid does not support orthogonal decomposition of cell volumes."
+            raise NotImplementedError(msg)
+        else:
+            # otherwise, the cell volumes are just the outer product
+            volume_list = [
+                cell_vol if ax in axes else 1
+                for ax, cell_vol in enumerate(self.cell_volume_data)
+            ]
             cell_volumes = functools.reduce(np.outer, volume_list)
 
-        # determine the axes over which we will integrate
+        # determine the axes over which we will integrate the data
         if not isinstance(data, np.ndarray) or data.ndim < self.num_axes:
             # deal with the case where data is not supplied for each support
             # point, e.g., when a single scalar is integrated over the grid
@@ -1327,12 +1366,8 @@ class GridBase(metaclass=ABCMeta):
             # deal with the case where more than a single value is provided per
             # support point, e.g., when a tensorial field is integrated
             offset = data.ndim - self.num_axes
-            if axes is None:
-                # integrate over all axes of the grid
-                axes = tuple(range(offset, data.ndim))
-            else:
-                # shift the indices to account for the data shape
-                axes = tuple(offset + i for i in axes)
+            # shift the indices to account for the data shape
+            axes = tuple(offset + i for i in axes)
 
         # calculate integral using a weighted sum along the chosen axes
         integral = (data * cell_volumes).sum(axis=axes)

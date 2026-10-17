@@ -42,6 +42,33 @@ def test_basic_grid_properties(grid):
         grid.shape = 12
 
 
+def test_get_axis_index():
+    """Test getting grid axis indices, including symmetric axes."""
+    grid = grids.CylindricalSymGrid(3, [-1, 2], [7, 8])
+
+    assert grid.get_axis_index("r") == 0
+    assert grid.get_axis_index("z") == 1
+    assert grid.get_axis_index(-1) == 1
+    with pytest.raises(IndexError):
+        grid.get_axis_index("φ")
+
+    assert grid.get_axis_index("φ", allow_symmetric=True) == 2
+    assert grid.get_axis_index(2, allow_symmetric=True) == 2
+    assert grid.get_axis_index(-1, allow_symmetric=True) == 2
+
+
+def test_get_axis_tuple():
+    """Test getting tuples of grid axis indices, including symmetric axes."""
+    grid = grids.CylindricalSymGrid(3, [-1, 2], [7, 8])
+
+    assert grid.get_axis_tuple("z") == (1,)
+    assert grid.get_axis_tuple((0, "z")) == (0, 1)
+    assert grid.get_axis_tuple(("r", "φ"), allow_symmetric=True) == (0, 2)
+    assert grid.get_axis_tuple((0, -1), allow_symmetric=True) == (0, 2)
+    with pytest.raises(IndexError):
+        grid.get_axis_tuple(("r", "φ"))
+
+
 def test_discretize(rng):
     """Test the discretize function."""
     x_min = rng.uniform(0, 1)

@@ -770,7 +770,11 @@ class FieldCollection(FieldBase):
         return np.array([field.magnitude for field in self])
 
     def project(
-        self, axes: str | Sequence[str], *, label: str | None = None, **kwargs
+        self,
+        axes: int | str | Sequence[int | str],
+        *,
+        label: str | None = None,
+        **kwargs,
     ) -> FieldCollection:
         """Project fields along given axes.
 
@@ -778,7 +782,7 @@ class FieldCollection(FieldBase):
         collection has higher rank, the entire process fails.
 
         Args:
-            axes (list of str):
+            axes (list of int or str):
                 The names of the axes that are removed by the projection operation. The
                 valid names for a given grid are the ones in the :attr:`GridBase.axes`
                 attribute.
@@ -798,7 +802,7 @@ class FieldCollection(FieldBase):
         return self._apply_to_fields(lambda f: f.project(axes, **kwargs), label=label)  # type: ignore
 
     def slice(
-        self, position: dict[str, float], *, label: str | None = None, **kwargs
+        self, position: dict[int | str, float], *, label: str | None = None, **kwargs
     ) -> FieldCollection:
         """Slice all fields at a given position.
 
