@@ -145,7 +145,7 @@ class Tensor2Field(DataFieldBase):
         except TypeError as err:
             msg = "Index must be given as two values"
             raise IndexError(msg) from err
-        return tuple(self.grid.get_axis_index(k) for k in key)  # type: ignore
+        return self.grid.get_axis_tuple(key, allow_symmetric=True)  # type: ignore
 
     def __getitem__(self, key: tuple[int | str, int | str]) -> ScalarField:
         """Extract a single component of the tensor field as a scalar field."""

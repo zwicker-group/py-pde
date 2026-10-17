@@ -317,7 +317,7 @@ def test_slice(grid, rng):
 
     with pytest.raises(boundaries.DomainError):
         sf.slice({grid.axes[0]: -10})
-    with pytest.raises(ValueError):
+    with pytest.raises(IndexError):
         sf.slice({"q": 0})
 
 

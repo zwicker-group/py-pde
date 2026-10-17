@@ -164,7 +164,7 @@ class VectorField(DataFieldBase):
 
     def __getitem__(self, key: int | str) -> ScalarField:
         """Extract a component of the VectorField."""
-        axis = self.grid.get_axis_index(key)
+        axis = self.grid.get_axis_index(key, allow_symmetric=True)
         comp_name = self.grid.c.axes[axis]
         if self.label:
             label = self.label + f"_{comp_name}"
@@ -176,7 +176,7 @@ class VectorField(DataFieldBase):
 
     def __setitem__(self, key: int | str, value: NumberOrArray | ScalarField):
         """Set a component of the VectorField."""
-        idx = self.grid.get_axis_index(key)
+        idx = self.grid.get_axis_index(key, allow_symmetric=True)
         if isinstance(value, ScalarField):
             self.grid.assert_grid_compatible(value.grid)
             self.data[idx] = value.data

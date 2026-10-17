@@ -730,12 +730,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @fill_in_docstring
     def get_boundary_values(
-        self, axis: int, upper: bool, bc: BoundariesData | None
+        self, axis: int | str, upper: bool, bc: BoundariesData | None
     ) -> NumberOrArray:
         """Get the field values directly on the specified boundary.
 
         Args:
-            axis (int):
+            axis (int or str):
                 The axis perpendicular to the boundary
             upper (bool):
                 Whether the boundary is at the upper side of the axis
@@ -748,6 +748,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             :class:`~numpy.ndarray`: The discretized values on the boundary
         """
+        axis = self.grid.get_axis_index(axis, allow_symmetric=False)
         if bc is not None:
             self.set_ghost_cells(bc=bc)
 
