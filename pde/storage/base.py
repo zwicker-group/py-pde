@@ -438,13 +438,16 @@ class StorageBase(metaclass=ABCMeta):
             field_obj.label = label
         field_slice = self._field._slices[field_index]
         data = [
-            np.copy(data_timepoint[field_slice].reshape(field_obj.data.shape))
-            for data_timepoint in self.data
+            np.copy(self.data[i][field_slice].reshape(field_obj.data.shape))
+            for i in range(len(self))
         ]
 
         # create the corresponding MemoryStorage
         return MemoryStorage(
-            times=self.times, data=data, field_obj=field_obj, info=self.info
+            times=self.times[: len(self)],
+            data=data,
+            field_obj=field_obj,
+            info=self.info,
         )
 
     def extract_time_range(
@@ -466,23 +469,26 @@ class StorageBase(metaclass=ABCMeta):
         """
         from .memory import MemoryStorage
 
+        # Exclude unused capacity in preallocated storage.
+        times = self.times[: len(self)]
+
         # get the time bracket
         try:
             t_start, t_end = t_range  # type: ignore
         except TypeError:
             t_start, t_end = None, t_range
         if t_start is None:
-            t_start = self.times[0]
+            t_start = times[0]
         if t_end is None:
-            t_end = self.times[-1]
+            t_end = times[-1]
 
         # determine the associated indices
-        i_start: int = np.searchsorted(self.times, t_start, side="left")  # type: ignore
-        i_end: int = np.searchsorted(self.times, t_end, side="right")  # type: ignore
+        i_start: int = np.searchsorted(times, t_start, side="left")  # type: ignore
+        i_end: int = np.searchsorted(times, t_end, side="right")  # type: ignore
 
         # extract the actual memory
         return MemoryStorage(
-            times=self.times[i_start:i_end],
+            times=times[i_start:i_end],
             data=self.data[i_start:i_end],
             field_obj=self._field,
             info=self.info,
