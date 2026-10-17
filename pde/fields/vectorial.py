@@ -286,7 +286,7 @@ class VectorField(DataFieldBase):
         self.assert_field_compatible(other)
 
         if out is None:
-            out = Tensor2Field(self.grid)
+            out = Tensor2Field(self.grid, dtype=get_common_dtype(self, other))
         else:
             self.grid.assert_grid_compatible(out.grid)
 
