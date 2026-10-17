@@ -112,6 +112,8 @@ class FileStorage(StorageBase):
         """Close the currently opened file."""
         if self._file is not None:
             self._logger.info("Close file `%s`", self.filename)
+            if self._is_writing and self._file.mode == "r+":
+                hdf_write_attributes(self._file, self.info)
             self._file.close()
             self._file = None
             self._data_length = None  # type: ignore
@@ -430,8 +432,9 @@ class FileStorage(StorageBase):
             return
         self._logger.debug("End writing")
 
-        # store extra information as attributes
-        hdf_write_attributes(self._file, self.info)
-        self._file.flush()
+        # Reopen without overwriting information updated since the last append.
+        if not self.keep_opened:
+            self._open("appending", info=self.info.copy())
+
         self.close()
         self._is_writing = False

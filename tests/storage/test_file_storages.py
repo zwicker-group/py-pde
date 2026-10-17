@@ -216,3 +216,57 @@ def test_write_types(dtype, tmp_path, rng):
     for field in storage3:
         np.testing.assert_allclose(field.data, c.data)
     assert storage3.dtype == np.dtype(dtype)
+
+
+@pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
+@pytest.mark.parametrize("max_length", [None, 8])
+@pytest.mark.parametrize("compression", [True, False])
+def test_keep_closed_finalization(max_length, compression, tmp_path):
+    """Finalize a storage whose last append already closed the file."""
+    state = ScalarField(UnitGrid([3]), data=1)
+    path = tmp_path / "closed.hdf5"
+    storage = FileStorage(
+        path,
+        keep_opened=False,
+        max_length=max_length,
+        compression=compression,
+        info={"stage": "initial"},
+    )
+    storage.start_writing(state)
+    storage.append(state, 0)
+    assert storage._file_state == "closed"
+    storage.info["stage"] = "finished"
+    storage.end_writing()
+    assert storage._file_state == "closed"
+    storage.end_writing()  # finalization is idempotent
+    with FileStorage(path) as reader:
+        assert len(reader) == 1
+        assert reader.info["stage"] == "finished"
+        np.testing.assert_array_equal(reader[0].data, state.data)
+
+
+@pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
+@pytest.mark.parametrize("max_length", [None, 8])
+@pytest.mark.parametrize("compression", [True, False])
+def test_keep_closed_appending(max_length, compression, tmp_path):
+    """Persist the new length before another reader or append opens the file."""
+    state = ScalarField(UnitGrid([3]))
+    path = tmp_path / "appending.hdf5"
+    initial = FileStorage(path, max_length=max_length, compression=compression)
+    initial.start_writing(state)
+    for time in [0, 1]:
+        state.data[:] = time
+        initial.append(state, time)
+    initial.end_writing()
+
+    storage = FileStorage(path, keep_opened=False, write_mode="append")
+    storage.start_writing(state)
+    for time in [2, 3, 4]:
+        state.data[:] = time
+        storage.append(state, time)
+        assert storage._file_state == "closed"
+        with FileStorage(path) as reader:
+            assert len(reader) == time + 1
+            for i, frame in enumerate(reader):
+                np.testing.assert_array_equal(frame.data, np.full(3, i))
+    storage.end_writing()
