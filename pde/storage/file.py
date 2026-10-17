@@ -113,6 +113,7 @@ class FileStorage(StorageBase):
         if self._file is not None:
             self._logger.info("Close file `%s`", self.filename)
             if self._is_writing and self._file.mode == "r+":
+                self.info["data_length"] = self._data_length
                 hdf_write_attributes(self._file, self.info)
             self._file.close()
             self._file = None

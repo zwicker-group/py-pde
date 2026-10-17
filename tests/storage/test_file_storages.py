@@ -270,3 +270,19 @@ def test_keep_closed_appending(max_length, compression, tmp_path):
             for i, frame in enumerate(reader):
                 np.testing.assert_array_equal(frame.data, np.full(3, i))
     storage.end_writing()
+
+
+@pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
+@pytest.mark.parametrize("keep_opened", [True, False])
+@pytest.mark.parametrize("compression", [True, False])
+def test_empty_preallocated_storage(keep_opened, compression, tmp_path):
+    """Finalization must preserve zero written frames in a reserved file."""
+    path = tmp_path / "empty.hdf5"
+    storage = FileStorage(
+        path, max_length=8, keep_opened=keep_opened, compression=compression
+    )
+    storage.start_writing(ScalarField(UnitGrid([3])))
+    storage.end_writing()
+    with FileStorage(path) as reader:
+        assert len(reader) == 0
+        assert list(reader) == []
