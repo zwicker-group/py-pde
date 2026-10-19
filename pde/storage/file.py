@@ -72,7 +72,7 @@ class FileStorage(StorageBase):
 
         self._file: Any = None
         self._is_writing = False
-        self._data_length: int = None  # type: ignore
+        self._data_length: int | None = None
         self._max_length: int | None = max_length
 
         if check_mpi:
@@ -110,11 +110,16 @@ class FileStorage(StorageBase):
 
     def close(self) -> None:
         """Close the currently opened file."""
-        if self._file is not None:
-            self._logger.info("Close file `%s`", self.filename)
-            self._file.close()
-            self._file = None
-            self._data_length = None  # type: ignore
+        if self._file is None:
+            return  # nothing to do
+
+        self._logger.info("Close file `%s`", self.filename)
+        if self._is_writing and self._file.mode == "r+":
+            self.info["data_length"] = self._data_length
+            hdf_write_attributes(self._file, self.info)
+        self._file.close()
+        self._file = None
+        self._data_length = None
 
     def __enter__(self) -> Self:
         return self
@@ -192,7 +197,7 @@ class FileStorage(StorageBase):
 
             self._data_shape = self.data.shape[1:]
             self._dtype = self.data.dtype
-            self._data_length = self.info.get("data_length")  # type: ignore
+            self._data_length = self.info.get("data_length")
 
         elif mode == "appending":
             # open file for writing without deleting data
@@ -395,6 +400,9 @@ class FileStorage(StorageBase):
         else:
             # need to reopen the file
             self._open("appending")
+        if self._data_length is None:
+            msg = "Writing data has not been initialized properly."
+            raise RuntimeError(msg)
 
         # write the new data
         if self._data_length >= len(self._data):
@@ -430,8 +438,9 @@ class FileStorage(StorageBase):
             return
         self._logger.debug("End writing")
 
-        # store extra information as attributes
-        hdf_write_attributes(self._file, self.info)
-        self._file.flush()
+        # Reopen without overwriting information updated since the last append.
+        if not self.keep_opened:
+            self._open("appending", info=self.info.copy())
+
         self.close()
         self._is_writing = False

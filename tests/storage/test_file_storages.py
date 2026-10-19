@@ -179,7 +179,8 @@ def test_keep_opened(tmp_path):
 
 @pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
 @pytest.mark.parametrize("dtype", [bool, float, complex])
-def test_write_types(dtype, tmp_path, rng):
+@pytest.mark.parametrize("compression", [True, False])
+def test_write_types(dtype, compression, tmp_path, rng):
     """Test whether complex data can be written."""
     path = tmp_path / "test_type_writing.hdf5"
 
@@ -188,7 +189,7 @@ def test_write_types(dtype, tmp_path, rng):
     if dtype is complex:
         c += 1j * ScalarField.random_uniform(grid, rng=rng)
 
-    storage = FileStorage(path, keep_opened=False)
+    storage = FileStorage(path, keep_opened=False, compression=compression)
     storage.start_writing(c)
     assert len(storage) == 0
     storage.append(c, 0)
@@ -199,7 +200,7 @@ def test_write_types(dtype, tmp_path, rng):
     assert len(storage) == 2
     assert storage.dtype == np.dtype(dtype)
 
-    storage2 = FileStorage(path, write_mode="append")
+    storage2 = FileStorage(path, write_mode="append", compression=compression)
     assert storage.times == storage2.times
     assert storage.data == storage2.data
     storage.close()  # close the old storage to enable writing here
@@ -211,8 +212,69 @@ def test_write_types(dtype, tmp_path, rng):
     np.testing.assert_allclose(storage2.times, np.arange(3))
     assert storage2.dtype == np.dtype(dtype)
 
-    storage3 = FileStorage(path, write_mode="reading")
+    storage3 = FileStorage(path, write_mode="reading", compression=compression)
     assert len(storage3) == 3
     for field in storage3:
         np.testing.assert_allclose(field.data, c.data)
     assert storage3.dtype == np.dtype(dtype)
+
+
+@pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
+@pytest.mark.parametrize("max_length", [None, 8])
+def test_keep_closed_finalization(max_length, tmp_path):
+    """Finalize a storage whose last append already closed the file."""
+    state = ScalarField(UnitGrid([3]), data=1)
+    path = tmp_path / "closed.hdf5"
+    storage = FileStorage(
+        path, keep_opened=False, max_length=max_length, info={"stage": "initial"}
+    )
+    storage.start_writing(state)
+    storage.append(state, 0)
+    assert storage._file_state == "closed"
+    storage.info["stage"] = "finished"
+    storage.end_writing()
+    assert storage._file_state == "closed"
+    storage.end_writing()  # finalization is idempotent
+    with FileStorage(path) as reader:
+        assert len(reader) == 1
+        assert reader.info["stage"] == "finished"
+        np.testing.assert_array_equal(reader[0].data, state.data)
+
+
+@pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
+@pytest.mark.parametrize("max_length", [None, 8])
+def test_keep_closed_appending(max_length, tmp_path):
+    """Persist the new length before another reader or append opens the file."""
+    state = ScalarField(UnitGrid([3]))
+    path = tmp_path / "appending.hdf5"
+    initial = FileStorage(path, max_length=max_length)
+    initial.start_writing(state)
+    for time in [0, 1]:
+        state.data[:] = time
+        initial.append(state, time)
+    initial.end_writing()
+
+    storage = FileStorage(path, keep_opened=False, write_mode="append")
+    storage.start_writing(state)
+    for time in [2, 3, 4]:
+        state.data[:] = time
+        storage.append(state, time)
+        assert storage._file_state == "closed"
+        with FileStorage(path) as reader:
+            assert len(reader) == time + 1
+            for i, frame in enumerate(reader):
+                np.testing.assert_array_equal(frame.data, np.full(3, i))
+    storage.end_writing()
+
+
+@pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
+@pytest.mark.parametrize("keep_opened", [True, False])
+def test_empty_preallocated_storage(keep_opened, tmp_path):
+    """Finalization must preserve zero written frames in a reserved file."""
+    path = tmp_path / "empty.hdf5"
+    storage = FileStorage(path, max_length=8, keep_opened=keep_opened)
+    storage.start_writing(ScalarField(UnitGrid([3])))
+    storage.end_writing()
+    with FileStorage(path) as reader:
+        assert len(reader) == 0
+        assert list(reader) == []
