@@ -278,3 +278,51 @@ def test_empty_preallocated_storage(keep_opened, tmp_path):
     with FileStorage(path) as reader:
         assert len(reader) == 0
         assert list(reader) == []
+
+
+@pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
+@pytest.mark.parametrize("max_length", [None, 3, 8])
+@pytest.mark.parametrize("compression", [True, False])
+def test_extract_preallocated_storage(max_length, compression, tmp_path):
+    """Extract only written frames, including from partially filled files."""
+    grid = UnitGrid([4, 5])
+    state = pde.FieldCollection(
+        [ScalarField(grid, label="scalar"), pde.VectorField(grid, label="vector")]
+    )
+    path = tmp_path / "preallocated.hdf5"
+    writer = FileStorage(
+        path,
+        max_length=max_length,
+        compression=compression,
+    )
+    writer.start_writing(state)
+    expected = []
+    for time in [1, 2, 3]:
+        state.data[:] = time + np.arange(state.data.size).reshape(state.data.shape)
+        writer.append(state, time)
+        expected.append(state.copy())
+    writer.end_writing()
+
+    with FileStorage(path, write_mode="readonly") as storage:
+        assert len(storage) == 3
+        for t_range, indices in [
+            (None, [0, 1, 2]),
+            (2, [0, 1]),
+            ((2, None), [1, 2]),
+            ((1.5, 2.5), [1]),
+            ((4, 5), []),
+        ]:
+            extracted = storage.extract_time_range(t_range)
+            np.testing.assert_array_equal(extracted.times, np.array([1, 2, 3])[indices])
+            assert len(extracted) == len(indices)
+            for frame, i in zip(extracted, indices, strict=True):
+                np.testing.assert_array_equal(frame.data, expected[i].data)
+
+        for field_index, label in enumerate(["scalar", "vector"]):
+            extracted = storage.extract_field(label)
+            np.testing.assert_array_equal(extracted.times, [1, 2, 3])
+            assert len(extracted) == 3
+            for frame, reference in zip(extracted, expected, strict=True):
+                np.testing.assert_array_equal(frame.data, reference[field_index].data)
+            extracted.data[0][...] = -1
+            np.testing.assert_array_equal(storage[0].data, expected[0].data)
