@@ -7,6 +7,6 @@ mpi4py,3,Parallel processing using MPI
 napari,0.4.8,Displaying images interactively
 numba-mpi,0.22,Parallel processing using MPI+numba
 pandas,2,Handling tabular data
-py-modelrunner,0.19,Running simulations and handling I/O
+py-modelrunner,0.20.2,Running simulations and handling I/O
 rocket-fft,0.2.4,Numba-compiled fast Fourier transforms
 torch,2.9,Using `torch` as a backend

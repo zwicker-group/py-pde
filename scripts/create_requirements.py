@@ -104,7 +104,7 @@ REQUIREMENTS = [
     ),
     Requirement(
         name="py-modelrunner",
-        version_min="0.19",
+        version_min="0.20.2",
         usage="Running simulations and handling I/O",
         groups={"full", "docs"},
     ),
