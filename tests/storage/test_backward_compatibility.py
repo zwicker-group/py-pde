@@ -27,7 +27,7 @@ SKIP = {
         not module_available("h5py"), reason="requires `h5py`"
     ),
     "MovieStorage": pytest.mark.skipif(
-        not module_available("ffmpeg"), reason="requires `ffmpeg-python`"
+        not module_available("av"), reason="requires `av`"
     ),
 }
 

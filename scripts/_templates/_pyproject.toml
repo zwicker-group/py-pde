@@ -24,7 +24,7 @@ classifiers = [
 dependencies = $INSTALL_REQUIRES
 
 [project.optional-dependencies]
-io = ["$h5py", "$pandas", "$ffmpeg_python", "$py_modelrunner"]
+io = ["$h5py", "$pandas", "$av", "$py_modelrunner"]
 interactive = ["$napari", "$ipywidgets"]
 mpi = ["$numba_mpi", "$mpi4py"]
 
@@ -162,7 +162,7 @@ follow_imports_for_stubs = true
 
 [[tool.mypy.overrides]]
 module = [
-    "ffmpeg.*",
+    "av.*",
     "h5py.*",
     "IPython.*",
     "ipywidgets.*",

@@ -44,9 +44,12 @@ install the following optional packages:
 
 .. code-block:: bash
 
-    pip install h5py pandas pyfftw tqdm
+    pip install h5py pandas pyfftw tqdm av
 
-Moreover, :command:`ffmpeg` needs to be installed for creating movies.
+The optional :mod:`av` package is used by :class:`~pde.storage.MovieStorage` to read and
+write video files. The :command:`ffmpeg` executable is separately needed for creating
+plotted movies with :func:`~pde.visualization.movie` or
+:class:`~pde.visualization.movies.Movie`.
 
 
 Install using conda
@@ -107,7 +110,8 @@ The following packages should be installed to use some miscellaneous features:
    :file: _static/requirements_optional.csv
    :header-rows: 1
 
-For making movies, the :command:`ffmpeg` should be available.
+For plotted movies, the :command:`ffmpeg` executable should be available. Reading and
+writing :class:`~pde.storage.MovieStorage` files uses the optional `av` package.
 Additional packages might be required for running the tests in the folder
 :file:`tests` and to build the documentation in the folder :file:`docs`.
 These packages are listed in the files :file:`requirements.txt` in the

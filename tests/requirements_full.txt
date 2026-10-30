@@ -1,5 +1,5 @@
 # These are the full requirements used to test all functions
-ffmpeg-python>=0.2
+av>=12.0
 h5py>=2.10
 ipywidgets>=8
 jax>=0.7
