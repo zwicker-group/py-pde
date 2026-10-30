@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import shlex
-import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Self
 
@@ -33,12 +32,9 @@ _MOV_PIXEL_FORMATS = {
     "gbrap16le": "rgba64be",
 }
 _FFV1_PIXEL_FORMATS = {"rgb24": "bgr0"}
-
-
 if TYPE_CHECKING:
     import io
     from collections.abc import Callable, Iterator, Sequence
-    from types import ModuleType
 
     from matplotlib.colors import Normalize
     from numpy.typing import ArrayLike
@@ -55,17 +51,13 @@ def _get_limits(value: float | ArrayLike, dim: int) -> NumericArray:
     return np.asarray(value)[:dim].astype(float)
 
 
-def _import_av() -> ModuleType:
-    """Import PyAV lazily."""
-    import av
-
-    return av
-
-
 class MovieStorage(StorageBase):
     """Store discretized fields in a movie file.
 
     This storage requires the optional :mod:`av` package.
+    To enable FFmpeg logging, set the PyAV log level globally, for example with
+    ``av.logging.set_level(av.logging.INFO)``.
+
     The default codec is `FFV1 <https://en.m.wikipedia.org/wiki/FFV1>`_, which supports
     lossless compression for various configurations. Not all video players support this
     codec, but `VLC <https://www.videolan.org>`_ usually works quite well.
@@ -110,7 +102,6 @@ class MovieStorage(StorageBase):
         info: InfoDict | None = None,
         write_mode: WriteModeType = "truncate_once",
         write_times: bool = False,
-        loglevel: str = "warning",
     ):
         """
         Args:
@@ -149,9 +140,6 @@ class MovieStorage(StorageBase):
                 separate file with name :code:`filename + ".times"` is created where the
                 times are written as plain text. Without these timestamps, the time
                 information might be inaccurate.
-            loglevel (str):
-                Legacy option. PyAV logging is process-wide and should instead be
-                configured with :func:`av.logging.set_level`.
         """
         # We need to define some quantities early to ensure a graceful cleanup since
         # the `close` method may be called in case of errors in __init__.
@@ -170,14 +158,6 @@ class MovieStorage(StorageBase):
         self.bits_per_channel = bits_per_channel
         self.video_format = video_format
         self.bitrate = bitrate
-        self.loglevel = loglevel
-        if loglevel != "warning":
-            warnings.warn(
-                "`MovieStorage` does not apply `loglevel` with PyAV. Configure PyAV "
-                "logging with `av.logging.set_level` instead.",
-                UserWarning,
-                stacklevel=2,
-            )
         self.write_times = write_times
 
         self._state: Literal["closed", "writing"] = "closed"
@@ -228,7 +208,7 @@ class MovieStorage(StorageBase):
 
     def _read_metadata(self) -> None:
         """Read metadata from video and store it in :attr:`info`"""
-        av = _import_av()
+        import av
 
         path = Path(self.filename)
         if not path.exists():
@@ -337,6 +317,8 @@ class MovieStorage(StorageBase):
             info (dict):
                 Supplies extra information that is stored in the storage
         """
+        import av
+
         if self._state == "writing":
             msg = f"{self.__class__.__name__} is already in writing mode"
             raise RuntimeError(msg)
@@ -392,7 +374,6 @@ class MovieStorage(StorageBase):
         # set up the normalization
         self._init_normalization(field)
 
-        av = _import_av()
         self._logger.debug("Start PyAV writer for `%s`", self.filename)
         self._container = av.open(str(self.filename), mode="w")
         codec = self._format.codec
@@ -425,6 +406,8 @@ class MovieStorage(StorageBase):
             data (:class:`~numpy.ndarray`): The actual data
             time (float): The time point associated with the data
         """
+        import av
+
         if self._state != "writing" or self._container is None or self._stream is None:
             msg = (
                 "Writing not initialized. Call "
@@ -487,7 +470,6 @@ class MovieStorage(StorageBase):
             frame_data[..., i] = self._format.data_to_frame(data_norm)
 
         # write the new data
-        av = _import_av()
         frame_array = frame_data.reshape(
             self._frame_shape[1], self._frame_shape[0], self._format.channels
         )
@@ -546,7 +528,7 @@ class MovieStorage(StorageBase):
 
     def _iter_data(self) -> Iterator[NumericArray]:
         """Iterate over all stored fields."""
-        av = _import_av()
+        import av
 
         if "width" not in self.info:
             self._read_metadata()
@@ -599,7 +581,7 @@ class MovieStorage(StorageBase):
             :class:`~pde.fields.FieldBase`:
             The field class containing the grid and data
         """
-        av = _import_av()
+        import av
 
         if t_index < 0:
             t_index += len(self)
