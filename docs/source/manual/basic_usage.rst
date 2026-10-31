@@ -138,3 +138,27 @@ subsequently:
 Moreover, a movie of the simulation can be created using :func:`~pde.visualization.movies.movie`, i.e., by calling
 :code:`pde.movie(storage, filename=FILE)`, where `FILE` determines where the movie is
 written.
+
+
+Storing data persistently
+"""""""""""""""""""""""""
+Trajectories can also be written to disk, either to HDF5 files using
+:class:`~pde.storage.file.FileStorage` (needs :mod:`h5py`) or to video files using
+:class:`~pde.storage.movie.MovieStorage` (needs :mod:`ffmpeg-python` and the `ffmpeg`
+program). Both classes provide a :code:`tracker` method, so they are used like
+:class:`~pde.storage.memory.MemoryStorage`:
+
+.. code-block:: python
+
+    storage = pde.MovieStorage("simulation.mkv", vmin=0, vmax=1, write_times=True)
+    eq.solve(field, t_range=10, dt=1e-3, tracker=storage.tracker(1))
+
+:class:`~pde.storage.movie.MovieStorage` encodes the data using the lossless FFV1 codec
+and the file extension determines the container format. The container formats
+:code:`.avi`, :code:`.mkv`, and :code:`.mov` are tested and supported, with
+:code:`.avi` being the default choice. Other formats supported by `ffmpeg` can be tried,
+but they are not tested and might not work. For instance, :code:`.webm` does not support
+the FFV1 codec and :code:`.nut` files cannot be read back. Movies store data with a
+limited precision and range, so :code:`vmin` and :code:`vmax` should be chosen to
+include all data. Use :code:`write_times=True` when the data is not written at constant
+time intervals.
