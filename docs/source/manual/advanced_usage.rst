@@ -167,7 +167,7 @@ several places, most prominently in defining PDEs using :class:`~pde.pdes.pde.PD
 in creating fields using :meth:`~pde.fields.scalar.ScalarField.from_expression`, and in
 defining boundary conditions; see section above.
 Expressions are parsed using :mod:`sympy`, so  the expected syntax is defined by this
-python package. While we describe some common use cases below, it might be best to test
+Python package. While we describe some common use cases below, it might be best to test
 the abilities using the :func:`~pde.tools.expressions.evaluate` function.  
 
 
@@ -284,7 +284,7 @@ We here use a simple constant evolution equation. The hook defined by the first 
 does two things: First, it limits the state to the interval `[-1, 1]` using
 :func:`numpy.clip`. Second, it evaluates the standard deviation across the entire data,
 aborting the simulation when the value exceeds one. Note that the hook always receives
-the data always as a :class:`~numpy.ndarray` and not as a full field class. The hook can
+the data as a :class:`~numpy.ndarray` and not as a full field class. The hook can
 also keep track of additional data via :code:`post_step_data`, which is a
 :class:`~numpy.ndarray` that can be updated in place.
 
@@ -299,7 +299,7 @@ it might be necessary to use parts of the `py-pde` package in other packages.
 Differential operators
 **********************
 Applying a differential operator to an instance of
-:class:`~pde.fields.scalar.ScalarField` is a simple as calling
+:class:`~pde.fields.scalar.ScalarField` is as simple as calling
 :code:`field.laplace(bc)`, where `bc` denotes the boundary conditions.
 Calling this method returns another :class:`~pde.fields.scalar.ScalarField`,
 which in this case contains the discretized Laplacian of the original field.
@@ -334,7 +334,7 @@ This operator is then applied to a random field and the resulting
 :class:`numpy.ndarray` represents the 2-dimensional vector field.
 
 The :code:`make_operator` method of the grids generally supports the following
-differential operators: :code:`'laplacian'`, :code:`'gradient'`,
+differential operators: :code:`'laplace'`, :code:`'gradient'`,
 :code:`'gradient_squared'`, :code:`'divergence'`, :code:`'vector_gradient'`,
 :code:`'vector_laplace'`, and :code:`'tensor_divergence'`.
 Moreover, generic operators that perform a derivative along a single axis are supported:
@@ -431,10 +431,10 @@ introduced above:
 
         def evolution_rate(self, state, t=0):
             """Evaluate right hand side of PDE."""
-            state_lapacian = state.laplace(bc=self.bc)
-            state_gradient = state.gradient(bc="auto_periodic_neumann")
-            return (- state_lapacian.laplace(bc=self.bc_laplace)
-                    - state_lapacian
+            state_laplacian = state.laplace(bc=self.bc)
+            state_gradient = state.gradient(bc=self.bc)
+            return (- state_laplacian.laplace(bc=self.bc_laplace)
+                    - state_laplacian
                     - 0.5 * self.diffusivity * (state_gradient @ state_gradient))
 
 
@@ -452,10 +452,10 @@ introduced above:
 
             def pde_rhs(state_data, t=0):
                 """Evaluate right hand side of PDE."""
-                state_lapacian = laplace_u(state_data)
+                state_laplacian = laplace_u(state_data)
                 state_grad = gradient_u(state_data)
-                return (- laplace2_u(state_lapacian)
-                        - state_lapacian
+                return (- laplace2_u(state_laplacian)
+                        - state_laplacian
                         - diffusivity / 2 * dot(state_grad, state_grad))
 
             return pde_rhs
@@ -484,7 +484,7 @@ a local function, which is returned and can be compiled by the backend.
 Stochastic partial differential equation
 """"""""""""""""""""""""""""""""""""""""
 We also support stochastic differential equations, which can be a lot trickier to deal
-with then their deterministic counterparts.
+with than their deterministic counterparts.
 The simplest way to define such an equation is the `noise` argument of the
 :class:`~pde.pdes.pde.PDE` class, which sets the variance of the Gaussian white noise
 that is added to each field:
@@ -619,4 +619,3 @@ For example, it allows implementing non-Gaussian or conserved noise, if this is 
 However, this approach does not benefit from the automatic evaluation of derivatives,
 which is required to use the :class:`~pde.solvers.milstein.MilsteinSolver` and to
 change the interpretation of the equation.
-
