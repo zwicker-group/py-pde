@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
-from _compat_cases import CASES, RESOURCES_ROOT, Case, write_cases
+from _compat_cases import CASES, RESOURCES_ROOT, Case
 
 import pde
 from pde.tools.ffmpeg import formats
@@ -123,7 +123,7 @@ def test_stored_files(storage_class, folder, case, tmp_path):
     """Test that stored files can be read and contain the expected data."""
     if folder is None:
         # check files written by the current version
-        write_cases(storage_class, tmp_path)
+        case.write(tmp_path)
     else:
         # work on copies so that the stored resources are never modified
         for file in folder.glob(f"{case.filename}*"):

@@ -147,6 +147,7 @@ class FileStorage(StorageBase):
                 f"Cannot read `{self.filename}` with unknown format version `{version}`"
                 f" (supported: {self._format_version})"
             )
+            self._file.close()
             raise RuntimeError(msg)
         self.info.update(attributes)
 
