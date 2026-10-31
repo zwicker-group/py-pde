@@ -488,11 +488,10 @@ class MovieStorage(StorageBase):
                     padded_data[target : target + row_size] = plane_data[
                         start : start + row_size
                     ]
-                plane.update(padded_data)
+                plane.update(padded_data)  # type: ignore
         else:
-            frame_array = frame_data.reshape(
-                self._frame_shape[1], self._frame_shape[0], self._format.channels
-            )
+            shape = (self._frame_shape[1], self._frame_shape[0], self._format.channels)
+            frame_array = frame_data.reshape(shape)
             if self._format.channels == 1:
                 frame_array = frame_array[:, :, 0]
             frame = av.VideoFrame.from_ndarray(
@@ -586,27 +585,27 @@ class MovieStorage(StorageBase):
     def _frame_to_array(self, video_frame: Any) -> NumericArray:
         """Return frame data in the byte layout used by MovieStorage."""
         assert self._format is not None
+        data_shape = (self.info["width"], self.info["height"], self._format.channels)
+
         if self._format.pix_fmt_data in {"gbrp16le", "gbrap16le"}:
+            # treat this case separately since we need to swap color channels to stay
+            # compatible with older file formats
             if video_frame.format.name != self._format.pix_fmt_data:
                 video_frame = video_frame.reformat(format=self._format.pix_fmt_data)
             planes = []
             bytes_per_channel = self._format.bytes_per_channel
             for plane in video_frame.planes:
                 plane_data = np.frombuffer(bytes(plane), dtype=self._format.dtype)
-                plane_data = plane_data.reshape(
-                    plane.height, plane.line_size // bytes_per_channel
-                )
+                shape_frame = (plane.height, plane.line_size // bytes_per_channel)
+                plane_data = plane_data.reshape(shape_frame)
                 planes.append(plane_data[:, : plane.width].ravel())
-            return np.concatenate(planes).reshape(
-                self.info["width"], self.info["height"], self._format.channels
-            )
+            return np.concatenate(planes).reshape(data_shape)
 
-        frame = video_frame.to_ndarray(format=self._format.pix_fmt_data)
+        # the default path simply reads the data into a numpy array
+        frame: NumericArray = video_frame.to_ndarray(format=self._format.pix_fmt_data)
         if frame.ndim == 2:
             frame = frame[:, :, np.newaxis]
-        return frame.reshape(
-            self.info["width"], self.info["height"], self._format.channels
-        )
+        return frame.reshape(data_shape)
 
     def _get_field(self, t_index: int) -> FieldBase:
         """Return the field corresponding to the given time index.

@@ -120,7 +120,7 @@ class CoordinatesBase:
         # this can be overwritten if a more efficient calculation is possible
         x1 = self.pos_to_cart(p1, axis=axis)
         x2 = self.pos_to_cart(p2, axis=axis)
-        return np.linalg.norm(x2 - x1, axis=axis)  # type: ignore
+        return np.linalg.norm(x2 - x1, axis=axis)
 
     def _scale_factors(self, points: FloatingArray) -> FloatingArray:
         return np.diag(self.metric(points)) ** 2
