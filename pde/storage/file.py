@@ -23,7 +23,14 @@ if TYPE_CHECKING:
 
 
 class FileStorage(StorageBase):
-    """Store discretized fields in a hdf5 file."""
+    """Store discretized fields in a hdf5 file.
+
+    The version of the file format is stored in the attribute `version` of the file.
+    Files without this attribute are assumed to have format version 1. Files with
+    unknown format versions cannot be read.
+    """
+
+    _format_version: int = 1
 
     def __init__(
         self,
@@ -116,10 +123,33 @@ class FileStorage(StorageBase):
         self._logger.info("Close file `%s`", self.filename)
         if self._is_writing and self._file.mode == "r+":
             self.info["data_length"] = self._data_length
-            hdf_write_attributes(self._file, self.info)
+            self._write_attributes()
         self._file.close()
         self._file = None
         self._data_length = None
+
+    def _write_attributes(self) -> None:
+        """Write the format version and the info dictionary to the file."""
+        assert self._file is not None
+        hdf_write_attributes(self._file, {**self.info, "version": self._format_version})
+
+    def _read_attributes(self) -> None:
+        """Read the attributes of the file into :attr:`info` and check the version.
+
+        Raises:
+            RuntimeError: If the file has an unknown format version
+        """
+        assert self._file is not None
+        attributes = {k: json.loads(v) for k, v in self._file.attrs.items()}
+        version = attributes.pop("version", 1)  # files without version are version 1
+        if version != self._format_version:
+            msg = (
+                f"Cannot read `{self.filename}` with unknown format version `{version}`"
+                f" (supported: {self._format_version})"
+            )
+            self._file.close()
+            raise RuntimeError(msg)
+        self.info.update(attributes)
 
     def __enter__(self) -> Self:
         return self
@@ -190,8 +220,7 @@ class FileStorage(StorageBase):
             self._file = h5py.File(self.filename, mode="r")
             self._times = self._file["times"]
             self._data = self._file["data"]
-            for k, v in self._file.attrs.items():
-                self.info[k] = json.loads(v)
+            self._read_attributes()
             if info:
                 self.info.update(info)
 
@@ -218,8 +247,7 @@ class FileStorage(StorageBase):
                 self._data = self._file["data"]
 
                 # extract information
-                for k, v in self._file.attrs.items():
-                    self.info[k] = json.loads(v)
+                self._read_attributes()
                 self._data_shape = self.data.shape[1:]
                 self._dtype = self.data.dtype
                 self._data_length = self.info.get("data_length", self.data.shape[0])
@@ -374,7 +402,7 @@ class FileStorage(StorageBase):
 
         if not self.keep_opened:
             # store extra information as attributes
-            hdf_write_attributes(self._file, self.info)
+            self._write_attributes()
 
         self._is_writing = True
 

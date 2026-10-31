@@ -14,8 +14,9 @@ sys.path.insert(0, os.path.abspath("../sphinx_ext/"))  # noqa: PTH100
 
 from datetime import UTC, datetime
 
-from create_requirements import MAX_PYTHON_VERSION, MIN_PYTHON_VERSION
 from run_autodoc import main, skip_external_inherited_members
+
+from create_requirements import MAX_PYTHON_VERSION, MIN_PYTHON_VERSION
 
 import pde
 

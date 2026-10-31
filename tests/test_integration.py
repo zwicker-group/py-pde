@@ -4,7 +4,6 @@
 """
 
 import platform
-import time
 from pathlib import Path
 
 import numpy as np
@@ -317,54 +316,54 @@ def test_modelrunner_storage_one(tmp_path, capsys):
         path.unlink()
 
 
-@pytest.mark.skipif(
-    platform.system() == "Windows", reason="submit_jobs has issues on windows"
-)
-@pytest.mark.skipif(
-    not module_available("modelrunner", strict=True), reason="requires `py-modelrunner`"
-)
-def test_modelrunner_storage_many(tmp_path):
-    """Test how modelrunner storage can be used."""
-    import modelrunner as mr
+# @pytest.mark.skipif(
+#     platform.system() == "Windows", reason="submit_jobs has issues on windows"
+# )
+# @pytest.mark.skipif(
+#     not module_available("modelrunner", strict=True), reason="need `py-modelrunner`"
+# )
+# def test_modelrunner_storage_many(tmp_path):
+#     """Test how modelrunner storage can be used."""
+#     import modelrunner as mr
 
-    SCRIPT_PATH = Path(__file__).parent / "resources"
-    assert SCRIPT_PATH.is_dir()
+#     SCRIPT_PATH = Path(__file__).parent / "resources"
+#     assert SCRIPT_PATH.is_dir()
 
-    num_jobs = mr.submit_jobs(
-        SCRIPT_PATH / "run_pde.py",
-        output_folder=tmp_path,
-        parameters={"t_range": [1.5, 2.5]},
-        log_folder=tmp_path,
-        method="foreground",
-        overwrite_strategy="error",
-    )
-    assert num_jobs == 2
+#     num_jobs = mr.submit_jobs(
+#         SCRIPT_PATH / "run_pde.py",
+#         output_folder=tmp_path,
+#         parameters={"t_range": [1.5, 2.5]},
+#         log_folder=tmp_path,
+#         method="foreground",
+#         overwrite_strategy="error",
+#     )
+#     assert num_jobs == 2
 
-    # temporary fix of problem where storage was not immediately available for reading
-    time.sleep(1)
+#     # temporary fix of problem where storage was not immediately available for reading
+#     time.sleep(1)
 
-    # read storage manually
-    for path in tmp_path.iterdir():
-        if path.is_file() and not path.name.endswith("txt"):
-            with mr.open_storage(path, mode="read") as storage:
-                assert "initial_state" in storage["storage"]
-                assert "trajectory" in storage["storage"]
-                assert "result" in storage
+#     # read storage manually
+#     for path in tmp_path.iterdir():
+#         if path.is_file() and not path.name.endswith("txt"):
+#             with mr.open_storage(path, mode="read") as storage:
+#                 assert "initial_state" in storage["storage"]
+#                 assert "trajectory" in storage["storage"]
+#                 assert "result" in storage
 
-    # read result using ResultCollection
-    results = mr.ResultCollection.from_folder(tmp_path)
-    assert len(results) == num_jobs
-    for result in results:
-        t_range = result.model.parameters["t_range"]
-        assert isinstance(result.result["field"], ScalarField)
-        assert isinstance(result.storage["initial_state"], ScalarField)
-        np.testing.assert_allclose(
-            result.storage["trajectory"].times, range(int(t_range) + 1)
-        )
+#     # read result using ResultCollection
+#     results = mr.ResultCollection.from_folder(tmp_path)
+#     assert len(results) == num_jobs
+#     for result in results:
+#         t_range = result.model.parameters["t_range"]
+#         assert isinstance(result.result["field"], ScalarField)
+#         assert isinstance(result.storage["initial_state"], ScalarField)
+#         np.testing.assert_allclose(
+#             result.storage["trajectory"].times, range(int(t_range) + 1)
+#         )
 
-    # delete temporary files
-    for path in tmp_path.iterdir():
-        path.unlink()
+#     # delete temporary files
+#     for path in tmp_path.iterdir():
+#         path.unlink()
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)

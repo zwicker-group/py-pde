@@ -9,11 +9,13 @@ import numpy as np
 import pytest
 
 import pde
-from pde import FileStorage, MovieStorage
+from pde import MovieStorage
 from pde.tools.ffmpeg import formats
 from pde.tools.misc import module_available
 
-RESOURCES_PATH = Path(__file__).resolve().parent / "resources"
+RESOURCES_PATH = (
+    Path(__file__).resolve().parents[1] / "resources" / "MovieStorage" / "legacy_errors"
+)
 
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
@@ -41,6 +43,35 @@ def test_movie_storage_scalar(dim, tmp_path, rng):
     for i, field in enumerate(reader):
         assert field.grid == grid
         np.testing.assert_allclose(field.data, storage[i].data, atol=0.01)
+
+
+@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.parametrize("suffix", [".avi", ".mkv", ".mov"])
+@pytest.mark.parametrize("write_times", [False, True])
+@pytest.mark.parametrize("bits", [8, 16])
+def test_movie_storage_container_roundtrip(suffix, write_times, bits, tmp_path):
+    """Test the documented container formats."""
+    path = tmp_path / f"test_container{suffix}"
+    grid = pde.UnitGrid([4, 3])
+    times = [0, 0.5, 2] if write_times else [0, 1, 2]
+
+    writer = MovieStorage(
+        path, bits_per_channel=bits, write_times=write_times, info={"payload": "x"}
+    )
+    if not write_times:
+        writer.info.update({"t_start": 0, "dt": 1})
+    writer.start_writing(pde.ScalarField(grid, 0))
+    for t in times:
+        writer.append(pde.ScalarField(grid, 0.1 + t / 4), t)
+    writer.end_writing()
+
+    reader = MovieStorage(path)
+    assert len(reader) == 3
+    np.testing.assert_allclose(reader.times, times)
+    assert reader.info["payload"] == "x"
+    assert formats[reader.info["video_format"]].bits_per_channel == bits
+    for t, field in zip(times, reader, strict=True):
+        np.testing.assert_allclose(field.data, 0.1 + t / 4, atol=1 / 2**bits * 2)
 
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
@@ -191,22 +222,6 @@ def test_wrong_format():
     np.testing.assert_allclose(reader.times, [0, 1])
     with pytest.raises(RuntimeError):
         reader[0]
-
-
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
-@pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py`")
-@pytest.mark.parametrize("path", list(RESOURCES_PATH.glob("*.hdf5")))
-def test_stored_files(path):
-    """Test stored files."""
-    file_reader = FileStorage(path)
-    movie_reader = MovieStorage(path.with_suffix(".avi"))
-
-    np.testing.assert_allclose(file_reader.times, movie_reader.times)
-    assert file_reader.info["payload"] == movie_reader.info["payload"]
-    np.testing.assert_allclose(file_reader.times, movie_reader.times)
-    for a, b in zip(file_reader, movie_reader, strict=False):
-        assert a.grid == b.grid
-        np.testing.assert_allclose(a.data, b.data, atol=1e-4)
 
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")

@@ -139,3 +139,4 @@ examples/output/allen_cahn.hdf
 debug
 docs/source/_cache
 scripts/_cache
+tests/resources/*/current/

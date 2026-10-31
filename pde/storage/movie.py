@@ -82,8 +82,17 @@ class MovieStorage(StorageBase):
     lossless compression for various configurations. Not all video players support this
     codec, but `VLC <https://www.videolan.org>`_ usually works quite well.
 
+    The file extension determines the container format. The container formats ".avi"
+    (default), ".mkv", and ".mov" are tested and supported. Other container formats
+    supported by `ffmpeg` can be used, but they are not tested and might not work. For
+    instance, ".webm" does not support the FFV1 codec and ".nut" files cannot be read
+    back.
+
     Note that important meta information is stored as a comment in the movie, so this
-    data must not be deleted or altered if the video should be read again.
+    data must not be deleted or altered if the video should be read again. This
+    information includes the version of the storage format. Movies without version
+    information are assumed to have format version 1 and movies with unknown format
+    versions cannot be read.
 
     Warning:
         This storage potentially compresses data and can thus lead to loss of some
@@ -96,6 +105,8 @@ class MovieStorage(StorageBase):
         efficient to process entire videos (by iterating over them or using
         :func:`~pde.storage.movie.MovieStorage.items()`).
     """
+
+    _format_version: int = 1
 
     def __init__(
         self,
@@ -116,7 +127,8 @@ class MovieStorage(StorageBase):
             filename (str):
                 The path where the movie is stored. The file extension determines the
                 container format of the movie. The standard codec FFV1 plays well with
-                the ".avi", ".mkv", and ".mov" container format.
+                the ".avi" (default), ".mkv", and ".mov" container formats, which are
+                tested. Other formats might work, but are not tested.
             vmin (float or array):
                 Lowest values that are encoded (per field). Smaller values are clipped
                 to this value.
@@ -210,7 +222,7 @@ class MovieStorage(StorageBase):
     def _get_metadata(self) -> str:
         """Obtain metadata stored in the video."""
         info = self.info.copy()
-        info["version"] = 1
+        info["version"] = self._format_version
         info["vmin"] = self.vmin
         info["vmax"] = self.vmax
         info["write_times"] = self.write_times
@@ -238,9 +250,13 @@ class MovieStorage(StorageBase):
             self._logger.warning("Could not find metadata written by `py-pde`")
         metadata = json.loads(shlex.split(raw_comment)[0])
 
-        version = metadata.pop("version", 1)
-        if version != 1:
-            self._logger.warning("Unknown metadata version `%d`", version)
+        version = metadata.pop("version", 1)  # files without version are version 1
+        if version != self._format_version:
+            msg = (
+                f"Cannot read `{self.filename}` with unknown format version "
+                f"`{version}` (supported: {self._format_version})"
+            )
+            raise RuntimeError(msg)
         self.vmin = metadata.pop("vmin", 0)
         self.vmax = metadata.pop("vmax", 1)
         self.info.update(metadata)

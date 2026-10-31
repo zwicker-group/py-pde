@@ -143,3 +143,29 @@ script :file:`format_code.sh`, which formats the code automatically to adhere to
 Before committing a change to the code repository, it is good practice to run the tests,
 check the type annotations, and the coding style with the scripts described above.
 
+
+
+
+Backward compatibility of stored data
+"""""""""""""""""""""""""""""""""""""
+Files written by :class:`~pde.storage.file.FileStorage` and
+:class:`~pde.storage.movie.MovieStorage` are meant to be readable by future versions of
+the package. The test suite :file:`tests/storage/test_backward_compatibility.py` checks
+this using files stored in :file:`tests/resources/FileStorage` and
+:file:`tests/resources/MovieStorage`. The expected content of all files is defined
+analytically in :file:`tests/storage/_compat_cases.py`.
+
+To add files of a new version, run the scripts
+:file:`scripts/create_file_storage_test_resources.py` and
+:file:`scripts/create_movie_storage_test_resources.py`. They write files into the
+subfolders :file:`current`, which is ignored by git and never tested. Copy the files that
+should be tested (including :file:`.times` files) to a subfolder named after the package
+version, e.g., :file:`v0.60`, and commit them. Files in these version folders must never
+be regenerated or modified. See the :file:`README.md` in the resource folders for more
+details.
+
+Both storage classes store the version of their file format (attribute
+``_format_version``) in the files. Files without version information are read as
+version 1 and files with unknown versions are rejected. If the format needs to change in
+an incompatible way, increase ``_format_version``, keep support for reading older
+versions, and add the files of the new version as a new folder to the test resources.
