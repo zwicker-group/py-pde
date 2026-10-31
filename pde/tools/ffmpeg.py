@@ -86,8 +86,8 @@ formats = {
         dtype=np.uint8,
     ),
     "rgb32": FFmpegFormat(
-        pix_fmt_file="rgb32",
-        pix_fmt_data="rgb32",
+        pix_fmt_file="bgra",
+        pix_fmt_data="bgra",
         channels=4,
         bits_per_channel=8,
         dtype=np.uint8,

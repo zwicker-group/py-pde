@@ -91,8 +91,8 @@ REQUIREMENTS = [
     ),
     # general, optional requirements
     Requirement(
-        name="ffmpeg-python",
-        version_min="0.2",
+        name="av",
+        version_min="12.0",
         usage="Reading and writing videos",
         groups={"full", "docs"},
     ),
@@ -234,7 +234,7 @@ def write_requirements_csv(
     """
     print(f"Write `{path}`")
     with path.open("w") as fp:
-        writer = csv.writer(fp)
+        writer = csv.writer(fp, lineterminator="\n")
         if incl_version:
             writer.writerow(["Package", "Minimal version", "Usage"])
         else:

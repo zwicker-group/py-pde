@@ -29,7 +29,7 @@ except ImportError:
 
 STORAGE_CLASSES = [MemoryStorage, FileStorage]
 STORAGE_CLASSES_ALL = [(0, True, MemoryStorage), (0, True, FileStorage)]
-if module_available("ffmpeg"):
+if module_available("av"):
     STORAGE_CLASSES_ALL.append((0.1, False, MovieStorage))
 if mr is not None:
     STORAGE_CLASSES_ALL.append((0, False, mr.storage.MemoryStorage))
@@ -57,8 +57,8 @@ def storage_factory(tmp_path, storage_class):
 
     if storage_class is MovieStorage:
         # provide factory that initializes a MovieStorage with a file
-        if not module_available("ffmpeg"):
-            pytest.skip("No module `ffmpeg-python`")
+        if not module_available("av"):
+            pytest.skip("No module `av`")
         file_path = tmp_path / "test_storage_write.avi"
         return functools.partial(MovieStorage, file_path, vmax=5)
 

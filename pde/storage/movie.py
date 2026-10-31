@@ -1,7 +1,7 @@
 """Defines a class storing data on the file system as a compressed movie.
 
-This package requires the optional :mod:`ffmpeg-python` package to use FFmpeg for
-reading and writing movies.
+This package requires the optional :mod:`av` package to use FFmpeg for reading and
+writing movies.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import json
 import shlex
-import warnings
-from fractions import Fraction
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Self
 
@@ -22,13 +20,20 @@ from ..tools import ffmpeg as FFmpeg
 from ..tools.cache import cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
-from ..tools.parse_duration import parse_duration
 from ..trackers.interrupts import ConstantInterrupts, InterruptData, parse_interrupt
 from .base import InfoDict, StorageBase, StorageTracker, WriteModeType
 
+_MOV_PIXEL_FORMATS = {
+    "gray": "gray",
+    "rgb24": "rgb24",
+    "rgb32": "rgba",
+    "gray16le": "gray16be",
+    "gbrp16le": "rgb48be",
+    "gbrap16le": "rgba64be",
+}
+_FFV1_PIXEL_FORMATS = {"rgb24": "bgr0"}
 if TYPE_CHECKING:
     import io
-    import types
     from collections.abc import Callable, Iterator, Sequence
 
     from matplotlib.colors import Normalize
@@ -46,41 +51,18 @@ def _get_limits(value: float | ArrayLike, dim: int) -> NumericArray:
     return np.asarray(value)[:dim].astype(float)
 
 
-def _import_ffmpeg() -> types.ModuleType:
-    """Import `ffmpeg` package, warning when incorrect package is installed."""
-    # try to figure out which `ffmpeg` package is installed
-    from importlib.metadata import packages_distributions
-
-    # check whether `ffmpeg` refers to the correct package
-    packages = packages_distributions().get("ffmpeg", [])
-    if len(packages) == 1:
-        name = packages[0]
-        if name != "ffmpeg-python":
-            warnings.warn(
-                f"Expected `ffmpeg-python` package, but found `{name}`",
-                ImportWarning,
-                stacklevel=2,
-            )
-    elif len(packages) > 1:
-        warnings.warn(
-            f"Expected `ffmpeg-python` package, but found {packages}",
-            ImportWarning,
-            stacklevel=2,
-        )
-
-    # import package
-    import ffmpeg
-
-    return ffmpeg  # type: ignore
-
-
 class MovieStorage(StorageBase):
     """Store discretized fields in a movie file.
 
-    This storage only works when the `ffmpeg` program and :mod:`ffmpeg` is installed.
+    This storage requires the optional :mod:`av` package.
+    To enable FFmpeg logging, set the PyAV log level globally, for example with
+    ``av.logging.set_level(av.logging.INFO)``.
+
     The default codec is `FFV1 <https://en.m.wikipedia.org/wiki/FFV1>`_, which supports
     lossless compression for various configurations. Not all video players support this
     codec, but `VLC <https://www.videolan.org>`_ usually works quite well.
+    The MOV container uses PNG encoding because its muxer does not advertise FFV1
+    support through PyAV.
 
     The file extension determines the container format. The container formats ".avi"
     (default), ".mkv", and ".mov" are tested and supported. Other container formats
@@ -120,15 +102,13 @@ class MovieStorage(StorageBase):
         info: InfoDict | None = None,
         write_mode: WriteModeType = "truncate_once",
         write_times: bool = False,
-        loglevel: str = "warning",
     ):
         """
         Args:
             filename (str):
                 The path where the movie is stored. The file extension determines the
-                container format of the movie. The standard codec FFV1 plays well with
-                the ".avi" (default), ".mkv", and ".mov" container formats, which are
-                tested. Other formats might work, but are not tested.
+                container format of the movie. FFV1 is used for AVI and Matroska files;
+                MOV files use lossless PNG encoding.
             vmin (float or array):
                 Lowest values that are encoded (per field). Smaller values are clipped
                 to this value.
@@ -160,17 +140,15 @@ class MovieStorage(StorageBase):
                 separate file with name :code:`filename + ".times"` is created where the
                 times are written as plain text. Without these timestamps, the time
                 information might be inaccurate.
-            loglevel (str):
-                FFmpeg log level determining the amount of data sent to stdout. The
-                default only emits warnings and errors, but setting this to `"info"` can
-                be useful to get additional information about the encoding.
         """
         # We need to define some quantities early to ensure a graceful cleanup since
         # the `close` method may be called in case of errors in __init__.
-        self._ffmpeg: Any = None
+        self._container: Any = None
+        self._stream: Any = None
+        self._encoder_pixel_format: str | None = None
         self._times_file: io.TextIOBase | None = None
-        if not module_available("ffmpeg"):
-            msg = "`MovieStorage` needs `ffmpeg-python` package"
+        if not module_available("av"):
+            msg = "`MovieStorage` needs the `av` package"
             raise ModuleNotFoundError(msg)
 
         super().__init__(info=info, write_mode=write_mode)
@@ -180,27 +158,27 @@ class MovieStorage(StorageBase):
         self.bits_per_channel = bits_per_channel
         self.video_format = video_format
         self.bitrate = bitrate
-        self.loglevel = loglevel
         self.write_times = write_times
 
-        self._state: Literal["closed", "reading", "writing"] = "closed"
+        self._state: Literal["closed", "writing"] = "closed"
         self._norms: list[Normalize] | None = None
-        self._is_writing = False
 
     def __del__(self):
         self.close()  # ensure open files are closed when the FileStorage is deleted
 
     def close(self) -> None:
         """Close the currently opened file."""
-        if self._ffmpeg is not None:
+        if self._container is not None:
             self._logger.info("Close movie file '%s'", self.filename)
-            if self._state == "writing":
-                self._ffmpeg.stdin.close()
-                self._ffmpeg.wait()
-            elif self._state == "reading":
-                self._ffmpeg.stdout.close()
-                self._ffmpeg.wait()
-            self._ffmpeg = None
+            try:
+                if self._state == "writing":
+                    assert self._stream is not None
+                    for packet in self._stream.encode():
+                        self._container.mux(packet)
+            finally:
+                self._container.close()
+                self._container = None
+                self._stream = None
 
         if self._times_file is not None:
             self._times_file.close()
@@ -230,58 +208,60 @@ class MovieStorage(StorageBase):
 
     def _read_metadata(self) -> None:
         """Read metadata from video and store it in :attr:`info`"""
-        ffmpeg = _import_ffmpeg()  # lazy loading so it's not a hard dependence
+        import av
 
         path = Path(self.filename)
         if not path.exists():
             msg = f"File `{path}` does not exist"
             raise OSError(msg)
-        info = ffmpeg.probe(path)
+        with av.open(str(path)) as container:
+            # sanity checks on the video
+            streams = container.streams.video
+            if len(container.streams) != 1:
+                self._logger.warning(
+                    "Only using first of %d streams", len(container.streams)
+                )
+            if not streams:
+                msg = "Movie does not contain a video stream"
+                raise RuntimeError(msg)
+            stream = streams[0]
 
-        # sanity checks on the video
-        nb_streams = info["format"]["nb_streams"]
-        if nb_streams != 1:
-            self._logger.warning("Only using first of %d streams", nb_streams)
-
-        tags = info["format"].get("tags", {})
-        # read comment field, which can be either lower case or upper case
-        raw_comment = tags.get("comment", tags.get("COMMENT", "{}"))
-        if raw_comment == "{}":
-            self._logger.warning("Could not find metadata written by `py-pde`")
-        metadata = json.loads(shlex.split(raw_comment)[0])
-
-        version = metadata.pop("version", 1)  # files without version are version 1
-        if version != self._format_version:
-            msg = (
-                f"Cannot read `{self.filename}` with unknown format version "
-                f"`{version}` (supported: {self._format_version})"
+            # Read comment field, which can be either lower case or upper case.
+            raw_comment = container.metadata.get(
+                "comment", container.metadata.get("COMMENT", "{}")
             )
-            raise RuntimeError(msg)
-        self.vmin = metadata.pop("vmin", 0)
-        self.vmax = metadata.pop("vmax", 1)
-        self.info.update(metadata)
-
-        # read information from the first stream
-        stream = info["streams"][0]
-        try:
-            self.info["num_frames"] = int(stream["nb_frames"])
-        except KeyError:
-            # frame count is not directly in the video
-            # => try determining it from the duration
+            if raw_comment == "{}":
+                self._logger.warning("Could not find metadata written by `py-pde`")
             try:
-                fps = Fraction(stream.get("avg_frame_rate", None))
-                duration = parse_duration(stream.get("tags", {}).get("DURATION"))
-            except TypeError as err:
-                msg = "Frame count could not be read from video"
-                raise RuntimeError(msg) from err
-            else:
-                self.info["num_frames"] = int(duration.total_seconds() * float(fps))
-        self.info["width"] = stream["width"]
-        self.info["height"] = stream["height"]
+                metadata = json.loads(raw_comment)
+            except json.JSONDecodeError:
+                metadata = json.loads(shlex.split(raw_comment)[0])
+
+            version = metadata.pop("version", 1)
+            if version != self._format_version:
+                msg = (
+                    f"Cannot read `{self.filename}` with unknown format version "
+                    f"`{version}` (supported: {self._format_version})"
+                )
+                raise RuntimeError(msg)
+            self.vmin = metadata.pop("vmin", 0)
+            self.vmax = metadata.pop("vmax", 1)
+            self.info.update(metadata)
+
+            num_frames = stream.frames
+            if num_frames <= 0:
+                # Some containers do not report the frame count in their header.
+                num_frames = sum(1 for _ in container.decode(stream))
+            self.info["num_frames"] = num_frames
+            self.info["width"] = stream.width
+            self.info["height"] = stream.height
+            pix_fmt = stream.codec_context.format
+            pix_fmt_name = pix_fmt.name if pix_fmt is not None else None
+
         if self.video_format == "auto":
             video_format = self.info.get("video_format")
             if video_format is None:
-                video_format = stream.get("pix_fmt")
+                video_format = pix_fmt_name
             if video_format is None:
                 msg = "Could not determine video format from file"
                 raise RuntimeError(msg)
@@ -292,11 +272,11 @@ class MovieStorage(StorageBase):
         except KeyError:
             self._logger.warning("Unknown pixel format `%s`", video_format)
         else:
-            if self._format.pix_fmt_file != stream.get("pix_fmt"):
+            if self._format.pix_fmt_file != pix_fmt_name:
                 self._logger.info(
                     "Pixel format differs from requested one: %s != %s",
                     self._format.pix_fmt_file,
-                    stream.get("pix_fmt"),
+                    pix_fmt_name,
                 )
 
     def _init_normalization(self, field: FieldBase) -> None:
@@ -337,13 +317,13 @@ class MovieStorage(StorageBase):
             info (dict):
                 Supplies extra information that is stored in the storage
         """
-        ffmpeg = _import_ffmpeg()  # lazy loading so it's not a hard dependence
+        import av
 
-        if self._is_writing:
+        if self._state == "writing":
             msg = f"{self.__class__.__name__} is already in writing mode"
             raise RuntimeError(msg)
-        if self._ffmpeg is not None:
-            msg = "ffmpeg process already started"
+        if self._container is not None:
+            msg = "Movie container already started"
             raise RuntimeError(msg)
 
         # delete data if truncation is requested. This is for instance necessary
@@ -394,31 +374,23 @@ class MovieStorage(StorageBase):
         # set up the normalization
         self._init_normalization(field)
 
-        # set input
-        self._logger.debug("Start ffmpeg process for `%s`", self.filename)
-        input_args = {
-            "format": "rawvideo",
-            "s": f"{width}x{height}",
-            "pixel_format": self._format.pix_fmt_data,
-            "loglevel": self.loglevel,
-        }
-        f_input = ffmpeg.input("pipe:", **input_args)
-        # set output format
-        output_args = {
-            "vcodec": self._format.codec,
-            "pix_fmt": self._format.pix_fmt_file,
-            "metadata": "comment=" + shlex.quote(self._get_metadata()),
-        }
-        if "264" in self._format.codec:
-            # set extra options for the H.264 codec
-            output_args["crf"] = "0"  # Constant Rate Factor (lower = less compression)
-            # make the H.264 codec use the full color range:
-            output_args["bsf"] = "h264_metadata=video_full_range_flag=1"
+        self._logger.debug("Start PyAV writer for `%s`", self.filename)
+        self._container = av.open(str(self.filename), mode="w")
+        codec = self._format.codec
+        if self.filename.suffix.lower() == ".mov" and codec == "ffv1":
+            codec = "png"
+            self._encoder_pixel_format = _MOV_PIXEL_FORMATS[self.info["video_format"]]
+        else:
+            self._encoder_pixel_format = _FFV1_PIXEL_FORMATS.get(
+                self._format.pix_fmt_file, self._format.pix_fmt_file
+            )
+        self._stream = self._container.add_stream(codec, rate=25)
+        self._stream.width = width
+        self._stream.height = height
+        self._stream.pix_fmt = self._encoder_pixel_format
         if self.bitrate > 0:
-            # set the specified bitrate
-            output_args["video_bitrate"] = str(self.bitrate)
-        f_output = f_input.output(filename=self.filename, **output_args)
-        self._ffmpeg = f_output.run_async(pipe_stdin=True)  # start process
+            self._stream.bit_rate = self.bitrate
+        self._container.metadata["comment"] = self._get_metadata()
 
         if self.write_times:
             self._times_file = self._filename_times.open("w")
@@ -434,15 +406,19 @@ class MovieStorage(StorageBase):
             data (:class:`~numpy.ndarray`): The actual data
             time (float): The time point associated with the data
         """
-        if self._state != "writing" or self._ffmpeg is None:
-            RuntimeError(
+        import av
+
+        if self._state != "writing" or self._container is None or self._stream is None:
+            msg = (
                 "Writing not initialized. Call "
                 f"`{self.__class__.__name__}.start_writing`"
             )
+            raise RuntimeError(msg)
         # normalization and video format have been initialized
         assert self._grid is not None
         assert self._norms is not None
         assert self._format is not None
+        assert self._encoder_pixel_format is not None
 
         if self._times_file:
             # write exact time to file
@@ -494,7 +470,38 @@ class MovieStorage(StorageBase):
             frame_data[..., i] = self._format.data_to_frame(data_norm)
 
         # write the new data
-        self._ffmpeg.stdin.write(frame_data.tobytes())
+        if self._format.pix_fmt_data in {"gbrp16le", "gbrap16le"}:
+            frame = av.VideoFrame(
+                self._frame_shape[0],
+                self._frame_shape[1],
+                format=self._format.pix_fmt_data,
+            )
+            row_size = self._frame_shape[0] * self._format.bytes_per_channel
+            plane_size = row_size * self._frame_shape[1]
+            raw_data = frame_data.tobytes()
+            for i, plane in enumerate(frame.planes):
+                plane_data = raw_data[i * plane_size : (i + 1) * plane_size]
+                padded_data = bytearray(plane.buffer_size)
+                for row in range(plane.height):
+                    start = row * row_size
+                    target = row * plane.line_size
+                    padded_data[target : target + row_size] = plane_data[
+                        start : start + row_size
+                    ]
+                plane.update(padded_data)
+        else:
+            frame_array = frame_data.reshape(
+                self._frame_shape[1], self._frame_shape[0], self._format.channels
+            )
+            if self._format.channels == 1:
+                frame_array = frame_array[:, :, 0]
+            frame = av.VideoFrame.from_ndarray(
+                np.ascontiguousarray(frame_array), format=self._format.pix_fmt_data
+            )
+        if frame.format.name != self._encoder_pixel_format:
+            frame = frame.reformat(format=self._encoder_pixel_format)
+        for packet in self._stream.encode(frame):
+            self._container.mux(packet)
         self.info["num_frames"] += 1
 
     def end_writing(self) -> None:
@@ -541,7 +548,7 @@ class MovieStorage(StorageBase):
 
     def _iter_data(self) -> Iterator[NumericArray]:
         """Iterate over all stored fields."""
-        ffmpeg = _import_ffmpeg()  # lazy loading so it's not a hard dependence
+        import av
 
         if "width" not in self.info:
             self._read_metadata()
@@ -550,28 +557,19 @@ class MovieStorage(StorageBase):
         assert self._field is not None
         self._init_normalization(self._field)
         assert self._norms is not None
-        frame_shape = (self.info["width"], self.info["height"], self._format.channels)
         data_shape = (len(self._norms), self.info["width"], self.info["height"])
         data = np.empty(data_shape, dtype=self._dtype)
-        frame_bytes = np.prod(frame_shape) * self._format.bytes_per_channel
 
-        # iterate over entire movie
-        f_input = ffmpeg.input(self.filename, loglevel=self.loglevel)
-        f_output = f_input.output(
-            "pipe:", format="rawvideo", pix_fmt=self._format.pix_fmt_data
-        )
-        proc = f_output.run_async(pipe_stdout=True)
-        while True:
-            read_bytes = proc.stdout.read(frame_bytes)
-            if not read_bytes:
-                break
-            frame = np.frombuffer(read_bytes, self._format.dtype).reshape(frame_shape)
+        with av.open(str(self.filename)) as container:
+            stream = container.streams.video[0]
+            for video_frame in container.decode(stream):
+                frame = self._frame_to_array(video_frame)
 
-            for i, norm in enumerate(self._norms):
-                frame_data = self._format.data_from_frame(frame[:, :, i])
-                data[i, :, :] = norm.inverse(frame_data)
+                for i, norm in enumerate(self._norms):
+                    frame_data = self._format.data_from_frame(frame[:, :, i])
+                    data[i, :, :] = norm.inverse(frame_data)
 
-            yield data
+                yield data
 
     @property
     def data(self):
@@ -584,6 +582,31 @@ class MovieStorage(StorageBase):
         for i, frame_data in enumerate(it, 1):  # set all subsequent frames
             data[i] = frame_data
         return data
+
+    def _frame_to_array(self, video_frame: Any) -> NumericArray:
+        """Return frame data in the byte layout used by MovieStorage."""
+        assert self._format is not None
+        if self._format.pix_fmt_data in {"gbrp16le", "gbrap16le"}:
+            if video_frame.format.name != self._format.pix_fmt_data:
+                video_frame = video_frame.reformat(format=self._format.pix_fmt_data)
+            planes = []
+            bytes_per_channel = self._format.bytes_per_channel
+            for plane in video_frame.planes:
+                plane_data = np.frombuffer(bytes(plane), dtype=self._format.dtype)
+                plane_data = plane_data.reshape(
+                    plane.height, plane.line_size // bytes_per_channel
+                )
+                planes.append(plane_data[:, : plane.width].ravel())
+            return np.concatenate(planes).reshape(
+                self.info["width"], self.info["height"], self._format.channels
+            )
+
+        frame = video_frame.to_ndarray(format=self._format.pix_fmt_data)
+        if frame.ndim == 2:
+            frame = frame[:, :, np.newaxis]
+        return frame.reshape(
+            self.info["width"], self.info["height"], self._format.channels
+        )
 
     def _get_field(self, t_index: int) -> FieldBase:
         """Return the field corresponding to the given time index.
@@ -598,7 +621,7 @@ class MovieStorage(StorageBase):
             :class:`~pde.fields.FieldBase`:
             The field class containing the grid and data
         """
-        ffmpeg = _import_ffmpeg()  # lazy loading so it's not a hard dependence
+        import av
 
         if t_index < 0:
             t_index += len(self)
@@ -614,21 +637,23 @@ class MovieStorage(StorageBase):
         assert self._field is not None
         self._init_normalization(self._field)
         assert self._norms is not None
-        frame_shape = (self.info["width"], self.info["height"], self._format.channels)
         data_shape = (len(self._norms), self.info["width"], self.info["height"])
         data = np.empty(data_shape, dtype=self._dtype)
 
-        # iterate over entire movie
-        f_input = ffmpeg.input(self.filename, loglevel=self.loglevel)
-        f_input = f_input.filter("select", f"gte(n,{t_index})")
-        f_output = f_input.output(
-            "pipe:", vframes=1, format="rawvideo", pix_fmt=self._format.pix_fmt_data
-        )
-        read_bytes, _ = f_output.run(capture_stdout=True)
-        if not read_bytes:
+        with av.open(str(self.filename)) as container:
+            stream = container.streams.video[0]
+            video_frame = next(
+                (
+                    frame
+                    for i, frame in enumerate(container.decode(stream))
+                    if i == t_index
+                ),
+                None,
+            )
+        if video_frame is None:
             msg = "Could not read any data"
             raise OSError(msg)
-        frame = np.frombuffer(read_bytes, self._format.dtype).reshape(frame_shape)
+        frame = self._frame_to_array(video_frame)
 
         for i, norm in enumerate(self._norms):
             frame_data = self._format.data_from_frame(frame[:, :, i])

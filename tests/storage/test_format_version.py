@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import shlex
 
 import numpy as np
 import pytest
@@ -12,9 +11,7 @@ import pde
 from pde.tools.misc import module_available
 
 needs_h5py = pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py`")
-needs_ffmpeg = pytest.mark.skipif(
-    not module_available("ffmpeg"), reason="requires `ffmpeg-python`"
-)
+needs_av = pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 
 
 def _write(storage) -> None:
@@ -82,16 +79,18 @@ def test_file_storage_unknown_version(tmp_path, monkeypatch):
         pde.FileStorage(path, write_mode="append")
 
 
-@needs_ffmpeg
+@needs_av
 def test_movie_storage_version(tmp_path):
     """Test that the format version is written and not part of the info."""
-    ffmpeg = pytest.importorskip("ffmpeg")
+    import av
 
     path = tmp_path / "test.avi"
     _write(pde.MovieStorage(path))
 
-    tags = ffmpeg.probe(path)["format"]["tags"]
-    comment = json.loads(shlex.split(tags.get("comment", tags.get("COMMENT")))[0])
+    with av.open(str(path)) as container:
+        comment = json.loads(
+            container.metadata.get("comment", container.metadata.get("COMMENT", "{}"))
+        )
     assert comment["version"] == 1
 
     reader = pde.MovieStorage(path)
@@ -100,7 +99,7 @@ def test_movie_storage_version(tmp_path):
     assert reader.info["payload"] == "x"
 
 
-@needs_ffmpeg
+@needs_av
 def test_movie_storage_missing_version(tmp_path, monkeypatch):
     """Test that movies without version information are read as version 1."""
     path = tmp_path / "test.avi"
@@ -120,7 +119,7 @@ def test_movie_storage_missing_version(tmp_path, monkeypatch):
     np.testing.assert_allclose(reader[0].data, 0.5, atol=1e-4)
 
 
-@needs_ffmpeg
+@needs_av
 def test_movie_storage_unknown_version(tmp_path, monkeypatch):
     """Test that movies with unknown format versions are rejected."""
     path = tmp_path / "test.avi"

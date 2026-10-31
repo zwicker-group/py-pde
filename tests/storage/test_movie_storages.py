@@ -18,13 +18,13 @@ RESOURCES_PATH = (
 )
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
-@pytest.mark.parametrize("dim", [1, 2])
-def test_movie_storage_scalar(dim, tmp_path, rng):
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
+@pytest.mark.parametrize("grid_shape", [(16,), (16, 16), (5, 9)])
+def test_movie_storage_scalar(grid_shape, tmp_path, rng):
     """Test storing scalar field as movie."""
     path = tmp_path / "test_movie_storage_scalar.avi"
 
-    grid = pde.UnitGrid([16] * dim)
+    grid = pde.UnitGrid(grid_shape)
     field = pde.ScalarField.random_uniform(grid, rng=rng)
     eq = pde.DiffusionPDE()
     writer = MovieStorage(path)
@@ -45,7 +45,7 @@ def test_movie_storage_scalar(dim, tmp_path, rng):
         np.testing.assert_allclose(field.data, storage[i].data, atol=0.01)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 @pytest.mark.parametrize("suffix", [".avi", ".mkv", ".mov"])
 @pytest.mark.parametrize("write_times", [False, True])
 @pytest.mark.parametrize("bits", [8, 16])
@@ -74,7 +74,7 @@ def test_movie_storage_container_roundtrip(suffix, write_times, bits, tmp_path):
         np.testing.assert_allclose(field.data, 0.1 + t / 4, atol=1 / 2**bits * 2)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 @pytest.mark.parametrize("dim", [1, 2])
 @pytest.mark.parametrize("num_fields", [1, 2, 3])
 def test_movie_storage_collection(dim, num_fields, tmp_path):
@@ -96,7 +96,7 @@ def test_movie_storage_collection(dim, num_fields, tmp_path):
             np.testing.assert_allclose(field.data, (i + 1) * t, atol=0.02, rtol=0.02)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 @pytest.mark.parametrize("dim", [1, 2])
 def test_movie_storage_vector(dim, tmp_path, rng):
     """Test storing scalar field as movie."""
@@ -126,7 +126,7 @@ def test_movie_storage_vector(dim, tmp_path, rng):
         np.testing.assert_allclose(field.data, storage[i].data, atol=0.01)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 @pytest.mark.parametrize("ext", [".mov", ".avi", ".mkv"])
 def test_movie_storage_containers(ext, tmp_path, rng):
     """Test storing scalar field as movie with different extensions."""
@@ -153,15 +153,16 @@ def test_movie_storage_containers(ext, tmp_path, rng):
         np.testing.assert_allclose(field.data, storage[i].data, atol=0.01)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 @pytest.mark.parametrize(("name", "video_format"), formats.items())
-def test_video_format(name, video_format, tmp_path, rng):
+@pytest.mark.parametrize("ext", [".avi", ".mov"])
+def test_video_format(name, video_format, ext, tmp_path, rng):
     """Test all video_formats."""
     if np.issubdtype(video_format.dtype, np.integer):
         assert video_format.max_value == np.iinfo(video_format.dtype).max
     assert np.dtype(video_format.dtype).itemsize == video_format.bytes_per_channel
 
-    path = tmp_path / f"test_movie_storage_{name}.avi"
+    path = tmp_path / f"test_movie_storage_{name}{ext}"
 
     field = pde.ScalarField.random_uniform(pde.UnitGrid([16]), rng=rng)
     writer = MovieStorage(path, video_format=name)
@@ -180,7 +181,7 @@ def test_video_format(name, video_format, tmp_path, rng):
         np.testing.assert_allclose(field.data, storage[i].data, atol=atol)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 def test_too_many_channels(tmp_path, rng):
     """Test that data with too many channels throws an error."""
     path = tmp_path / "test_movie_complex.avi"
@@ -192,7 +193,7 @@ def test_too_many_channels(tmp_path, rng):
         eq.solve(field, t_range=3.5, backend="numpy", tracker=writer.tracker(2))
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 def test_complex_data(tmp_path, rng):
     """Test that complex data throws an error."""
     path = tmp_path / "test_movie_complex.avi"
@@ -205,17 +206,17 @@ def test_complex_data(tmp_path, rng):
         )
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 def test_wrong_format():
     """Test how wrong files are dealt with."""
-    from ffmpeg._run import Error as FFmpegError
+    import av
 
     reader = MovieStorage(RESOURCES_PATH / "does_not_exist.avi")
     with pytest.raises(OSError):
         print(reader.times)
 
     reader = MovieStorage(RESOURCES_PATH / "empty.avi")
-    with pytest.raises(FFmpegError):
+    with pytest.raises(av.FFmpegError):
         print(reader.times)
 
     reader = MovieStorage(RESOURCES_PATH / "no_metadata.avi")
@@ -224,7 +225,7 @@ def test_wrong_format():
         reader[0]
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 @pytest.mark.parametrize(
     ("interrupt", "expected"),
     [
@@ -251,7 +252,7 @@ def test_stored_times(interrupt, expected, tmp_path):
     np.testing.assert_allclose(reader.times, expected, atol=0.01)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 def test_unequal_spaced_times(tmp_path, caplog):
     """Test whether a warning is generated for unequally spaced times."""
     path = tmp_path / "test_movie_unequal_times.avi"
