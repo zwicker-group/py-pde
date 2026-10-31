@@ -274,7 +274,7 @@ class Tensor2Field(DataFieldBase):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES_OPTIONAL}
             out (VectorField, optional):
-                Optional scalar field to which the  result is written.
+                Optional vector field to which the result is written.
             **kwargs:
                 Additional arguments affecting how the operator behaves.
 

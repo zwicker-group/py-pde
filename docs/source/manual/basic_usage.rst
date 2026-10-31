@@ -12,9 +12,9 @@ The package focuses on simple geometries, which work well for the employed finit
 difference scheme.
 Grids are defined by instances of various classes that capture the symmetries of the 
 underlying space.
-In particular, the package offers Cartesian grids of `1` to `3` dimensions via
+In particular, the package offers Cartesian grids in `1` to `3` dimensions via
 :class:`~pde.grids.cartesian.CartesianGrid`, as well as curvilinear coordinates for
-spherically symmetric systems in two dimension (:class:`~pde.grids.spherical.PolarSymGrid`)
+spherically symmetric systems in two dimensions (:class:`~pde.grids.spherical.PolarSymGrid`)
 and three dimensions (:class:`~pde.grids.spherical.SphericalSymGrid`), as well as the
 special class :class:`~pde.grids.cylindrical.CylindricalSymGrid` for a cylindrical geometry
 which is symmetric in the angle. 
@@ -60,8 +60,8 @@ calling the method :meth:`~pde.fields.scalar.ScalarField.laplace`, which
 returns another instance of :class:`~pde.fields.scalar.ScalarField`, whereas
 :meth:`~pde.fields.scalar.ScalarField.gradient` returns a
 :class:`~pde.fields.vectorial.VectorField`.
-Combining these functions with ordinary arithmetic on fields allows
-represent the right hand side of many partial differential equations that appear
+Combining these functions with ordinary arithmetic on fields allows us to
+represent the right-hand side of many partial differential equations that appear
 in physics.
 Importantly, the differential operators work with flexible boundary conditions. 
 
@@ -91,9 +91,9 @@ and the operators defined by the package.
 Running the simulation
 """"""""""""""""""""""
 To solve the PDE, we use the generated initial condition, i.e., the initial
-field :code:`field`, which are evolved forward in time by the PDE.
+field :code:`field`, which is evolved forward in time by the PDE.
 This field also defines the geometry on which the PDE is solved.
-In the simplest case, the solution is then obtain by running
+In the simplest case, the solution is then obtained by running
 
  .. code-block:: python
 
@@ -123,7 +123,7 @@ Another useful tracker is :code:`"plot"` which displays the state on the fly.
 
 Analyzing the results
 """""""""""""""""""""
-Sometimes is suffices to plot the final result, which can be done using
+Sometimes it suffices to plot the final result, which can be done using
 :code:`result.plot()`.
 The final result can of course also be analyzed quantitatively, e.g., using
 :attr:`result.average` to obtain its mean value.
@@ -144,8 +144,8 @@ Storing data persistently
 """""""""""""""""""""""""
 Trajectories can also be written to disk, either to HDF5 files using
 :class:`~pde.storage.file.FileStorage` (needs :mod:`h5py`) or to video files using
-:class:`~pde.storage.movie.MovieStorage` (needs :mod:`ffmpeg-python` and the `ffmpeg`
-program). Both classes provide a :code:`tracker` method, so they are used like
+:class:`~pde.storage.movie.MovieStorage` (needs :mod:`av`). Both classes provide a
+:code:`tracker` method, so they are used like
 :class:`~pde.storage.memory.MemoryStorage`:
 
 .. code-block:: python

@@ -4,7 +4,7 @@ Getting started
 When (not) to use the package
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-`py-pde` provides a straight-forward way to simulate partial differential equations (PDEs) using a finite-difference scheme.
+`py-pde` provides a straightforward way to simulate partial differential equations (PDEs) using a finite-difference scheme.
 Advantages of this approach include:
 
 * Supports non-linear PDEs with complex boundary conditions.
@@ -13,17 +13,17 @@ Advantages of this approach include:
 
 However, there are of course also disadvantages to the approach taken by `py-pde`:
 
-* Only suited for simple geometries (like rectangles, disks, or cylinders) with a fixed discretization.
+* Only suited to simple geometries (like rectangles, disks, or cylinders) with a fixed discretization.
 * Optimized for PDEs that describe the time-evolution of a physical system. Neither time-independent systems nor integro-differential equations are fully supported.
 * Finite-differences can lead to numerical instabilities.
-* Provided generic solvers might not be most suitable choice for particular equations.
+* The provided generic solvers might not be the most suitable choice for particular equations.
 
 
 Installation
 ^^^^^^^^^^^^
 
-The `py-pde` package is developed for python |PythonMinVersion| and has been tested up
-to version |PythonMaxVersion| under Linux, Windows, and macOS.
+The `py-pde` package is developed for Python |PythonMinVersion| and has been tested up
+to version |PythonMaxVersion| on Linux, Windows, and macOS.
 Before you can start using the package, you need to install it using one of the
 following methods.
 
@@ -75,7 +75,7 @@ or if the latest source code should be installed from github.
 Required prerequisites
 """"""""""""""""""""""
 
-The code builds on other python packages, which need to be installed for
+The code builds on other Python packages, which need to be installed for
 `py-pde` to function properly.
 The required packages are listed in the table below:
 
@@ -93,7 +93,7 @@ The simplest way to install these packages is to use the
     pip install -r requirements.txt
 
 
-Alternatively, these package can be installed via your operating system's
+Alternatively, these packages can be installed via your operating system's
 package manager, e.g. using :command:`macports`, :command:`homebrew`, or
 :command:`conda`.
 The package versions given above are minimal requirements, although
@@ -129,7 +129,7 @@ the root folder of the package into the :envvar:`PYTHONPATH` environment variabl
 This documentation can be built by calling the :command:`make html` in the
 :file:`docs` folder.
 The final documentation will be available in :file:`docs/build/html`.
-Note that a LaTeX documentation can be build using :command:`make latexpdf`.
+Note that LaTeX documentation can be built using :command:`make latexpdf`.
 
 
 A simple example
@@ -166,7 +166,7 @@ Since the initial condition is random and diffusion smooths spatial variations,
 the final profile is typically less jagged than the initial state.
 
 
-You can read more about the package in the next section, or you move on to the
+You can read more about the package in the next section or move on to the
 :doc:`manual/basic_usage` section to learn about boundary conditions, custom equations,
 trackers, and result storage.
 
@@ -198,7 +198,7 @@ calling the method :meth:`~pde.fields.scalar.ScalarField.laplace`, which
 returns another instance of :class:`~pde.fields.scalar.ScalarField`, whereas
 :meth:`~pde.fields.scalar.ScalarField.gradient` returns a
 :class:`~pde.fields.vectorial.VectorField`.
-Combining these functions with ordinary arithmetics on fields allows to
+Combining these functions with ordinary arithmetic on fields allows us to
 represent the right hand side of many partial differential equations that appear
 in physics.
 Importantly, the differential operators work with flexible boundary conditions. 

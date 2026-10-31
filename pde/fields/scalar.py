@@ -233,7 +233,7 @@ class ScalarField(DataFieldBase):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES_OPTIONAL}
             out (ScalarField, optional):
-                Optional vector field to which the result is written.
+                Optional scalar field to which the result is written.
             **kwargs:
                 Extra arguments are forwarded to
                 :meth:`~pde.fields.datafield_base.DataFieldBase.apply_operator`

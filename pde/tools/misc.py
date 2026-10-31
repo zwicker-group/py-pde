@@ -251,6 +251,11 @@ def estimate_computation_speed(func: TFunc, *args, **kwargs) -> float:
 
     Args:
         func (callable): The function to call
+        *args:
+            Positional arguments passed to ``func``.
+        **kwargs:
+            Keyword arguments passed to ``func``; ``test_duration`` controls the
+            minimum benchmark duration.
 
     Returns:
         float: the number of times the function can be calculated in one second.

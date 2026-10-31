@@ -3,7 +3,7 @@ Mathematical basics
 
 To solve partial differential equations (PDEs), the `py-pde` package provides
 differential operators to express spatial derivatives.
-These operators are implemented using the `finite difference method 
+These operators are implemented using the `finite-difference method
 <https://en.wikipedia.org/wiki/Finite_difference_method>`_ to support various 
 boundary conditions.
 The time evolution of the PDE is then calculated using the method of lines by
@@ -107,11 +107,11 @@ Spatial discretization
    :width: 350px
    :class: float-right
 
-The finite differences scheme used by `py-pde` is currently restricted to 
+The finite-difference scheme used by `py-pde` is currently restricted to
 orthogonal coordinate systems with uniform discretization.
 Because of the orthogonality, each axis of the grid can be discretized
 independently.
-For simplicity, we only consider uniform grids, where the support points  are
+For simplicity, we only consider uniform grids, where the support points are
 spaced equidistantly along a given axis, i.e., the discretization
 :math:`\Delta x` is constant.
 If a given axis covers values in a range
@@ -154,7 +154,7 @@ differential equations (ODEs), which can be solved using standard methods.
 This reduction is also known as the method of lines.
 The `py-pde` package implements the simple Euler scheme in the
 :class:`~pde.solvers.euler.EulerSolver` class, and a more advanced
-`Runge-Kutta scheme <https://en.wikipedia.org/wiki/Runge–Kutta_methods>`_ scheme in 
+`Runge-Kutta scheme <https://en.wikipedia.org/wiki/Runge–Kutta_methods>`_ in
 the :class:`~pde.solvers.runge_kutta.RungeKuttaSolver` class.
 Conceptually, solver objects store the strategy and configuration, while the
 actual state updates are performed by stepping functions created from these

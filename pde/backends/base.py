@@ -158,7 +158,10 @@ class BackendBase[TNativeArray]:
         Args:
             key (str):
                 The name of the configuration parameter
-            default
+            default (Any, optional):
+                Value returned when the parameter is absent from the local and inherited
+                configurations. If omitted, a missing parameter raises
+                :class:`KeyError`.
         """
         if key in self.config:
             return self.config[key]
@@ -245,8 +248,9 @@ class BackendBase[TNativeArray]:
                 The array data that is fed to the function
             out (:class:`~numpy.ndarray`):
                 The array to which the results are written
-            *args, **kwargs:
-                Additional arguments that are forwarded to the function call
+            **kwargs:
+                Additional keyword arguments forwarded to the native operator. This
+                base implementation raises :class:`NotImplementedError`.
         """
         raise NotImplementedError
 
@@ -715,7 +719,8 @@ class BackendBase[TNativeArray]:
                 An example for the field from which the grid and other information can
                 be extracted
             rng (:class:`~numpy.random.Generator`):
-                Random number generator (default: :func:`~numpy.random.default_rng()`).
+                Random number generator used to initialize the seed. This required
+                keyword-only argument has no default.
         """
         raise NotImplementedError
 

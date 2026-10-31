@@ -10,7 +10,7 @@ described by classes defined in :mod:`~pde.grids`.
 Discretized fields are represented by classes in :mod:`~pde.fields`, which have
 methods for differential operators with various boundary conditions collected
 in :mod:`~pde.grids.boundaries`.
-The actual pdes are collected in :mod:`~pde.pdes` and the respective solvers
+The actual PDEs are collected in :mod:`~pde.pdes` and the respective solvers
 are defined in :mod:`~pde.solvers`.
 The actual numerical computations are done in backends, which are implemented in
 :mod:`~pde.backends`.
@@ -18,7 +18,7 @@ The actual numerical computations are done in backends, which are implemented in
 
 Extending functionality
 """""""""""""""""""""""
-All code is build on a modular basis, making it easy to introduce new classes
+All code is built on a modular basis, making it easy to introduce new classes
 that integrate with the rest of the package. For instance, it is simple to
 define a new partial differential equation by subclassing
 :class:`~pde.pdes.base.PDEBase`.
@@ -28,8 +28,8 @@ mathematical expressions by creating instances of the class
 Moreover, new grids can be introduced by subclassing
 :class:`~pde.grids.base.GridBase`.
 
-The actual calculations are done by backends, which offer an interface for doing the
-calculation details. These backends are defined in :mod:`~pde.backends` and allow
+The actual calculations are done by backends, which provide an interface for carrying
+out the computations. These backends are defined in :mod:`~pde.backends` and allow
 accessing their details independently. For instance, the numba-accelerated operators
 can be used without any other part of the package by calling 
 the method :meth:`~pde.backends.numba.backend.NumbaBackend.make_operator` on the
@@ -46,8 +46,8 @@ This operator would be registered with the grid by calling
 :code:`numba_backend.register_operator(CylindricalSymGrid, "operator", make_operator)`,
 where the arguments denote the grid class, the name of the operator, and the factory
 function, respectively.
-Similar options exist for the `jax` and the `torch` backend, but there can sometimes be
-subtle difference to comply with specific requirements of the backends.
+Similar options exist for the `jax` and `torch` backends, but there can sometimes be
+subtle differences to comply with their specific requirements.
 
 
 Data layout
@@ -98,7 +98,7 @@ How this works is shown in the following example:
 Coding style
 """"""""""""
 The coding style is enforced using `ruff <https://docs.astral.sh/ruff/>`_, based on the
-styles suggest by `isort <https://timothycrosley.github.io/isort/>`_ and
+styles suggested by `isort <https://timothycrosley.github.io/isort/>`_ and
 `black <https://black.readthedocs.io/>`_. Moreover, we use `Google Style docstrings
 <https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings>`_,
 which might be best `learned by example
@@ -109,9 +109,9 @@ following `cheatsheet
 <https://github.com/ralsina/rst-cheatsheet/blob/master/rst-cheatsheet.rst>`_.
 To ensure the integrity of the code, we also try to provide many test functions,
 contained in the separate sub-folder :file:`tests`.
-These tests can be ran using scripts in the :file:`scripts` subfolder in the root
+These tests can be run using scripts in the :file:`scripts` subfolder in the root
 folder.
-This folder also contain a script :file:`tests_types.sh`, which uses :mod:`mypy`
+This folder also contains a script :file:`tests_types.sh`, which uses :mod:`mypy`
 to check the consistency of the python type annotations.
 We use these type annotations for additional documentation and they have also
 already been useful for finding some bugs.
@@ -132,11 +132,11 @@ The :mod:`pde` package contains several unit tests, collected in the :file:`test
 folder in the project root. These tests ensure that basic functions work as expected,
 in particular when code is changed in future versions. To run all tests, there are a
 few convenience scripts in the root directory :file:`scripts`. The most basic script is
-:file:`tests_run.sh`, which uses :mod:`pytest` to run the tests. Clearly, the python
+:file:`tests_run.sh`, which uses :mod:`pytest` to run the tests. Clearly, the Python
 package :mod:`pytest` needs to be installed. There are also additional scripts that for
-instance run tests in parallel (needs the python package :mod:`pytest-xdist` installed),
+instance run tests in parallel (needs the Python package :mod:`pytest-xdist` installed),
 measure test coverage (needs package :mod:`pytest-cov` installed), and make simple
-performance measurements. Moreover, there is a script :file:`test_types.sh`, which uses
+performance measurements. Moreover, there is a script :file:`tests_types.sh`, which uses
 :mod:`mypy` to check the consistency of the python type annotations and there is a
 script :file:`format_code.sh`, which formats the code automatically to adhere to our style.
 

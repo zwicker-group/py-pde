@@ -95,8 +95,6 @@ class SmoothData1D:
     def derivative(self, xs: ArrayLike) -> NumericArray:
         """Return the derivative of the smoothed values for the positions `xs`
 
-        Note that this value
-
         Args:
             xs (list of :class:`~numpy.ndarray`): the x-values
 

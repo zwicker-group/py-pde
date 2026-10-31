@@ -155,6 +155,8 @@ class ScalarFieldPlot:
                 Flag determining whether to show a plot. If `False`, the plot is
                 kept in the background, which can be useful if it only needs to
                 be written to a file.
+            skip_deprecation (bool):
+                Internal compatibility flag that suppresses the deprecation warning.
         """
         if not skip_deprecation:
             # Deprecated since 2026-07-10
@@ -220,6 +222,8 @@ class ScalarFieldPlot:
             show (bool):
                 Flag determining whether to show a plot. If `False`, the plot is
                 kept in the background.
+            skip_deprecation (bool):
+                Internal compatibility flag that suppresses the deprecation warning.
 
         Returns:
             :class:`~pde.visualization.plotting.ScalarFieldPlot`

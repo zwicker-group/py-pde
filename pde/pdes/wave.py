@@ -114,14 +114,15 @@ class WavePDE(PDEBase):
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
-            state (:class:`~pde.fields.ScalarField`):
-                An example for the state defining the grid and data types
+            state (:class:`~pde.fields.FieldCollection`):
+                An example two-field state containing `u` and `v`, defining the grid
+                and data types.
             backend (str or :class:`~pde.backends.base.BackendBase`):
                 The backend used for numerical operations
 
         Returns:
-            A function with signature `(state_data, t)`, which can be called with an
-            instance of the state data and time to obtain the associated evolution rate.
+            A function with signature `(state_data, t)`, where `state_data` contains
+            the two fields `u` and `v`, returning their evolution rates.
         """
         speed2 = self.speed**2
         laplace = state.grid.make_operator(

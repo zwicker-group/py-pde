@@ -12,8 +12,8 @@ Measuring performance
 
 The performance of the `py-pde` package depends on many details and general 
 statements are thus difficult to make.
-However, since the core operators can be compiled using :mod:`numba` or :mod:`torch`,
-many operations of the package proceed at performances close to most compiled
+However, since the core operators can be compiled using :mod:`numba`, :mod:`jax`, or
+:mod:`torch`, many operations of the package perform at speeds comparable to compiled
 languages.
 For a simple test case, consider the plot on the right, which shows how much real time
 passed until a certain simulation time was reached.
@@ -71,8 +71,8 @@ the package knows about, including those whose packages are not installed.
 As a rule of thumb, simulations run faster when there are fewer degrees of freedom.
 In the case of partial differential equations, this often means using a coarser grid
 with fewer support points.
-However, there often also is an lower bound to the number of support points if
-structures of a certain length scales need to be resolved.
+However, there is often a lower bound on the number of support points needed to resolve
+structures with a given length scale.
 Reducing the number of support points not only reduces the number of variables to be
 treated, but it can also allow for larger time steps.
 This is particularly transparent for the simple diffusion equation, where a `von Neumann
@@ -84,7 +84,7 @@ schemes. To enable those, simply specify this in the solver call:
 
 .. code-block:: python
 
-    eq.solve(t_range=10, adaptive=True)
+    eq.solve(state, t_range=10, adaptive=True)
 
 An initial time step can be supplied, but is not necessary.
 Additional factors influencing the performance of the package include the compiler used
@@ -142,7 +142,7 @@ Taken together, a minimal example reads
    if result is not None:  # restrict the output to the main node
       result.plot()
 
-Saving this script as `multiprocessing.py`, we can evoke a parallel simulation using
+Saving this script as `multiprocessing.py`, we can invoke a parallel simulation using
 
 .. code-block:: bash
 
@@ -157,7 +157,7 @@ In the example above, two python processes will start in parallel and run indepe
 at first.
 In particular, both processes will load all packages and create the initial `state`
 field as well as the PDE class `eq`.
-Once the `explicit_mpi` solver is evoked, the processes will start communicating.
+Once the `explicit_mpi` solver is invoked, the processes will start communicating.
 `py-pde` will split up the full grid into two sub-grids, in this case of shape 32x64,
 distribute the associated sub-fields to both processes and ask each process to evolve
 the PDE for their sub-field.
@@ -186,4 +186,3 @@ specifies how often the particular axis is divided.
    each subgrid), while global operations might need synchronization between all
    subgrids. One example is integration, which has been implemented properly in `py-pde`.
    Consequently, it is safe to use :attr:`~pde.fields.scalar.ScalarField.integral`.
-

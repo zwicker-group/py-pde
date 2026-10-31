@@ -407,7 +407,8 @@ class StorageBase(metaclass=ABCMeta):
                 can also be supplied. If there are multiple fields with the same label,
                 only the first field is returned.
             label (str):
-                The label of the returned field. If omitted, the stored label is used.
+                The label of the returned field. If omitted or empty, the stored label
+                is used.
 
         Returns:
             :class:`MemoryStorage`: a storage instance that contains the data for the
@@ -505,9 +506,9 @@ class StorageBase(metaclass=ABCMeta):
 
         Args:
             func (callable):
-                The function to apply to each stored field. The function must either
-                take as a single argument the field or as two arguments the field and
-                the associated time point. In both cases, it should return a field.
+                The function to apply to each stored field. It may take no arguments,
+                one argument containing the field, or two arguments containing the field
+                and associated time. In all cases, it should return a field.
             out (:class:`~pde.storage.base.StorageBase`):
                 Storage to which the output is written. If omitted, a new
                 :class:`~pde.storage.memory.MemoryStorage` is used and returned

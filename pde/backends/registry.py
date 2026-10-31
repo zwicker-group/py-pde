@@ -321,10 +321,10 @@ def get_backend(
 
     The returned backend is cached if `config` is not specified. Consequently, the same
     object will be returned for repeated calls to `get_backend`, which allows sharing
-    configuration parameters. Moreover, if `name` only specifies a backend, i.e., does
-    not contain a colon `:`, the configuration of this backend is linked with the global
-    configuration :obj:`pde.config`, such that changes to the config are reflected
-    globally.
+    configuration parameters. Moreover, if `backend` only specifies a backend, i.e.,
+    does not contain a colon `:`, the configuration of this backend is linked with the
+    global configuration :obj:`pde.config`, such that changes to the config are
+    reflected globally.
 
     Args:
         backend (str or :class:`~pde.backends.base.BackendBase`):

@@ -30,6 +30,9 @@ def get_progress_bar_class(fancy: bool = True):
         fancy (bool):
             Flag determining whether a fancy progress bar should be used in jupyter
             notebooks (if :mod:`ipywidgets` is installed)
+
+    Returns:
+        type: The progress-bar class selected for the requested environment.
     """
     if fancy:
         # try using notebook progress bar
@@ -59,8 +62,8 @@ def display_progress(iterator, total=None, enabled=True, **kwargs):
         **kwargs: All extra arguments are forwarded to the progress bar class
 
     Returns:
-        A class that behaves as the original iterator, but shows the progress
-        alongside iteration.
+        An iterator displaying progress, or the original iterator if progress
+        reporting is disabled.
     """
     if not enabled:
         return iterator

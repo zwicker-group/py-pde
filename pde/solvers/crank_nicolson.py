@@ -54,14 +54,14 @@ class CrankNicolsonSolver(SolverBase):
     def _make_single_step_fixed_dt(
         self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], NumericArray]:
-        """Return a function doing a single step with an implicit Euler scheme.
+        """Return a function performing one Crank–Nicolson step.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
-                Time step of the implicit step
+                Time step of the implicit step.
         """
         if self.pde.is_sde:
             msg = "Deterministic Crank-Nicolson does not support stochastic equations"

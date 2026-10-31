@@ -29,7 +29,7 @@ class RungeKuttaSolver(AdaptiveSolverBase):
     def _make_single_step_fixed_dt(
         self, state: TField, dt: float
     ) -> Callable[[NumericArray, float], NumericArray]:
-        """Make a function performing one explicit Runge-Kutta step of order 5(4).
+        """Make a function performing an explicit fourth-order Runge-Kutta step.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):

@@ -210,12 +210,12 @@ class JaxBackend(BackendBase[jax.Array]):
         Args:
             func (callable):
                 The operator defined in the native space of the backend
-            values (:class:`~numpy.ndarray`):
+            *values (:class:`~numpy.ndarray`):
                 The array data that is fed to the function
             out (:class:`~numpy.ndarray`):
                 The array to which the results are written
-            *args, **kwargs:
-                Additional arguments that are forwarded to the function call
+            **kwargs:
+                Additional keyword arguments forwarded to the function call.
         """
         values_native = [self.numpy_to_native(value) for value in values]
         out_native = func(*values_native, **kwargs)

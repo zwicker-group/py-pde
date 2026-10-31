@@ -61,8 +61,9 @@ def solve_poisson_equation(
         bc:
             The boundary conditions applied to the field.
             {ARG_BOUNDARIES}
-        backend (str):
-            The name of the backend to use to implement this operator.
+        backend (str or :class:`~pde.backends.base.BackendBase`):
+            Retained for API compatibility but currently ignored. The Poisson
+            solver always uses the SciPy backend.
         label (str):
             The label of the returned field.
         **kwargs:
@@ -112,8 +113,9 @@ def solve_laplace_equation(
         bc:
             The boundary conditions applied to the field.
             {ARG_BOUNDARIES}
-        backend (str):
-            The name of the backend to use to implement this operator.
+        backend (str or :class:`~pde.backends.base.BackendBase`):
+            Retained for API compatibility but currently ignored. The Laplace
+            solver uses the SciPy Poisson solver internally.
         label (str):
             The label of the returned field.
 

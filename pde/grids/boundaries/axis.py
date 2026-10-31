@@ -198,15 +198,15 @@ class BoundaryAxisBase:
     def get_sparse_matrix_data(
         self, idx: tuple[int, ...]
     ) -> tuple[float, dict[int, float]]:
-        """Sets the elements of the sparse representation of this condition.
+        """Return data for the sparse representation of this condition.
 
         Args:
             idx (tuple):
-                The index of the point that must lie on the boundary condition
+                The index of the point that must lie on the boundary condition.
 
         Returns:
-            float, dict: A constant value and a dictionary with indices and
-            factors that can be used to calculate this virtual point
+            tuple[float, dict[int, float]]: A constant value and a dictionary mapping
+            indices to factors used to calculate this virtual point.
         """
         axis_coord = idx[self.axis]
         if axis_coord == -1:
