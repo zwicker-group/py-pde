@@ -356,8 +356,8 @@ class VectorField(DataFieldBase):
                 The boundary conditions applied to the field. Boundary conditions need
                 to determine all components of the vector field.
                 {ARG_BOUNDARIES_OPTIONAL}
-            out (VectorField, optional):
-                Optional vector field to which the result is written.
+            out (Tensor2Field, optional):
+                Optional tensor field to which the result is written.
             **kwargs:
                 Additional arguments affecting how the operator behaves.
 

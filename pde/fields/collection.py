@@ -895,9 +895,12 @@ class FieldCollection(FieldBase):
                 for colormaps specified in `colors`.
             transpose (bool):
                 Determines whether the transpose of the data is plotted
-            vmin, vmax (float, list of float):
-                Define the data range that the color channels cover. By default, they
-                cover the complete value range of the supplied data.
+            vmin (float or list of float or None):
+                Lower bound of the value range for each color channel. If `None`,
+                the minimum value is determined from the corresponding field.
+            vmax (float or list of float or None):
+                Upper bound of the value range for each color channel. If `None`,
+                the maximum value is determined from the corresponding field.
 
         Returns:
             tuple: a :class:`~numpy.ndarray` of the merged data together with a dict of
@@ -998,9 +1001,12 @@ class FieldCollection(FieldBase):
                 for colormaps specified in `colors`.
             transpose (bool):
                 Determines whether the transpose of the data is plotted
-            vmin, vmax (float, list of float):
-                Define the data range that the color channels cover. By default, they
-                cover the complete value range of the supplied data.
+            vmin (float or list of float or None):
+                Lower bound of the value range for each color channel. If `None`,
+                the minimum value is determined from the corresponding field.
+            vmax (float or list of float or None):
+                Upper bound of the value range for each color channel. If `None`,
+                the maximum value is determined from the corresponding field.
             \**kwargs:
                 Additional keyword arguments that affect the image. Non-Cartesian grids
                 might support `performance_goal` to influence how an image is created

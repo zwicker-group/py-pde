@@ -79,7 +79,7 @@ class Cuboid:
 
     @classmethod
     def from_points(cls, p1: NumericArray, p2: NumericArray, **kwargs) -> Cuboid:
-        """Create cuboid from two points.
+        """Create a cuboid from two opposing corner points.
 
         Args:
             p1 (list): Coordinates of first corner point
@@ -232,7 +232,7 @@ class Cuboid:
         """
         points = np.asarray(points)
         if len(points) == 0:
-            return points
+            return points.astype(np.bool)
 
         if points.shape[-1] != self.dim:
             msg = (

@@ -604,6 +604,9 @@ class LivePlotTracker(PlotTracker):
                 to be a callable function taking 1 or 2 arguments. The first argument
                 always is the current field, while the optional second argument is the
                 associated time.
+            **kwargs:
+                Additional arguments forwarded to :class:`PlotTracker`, such as
+                `title`, `plot_args`, `output_file`, `output_folder`, and `movie_file`.
         """
         super().__init__(interrupts=interrupts, show=show, max_fps=max_fps, **kwargs)
 

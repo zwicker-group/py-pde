@@ -59,9 +59,9 @@ class Movie:
             framerate (float):
                 The number of frames per second, which determines how fast the
                 movie will appear to run.
-            dpi (float):
-                The resolution of the resulting movie. The default value is controlled
-                by :mod:`matplotlib` and is usually set to 100.
+            dpi (float or None):
+                The resolution of the resulting movie. If `None`, the default value is
+                controlled by :mod:`matplotlib` and is usually set to 100.
             **kwargs:
                 Additional parameters are used to initialize
                 :class:`matplotlib.animation.FFMpegWriter`. Here, we can for instance
@@ -117,7 +117,7 @@ class Movie:
         """Adds the figure `fig` as a frame to the current movie.
 
         Args:
-            fig (:class:`~matplotlib.figures.Figure`):
+            fig (:class:`~matplotlib.figure.Figure`):
                 The plot figure that is added to the movie
         """
         if fig is None:

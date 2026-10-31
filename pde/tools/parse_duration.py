@@ -86,6 +86,9 @@ def parse_duration(value: str) -> datetime.timedelta:
 
     Returns:
         datetime.timedelta: An instance representing the duration.
+
+    Raises:
+        ValueError: If `value` cannot be parsed as a supported duration.
     """
     match = (
         standard_duration_re.match(value)

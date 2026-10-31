@@ -52,6 +52,9 @@ class NumpyBackend(BackendBase[NumericArray]):
         Args:
             func (callable):
                 The function that needs to be compiled for this backend
+            **kwargs:
+                Compilation options. NumPy does not support compilation options;
+                if supplied, they are ignored after a warning.
         """
         if kwargs:
             self._logger.warning("NumpyBackend does not support compilation options.")
@@ -69,8 +72,8 @@ class NumpyBackend(BackendBase[NumericArray]):
                 The array data that is fed to the function
             out (:class:`~numpy.ndarray`):
                 The array to which the results are written
-            *args, **kwargs:
-                Additional arguments that are forwarded to the function call
+            **kwargs:
+                Additional keyword arguments forwarded to the native operator.
         """
         func(*values, out=out, **kwargs)
 
@@ -215,7 +218,8 @@ class NumpyBackend(BackendBase[NumericArray]):
             dtype (numpy dtype):
                 The data type of the field.
             **kwargs:
-                Specifies extra arguments influencing how the operator is created.
+                Additional keyword arguments forwarded to the registered operator
+                factory when constructing the operator.
 
         Returns:
             callable: the function that applies the operator. This function has the
@@ -469,7 +473,8 @@ class NumpyBackend(BackendBase[NumericArray]):
                 An example for the state from which the grid and other information can
                 be extracted
             rng (:class:`~numpy.random.Generator`):
-                Random number generator (default: :func:`~numpy.random.default_rng()`).
+                Random number generator used to initialize the seed. This required
+                keyword-only argument has no default.
         """
         data_shape: tuple[int, ...] = field.data.shape
 

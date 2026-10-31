@@ -768,8 +768,8 @@ class GridMesh:
                 The data that will be sent to the main node
 
         Returns:
-            None on all nodes, except the main node, which receives an ordered list with
-            the data from all nodes.
+            None on all nodes except the main node, which receives a list containing
+            the data from all nodes, ordered by MPI rank.
         """
         from mpi4py.MPI import COMM_WORLD
 

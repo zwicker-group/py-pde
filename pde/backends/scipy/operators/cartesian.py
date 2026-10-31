@@ -265,6 +265,8 @@ def make_laplace(grid: CartesianGrid, **kwargs) -> ScipyOperatorImplType:
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        **kwargs:
+            Additional operator-construction options. These are currently ignored.
 
     Returns:
         A function that can be applied to an array of values
@@ -397,6 +399,8 @@ def _vectorize_operator(
             The function that creates the basic operator
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        **kwargs:
+            Additional keyword arguments passed to ``make_operator``.
 
     Returns:
         A function that can be applied to an array of values

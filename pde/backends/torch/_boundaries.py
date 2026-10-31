@@ -405,6 +405,8 @@ class TorchBoundariesSetter(torch.nn.Module):
         Args:
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesSetter`):
                 The boundary conditions applied to the field.
+            dtype (:class:`numpy.dtype`):
+                Data type used by the Torch boundary setter.
         """
         super().__init__()
         # Store the user setter directly without compilation

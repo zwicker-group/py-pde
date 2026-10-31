@@ -903,7 +903,7 @@ def evaluate(
             specify the operator to which the boundary condition will be applied.
         user_funcs (dict, optional):
             A dictionary with user defined functions that can be used in the expressions
-            in `rhs`.
+            in `expression`.
         consts (dict, optional):
             A dictionary with user defined constants that can be used in the expression.
             These can be either scalar numbers or fields defined on the same grid as the

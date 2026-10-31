@@ -504,6 +504,8 @@ class Config(NestedDict[Parameter]):
         Args:
             other (MutableMapping[str, Any]):
                 Mapping whose entries are will end up in this object.
+            delete_extra (bool):
+                Whether entries absent from `other` should be deleted.
         """
         if not isinstance(other, MutableMapping):
             raise TypeError

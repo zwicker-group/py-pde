@@ -34,8 +34,9 @@ class MemoryStorage(StorageBase):
     ):
         """
         Args:
-            times (:class:`~numpy.ndarray`):
-                Sequence of times for which data is known
+            times (sequence of float or None):
+                Sequence of times for which data is known. If None, no times are
+                initially stored.
             data (list of :class:`~numpy.ndarray`):
                 The field data at the given times
             field_obj (:class:`~pde.fields.base.FieldBase`):

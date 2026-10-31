@@ -217,8 +217,8 @@ class TorchBackend(BackendBase[torch.Tensor]):
                 numpy dtype to convert to supported dtype
 
         Returns:
-            :class:`torch.dtype`:
-                A numpy dtype that is compatible with the torch backend
+            :class:`numpy.dtype`:
+                A NumPy dtype compatible with the selected torch device.
         """
         # convert numpy dtype to torch dtype to support cases where the torch device
         # only supports narrower types
@@ -278,12 +278,12 @@ class TorchBackend(BackendBase[torch.Tensor]):
         Args:
             func (callable):
                 The operator defined in the native space of the backend
-            values (:class:`~numpy.ndarray`):
+            *values (:class:`~numpy.ndarray`):
                 The array data that is fed to the function
             out (:class:`~numpy.ndarray`):
                 The array to which the results are written
-            *args, **kwargs:
-                Additional arguments that are forwarded to the function call
+            **kwargs:
+                Additional keyword arguments forwarded to the function call.
         """
         values_native = [self.numpy_to_native(value) for value in values]
         out_native = func(*values_native, **kwargs)
@@ -464,9 +464,10 @@ class TorchBackend(BackendBase[torch.Tensor]):
                 Whether to use the complex conjugate for the second operand
 
         Returns:
-            function that takes two instance of :class:`~numpy.ndarray`, which contain
-            the discretized data of the two operands. An optional third argument can
-            specify the output array to which the result is written.
+            callable:
+                A function accepting two :class:`torch.Tensor` operands and returning
+                a :class:`torch.Tensor`. The optional ``out`` argument is unsupported
+                and raises :class:`ValueError`.
         """
         num_axes = field.grid.num_axes
 
@@ -518,9 +519,10 @@ class TorchBackend(BackendBase[torch.Tensor]):
                 Field for which the outer product is defined
 
         Returns:
-            function that takes two instance of :class:`~numpy.ndarray`, which contain
-            the discretized data of the two operands. An optional third argument can
-            specify the output array to which the result is written.
+            callable:
+                A function accepting two :class:`torch.Tensor` vector-field operands
+                and returning a :class:`torch.Tensor`. If supplied, ``out`` receives
+                the result.
         """
         if not isinstance(field, VectorField):
             msg = "Can only define outer product between vector fields"

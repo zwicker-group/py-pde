@@ -1049,7 +1049,8 @@ class GridBase(metaclass=ABCMeta):
 
         Raises:
             ValueError:
-                If the data given in `bc` cannot be read
+                If the data given in `bc` cannot be read. Boundary-condition parsing
+                errors are raised as :class:`BCDataError`.
             PeriodicityError:
                 If the boundaries are not compatible with the periodic axes of the grid.
         """

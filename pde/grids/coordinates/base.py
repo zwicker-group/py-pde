@@ -27,7 +27,7 @@ class DimensionError(ValueError):
 
 
 class CoordinatesBase:
-    """Base class for orthonormal coordinate systems."""
+    """Base class for coordinate systems."""
 
     # properties that are defined in subclasses
     dim: int
@@ -101,7 +101,7 @@ class CoordinatesBase:
 
     def distance(
         self, p1: FloatingArray, p2: FloatingArray, *, axis: int = -1
-    ) -> float:
+    ) -> float | FloatingArray:
         """Calculate the distance between two points.
 
         Args:
@@ -113,7 +113,9 @@ class CoordinatesBase:
                 Determines the axis along which the coordinates of the points are given
 
         Returns:
-            float: Distance between the two positions
+            float or :class:`~numpy.ndarray`: Distance between the positions. A scalar
+            is returned for individual points; an array is returned for vectorized
+            inputs.
         """
         # this can be overwritten if a more efficient calculation is possible
         x1 = self.pos_to_cart(p1, axis=axis)

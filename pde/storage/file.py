@@ -55,11 +55,11 @@ class FileStorage(StorageBase):
                 cleared every time this storage is used for writing), or 'truncate_once'
                 (data is cleared for the first writing, but appended subsequently).
                 Alternatively, specifying 'readonly' will disable writing completely.
-            max_length (int, optional):
+            max_length (int or None, optional):
                 Maximal number of entries that will be stored in the file. This can be
                 used to preallocate data, which can lead to smaller files, but is also
-                less flexible. Giving `max_length = None`, allows for arbitrarily large
-                data, which might lead to larger files.
+                less flexible. `None` (and currently `0`) creates a resizable dataset,
+                allowing arbitrarily large data but potentially creating larger files.
             compression (bool):
                 Whether to store the data in compressed form. Automatically enabled
                 chunked storage.

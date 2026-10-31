@@ -370,8 +370,9 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
                 spherical grid, e.g., the Cartesian grid is inscribed in the sphere.
                 Conversely, 'full' (or 'circumscribed') returns all data, so the
                 Cartesian grid is circumscribed.
-            num (int):
-                Number of support points along each axis of the returned grid.
+            num (int or None):
+                Number of support points along each axis of the returned grid. If
+                `None`, the number is determined from the radial discretization.
 
         Returns:
             :class:`pde.grids.cartesian.CartesianGrid`: The requested grid

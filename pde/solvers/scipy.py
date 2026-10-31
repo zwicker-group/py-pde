@@ -57,6 +57,12 @@ class ScipySolver(SolverBase):
         Returns:
             Function that can be called to advance the `state` from time
             `t_start` to time `t_end`.
+
+        Raises:
+            RuntimeError:
+                If the PDE is stochastic or the evolution produces NaN values.
+            ScipySolverError:
+                If :func:`scipy.integrate.solve_ivp` fails.
         """
         from scipy import integrate
 
@@ -88,8 +94,9 @@ class ScipySolver(SolverBase):
             return y  # type: ignore
 
         def stepper(state: TField, t_start: float, t_end: float) -> float:
-            """Use scipy.integrate.odeint to advance `state` from `t_start` to
-            `t_end`"""
+            """Advance `state` from `t_start` to `t_end` using
+            `scipy.integrate.solve_ivp`.
+            """
             if dt is not None:
                 self.solver_params["first_step"] = min(t_end - t_start, dt)
 

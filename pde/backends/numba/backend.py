@@ -1487,7 +1487,8 @@ class NumbaBackend(NumpyBackend):
                 An example for the state from which the grid and other information can
                 be extracted.
             rng (:class:`~numpy.random.Generator`):
-                Random number generator (default: :func:`~numpy.random.default_rng()`).
+                Random number generator used to initialize the seed. This required
+                keyword-only argument has no default.
                 Not used in this numba backend.
         """
         data_shape: tuple[int, ...] = field.data.shape
