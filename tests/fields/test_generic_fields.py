@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from scipy import ndimage
 
-from fixtures.fields import GRIDS, get_fields
+from fixtures.fields import FIELDS, GRIDS
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from pde.fields.base import FieldBase
 from pde.fields.datafield_base import DataFieldBase, _symmetrize_vmin_vmax
@@ -701,7 +701,7 @@ def test_get_field_class_by_rank():
 @pytest.mark.skipif(
     not module_available("modelrunner", strict=True), reason="requires `py-modelrunner`"
 )
-@pytest.mark.parametrize("field", get_fields())
+@pytest.mark.parametrize("field", FIELDS)
 def test_field_modelrunner_storage(field, tmp_path):
     """Test storing fields in modelrunner storages."""
     from modelrunner import open_storage

@@ -29,17 +29,15 @@ for periodic in [True, False]:
     )
 
 
-def get_fields():
-    """Provide some test fields."""
-    grid = CartesianGrid([[0, 2], [-1, 1]], [3, 4], [True, False])
-    return [
-        ScalarField(UnitGrid([1, 2, 3]), 1),
-        VectorField.from_expression(PolarSymGrid(2, 3), ["r**2", "r"]),
-        Tensor2Field.random_normal(
-            CylindricalSymGrid(3, [-1, 2], [7, 8], periodic_z=True)
-        ),
-        FieldCollection([ScalarField(grid, 1), VectorField(grid, 2)]),
-    ]
+_grid_for_fields = CartesianGrid([(0, 2), (-1, 1)], [3, 4], [True, False])
+FIELDS = [
+    ScalarField(UnitGrid([1, 2, 3]), 1),
+    VectorField.from_expression(PolarSymGrid(2, 3), ["r**2", "r"]),
+    Tensor2Field.random_normal(CylindricalSymGrid(3, (-1, 2), [7, 8], periodic_z=True)),
+    FieldCollection(
+        [ScalarField(_grid_for_fields, 1), VectorField(_grid_for_fields, 2)]
+    ),
+]
 
 
 def get_cartesian_grid(dim=2, periodic=True):

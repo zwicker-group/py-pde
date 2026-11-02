@@ -27,15 +27,13 @@ ALL_COMPILED_BACKENDS = [
 ALL_BACKENDS = ["numpy", *ALL_COMPILED_BACKENDS]
 
 
-def get_grids():
-    """Return some test grids."""
-    return [
-        grids.UnitGrid([2, 2], periodic=[True, False]),
-        grids.CartesianGrid([[0, 1]], [2], periodic=[False]),
-        grids.CylindricalSymGrid(2, (0, 2), (2, 2), periodic_z=True),
-        grids.SphericalSymGrid(2, 2),
-        grids.PolarSymGrid(2, 2),
-    ]
+GRIDS = [
+    grids.UnitGrid([2, 2], periodic=[True, False]),
+    grids.CartesianGrid([[0, 1]], [2], periodic=[False]),
+    grids.CylindricalSymGrid(2, (0, 2), (2, 2), periodic_z=True),
+    grids.SphericalSymGrid(2, 2),
+    grids.PolarSymGrid(2, 2),
+]
 
 
 def test_pde_name_exception():
@@ -183,7 +181,7 @@ def test_pde_vector_scalar(backend, rng):
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
-@pytest.mark.parametrize("grid", get_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_compare_swift_hohenberg(backend, grid, rng):
     """Compare custom class to Swift-Hohenberg class."""
     if backend.name == "torch-mps" and isinstance(
