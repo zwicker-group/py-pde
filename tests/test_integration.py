@@ -352,7 +352,7 @@ def test_modelrunner_storage_many(tmp_path):
                 assert "trajectory" in storage["storage"]
                 assert "result" in storage
                 count += 1
-    msg = "Files: " + ",".join(tmp_path.iterdir())
+    msg = "Files in tmpdir: " + ",".join(path.name for path in tmp_path.iterdir())
     assert count == 2, msg  # found two files in the folder
 
     # read result using ResultCollection
