@@ -34,14 +34,16 @@ def parse_radii(radius: Real | tuple[Real, Real]) -> tuple[float, float]:
 
     Args:
         radius:
-            The outer radius, or a tuple of the inner and outer radii.
+            The outer radius, or a tuple of the inner and outer radii. If only the outer
+            radius is given, the inner radius is set to zero.
+
+    Returns:
+        tuple of floats for inner and outer radius.
     """
     try:
         r_inner, r_outer = radius  # type: ignore
     except TypeError:
         r_inner, r_outer = 0, radius
-    r_inner = float(r_inner)
-    r_outer = float(r_outer)
 
     if r_inner < 0:
         msg = "Inner radius must be positive"
@@ -49,7 +51,7 @@ def parse_radii(radius: Real | tuple[Real, Real]) -> tuple[float, float]:
     if r_inner >= r_outer:
         msg = "Outer radius must be larger than inner radius"
         raise ValueError(msg)
-    return r_inner, r_outer
+    return float(r_inner), float(r_outer)
 
 
 def volume_from_radius[T: (float, NumericArray)](radius: T, dim: int) -> T:
