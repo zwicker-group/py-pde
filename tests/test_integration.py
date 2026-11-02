@@ -352,11 +352,12 @@ def test_modelrunner_storage_many(tmp_path):
                 assert "trajectory" in storage["storage"]
                 assert "result" in storage
                 count += 1
-    assert count == 2  # found two files in the folder
+    msg = "Files: " + ",".join(tmp_path.iterdir())
+    assert count == 2, msg  # found two files in the folder
 
     # read result using ResultCollection
     results = mr.ResultCollection.from_folder(tmp_path)
-    assert len(results) == 2  # found two results in the collection
+    assert len(results) == 2, msg  # found two results in the collection
     for result in results:
         t_range = result.model.parameters["t_range"]
         assert isinstance(result.result["field"], ScalarField)
