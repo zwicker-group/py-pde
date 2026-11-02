@@ -30,7 +30,7 @@ from .coordinates import CartesianCoordinates
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
-    from ..tools.typing import FloatingArray, NumericArray
+    from ..tools.typing import FloatingArray, NumericArray, Real
 
 
 class CartesianGrid(GridBase):
@@ -63,7 +63,7 @@ class CartesianGrid(GridBase):
 
     def __init__(
         self,
-        bounds: Sequence[tuple[float, float]],
+        bounds: Sequence[tuple[Real, Real]],
         shape: int | Sequence[int],
         periodic: bool | Sequence[bool] = False,
     ):
