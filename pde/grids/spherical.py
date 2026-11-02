@@ -23,10 +23,33 @@ import numpy as np
 
 from ..tools.cache import cached_property
 from ..tools.plotting import plot_on_axes
-from ..tools.typing import FloatingArray, NumericArray
+from ..tools.typing import FloatingArray, NumericArray, Real
 from .base import CoordsType, GridBase, _check_shape, discretize_interval
 from .cartesian import CartesianGrid
 from .coordinates import PolarCoordinates, SphericalCoordinates
+
+
+def parse_radii(radius: Real | tuple[Real, Real]) -> tuple[float, float]:
+    """Parse and validate the inner and outer radii.
+
+    Args:
+        radius:
+            The outer radius, or a tuple of the inner and outer radii.
+    """
+    try:
+        r_inner, r_outer = radius  # type: ignore
+    except TypeError:
+        r_inner, r_outer = 0, radius
+    r_inner = float(r_inner)
+    r_outer = float(r_outer)
+
+    if r_inner < 0:
+        msg = "Inner radius must be positive"
+        raise ValueError(msg)
+    if r_inner >= r_outer:
+        msg = "Outer radius must be larger than inner radius"
+        raise ValueError(msg)
+    return r_inner, r_outer
 
 
 def volume_from_radius[T: (float, NumericArray)](radius: T, dim: int) -> T:
@@ -72,7 +95,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
     _periodic = [False]  # the radial axis is not periodic
     boundary_names = {"inner": (0, False), "outer": (0, True)}
 
-    def __init__(self, radius: float | tuple[float, float], shape: int | tuple[int]):
+    def __init__(self, radius: Real | tuple[Real, Real], shape: int | tuple[int]):
         r"""
         Args:
             radius (float or tuple of floats):
@@ -89,19 +112,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             raise ValueError(msg)
         self._shape: tuple[int] = (int(shape_list[0]),)
 
-        try:
-            r_inner, r_outer = radius  # type: ignore
-        except TypeError:
-            r_inner, r_outer = 0, float(radius)  # type: ignore
-
-        if r_inner < 0:
-            msg = "Inner radius must be positive"
-            raise ValueError(msg)
-        if r_inner >= r_outer:
-            msg = "Outer radius must be larger than inner radius"
-            raise ValueError(msg)
-
         # radial discretization
+        r_inner, r_outer = parse_radii(radius)
         rs, dr = discretize_interval(r_inner, r_outer, self.shape[0])
 
         self._axes_coords = (rs,)

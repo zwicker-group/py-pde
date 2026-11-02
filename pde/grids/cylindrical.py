@@ -19,11 +19,12 @@ from .base import (
 )
 from .cartesian import CartesianGrid
 from .coordinates import CylindricalCoordinates
+from .spherical import parse_radii
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
-    from ..tools.typing import FloatingArray, NumericArray
+    from ..tools.typing import FloatingArray, NumericArray, Real
     from .spherical import PolarSymGrid
 
 
@@ -74,8 +75,8 @@ class CylindricalSymGrid(GridBase):
 
     def __init__(
         self,
-        radius: float | tuple[float, float],
-        bounds_z: tuple[float, float],
+        radius: Real | tuple[Real, Real],
+        bounds_z: tuple[Real, Real],
         shape: int | Sequence[int],
         periodic_z: bool = False,
     ):
@@ -109,19 +110,7 @@ class CylindricalSymGrid(GridBase):
         self._periodic = [False, self._periodic_z]
 
         # radial discretization
-        try:
-            r_inner, r_outer = radius  # type: ignore
-        except TypeError:
-            r_inner, r_outer = 0, float(radius)  # type: ignore
-
-        if r_inner < 0:
-            msg = "Inner radius must be positive"
-            raise ValueError(msg)
-        if r_inner >= r_outer:
-            msg = "Outer radius must be larger than inner radius"
-            raise ValueError(msg)
-
-        # radial discretization
+        r_inner, r_outer = parse_radii(radius)
         rs, dr = discretize_interval(r_inner, r_outer, self.shape[0])
 
         # axial discretization

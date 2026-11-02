@@ -5,7 +5,7 @@
 import numpy as np
 import pytest
 
-from fixtures.fields import get_grids
+from fixtures.fields import GRIDS
 from pde import (
     CartesianGrid,
     PolarSymGrid,
@@ -129,7 +129,7 @@ def test_tensor_symmetrize(traceless):
     np.testing.assert_allclose(t1.data, t2.data)
 
 
-@pytest.mark.parametrize("grid", get_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 @pytest.mark.parametrize("compiled", [True, False])
 def test_insert_tensor(grid, compiled, rng):
     """Test the `insert` method."""

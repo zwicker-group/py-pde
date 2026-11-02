@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from scipy import ndimage
 
-from fixtures.fields import get_fields, get_grids
+from fixtures.fields import GRIDS, get_fields
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from pde.fields.base import FieldBase
 from pde.fields.datafield_base import DataFieldBase, _symmetrize_vmin_vmax
@@ -39,7 +39,7 @@ def test_set_label(field_class):
         field_class(grid, label=1)
 
 
-@pytest.mark.parametrize("grid", get_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 @pytest.mark.parametrize("field_class", [ScalarField, Tensor2Field])
 def test_interpolation_natural(grid, field_class, rng):
     """Test some interpolation for auto_periodic_neumann boundary conditions."""
@@ -61,7 +61,7 @@ def test_interpolation_natural(grid, field_class, rng):
 
 
 @pytest.mark.parametrize("num", [1, 3])
-@pytest.mark.parametrize("grid", get_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_shapes_nfields(num, grid, rng):
     """Test single component field."""
     fields = [ScalarField.random_uniform(grid, rng=rng) for _ in range(num)]
@@ -462,7 +462,7 @@ def test_get_cartesian_grid(grid):
     assert cart.volume > grid.volume
 
 
-@pytest.mark.parametrize("grid", get_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_simple_plotting(grid, rng):
     """Test simple plotting of various fields on various grids."""
     vf = VectorField.random_uniform(grid, rng=rng)
@@ -675,7 +675,7 @@ def test_dot_product(grid, rng):
         dot(sf.data, tf.data)
 
 
-@pytest.mark.parametrize("grid", get_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_complex_operator(grid, rng):
     """Test using a complex operator on grid."""
     r = ScalarField.random_normal(grid, rng=rng)

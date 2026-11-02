@@ -15,21 +15,18 @@ from pde import (
     UnitGrid,
     VectorField,
 )
+from pde.grids.base import GridBase
 
-
-def get_grids():
-    """Provide some test grids."""
-    grid_list = [PolarSymGrid(3, 4), SphericalSymGrid(3, 4)]
-    for periodic in [True, False]:
-        grid_list.extend(
-            [
-                UnitGrid([3], periodic=periodic),
-                UnitGrid([3, 3, 3], periodic=periodic),
-                CartesianGrid([[-1, 2], [0, 3]], [5, 7], periodic=periodic),
-                CylindricalSymGrid(3, [-1, 2], [7, 8], periodic_z=periodic),
-            ]
-        )
-    return grid_list
+GRIDS: list[GridBase] = [PolarSymGrid(3, 4), SphericalSymGrid(3, 4)]
+for periodic in [True, False]:
+    GRIDS.extend(
+        [
+            UnitGrid([3], periodic=periodic),
+            UnitGrid([3, 3, 3], periodic=periodic),
+            CartesianGrid([(-1, 2), (0, 3)], [5, 7], periodic=periodic),
+            CylindricalSymGrid(3, (-1, 2), [7, 8], periodic_z=periodic),
+        ]
+    )
 
 
 def get_fields():

@@ -9,24 +9,21 @@ import pytest
 
 from pde.grids import coordinates
 
-
-def get_coordinates():
-    """Provide some test coordinate systems."""
-    return [
-        coordinates.CartesianCoordinates(1),
-        coordinates.CartesianCoordinates(2),
-        coordinates.CartesianCoordinates(3),
-        coordinates.PolarCoordinates(),
-        coordinates.SphericalCoordinates(),
-        coordinates.CylindricalCoordinates(),
-        coordinates.BipolarCoordinates(),
-        coordinates.BipolarCoordinates(3),
-        coordinates.BisphericalCoordinates(),
-        coordinates.BisphericalCoordinates(3),
-    ]
+COORDINATES = [
+    coordinates.CartesianCoordinates(1),
+    coordinates.CartesianCoordinates(2),
+    coordinates.CartesianCoordinates(3),
+    coordinates.PolarCoordinates(),
+    coordinates.SphericalCoordinates(),
+    coordinates.CylindricalCoordinates(),
+    coordinates.BipolarCoordinates(),
+    coordinates.BipolarCoordinates(3),
+    coordinates.BisphericalCoordinates(),
+    coordinates.BisphericalCoordinates(3),
+]
 
 
-@pytest.mark.parametrize("c", get_coordinates())
+@pytest.mark.parametrize("c", COORDINATES)
 def test_basic_coordinates(c, rng):
     """Test basic coordinate properties."""
     assert len(c.coordinate_limits) == c.dim
@@ -38,7 +35,7 @@ def test_basic_coordinates(c, rng):
     assert pickle.loads(pickle.dumps(c)) == c
 
 
-@pytest.mark.parametrize("c", get_coordinates())
+@pytest.mark.parametrize("c", COORDINATES)
 def test_basic_coordinate_arrays(c, rng):
     """Test conversion of coordinates given in arrays."""
     x = rng.uniform(size=(7, c.dim))
@@ -53,7 +50,7 @@ def test_basic_coordinate_arrays(c, rng):
     np.testing.assert_allclose(c.pos_to_cart(pT, axis=0), xT)
 
 
-@pytest.mark.parametrize("c", get_coordinates())
+@pytest.mark.parametrize("c", COORDINATES)
 def test_coordinate_volume_factors(c, rng):
     """Test basic coordinate properties."""
     p1 = c.pos_from_cart(rng.uniform(-1, 1, size=c.dim))
@@ -65,7 +62,7 @@ def test_coordinate_volume_factors(c, rng):
     assert vol2 == pytest.approx(vol1)
 
 
-@pytest.mark.parametrize("c", get_coordinates())
+@pytest.mark.parametrize("c", COORDINATES)
 def test_coordinate_metric(c, rng):
     x = rng.uniform(size=c.dim)
     p = c.pos_from_cart(x)
@@ -87,7 +84,7 @@ def test_coordinate_metric(c, rng):
     assert det_g == pytest.approx(det_J**2)
 
 
-@pytest.mark.parametrize("c", get_coordinates())
+@pytest.mark.parametrize("c", COORDINATES)
 def test_coordinate_vector_fields(c, rng):
     """Test basic coordinate properties."""
     # anchor point
