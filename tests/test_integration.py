@@ -344,16 +344,19 @@ def test_modelrunner_storage_many(tmp_path):
     time.sleep(1)
 
     # read storage manually
+    count = 0
     for path in tmp_path.iterdir():
         if path.is_file() and not path.name.endswith("txt"):
             with mr.open_storage(path, mode="read") as storage:
                 assert "initial_state" in storage["storage"]
                 assert "trajectory" in storage["storage"]
                 assert "result" in storage
+                count += 1
+    assert count == 2  # found two files in the folder
 
     # read result using ResultCollection
     results = mr.ResultCollection.from_folder(tmp_path)
-    assert len(results) == num_jobs
+    assert len(results) == 2  # found two results in the collection
     for result in results:
         t_range = result.model.parameters["t_range"]
         assert isinstance(result.result["field"], ScalarField)
