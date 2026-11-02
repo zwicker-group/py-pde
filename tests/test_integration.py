@@ -345,14 +345,21 @@ def test_modelrunner_storage_many(tmp_path):
 
     # read storage manually
     count = 0
+    msg = "Files in tmpdir: " + ",".join(path.name for path in tmp_path.iterdir())
     for path in tmp_path.iterdir():
-        if path.is_file() and not path.name.endswith("txt"):
+        if not path.is_file():
+            pass  # skip other files
+        if path.name.endswith("txt"):
+            # read results of log files for debugging purposes
+            with path.open() as f:
+                msg += f"\n\nContent of {path.name}: " + f.read()
+        else:
+            # read actually stored results
             with mr.open_storage(path, mode="read") as storage:
                 assert "initial_state" in storage["storage"]
                 assert "trajectory" in storage["storage"]
                 assert "result" in storage
                 count += 1
-    msg = "Files in tmpdir: " + ",".join(path.name for path in tmp_path.iterdir())
     assert count == 2, msg  # found two files in the folder
 
     # read result using ResultCollection
