@@ -323,6 +323,7 @@ def test_modelrunner_storage_one(tmp_path, capsys):
 @pytest.mark.skipif(
     not module_available("modelrunner", strict=True), reason="need `py-modelrunner`"
 )
+@pytest.mark.skipif(not module_available("h5py"), reason="need `h5py`")
 def test_modelrunner_storage_many(tmp_path):
     """Test how modelrunner storage can be used."""
     import modelrunner as mr
