@@ -5,19 +5,19 @@
 import numpy as np
 import pytest
 
-from fixtures.fields import iter_grids
+from fixtures.fields import GRIDS
 from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.fields.base import FieldBase
 from pde.tools.misc import module_available
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_shapes_nfields(grid, rng):
     """Test single component field."""
     for num in [1, 3]:
         fields = [ScalarField.random_uniform(grid, rng=rng) for _ in range(num)]
         field = FieldCollection(fields)
-        data_shape = (num,) + grid.shape
+        data_shape = (num, *grid.shape)
         np.testing.assert_equal(field.data.shape, data_shape)
         for pf_single in field:
             np.testing.assert_equal(pf_single.data.shape, grid.shape)
@@ -37,7 +37,7 @@ def test_collections(rng):
     assert fields.data.shape == (7, 3, 4)
     assert isinstance(str(fields), str)
 
-    fields2 = FieldCollection({"s": sf, "v": vf, "t": tf}, copy_fields=True)
+    fields2 = FieldCollection({"s": sf, "v": vf, "t": tf})
     assert fields == fields2
     assert fields2.labels == ["s", "v", "t"]
     assert not np.shares_memory(fields[0].data, fields2[0].data)
@@ -56,24 +56,11 @@ def test_collections(rng):
     np.testing.assert_equal(copy[0].data, tf.data)
     assert not np.may_share_memory(copy[0].data, tf.data)
 
-    fields.data[:] = 0
-    np.testing.assert_allclose(sf.data, 0)
-    np.testing.assert_allclose(vf.data, 0)
-    np.testing.assert_allclose(tf.data, 0)
-
     assert fields[0] is fields["sf"]
     assert fields[1] is fields["vf"]
     assert fields[2] is fields["tf"]
     with pytest.raises(KeyError):
         fields["42"]
-
-    sf.data = 1
-    vf.data = 1
-    tf.data = 1
-    np.testing.assert_allclose(fields.data, 1)
-    assert all(np.allclose(i, 12) for i in fields.integrals)
-    assert all(np.allclose(i, 1) for i in fields.averages)
-    assert np.allclose(fields.magnitudes, np.sqrt([1, 2, 4]))
 
     assert sf.data.shape == (3, 4)
     assert vf.data.shape == (2, 3, 4)
@@ -89,7 +76,7 @@ def test_collections(rng):
     assert c2.grid is not grid
 
     fields["sf"] = 2.0
-    np.testing.assert_allclose(sf.data, 2)
+    np.testing.assert_allclose(fields[0].data, 2)
     with pytest.raises(KeyError):
         fields["42"] = 0
 
@@ -113,7 +100,8 @@ def test_collections_copy():
     assert fc[1].data is not fc2[1].data
 
     sf.data = 1
-    np.testing.assert_allclose(fc.data.flat, np.ones(12))
+    np.testing.assert_allclose(fc[0].data, 0)
+    np.testing.assert_allclose(fc[1].data, 1)
     np.testing.assert_allclose(fc2.data.flat, data)
 
     # special case
@@ -167,8 +155,8 @@ def test_collections_operators():
 
     fields += fields
     np.testing.assert_allclose(fields.data, 2)
-    np.testing.assert_allclose(sf.data, 2)
-    np.testing.assert_allclose(vf.data, 2)
+    np.testing.assert_allclose(sf.data, 1)
+    np.testing.assert_allclose(vf.data, 1)
 
     fields = fields - 1
     np.testing.assert_allclose(fields.data, 1)
@@ -199,10 +187,14 @@ def test_smoothing_collection(rng):
         np.testing.assert_allclose(out[i].data, fields[i].smooth(sgm).data)
 
 
-def test_scalar_random_uniform():
-    """Test creating collections using scalar_random_uniform."""
+@pytest.mark.parametrize(
+    "method",
+    [FieldCollection.scalar_random_uniform, FieldCollection.scalar_random_normal],
+)
+def test_scalar_random_fields(method):
+    """Test creating collections of scalar random fields."""
     grid = UnitGrid([3, 4], periodic=[True, False])
-    fc = FieldCollection.scalar_random_uniform(2, grid, label="c", labels=["a", "b"])
+    fc = method(2, grid, label="c", labels=["a", "b"])
     assert fc.label == "c"
     assert fc[0].label == "a"
     assert fc[1].label == "b"
@@ -338,6 +330,28 @@ def test_from_data(rng):
     np.testing.assert_allclose(f1.data, f2.data)
 
 
+@pytest.mark.parametrize("dtype", [np.float32, np.float64, np.complex64, np.complex128])
+def test_collection_member_dtype(dtype):
+    """Members share the collection buffer with its explicitly requested dtype."""
+    grid = UnitGrid([3, 5])
+    scalar = ScalarField(grid, 2, label="scalar")
+    vector = VectorField(grid, np.array([1, 3])[:, None, None], label="vector")
+    scalar.set_ghost_cells("auto_periodic_neumann", set_corners=True)
+    vector.set_ghost_cells("auto_periodic_neumann", set_corners=True)
+    collection = FieldCollection([scalar, vector], dtype=dtype)
+    assert collection.dtype == np.dtype(dtype)
+    for field in collection:
+        assert field.dtype == collection.dtype
+        assert np.shares_memory(field.data, collection.data)
+    collection["scalar"].data = 7
+    np.testing.assert_array_equal(collection.data[0], 7)
+    np.testing.assert_array_equal(scalar.data, 2)
+    copied = collection.copy(dtype=dtype)
+    assert copied.dtype == collection.dtype
+    np.testing.assert_array_equal(copied.data, collection.data)
+    assert not np.shares_memory(copied.data, collection.data)
+
+
 def test_collection_apply(rng):
     """Test the `apply` method."""
     grid = UnitGrid([3, 5])
@@ -345,7 +359,13 @@ def test_collection_apply(rng):
     v = VectorField.random_uniform(grid, label="v2", rng=rng)
     f1 = FieldCollection([s, v])
 
-    np.testing.assert_allclose(f1.apply("s1 * v2").data, v.data * 2)
+    res = f1.apply("s1 ** 2")
+    assert isinstance(res, ScalarField)
+    np.testing.assert_allclose(res.data, 4)
+
+    res = f1.apply("s1 * v2")
+    assert isinstance(res, VectorField)
+    np.testing.assert_allclose(res.data, v.data * 2)
 
 
 @pytest.mark.parametrize("num", [1, 2, 3, 4])
@@ -371,3 +391,87 @@ def test_merged_image_plotting(num):
         vmin=-1,
         vmax=[1, 2, 3, 4],
     )
+
+
+@pytest.mark.parametrize("num", [1, 2, 3, 4])
+def test_merged_line_plotting(num):
+    """Test plotting of collections as merged lines."""
+    grid = UnitGrid([8])
+    fc = FieldCollection([ScalarField.random_uniform(grid) for _ in range(num)])
+
+    ref = fc._plot_merged_lines()
+    fc._update_merged_line_plot(ref)
+
+    refs = fc.plot("merged")
+    fc._update_plot(refs)
+
+    # use some more fancy options
+    fc.plot(
+        "merged",
+        scalar="abs",
+        extract="cut_0",
+        ylabel="Summary",
+        ylim=[0, 1],
+        legend=True,
+    )
+
+
+def test_collection_slice_project():
+    """Test slicing and projection of field data."""
+    grid = UnitGrid([8, 16])
+    fc = FieldCollection.scalar_random_uniform(2, grid)
+
+    f2 = fc.slice({"x": 0.5}, label="sliced")
+    np.testing.assert_allclose(f2[0].data, fc[0].data[0, :])
+    assert f2.label == "sliced"
+
+    f3 = fc.project("x", label="projected")
+    np.testing.assert_allclose(f3[0].data, fc[0].data.sum(axis=0))
+    assert f3.label == "projected"
+
+    f4 = fc.project("x", method="max")
+    np.testing.assert_allclose(f4[0].data, fc[0].data.max(axis=0))
+
+
+def test_collection_slice_project_wrong_type():
+    """Test slicing and projection of field data."""
+    grid = UnitGrid([8, 16])
+    fc = FieldCollection([VectorField(grid)])
+
+    with pytest.raises(TypeError):
+        fc.slice({"x": 0.5})
+
+    with pytest.raises(TypeError):
+        fc.project("x")
+
+
+def test_field_collection_plotting():
+    """Test different arrangements of field plotting."""
+    grid = UnitGrid([2])
+
+    def get_panel_count(arrangement):
+        ref = field.plot(arrangement=arrangement, action="none")
+        return len(ref[0].ax.figure.get_axes())
+
+    field = FieldCollection.scalar_random_uniform(4, grid)
+    assert get_panel_count("horizontal") == 4
+    assert get_panel_count("vertical") == 4
+    assert get_panel_count("square") == 4
+    assert get_panel_count((-1, 2)) == 4
+    assert get_panel_count((2, -1)) == 4
+    assert get_panel_count((-1, -1)) == 4
+
+    field = FieldCollection.scalar_random_uniform(5, grid)
+    assert get_panel_count("horizontal") == 5
+    assert get_panel_count("vertical") == 5
+    assert get_panel_count("square") == 9
+    assert get_panel_count((3, 4)) == 12
+    assert get_panel_count((2, -1)) == 6
+    assert get_panel_count((-1, 3)) == 6
+    assert get_panel_count((-1, -1)) == 9
+    with pytest.raises(ValueError):
+        get_panel_count((0, 4))
+    with pytest.raises(ValueError):
+        get_panel_count((4, 0))
+    with pytest.raises(TypeError):
+        get_panel_count(4)

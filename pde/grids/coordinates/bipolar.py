@@ -4,10 +4,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
-from numpy.typing import ArrayLike
 
 from .base import CoordinatesBase
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+
+    from ...tools.typing import FloatingArray
 
 
 class BipolarCoordinates(CoordinatesBase):
@@ -21,7 +27,8 @@ class BipolarCoordinates(CoordinatesBase):
     def __init__(self, scale_parameter: float = 1):
         super().__init__()
         if scale_parameter <= 0:
-            raise ValueError("Scale parameter must be positive")
+            msg = "Scale parameter must be positive"
+            raise ValueError(msg)
         self.scale_parameter = scale_parameter
 
     def __repr__(self) -> str:
@@ -34,14 +41,14 @@ class BipolarCoordinates(CoordinatesBase):
             and self.scale_parameter == other.scale_parameter
         )
 
-    def _pos_to_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_to_cart(self, points: FloatingArray) -> FloatingArray:
         σ, τ = points[..., 0], points[..., 1]
         denom = np.cosh(τ) - np.cos(σ)
         x = self.scale_parameter * np.sinh(τ) / denom
         y = self.scale_parameter * np.sin(σ) / denom
         return np.stack((x, y), axis=-1)
 
-    def _pos_from_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_from_cart(self, points: FloatingArray) -> FloatingArray:
         x, y = points[..., 0], points[..., 1]
         a = self.scale_parameter
         h2 = x**2 + y**2
@@ -50,7 +57,7 @@ class BipolarCoordinates(CoordinatesBase):
         τ = 0.5 * np.log(((x + a) ** 2 + y**2) / ((x - a) ** 2 + y**2))
         return np.stack((σ, τ), axis=-1)
 
-    def _mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
+    def _mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
         σ, τ = points[..., 0], points[..., 1]
 
         sinσ = np.sin(σ)
@@ -66,16 +73,16 @@ class BipolarCoordinates(CoordinatesBase):
             ]
         )
 
-    def _volume_factor(self, points: np.ndarray) -> ArrayLike:
+    def _volume_factor(self, points: FloatingArray) -> ArrayLike:
         σ, τ = points[..., 0], points[..., 1]
-        return self.scale_parameter**2 * (np.cosh(τ) - np.cos(σ)) ** -2  # type: ignore
+        return self.scale_parameter**2 * (np.cosh(τ) - np.cos(σ)) ** -2
 
-    def _scale_factors(self, points: np.ndarray) -> np.ndarray:
+    def _scale_factors(self, points: FloatingArray) -> FloatingArray:
         σ, τ = points[..., 0], points[..., 1]
         sf = self.scale_parameter / (np.cosh(τ) - np.cos(σ))
         return np.array([sf, sf])
 
-    def _basis_rotation(self, points: np.ndarray) -> np.ndarray:
+    def _basis_rotation(self, points: FloatingArray) -> FloatingArray:
         σ, τ = points[..., 0], points[..., 1]
 
         sinσ = np.sin(σ)

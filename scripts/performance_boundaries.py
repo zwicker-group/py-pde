@@ -11,8 +11,8 @@ sys.path.insert(0, str(PACKAGE_PATH))
 import numpy as np
 
 from pde import ScalarField, UnitGrid
+from pde.backends.numba.utils import numba_dict
 from pde.tools.misc import estimate_computation_speed
-from pde.tools.numba import numba_dict
 
 
 def main():
@@ -45,7 +45,7 @@ def main():
                 raise RuntimeError
 
             # create the operator with these conditions
-            laplace = grid.make_operator("laplace", bc=bcs)
+            laplace = grid.make_operator("laplace", bc=bcs, backend="numba")
             if bc == "time-dependent":
                 args = numba_dict(t=1)
                 # call once to pre-compile and test result

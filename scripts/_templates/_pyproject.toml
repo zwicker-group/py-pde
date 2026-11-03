@@ -1,10 +1,9 @@
 [project]
 name = "py-pde"
 description = "Python package for solving partial differential equations"
-authors = [
-    {name = "David Zwicker", email="david.zwicker@ds.mpg.de"}
-]
-license = {text = "MIT"}
+authors = [{ name = "David Zwicker", email = "david.zwicker@ds.mpg.de" }]
+license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=$MIN_PYTHON_VERSION,<$MAX_PYTHON_VERSION_NEXT"
 dynamic = ["version"]
@@ -15,20 +14,17 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
 ]
 
-# Requirements for setuptools
 dependencies = $INSTALL_REQUIRES
 
 [project.optional-dependencies]
-io = ["$h5py", "$pandas", "$ffmpeg_python"]
+io = ["$h5py", "$pandas", "$av", "$py_modelrunner"]
 interactive = ["$napari", "$ipywidgets"]
 mpi = ["$numba_mpi", "$mpi4py"]
 
@@ -38,15 +34,12 @@ documentation = "http://py-pde.readthedocs.io"
 repository = "https://github.com/zwicker-group/py-pde"
 
 [build-system]
-requires = [
-    "setuptools>=61",
-    "setuptools_scm[toml]>=6.2",
-]
+requires = ["setuptools>=61", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
-zip-safe = false  # required for mypy to find the py.typed file
+zip-safe = false            # required for mypy to find the py.typed file
 
 [tool.setuptools.packages.find]
 include = ["pde*"]
@@ -64,28 +57,65 @@ docstring-code-format = true
 
 [tool.ruff.lint]
 select = [
-    "UP",  # pyupgrade
-    "I",  # isort
-    "A",  # flake8-builtins 
-    "B",  # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "FA", # flake8-future-annotations
-    "ISC", # flake8-implicit-str-concat
-    "ICN", # flake8-import-conventions
-    "LOG", # flake8-logging
-    "G", # flake8-logging-format
-    "PIE", # flake8-pie
-    "PT", # flake8-pytest-style
-    "Q", # flake8-quotes
-    "RSE", # flake8-raise
-    "RET", # flake8-return
-    "SIM", # flake8-simplify
-    "PTH", # flake8-use-pathlib
+    "A",    # flake8-builtins 
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "DTZ",  # flake8-datetimez
+    "E",    # pycodestyle errors
+    "EM",   # flake8-errmsg
+    "EXE",  # flake8-executable
+    "F",    # py-flakes
+    "FA",   # flake8-future-annotations
+    "FLY",  # flynt
+    "FURB", # refurb
+    "G",    # flake8-logging-format
+    "I",    # isort
+    "ICN",  # flake8-import-conventions
+    "INT",  # flake8-gettext
+    "ISC",  # flake8-implicit-str-concat
+    "LOG",  # flake8-logging
+    "NPY",  # numpy rules
+    "PD",   # pandas-vet 
+    "PERF", # Perflint 
+    "PIE",  # flake8-pie
+    "PT",   # flake8-pytest-style
+    "PTH",  # flake8-use-pathlib
+    "PYI",  # flake8-pyi 
+    "Q",    # flake8-quotes
+    "RET",  # flake8-return
+    "RSE",  # flake8-raise
+    "RUF",  # general fixes by ruff
+    "SIM",  # flake8-simplify
+    "SLOT", # flake8-slots
+    "TC",   # flake8-type-checking
+    "TRY",  # tryceratops 
+    "UP",   # pyupgrade
+    "W",    # pycodestyle warnings
 ]
-ignore = ["B007", "B027", "B028", "SIM108", "ISC001", "PT006", "PT011", "RET504", "RET505", "RET506"]
+ignore = [
+    "A005",    # allow module names that shadow python built-ins
+    "B007",    # this check seems wrong since the loop variable could be used outside loop
+    "B027",    # allow empty methods
+    "E402",    # allow Module level import not at top of file
+    "NPY002",  # allow legacy calls to numpy random number generator
+    "PERF203", # allow try-except in loops
+    "PT011",   # allow broad exceptions
+    "RET504",  # cannot use this because of numba
+    "RUF001",  # allow single greek letters
+    "RUF002",  # allow using prime in docstrings
+    "RUF012",  # allow using mixture of class and instance variables
+    "SIM108",  # don't use ternary operator too much
+]
 
 [tool.ruff.lint.isort]
-section-order = ["future", "standard-library", "third-party", "first-party", "self", "local-folder"]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "self",
+    "local-folder",
+]
 
 [tool.ruff.lint.isort.sections]
 self = ["pde", "fixtures"]
@@ -98,10 +128,19 @@ exclude = "scripts/templates"
 profile = "black"
 src_paths = ["pde", "examples", "scripts", "tests"]
 known_self = ["pde", "fixtures"]
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "SELF", "LOCALFOLDER"]
+sections = [
+    "FUTURE",
+    "STDLIB",
+    "THIRDPARTY",
+    "FIRSTPARTY",
+    "SELF",
+    "LOCALFOLDER",
+]
 
-[tool.pytest.ini_options]
-addopts = "--strict-markers"
+[tool.pytest]
+# log_cli = true
+log_cli_level = "ERROR" # only display errors
+addopts = ["--strict-markers"]
 filterwarnings = [
     'ignore:.*importing the ABCs from.*:DeprecationWarning',
     'ignore:.*IPython.utils.signatures backport for Python 2 is deprecated.*:DeprecationWarning',
@@ -110,13 +149,12 @@ filterwarnings = [
 
 [tool.mypy]
 python_version = "$MIN_PYTHON_VERSION"
-plugins = "numpy.typing.mypy_plugin"
 warn_return_any = true
 warn_unused_configs = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = "numba.*"
+module = ["numba.*", "zarr.*"]
 ignore_missing_imports = true
 ignore_errors = false
 follow_imports = "skip"
@@ -124,7 +162,7 @@ follow_imports_for_stubs = true
 
 [[tool.mypy.overrides]]
 module = [
-    "ffmpeg.*",
+    "av.*",
     "h5py.*",
     "IPython.*",
     "ipywidgets.*",
@@ -136,7 +174,6 @@ module = [
     "numpy.*",
     "pandas.*",
     "pyfftw.*",
-    "pytest.*",
     "qtpy.*",
     "scipy.*",
     "sympy.*",

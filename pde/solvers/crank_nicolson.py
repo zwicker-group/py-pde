@@ -5,15 +5,18 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING
 
-import numba as nb
 import numpy as np
 
-from ..fields.base import FieldBase
-from ..pdes.base import PDEBase
-from ..tools.typing import BackendType
 from .base import ConvergenceError, SolverBase
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from ..backends.base import BackendBase
+    from ..pdes.base import PDEBase
+    from ..tools.typing import NumericArray, TField
 
 
 class CrankNicolsonSolver(SolverBase):
@@ -28,25 +31,20 @@ class CrankNicolsonSolver(SolverBase):
         maxiter: int = 100,
         maxerror: float = 1e-4,
         explicit_fraction: float = 0,
-        backend: BackendType = "auto",
+        backend: str | BackendBase = "auto",
     ):
         """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
             maxiter (int):
-                The maximal number of iterations per step
+                Maximum number of iterations for the implicit solver
             maxerror (float):
-                The maximal error that is permitted in each step
+                Maximum error tolerance for the implicit solver
             explicit_fraction (float):
-                Hyperparameter determinig the fraction of explicit time stepping in the
-                implicit step. `explicit_fraction == 0` is the simple Crank-Nicolson
-                scheme, while `explicit_fraction == 1` reduces to the explicit Euler
-                method. Intermediate values can improve convergence.
+                Fraction of explicit time stepping (0 for fully implicit)
             backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
+                The backend used for numerical operations
         """
         super().__init__(pde, backend=backend)
         self.maxiter = maxiter
@@ -54,33 +52,32 @@ class CrankNicolsonSolver(SolverBase):
         self.explicit_fraction = explicit_fraction
 
     def _make_single_step_fixed_dt(
-        self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float], None]:
-        """Return a function doing a single step with an implicit Euler scheme.
+        self, state: TField, dt: float
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Return a function performing one Crank–Nicolson step.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
-                Time step of the implicit step
+                Time step of the implicit step.
         """
         if self.pde.is_sde:
-            raise RuntimeError("Cannot use implicit stepper with stochastic equation")
+            msg = "Deterministic Crank-Nicolson does not support stochastic equations"
+            raise RuntimeError(msg)
 
         self.info["function_evaluations"] = 0
-        self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
-        self.info["dt_adaptive"] = False
 
-        rhs = self._make_pde_rhs(state, backend=self.backend)
+        rhs = self.backend.make_pde_rhs(self.pde, state)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
         α = self.explicit_fraction
 
         # handle deterministic version of the pde
-        def crank_nicolson_step(state_data: np.ndarray, t: float) -> None:
-            """Compiled inner loop for speed."""
+        def crank_nicolson_step(state_data: NumericArray, t: float) -> NumericArray:
+            """Compilable inner loop for speed."""
             nfev = 0  # count function evaluations
 
             # keep values at the current time t point used in iteration
@@ -102,23 +99,17 @@ class CrankNicolsonSolver(SolverBase):
                 # calculate mean squared error
                 err = 0.0
                 for j in range(state_data.size):
-                    diff = state_data.flat[j] - state_prev.flat[j]
-                    err += (diff.conjugate() * diff).real
+                    diff: NumericArray = state_data.flat[j] - state_prev.flat[j]
+                    err += (np.conj(diff) * diff).real  # type: ignore
                 err /= state_data.size
 
                 if err < maxerror2:
                     # fix point iteration converged
                     break
             else:
-                with nb.objmode:
-                    self._logger.warning(
-                        "Crank-Nicolson step did not converge after %d iterations "
-                        "at t=%g (error=%g)",
-                        maxiter,
-                        t,
-                        err,
-                    )
-                raise ConvergenceError("Crank-Nicolson step did not converge.")
+                msg = "Crank-Nicolson step did not converge."
+                raise ConvergenceError(msg)
             nfev += n + 2
+            return state_data
 
         return crank_nicolson_step

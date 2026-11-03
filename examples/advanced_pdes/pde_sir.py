@@ -2,8 +2,8 @@ r"""
 Custom PDE class: SIR model
 ===========================
 
-This example implements a `spatially coupled SIR model 
-<https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology>`_ with 
+This example implements a `spatially coupled SIR model
+<https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology>`_ with
 the following dynamics for the density of susceptible, infected, and recovered
 individuals:
 

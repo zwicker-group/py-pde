@@ -1,6 +1,14 @@
 name: "Check documentation"
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'README.md'
+  pull_request:
+    paths-ignore:
+      - 'README.md'
 
 jobs:
   docs:
@@ -8,7 +16,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - uses: ammaraskar/sphinx-action@master
       with:

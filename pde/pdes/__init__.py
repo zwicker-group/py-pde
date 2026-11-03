@@ -13,35 +13,58 @@ deal with raw data for faster simulations.
 .. autosummary::
    :nosignatures:
 
+   ~base.PDEBase
+   ~base.SDEBase
    ~pde.PDE
    ~allen_cahn.AllenCahnPDE
    ~cahn_hilliard.CahnHilliardPDE
    ~diffusion.DiffusionPDE
+   ~klein_gordon.KleinGordonPDE
    ~kpz_interface.KPZInterfacePDE
    ~kuramoto_sivashinsky.KuramotoSivashinskyPDE
+   ~reaction_diffusion.ReactionDiffusionPDE
    ~swift_hohenberg.SwiftHohenbergPDE
    ~wave.WavePDE
 
 Additionally, we offer two solvers for typical elliptical PDEs:
-
 
 .. autosummary::
    :nosignatures:
 
    ~laplace.solve_laplace_equation
    ~laplace.solve_poisson_equation
+   ~laplace.helmholtz_decomposition
 
+
+.. inheritance-diagram::
+      pde.PDE
+      allen_cahn.AllenCahnPDE
+      cahn_hilliard.CahnHilliardPDE
+      diffusion.DiffusionPDE
+      klein_gordon.KleinGordonPDE
+      kpz_interface.KPZInterfacePDE
+      kuramoto_sivashinsky.KuramotoSivashinskyPDE
+      reaction_diffusion.ReactionDiffusionPDE
+      swift_hohenberg.SwiftHohenbergPDE
+      wave.WavePDE
+   :parts: 1
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .allen_cahn import AllenCahnPDE
-from .base import PDEBase
-from .cahn_hilliard import CahnHilliardPDE
-from .diffusion import DiffusionPDE
-from .kpz_interface import KPZInterfacePDE
-from .kuramoto_sivashinsky import KuramotoSivashinskyPDE
-from .laplace import solve_laplace_equation, solve_poisson_equation
-from .pde import PDE
-from .swift_hohenberg import SwiftHohenbergPDE
-from .wave import WavePDE
+from .allen_cahn import AllenCahnPDE  # noqa: F401
+from .base import PDEBase, SDEBase  # noqa: F401
+from .cahn_hilliard import CahnHilliardPDE  # noqa: F401
+from .diffusion import DiffusionPDE  # noqa: F401
+from .klein_gordon import KleinGordonPDE  # noqa: F401
+from .kpz_interface import KPZInterfacePDE  # noqa: F401
+from .kuramoto_sivashinsky import KuramotoSivashinskyPDE  # noqa: F401
+from .laplace import (
+    helmholtz_decomposition,  # noqa: F401
+    solve_laplace_equation,  # noqa: F401
+    solve_poisson_equation,  # noqa: F401
+)
+from .pde import PDE  # noqa: F401
+from .reaction_diffusion import ReactionDiffusionPDE  # noqa: F401
+from .swift_hohenberg import SwiftHohenbergPDE  # noqa: F401
+from .wave import WavePDE  # noqa: F401

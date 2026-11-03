@@ -11,7 +11,7 @@ from pde import PDEBase, ScalarField, UnitGrid
 
 
 class CustomPDE(PDEBase):
-    def make_post_step_hook(self, state):
+    def make_post_step_hook(self, state, backend):
         """Create a hook function that is called after every time step."""
 
         def post_step_hook(state_data, t, post_step_data):
@@ -24,6 +24,7 @@ class CustomPDE(PDEBase):
                 # Abort simulation when correction exceeds 400
                 # Note that the `post_step_data` of the previous step will be returned.
                 raise StopIteration
+            return state_data, post_step_data
 
         return post_step_hook, 0.0  # hook function and initial value for data
 

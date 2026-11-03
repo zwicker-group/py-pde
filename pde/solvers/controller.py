@@ -5,28 +5,29 @@
 
 from __future__ import annotations
 
-import datetime
+import datetime  # noqa: ICN001
 import logging
+import math
 import time
-from typing import TYPE_CHECKING, Any, Callable, TypeVar, Union
+from typing import TYPE_CHECKING, Any
 
 from .. import __version__
-from ..tools.numba import JIT_COUNT
 from ..trackers.base import (
     FinishedSimulation,
     TrackerCollection,
     TrackerCollectionDataType,
 )
-from .base import SolverBase
 
 if TYPE_CHECKING:
-    from ..fields.base import FieldBase
+    from collections.abc import Callable
+
+    from ..tools.typing import TField
+    from .base import SolverBase
 
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger for controller."""
 
-TRangeType = Union[float, tuple[float, float]]
-TState = TypeVar("TState", bound="FieldBase")
+TRangeType = float | tuple[float, float]
 
 
 class Controller:
@@ -67,7 +68,7 @@ class Controller:
                 times. A tracker is either an instance of
                 :class:`~pde.trackers.base.TrackerBase` or a string identifying a
                 tracker (possible identifiers can be obtained by calling
-                :func:`~pde.trackers.base.get_named_trackers`). Multiple trackers can be
+                :func:`~pde.trackers.registered_trackers`). Multiple trackers can be
                 specified as a list. The default value `auto` checks the state for
                 consistency (tracker 'consistency') and displays a progress bar (tracker
                 'progress') when :mod:`tqdm` is installed. More general trackers are
@@ -76,7 +77,7 @@ class Controller:
                 can be chosen when creating a tracker object explicitly.
         """
         self.solver = solver
-        self.t_range = t_range  # type: ignore
+        self.t_range = t_range
         self.trackers = TrackerCollection.from_data(tracker)
 
         # initialize some diagnostic information
@@ -108,9 +109,8 @@ class Controller:
             if len(value) == 2:  # type: ignore
                 self._t_range = tuple(value)  # type: ignore
             else:
-                raise ValueError(
-                    "t_range must be set to a single number or a tuple of two numbers"
-                ) from err
+                msg = "t_range must be set to a single number or a tuple of two numbers"
+                raise ValueError(msg) from err
 
     def _get_stop_handler(self) -> Callable[[Exception, float], tuple[int, str]]:
         """Return function that handles messaging."""
@@ -143,7 +143,7 @@ class Controller:
 
         return _handle_stop_iteration
 
-    def _run_main_process(self, state: TState, dt: float | None = None) -> None:
+    def _run_main_process(self, state: TField, dt: float | None = None) -> None:
         """Run the main part of the simulation.
 
         This is either a serial run or the main node of an MPI run. Diagnostic
@@ -154,20 +154,25 @@ class Controller:
             state:
                 The initial state, which will be updated during the simulation.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen.
+                Initial time step of the chosen stepping scheme. If `None`, a default
+                value based on the solver configuration will be chosen.
         """
+        if self.solver.mpi_run:
+            from ..tools import mpi
+
+            assert mpi.is_main  # this is the main process (and there can be others)
+
         # gather basic information
         t_start, t_end = self.t_range
         get_time = self._get_current_time
 
         # initialize solver information
+        self.info["mpi_run"] = self.solver.mpi_run
         self.info["t_start"] = t_start
         self.info["t_end"] = t_end
         self.diagnostics["solver"] = getattr(self.solver, "info", {})
 
         # initialize profilers
-        jit_count_base = int(JIT_COUNT)
         profiler = {"solver": 0.0, "tracker": 0.0}
         self.info["profiler"] = profiler
         prof_start_compile = get_time()
@@ -176,44 +181,56 @@ class Controller:
         self.trackers.initialize(state, info=self.diagnostics)
         handle_stop_iteration = self._get_stop_handler()
 
-        # initialize the stepper
+        # Build the executable stepping function from the solver. This call also
+        # inherently selects the backend for this simulation (if it was not set
+        # explicitly). The backend is available via `self.solver.backend`.
         stepper = self.solver.make_stepper(state=state, dt=dt)
 
         # store intermediate profiling information before starting simulation
-        jit_count_after_init = int(JIT_COUNT)
-        self.info["jit_count"] = {"make_stepper": jit_count_after_init - jit_count_base}
         prof_start_tracker = get_time()
         profiler["compilation"] = prof_start_tracker - prof_start_compile
-        solver_start = datetime.datetime.now()
+        solver_start = datetime.datetime.now(datetime.UTC)
         self.info["solver_start"] = str(solver_start)
 
         if dt is None:
             # use self.solver.info['dt'] if it is present
             dt = self.diagnostics["solver"].get("dt")
-        # add some tolerance to account for inaccurate float point math
+        # add absolute tolerance for time to account for inaccurate float point math
         if dt is None:  # self.solver.info['dt'] might be None
-            atol = 1e-12
+            # use conservative default values if time step is unknown
+            stepper_atol = 1e-12
+            tracker_atol = 1e-8
         else:
-            atol = 0.1 * dt
+            # adapt tolerances to time step
+            stepper_atol = 1e-6 * dt  # control loop termination and min advance
+            tracker_atol = 0.5 * dt  # allow firing within half a step of the interrupt
 
         # evolve the system from t_start to t_end
         t = t_start
         _logger.debug("Start simulation at t=%g", t)
         try:
-            while t < t_end:
+            while t < t_end - stepper_atol:
                 # determine next time point with an action
-                t_next_action = self.trackers.handle(state, t, atol=atol)
-                t_next_action = max(t_next_action, t + atol)
-                t_break = min(t_next_action, t_end)
+                t_next_action = self.trackers.handle(state, t, atol=tracker_atol)
+                t_next_action = min(t_next_action, t_end)  # stop at t_end
+                if self.solver.mpi_run:
+                    mpi.mpi_bcast(t_next_action, root=0)  # send time to all other nodes
 
+                # track runtime of trackers and solver
                 prof_start_solve = get_time()
                 profiler["tracker"] += prof_start_solve - prof_start_tracker
 
-                # advance the system to the new time point
-                t = stepper(state, t, t_break)
+                # advance system to next time point with an action
+                t = stepper(state, t, t_next_action)
 
+                # track runtime of trackers and solver
                 prof_start_tracker = get_time()
                 profiler["solver"] += prof_start_tracker - prof_start_solve
+
+                # update the tolerances to reflect changes in time step `dt`
+                if dt := self.diagnostics["solver"].get("dt"):
+                    stepper_atol = 1e-6 * dt
+                    tracker_atol = 0.5 * dt
 
         except StopIteration as err:
             # iteration has been interrupted by a tracker
@@ -246,17 +263,24 @@ class Controller:
 
             # handle trackers one more time when t_end is reached
             try:
-                self.trackers.handle(state, t, atol=atol)
+                # We here use stepper_atol to make sure the final time point is only
+                # added when it the tracker actually requested exactly this time point.
+                # If we used tracker_atol, many trackers would analyze an additional
+                # time point.
+                self.trackers.handle(state, t, atol=stepper_atol)
             except StopIteration as err:
                 # error detected in the final handling of the tracker
                 msg_level, msg = handle_stop_iteration(err, t)
 
+        # signal that client nodes should exit
+        if self.solver.mpi_run:
+            mpi.mpi_bcast(-math.inf, root=0)
+
         # calculate final statistics
         profiler["tracker"] += get_time() - prof_start_tracker
-        duration = datetime.datetime.now() - solver_start
+        duration = datetime.datetime.now(datetime.UTC) - solver_start
         self.info["solver_duration"] = str(duration)
         self.info["t_final"] = t
-        self.info["jit_count"]["simulation"] = int(JIT_COUNT) - jit_count_after_init
         self.trackers.finalize(info=self.diagnostics)
         if "dt_statistics" in getattr(self.solver, "info", {}):
             dt_statistics = dict(self.solver.info["dt_statistics"].to_dict())
@@ -273,38 +297,51 @@ class Controller:
                 profiler["solver"],
             )
 
-    def _run_client_process(self, state: TState, dt: float | None = None) -> None:
+    def _run_client_process(self, state: TField, dt: float | None = None) -> None:
         """Run the simulation on client nodes during an MPI run.
 
-        This function just loops the stepper advancing the sub field of the current node
-        in time. All other logic, including trackers, are done in the main node.
+        This function just calls the stepping function to advance the sub field of the
+        current node in time. All other logic, including trackers, is handled in the
+        main node.
 
         Args:
             state:
                 The initial state, which will be updated during the simulation.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen.
+                Initial time step of the chosen stepping scheme. If `None`, a default
+                value based on the solver configuration will be chosen.
 
         Returns:
             The state at the final time point.
         """
-        # get stepper function
+        from ..tools import mpi
+
+        assert mpi.size > 1  # there are multiple processes
+        assert not mpi.is_main  # this is not the main node
+
+        # build the executable stepping function from the solver
         stepper = self.solver.make_stepper(state=state, dt=dt)
 
-        if not self.solver.info.get("use_mpi", False):
-            _logger.warning(
-                "Started multiprocessing run without a stepper that supports it. Use "
-                "`ExplicitMPISolver` to profit from multiple cores"
+        if not self.solver.mpi_run:
+            msg = (
+                "Started multiprocessing run without a solver/backend combination "
+                "that supports MPI stepping. Use `ExplicitMPISolver` to profit from "
+                "multiple cores"
             )
+            raise RuntimeError(msg)
 
-        # evolve the system from t_start to t_end
-        t_start, t_end = self.t_range
+        # evolve the system from t_start until main process is finished
+        t_start, _ = self.t_range
         t = t_start
-        while t < t_end:
-            t = stepper(state, t, t_end)
 
-    def _run_serial(self, state: TState, dt: float | None = None) -> TState:
+        while True:
+            # receive next interrupt time from main node
+            t_next_action = mpi.mpi_bcast(0.0, root=0)
+            if t_next_action < t_start:
+                break  # this signals that we should abort the client
+            t = stepper(state, t, t_next_action)
+
+    def _run_serial(self, state: TField, dt: float | None = None) -> TField | None:
         """Run the simulation in serial mode.
 
         Diagnostic information about the solver are available in the
@@ -314,18 +351,17 @@ class Controller:
             state (:class:`~pde.fields.base.FieldBase`):
                 The initial state of the simulation.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen.
+                Initial time step of the chosen stepping scheme. If `None`, a default
+                value based on the solver configuration will be chosen.
 
         Returns:
             The state at the final time point. If multiprocessing is used, only the main
             node will return the state. All other nodes return None.
         """
-        self.info["mpi_run"] = False
         self._run_main_process(state, dt)
         return state
 
-    def _run_parallel(self, state: TState, dt: float | None = None) -> TState | None:
+    def _run_parallel(self, state: TField, dt: float | None = None) -> TField | None:
         """Run the simulation in MPI mode.
 
         Diagnostic information about the solver are available in the
@@ -335,18 +371,15 @@ class Controller:
             state (:class:`~pde.fields.base.FieldBase`):
                 The initial state of the simulation.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen.
+                Initial time step of the chosen stepping scheme. If `None`, a default
+                value based on the solver configuration will be chosen.
 
         Returns:
             The state at the final time point. If multiprocessing is used, only the main
             node will return the state. All other nodes return None.
         """
-        from mpi4py import MPI
-
         from ..tools import mpi
 
-        self.info["mpi_run"] = True
         self.info["mpi_count"] = mpi.size
         self.info["mpi_rank"] = mpi.rank
 
@@ -355,28 +388,26 @@ class Controller:
             try:
                 self._run_main_process(state, dt)
             except Exception as err:
-                print(err)  # simply print the exception to show some info
-                _logger.error("Error in main node", exc_info=err)
-                time.sleep(0.5)  # give some time for info to propagate
-                MPI.COMM_WORLD.Abort()  # abort all other nodes
+                _logger.exception("Error in main node", exc_info=err)
+                mpi.mpi_excepthook(type(err), err, err.__traceback__)
                 raise
             else:
-                return state
+                _logger.info("MPI main process finished")
+                return state  # return final state only in main process
 
         else:
             # this node is a secondary node and must thus run the client process
             try:
                 self._run_client_process(state, dt)
             except Exception as err:
-                print(err)  # simply print the exception to show some info
-                _logger.error("Error in node %d", mpi.rank, exc_info=err)
-                time.sleep(0.5)  # give some time for info to propagate
-                MPI.COMM_WORLD.Abort()  # abort all other (and main) nodes
+                _logger.exception("Error in node %d", mpi.rank, exc_info=err)
+                mpi.mpi_excepthook(type(err), err, err.__traceback__)
                 raise
             else:
+                _logger.info("MPI client process finished")
                 return None  # do not return anything in client processes
 
-    def run(self, initial_state: TState, dt: float | None = None) -> TState | None:
+    def run(self, initial_state: TField, dt: float | None = None) -> TField | None:
         """Run the simulation.
 
         Diagnostic information about the solver are available in the
@@ -388,23 +419,21 @@ class Controller:
                 not modified by the simulation. Instead, the final state will be
                 returned and trackers can be used to record intermediate states.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen.
+                Initial time step of the chosen stepping scheme. If `None`, a default
+                value based on the solver configuration will be chosen.
 
         Returns:
             The state at the final time point. If multiprocessing is used, only the main
             node will return the state. All other nodes return None.
         """
-        from ..tools import mpi
-
         # copy the initial state to not modify the supplied one
         if getattr(self.solver, "pde", None) and self.solver.pde.complex_valued:
             _logger.info("Convert state to complex numbers")
-            state: TState = initial_state.copy(dtype=complex)
+            state: TField = initial_state.copy(dtype=complex)
         else:
             state = initial_state.copy()
 
-        if mpi.size > 1:  # run the simulation on multiple nodes
+        if self.solver.mpi_run:
+            # run the simulation on multiple nodes
             return self._run_parallel(state, dt)
-        else:
-            return self._run_serial(state, dt)
+        return self._run_serial(state, dt)

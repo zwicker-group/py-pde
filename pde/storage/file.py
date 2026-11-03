@@ -8,18 +8,29 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 import numpy as np
-from numpy.typing import DTypeLike
 
-from ..fields.base import FieldBase
 from ..tools.misc import ensure_directory_exists, hdf_write_attributes
 from .base import InfoDict, StorageBase, WriteModeType
 
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from ..fields.base import FieldBase
+    from ..tools.typing import NumericArray
+
 
 class FileStorage(StorageBase):
-    """Store discretized fields in a hdf5 file."""
+    """Store discretized fields in a hdf5 file.
+
+    The version of the file format is stored in the attribute `version` of the file.
+    Files without this attribute are assumed to have format version 1. Files with
+    unknown format versions cannot be read.
+    """
+
+    _format_version: int = 1
 
     def __init__(
         self,
@@ -44,11 +55,11 @@ class FileStorage(StorageBase):
                 cleared every time this storage is used for writing), or 'truncate_once'
                 (data is cleared for the first writing, but appended subsequently).
                 Alternatively, specifying 'readonly' will disable writing completely.
-            max_length (int, optional):
+            max_length (int or None, optional):
                 Maximal number of entries that will be stored in the file. This can be
                 used to preallocate data, which can lead to smaller files, but is also
-                less flexible. Giving `max_length = None`, allows for arbitrarily large
-                data, which might lead to larger files.
+                less flexible. `None` (and currently `0`) creates a resizable dataset,
+                allowing arbitrarily large data but potentially creating larger files.
             compression (bool):
                 Whether to store the data in compressed form. Automatically enabled
                 chunked storage.
@@ -61,29 +72,33 @@ class FileStorage(StorageBase):
                 If True, files will only be opened in the main node for an parallel
                 simulation using MPI. This flag has no effect in serial code.
         """
-        from ..tools import mpi
-
         super().__init__(info=info, write_mode=write_mode)
         self.filename = Path(filename)
         self.compression = compression
         self.keep_opened = keep_opened
-        self.check_mpi = check_mpi
 
         self._file: Any = None
         self._is_writing = False
-        self._data_length: int = None  # type: ignore
+        self._data_length: int | None = None
         self._max_length: int | None = max_length
 
-        if not self.check_mpi or mpi.is_main:  # noqa: SIM102
-            # we are on the main process and can thus open the file directly
-            if self.filename.is_file() and self.filename.stat().st_size > 0:
-                try:
-                    self._open("reading")
-                except (OSError, KeyError):
-                    self.close()
-                    self._logger.warning(
-                        "File `%s` could not be opened for reading", filename
-                    )
+        if check_mpi:
+            from ..tools import mpi
+
+            self._is_child_node = not mpi.is_main
+        else:
+            self._is_child_node = False
+        if self._is_child_node:
+            return  # do not actually open the file if we're on a child process
+
+        if self.filename.is_file() and self.filename.stat().st_size > 0:
+            try:
+                self._open("reading")
+            except (OSError, KeyError):
+                self.close()
+                self._logger.warning(
+                    "File `%s` could not be opened for reading", filename
+                )
 
     def __del__(self):
         self.close()  # ensure open files are closed when the FileStorage is deleted
@@ -93,22 +108,50 @@ class FileStorage(StorageBase):
         """str: the state that the file is currently in"""
         if self._file is None:
             return "closed"
-        elif self._file.mode == "r":
+        if self._file.mode == "r":
             return "reading"
-        elif self._file.mode == "r+":
+        if self._file.mode == "r+":
             return "writing"
-        else:
-            raise NotImplementedError(f"Do not understand mode `{self._file.mode}")
+        msg = f"Do not understand mode `{self._file.mode}"
+        raise NotImplementedError(msg)
 
     def close(self) -> None:
         """Close the currently opened file."""
-        if self._file is not None:
-            self._logger.info("Close file `%s`", self.filename)
-            self._file.close()
-            self._file = None
-            self._data_length = None  # type: ignore
+        if self._file is None:
+            return  # nothing to do
 
-    def __enter__(self) -> FileStorage:
+        self._logger.info("Close file `%s`", self.filename)
+        if self._is_writing and self._file.mode == "r+":
+            self.info["data_length"] = self._data_length
+            self._write_attributes()
+        self._file.close()
+        self._file = None
+        self._data_length = None
+
+    def _write_attributes(self) -> None:
+        """Write the format version and the info dictionary to the file."""
+        assert self._file is not None
+        hdf_write_attributes(self._file, {**self.info, "version": self._format_version})
+
+    def _read_attributes(self) -> None:
+        """Read the attributes of the file into :attr:`info` and check the version.
+
+        Raises:
+            RuntimeError: If the file has an unknown format version
+        """
+        assert self._file is not None
+        attributes = {k: json.loads(v) for k, v in self._file.attrs.items()}
+        version = attributes.pop("version", 1)  # files without version are version 1
+        if version != self._format_version:
+            msg = (
+                f"Cannot read `{self.filename}` with unknown format version `{version}`"
+                f" (supported: {self._format_version})"
+            )
+            self._file.close()
+            raise RuntimeError(msg)
+        self.info.update(attributes)
+
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
@@ -128,21 +171,20 @@ class FileStorage(StorageBase):
             dtype: The data type of the dataset
         """
         if self.compression:
-            kwargs = {"chunks": (1,) + shape, "compression": "gzip"}
+            kwargs = {"chunks": (1, *shape), "compression": "gzip"}
         else:
             kwargs = {}
 
         if self._max_length:
-            shape = (self._max_length,) + shape
+            shape = (self._max_length, *shape)
             return self._file.create_dataset(name, shape=shape, dtype=dtype, **kwargs)
-        else:
-            return self._file.create_dataset(
-                name,
-                shape=(0,) + shape,
-                dtype=dtype,
-                maxshape=(None,) + shape,
-                **kwargs,
-            )
+        return self._file.create_dataset(
+            name,
+            shape=(0, *shape),
+            dtype=dtype,
+            maxshape=(None, *shape),
+            **kwargs,
+        )
 
     def _open(
         self,
@@ -160,9 +202,7 @@ class FileStorage(StorageBase):
         """
         import h5py  # lazy loading so it's not a hard dependence
 
-        from ..tools import mpi
-
-        if self.check_mpi and not mpi.is_main:
+        if self._is_child_node:
             self._logger.warning("Do not open file on MPI child nodes")
             return
 
@@ -180,23 +220,21 @@ class FileStorage(StorageBase):
             self._file = h5py.File(self.filename, mode="r")
             self._times = self._file["times"]
             self._data = self._file["data"]
-            for k, v in self._file.attrs.items():
-                self.info[k] = json.loads(v)
+            self._read_attributes()
             if info:
                 self.info.update(info)
 
             self._data_shape = self.data.shape[1:]
             self._dtype = self.data.dtype
-            self._data_length = self.info.get("data_length")  # type: ignore
+            self._data_length = self.info.get("data_length")
 
         elif mode == "appending":
             # open file for writing without deleting data
             if state in ["appending", "writing"]:
                 return  # we are already in a mode where we can append data
             if self.keep_opened and self._is_writing:
-                raise RuntimeError(
-                    "Currently writing data, so mode cannot be switched."
-                )
+                msg = "Currently writing data, so mode cannot be switched."
+                raise RuntimeError(msg)
             self.close()
 
             # open file for reading or appending
@@ -209,8 +247,7 @@ class FileStorage(StorageBase):
                 self._data = self._file["data"]
 
                 # extract information
-                for k, v in self._file.attrs.items():
-                    self.info[k] = json.loads(v)
+                self._read_attributes()
                 self._data_shape = self.data.shape[1:]
                 self._dtype = self.data.dtype
                 self._data_length = self.info.get("data_length", self.data.shape[0])
@@ -219,7 +256,9 @@ class FileStorage(StorageBase):
                 # create new datasets
                 self._times = self._create_hdf_dataset("times")
                 self._data = self._create_hdf_dataset(
-                    "data", self.data_shape, dtype=self._dtype
+                    "data",
+                    self.data_shape,
+                    dtype=self._dtype,  # type: ignore
                 )
                 self._data_length = 0
 
@@ -229,7 +268,8 @@ class FileStorage(StorageBase):
         elif mode == "writing":
             # open file for writing data; delete potentially present data
             if self._is_writing:
-                raise RuntimeError("Currently writing data, so mode cannot be switched")
+                msg = "Currently writing data, so mode cannot be switched"
+                raise RuntimeError(msg)
             if self._file:
                 self.close()
             else:
@@ -238,7 +278,9 @@ class FileStorage(StorageBase):
             self._file = h5py.File(self.filename, "w")
             self._times = self._create_hdf_dataset("times")
             self._data = self._create_hdf_dataset(
-                "data", self.data_shape, dtype=self._dtype
+                "data",
+                self.data_shape,
+                dtype=self._dtype,  # type: ignore
             )
             if info:
                 self.info.update(info)
@@ -248,7 +290,8 @@ class FileStorage(StorageBase):
             self.close()
 
         else:
-            raise RuntimeError(f"Mode `{mode}` not implemented")
+            msg = f"Mode `{mode}` not implemented"
+            raise RuntimeError(msg)
 
     def __len__(self):
         """Return the number of stored items, i.e., time steps."""
@@ -260,9 +303,8 @@ class FileStorage(StorageBase):
 
         if self._data_length is None:
             return length
-        else:
-            # size of stored data is smaller since preallocation was used
-            return min(length, self._data_length)
+        # size of stored data is smaller since preallocation was used
+        return min(length, self._data_length)
 
     @property
     def times(self):
@@ -283,9 +325,7 @@ class FileStorage(StorageBase):
             clear_data_shape (bool):
                 Flag determining whether the data shape is also deleted.
         """
-        from ..tools import mpi
-
-        if self.check_mpi and not mpi.is_main:
+        if self._is_child_node:
             self._logger.warning("Do not clear file on MPI child nodes")
             return
 
@@ -326,7 +366,8 @@ class FileStorage(StorageBase):
                 Supplies extra information that is stored in the storage
         """
         if self._is_writing:
-            raise RuntimeError(f"{self.__class__.__name__} is already in writing mode")
+            msg = f"{self.__class__.__name__} is already in writing mode"
+            raise RuntimeError(msg)
 
         # delete data if truncation is requested. This is for instance necessary
         # to remove older data with incompatible data_shape
@@ -349,41 +390,51 @@ class FileStorage(StorageBase):
             self._open("appending", info)
 
         elif self.write_mode == "readonly":
-            raise RuntimeError("Cannot write in read-only mode")
+            msg = "Cannot write in read-only mode"
+            raise RuntimeError(msg)
 
         else:
-            raise ValueError(
+            msg = (
                 f"Unknown write mode `{self.write_mode}`. Possible values are "
                 "`truncate_once`, `truncate`, and `append`"
             )
+            raise ValueError(msg)
 
         if not self.keep_opened:
             # store extra information as attributes
-            hdf_write_attributes(self._file, self.info)
+            self._write_attributes()
 
         self._is_writing = True
 
-    def _append_data(self, data: np.ndarray, time: float) -> None:
+    def _append_data(self, data: NumericArray, time: float) -> None:
         """Append a new data set.
 
         Args:
             data (:class:`~numpy.ndarray`): The actual data
             time (float): The time point associated with the data
         """
+        if self._is_child_node:
+            self._logger.warning("Trying to append data on MPI child node.")
+            return
+
         if self.keep_opened:
             if not self._is_writing or self._data_length is None:
-                raise RuntimeError(
-                    "Writing not initialized. Call "
-                    f"`{self.__class__.__name__}.start_writing`"
+                msg = (
+                    f"Writing not initialized. Call `{self.__class__.__name__}."
+                    f"start_writing`. {self._is_child_node=}"
                 )
+                raise RuntimeError(msg)
 
         else:
             # need to reopen the file
             self._open("appending")
+        if self._data_length is None:
+            msg = "Writing data has not been initialized properly."
+            raise RuntimeError(msg)
 
         # write the new data
         if self._data_length >= len(self._data):
-            self._data.resize((self._data_length + 1,) + self.data_shape)
+            self._data.resize((self._data_length + 1, *self.data_shape))
         self._data[self._data_length] = data
 
         # write the new time
@@ -410,10 +461,14 @@ class FileStorage(StorageBase):
         """
         if not self._is_writing:
             return  # writing mode was already ended
+        if self._is_child_node:
+            self._logger.warning("Trying to end writing on MPI child node.")
+            return
         self._logger.debug("End writing")
 
-        # store extra information as attributes
-        hdf_write_attributes(self._file, self.info)
-        self._file.flush()
+        # Reopen without overwriting information updated since the last append.
+        if not self.keep_opened:
+            self._open("appending", info=self.info.copy())
+
         self.close()
         self._is_writing = False

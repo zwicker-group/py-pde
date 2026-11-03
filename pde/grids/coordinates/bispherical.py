@@ -4,10 +4,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
-from numpy.typing import ArrayLike
 
 from .base import CoordinatesBase
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+
+    from ...tools.typing import FloatingArray
 
 
 class BisphericalCoordinates(CoordinatesBase):
@@ -21,7 +27,8 @@ class BisphericalCoordinates(CoordinatesBase):
     def __init__(self, scale_parameter: float = 1):
         super().__init__()
         if scale_parameter <= 0:
-            raise ValueError("Scale parameter must be positive")
+            msg = "Scale parameter must be positive"
+            raise ValueError(msg)
         self.scale_parameter = scale_parameter
 
     def __repr__(self) -> str:
@@ -34,7 +41,7 @@ class BisphericalCoordinates(CoordinatesBase):
             and self.scale_parameter == other.scale_parameter
         )
 
-    def _pos_to_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_to_cart(self, points: FloatingArray) -> FloatingArray:
         σ, τ, φ = points[..., 0], points[..., 1], points[..., 2]
         denom = np.cosh(τ) - np.cos(σ)
         x = self.scale_parameter * np.sin(σ) / denom * np.cos(φ)
@@ -42,7 +49,7 @@ class BisphericalCoordinates(CoordinatesBase):
         z = self.scale_parameter * np.sinh(τ) / denom
         return np.stack((x, y, z), axis=-1)
 
-    def _pos_from_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_from_cart(self, points: FloatingArray) -> FloatingArray:
         x, y, z = points[..., 0], points[..., 1], points[..., 2]
         d = np.hypot(x, y)  # denotes the distance from the z-axis
         a = self.scale_parameter
@@ -53,7 +60,7 @@ class BisphericalCoordinates(CoordinatesBase):
         φ = np.arctan2(y, x)
         return np.stack((σ, τ, φ), axis=-1)
 
-    def _mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
+    def _mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
         σ, τ, φ = points[..., 0], points[..., 1], points[..., 2]
 
         sinσ = np.sin(σ)
@@ -73,16 +80,16 @@ class BisphericalCoordinates(CoordinatesBase):
             ]
         )
 
-    def _volume_factor(self, points: np.ndarray) -> ArrayLike:
+    def _volume_factor(self, points: FloatingArray) -> ArrayLike:
         σ, τ = points[..., 0], points[..., 1]
         return self.scale_parameter**3 * np.sin(σ) * (np.cosh(τ) - np.cos(σ)) ** -3  # type: ignore
 
-    def _scale_factors(self, points: np.ndarray) -> np.ndarray:
+    def _scale_factors(self, points: FloatingArray) -> FloatingArray:
         σ, τ = points[..., 0], points[..., 1]
         sf = self.scale_parameter / (np.cosh(τ) - np.cos(σ))
         return np.array([sf, sf, sf * np.sin(σ)])
 
-    def _basis_rotation(self, points: np.ndarray) -> np.ndarray:
+    def _basis_rotation(self, points: FloatingArray) -> FloatingArray:
         σ, τ, φ = points[..., 0], points[..., 1], points[..., 2]
 
         sinσ = np.sin(σ)

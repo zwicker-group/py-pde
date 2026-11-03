@@ -5,9 +5,11 @@
 import numpy as np
 import pytest
 
+import pde
 from pde.trackers.interrupts import (
     ConstantInterrupts,
     FixedInterrupts,
+    GeometricInterrupts,
     LogarithmicInterrupts,
     RealtimeInterrupts,
     parse_interrupt,
@@ -65,6 +67,59 @@ def test_interrupt_logarithmic():
     assert ival.dt == 8
 
 
+def test_interrupt_logarithmic_seq(rng):
+    """Test the LogarithmicInterrupts class."""
+    dt, factor, t_start = rng.uniform(1, 2, size=3)
+    ival = LogarithmicInterrupts(dt, factor=factor, t_start=t_start)
+
+    ts0 = [ival.initialize(0)]
+    ts0 += [ival.next(0) for _ in range(8)]
+    ts1 = [ival.value(i) for i in range(9)]
+    np.testing.assert_almost_equal(ts0, ts1)
+
+    ts2 = t_start + (1 - factor ** np.arange(9)) / (1 - factor) * dt
+    np.testing.assert_almost_equal(ts0, ts2)
+
+
+def test_interrupt_geometric(rng):
+    """Test the GeometricInterrupts class."""
+    scale, factor = rng.uniform(1, 2, size=2)
+    ival = GeometricInterrupts(scale, factor)
+
+    ts0 = [ival.initialize(0)]
+    ts0 += [ival.next(0) for _ in range(8)]
+    ts1 = [ival.value(i) for i in range(9)]
+    np.testing.assert_almost_equal(ts0, ts1)
+
+    ts2 = scale * factor ** np.arange(9)
+    np.testing.assert_almost_equal(ts0, ts2)
+
+    with pytest.raises(ValueError):
+        GeometricInterrupts(10, -1)
+
+    interrupt = parse_interrupt("geometric(10, 1.1)")
+    assert isinstance(interrupt, GeometricInterrupts)
+    assert interrupt.scale == 10
+    assert interrupt.factor == 1.1
+
+    interrupt = parse_interrupt("geometric(1,2)")
+    assert isinstance(interrupt, GeometricInterrupts)
+    assert interrupt.scale == 1
+    assert interrupt.factor == 2
+
+    interrupt = parse_interrupt("geometric( .1e-4 , 2.E2 )")
+    assert isinstance(interrupt, GeometricInterrupts)
+    assert interrupt.scale == 0.1e-4
+    assert interrupt.factor == 2.0e2
+
+    with pytest.raises(ValueError):
+        parse_interrupt("geometric(1)")
+    with pytest.raises(ValueError):
+        parse_interrupt("geometric(1,2,3)")
+    with pytest.raises(ValueError):
+        parse_interrupt("geometric(1,zero)")
+
+
 def test_interrupt_realtime():
     """Test the RealtimeInterrupts class."""
     for ival in [RealtimeInterrupts("0:01"), parse_interrupt("0:01")]:
@@ -115,3 +170,46 @@ def test_interrupt_fixed():
     assert np.isinf(ival.next(0))
     with pytest.raises(ValueError):
         ival = FixedInterrupts([[1]])
+
+
+@pytest.mark.parametrize("t_start", [-1, 0, 1])
+@pytest.mark.parametrize("adaptive", [False, True])
+def test_interrupt_integrated(t_start, adaptive):
+    """Test how interrupts are used in py-pde."""
+
+    # Initialize the equation and the space.
+    state = pde.ScalarField(pde.UnitGrid([1]))
+
+    # Solve the equation and store the trajectory.
+    storage = pde.MemoryStorage()
+    eq = pde.DiffusionPDE()
+    dt = 0.001
+    eq.solve(
+        state,
+        t_range=[t_start, t_start + 0.21],
+        dt=dt,
+        adaptive=adaptive,
+        backend="numpy",
+        tracker=storage.tracker(0.1),
+    )
+
+    assert storage.times[0] == pytest.approx(t_start)
+    assert storage.times[1] == pytest.approx(t_start + 0.1)
+    assert len(storage) == 3
+
+
+def test_fixed_interrupt_accuracy():
+    """Test special case mentioned in issue #808."""
+    dt_storage = 0.01
+    t_range = [0, 300]
+    t_storage = np.arange(t_range[0], t_range[1] + dt_storage, dt_storage)
+
+    grid = pde.CartesianGrid([[0, 1]], 10)
+    state0 = pde.ScalarField(grid, data=1.0)
+    eq = pde.DiffusionPDE()
+    storage = pde.MemoryStorage()
+    eq.solve(
+        state=state0, t_range=t_range, dt=0.001, tracker=storage.tracker(t_storage)
+    )
+
+    np.testing.assert_allclose(storage.times, t_storage)

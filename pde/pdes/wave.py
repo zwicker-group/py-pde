@@ -5,17 +5,21 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING
 
-import numba as nb
 import numpy as np
 
 from ..fields import FieldCollection, ScalarField
 from ..grids.boundaries import set_default_bc
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
 from .base import PDEBase, expr_prod
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from ..backends import BackendBase
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import TNativeArray
 
 
 class WavePDE(PDEBase):
@@ -28,7 +32,7 @@ class WavePDE(PDEBase):
         \partial_t u &= v \\
         \partial_t v &= c^2 \nabla^2 u
 
-    where :math:`c` sets the wave speed and :math:`v` is an auxiallary field. Note that
+    where :math:`c` sets the wave speed and :math:`v` is an auxiliary field. Note that
     the class expects an initial condition specifying both fields, which can be created
     using the :meth:`WavePDE.get_initial_condition` method. The result will also return
     two fields.
@@ -94,41 +98,41 @@ class WavePDE(PDEBase):
             Fields describing the evolution rates of the PDE
         """
         if not isinstance(state, FieldCollection):
-            raise ValueError("`state` must be FieldCollection")
+            msg = "`state` must be FieldCollection"
+            raise TypeError(msg)
         if len(state) != 2:
-            raise ValueError("`state` must contain two fields")
+            msg = "`state` must contain two fields"
+            raise ValueError(msg)
         u, v = state
         u_t = v.copy()
         v_t = self.speed**2 * u.laplace(self.bc, args={"t": t})  # type: ignore
         return FieldCollection([u_t, v_t])
 
-    def _make_pde_rhs_numba(  # type: ignore
-        self, state: FieldCollection
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    def make_evolution_rate(
+        self, state: FieldCollection, backend: BackendBase
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.FieldCollection`):
-                An example for the state defining the grid and data types
+                An example two-field state containing `u` and `v`, defining the grid
+                and data types.
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
 
         Returns:
-            A function with signature `(state_data, t)`, which can be called with an
-            instance of :class:`~numpy.ndarray` of the state data and the time to
-            obtained an instance of :class:`~numpy.ndarray` giving the evolution rate.
+            A function with signature `(state_data, t)`, where `state_data` contains
+            the two fields `u` and `v`, returning their evolution rates.
         """
-        arr_type = nb.typeof(state.data)
-        signature = arr_type(arr_type, nb.double)
-
         speed2 = self.speed**2
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
+        laplace = state.grid.make_operator(
+            operator="laplace", bc=self.bc, backend=backend, dtype=state.dtype
+        )
 
-        @jit(signature)
-        def pde_rhs(state_data: np.ndarray, t: float):
-            """Compiled helper function evaluating right hand side."""
-            rate = np.empty_like(state_data)
-            rate[0] = state_data[1]
-            rate[1][:] = laplace(state_data[0], args={"t": t})
-            rate[1] *= speed2
-            return rate
+        def pde_rhs(state_data, t=0):
+            """Evaluate right hand side of PDE."""
+            return np.stack(
+                (state_data[1], speed2 * laplace(state_data[0], args={"t": t}))
+            )
 
-        return pde_rhs  # type: ignore
+        return pde_rhs

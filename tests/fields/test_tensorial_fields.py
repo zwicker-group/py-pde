@@ -5,17 +5,26 @@
 import numpy as np
 import pytest
 
-from fixtures.fields import iter_grids
-from pde import CartesianGrid, PolarSymGrid, ScalarField, Tensor2Field, UnitGrid
+from fixtures.fields import GRIDS
+from pde import (
+    CartesianGrid,
+    PolarSymGrid,
+    ScalarField,
+    Tensor2Field,
+    UnitGrid,
+    VectorField,
+    get_backend,
+)
 from pde.fields.base import FieldBase
+from pde.grids.base import DimensionError
 
 
 def test_tensors_basic(rng):
     """Test some tensor calculations."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
 
-    t1 = Tensor2Field(grid, np.full((2, 2) + grid.shape, 1))
-    t2 = Tensor2Field(grid, np.full((2, 2) + grid.shape, 2))
+    t1 = Tensor2Field(grid, np.full((2, 2, *grid.shape), 1))
+    t2 = Tensor2Field(grid, np.full((2, 2, *grid.shape), 2))
     np.testing.assert_allclose(t2.average, [[2, 2], [2, 2]])
     assert t1.magnitude == pytest.approx(2)
 
@@ -48,7 +57,7 @@ def test_tensors_basic(rng):
         ("norm_squared", 30),
         ("trace", 5),
         ("invariant1", 5),
-        ("invariant2", -1),
+        ("invariant2", -2),
     ]:
         p1 = t1.to_scalar(method)
         assert p1.data.shape == grid.shape
@@ -67,6 +76,8 @@ def test_tensors_basic(rng):
     assert t1 == t2
     assert t1.grid is not t2.grid
 
+    t1.plot_components()
+
 
 @pytest.mark.parametrize("grid", [UnitGrid([1, 1]), PolarSymGrid(2, 1)])
 def test_tensors_transpose(grid):
@@ -75,13 +86,20 @@ def test_tensors_transpose(grid):
     def broadcast(arr):
         return np.asarray(arr)[(...,) + (np.newaxis,) * grid.num_axes]
 
+    # check transpose without inplace operation
     field = Tensor2Field(grid, broadcast([[0, 1], [2, 3]]))
     field_T = field.transpose(label="altered")
+    assert not np.shares_memory(field.data, field_T.data)
     assert field_T.label == "altered"
     np.testing.assert_allclose(field_T.data, broadcast([[0, 2], [1, 3]]))
 
+    # check inplace changes
+    field.transpose(inplace=True)
+    np.testing.assert_allclose(field.data, field_T.data)
 
-def test_tensor_symmetrize():
+
+@pytest.mark.parametrize("traceless", [True, False])
+def test_tensor_symmetrize(traceless):
     """Test advanced tensor calculations."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [2, 2])
     t1 = Tensor2Field(grid)
@@ -90,31 +108,28 @@ def test_tensor_symmetrize():
     t1.data[1, 0, :] = 3
     t1.data[1, 1, :] = 4
 
-    # traceless = False
-    t2 = t1.copy()
-    t1.symmetrize(make_traceless=False, inplace=True)
-    tr = t1.trace()
-    assert np.all(tr.data == 5)
-    t1_trans = np.swapaxes(t1.data, 0, 1)
-    np.testing.assert_allclose(t1.data, t1_trans.data)
-
-    ts = t1.copy()
-    ts.symmetrize(make_traceless=False, inplace=True)
-    np.testing.assert_allclose(t1.data, ts.data)
-
-    # traceless = True
-    t2.symmetrize(make_traceless=True, inplace=True)
+    t2 = t1.symmetrize(make_traceless=traceless, inplace=False)
+    assert not np.allclose(t1.data, t2.data)  # check that things are not done in place
     tr = t2.trace()
-    assert np.all(tr.data == 0)
+    if traceless:
+        assert np.all(tr.data == 0)
+    else:
+        assert np.all(tr.data == 5)
     t2_trans = np.swapaxes(t2.data, 0, 1)
     np.testing.assert_allclose(t2.data, t2_trans.data)
 
-    ts = t2.copy()
-    ts.symmetrize(make_traceless=True, inplace=True)
-    np.testing.assert_allclose(t2.data, ts.data)
+    # repeat operation (should not do anything)
+    t3 = t2.symmetrize(make_traceless=traceless, inplace=False)
+    assert not np.shares_memory(t2.data, t3.data)
+    np.testing.assert_allclose(t3.data, t2.data)
+
+    # check inplace operation
+    t4 = t1.symmetrize(make_traceless=traceless, inplace=True)
+    assert np.shares_memory(t1.data, t4.data)
+    np.testing.assert_allclose(t1.data, t2.data)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 @pytest.mark.parametrize("compiled", [True, False])
 def test_insert_tensor(grid, compiled, rng):
     """Test the `insert` method."""
@@ -122,10 +137,10 @@ def test_insert_tensor(grid, compiled, rng):
     a = rng.random(f.data_shape)
 
     c = grid.get_random_point(coords="cell", rng=rng).astype(int)  # pick a random cell
-    c_data = (Ellipsis,) + tuple(c)
+    c_data = (Ellipsis, *tuple(c))
     p = grid.transform(c + 0.5, "cell", "grid")  # point at cell center
     if compiled:
-        insert = grid.make_inserter_compiled()
+        insert = get_backend("numba").make_inserter(grid)
         insert(f.data, p, a)  # add material to cell center
     else:
         f.insert(p, a)  # add material to cell center
@@ -147,7 +162,7 @@ def test_tensor_invariants(rng):
     # dim == 2
     f = Tensor2Field.random_uniform(UnitGrid([3, 3]), rng=rng)
     invs = [f.to_scalar(f"invariant{i}").data for i in range(1, 4)]
-    np.testing.assert_allclose(2 * invs[1], invs[2])
+    np.testing.assert_allclose(invs[1], invs[2])
 
     a = rng.uniform(0, 2 * np.pi)  # pick random rotation angle
     rot = Tensor2Field(f.grid)
@@ -179,21 +194,53 @@ def test_tensor_invariants(rng):
             err_msg=f"Mismatch in invariant {i}",
         )
 
+    with pytest.raises(ValueError):
+        f.to_scalar("undefined")
+
+
+@pytest.mark.parametrize("dim", [1, 2, 3])
+@pytest.mark.parametrize("complex_data", [False, True])
+def test_second_invariant_characteristic_polynomial(dim, complex_data):
+    """The second invariant is the quadratic characteristic coefficient."""
+    grid = UnitGrid([2] * dim)
+    matrix = np.arange(1, dim * dim + 1).reshape(dim, dim).astype(float)
+    matrix += np.diag(np.arange(1, dim + 1))
+    if complex_data:
+        matrix = matrix + 1j * np.diag(np.arange(1, dim + 1))
+    field = Tensor2Field(grid, matrix.reshape(dim, dim, *([1] * dim)))
+    expected = 0 if dim == 1 else np.poly(matrix)[2]
+    np.testing.assert_allclose(field.to_scalar("invariant2").data, expected)
+
 
 @pytest.mark.parametrize("backend", ["numba", "numpy"])
 def test_complex_tensors(backend, rng):
     """Test some complex tensor fields."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
-    shape = (2, 2, 2) + grid.shape
+    shape = (2, 2, 2, *grid.shape)
     numbers = rng.random(shape) + rng.random(shape) * 1j
     t1 = Tensor2Field(grid, numbers[0])
     t2 = Tensor2Field(grid, numbers[1])
+    vf = VectorField.random_uniform(grid)
     assert t1.is_complex
     assert t2.is_complex
 
     dot_op = t1.make_dot_operator(backend)
 
-    # test dot product
+    # test dot product with vector field
+    res = dot_op(t1.data, vf.data)
+    for t in (t1 @ vf, t1.dot(vf)):
+        assert isinstance(t, VectorField)
+        assert t.grid is grid
+        np.testing.assert_allclose(t.data, res)
+
+    # test dot product with vector field in other direction
+    res = dot_op(vf.data, t1.data)
+    for t in (vf @ t1, vf.dot(t1)):
+        assert isinstance(t, VectorField)
+        assert t.grid is grid
+        np.testing.assert_allclose(t.data, res)
+
+    # test dot product with tensor field
     res = dot_op(t1.data, t2.data)
     for t in (t1 @ t2, t1.dot(t2)):
         assert isinstance(t, Tensor2Field)
@@ -231,3 +278,84 @@ def test_from_expressions():
         Tensor2Field.from_expression(grid, ["x"] * 3)
     with pytest.raises(ValueError):
         Tensor2Field.from_expression(grid, [["x"], [1, 1]])
+
+
+def test_tensor_symmetry():
+    """Test tensor symmetries."""
+    grid = UnitGrid([4, 4])
+
+    tf = Tensor2Field.from_expression(grid, [[1, "x**2"], ["x**2", "x * y"]])
+    assert tf.is_symmetric()
+
+    tf = Tensor2Field.from_expression(grid, [[1, 1], ["x**2", "x * y"]])
+    assert not tf.is_symmetric()
+    assert tf.symmetrize().is_symmetric()
+
+
+def test_tensor_convert():
+    """Test local tensor convert."""
+    grid = UnitGrid([4, 5])
+    tf = Tensor2Field.from_expression(grid, [[1, 1], ["x**2", "x * y"]])
+
+    # test symmetrization
+    res = tf.convert("anti-symmetric")
+    assert not res.is_symmetric()
+    expect = (tf - tf.transpose()) / 2
+    np.testing.assert_allclose(res.data, expect.data)
+
+    # test traceless
+    res = tf.convert("traceless")
+    np.testing.assert_allclose(res.trace().data, 0)
+
+    with pytest.raises(ValueError):
+        tf.convert("undefined")
+
+
+@pytest.mark.parametrize("angle", [0, 0.3, np.pi / 2, 2.5])
+def test_nematic_data(angle):
+    """Test the nematic data extracted from a tensor field."""
+    grid = UnitGrid([3, 4])
+    order = 1.5
+    director = np.array([np.cos(angle), np.sin(angle)])
+    tensor = order * (np.outer(director, director) - np.eye(2) / 2)
+    field = Tensor2Field(grid, np.einsum("ij,kl->ijkl", tensor, np.ones(grid.shape)))
+
+    data = field.get_nematic_data()
+    assert data["shape"] == grid.shape
+    np.testing.assert_allclose(np.hypot(data["data_x"], data["data_y"]), order)
+    angles = np.arctan2(data["data_y"], data["data_x"]) % np.pi
+    np.testing.assert_allclose(angles, angle % np.pi, atol=1e-14)
+
+    # anti-symmetric parts and the trace do not affect the nematic data
+    field += Tensor2Field.from_expression(grid, [["x", "y"], ["-y", "x"]])
+    data_mod = field.get_nematic_data()
+    np.testing.assert_allclose(data_mod["data_x"], data["data_x"], atol=1e-14)
+    np.testing.assert_allclose(data_mod["data_y"], data["data_y"], atol=1e-14)
+
+
+@pytest.mark.parametrize("transpose", [True, False])
+def test_nematic_plotting_2d(transpose, rng):
+    """Test plotting nematic tensor fields."""
+    grid = UnitGrid([3, 4])
+    field = Tensor2Field.random_uniform(grid, 0.1, 0.9, rng=rng)
+
+    ref = field.plot(kind="nematic", transpose=transpose)
+    arrows = np.array([ref.element.U, ref.element.V])
+    field._update_plot(ref)  # updating with the same data must not change arrows
+    np.testing.assert_allclose([ref.element.U, ref.element.V], arrows)
+
+    # test sub-sampling
+    grid = UnitGrid([32, 15])
+    field = Tensor2Field.random_uniform(grid, 0.1, 0.9, rng=rng)
+    ref = field.plot(kind="nematic", transpose=transpose, max_points=7)
+    assert len(ref.element.U) == 7 * 7
+
+
+def test_nematic_data_unsupported_grids():
+    """Test that nematic data is only supported for 2d Cartesian grids."""
+    with pytest.raises(DimensionError):
+        Tensor2Field(UnitGrid([3])).get_nematic_data()
+    with pytest.raises(DimensionError):
+        Tensor2Field(UnitGrid([3, 4, 5])).get_nematic_data()
+    with pytest.raises(DimensionError):
+        Tensor2Field(PolarSymGrid(3, 4)).get_nematic_data()

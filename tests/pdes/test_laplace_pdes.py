@@ -5,8 +5,12 @@
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, ScalarField, UnitGrid
-from pde.pdes import solve_laplace_equation, solve_poisson_equation
+from pde import CartesianGrid, ScalarField, UnitGrid, VectorField
+from pde.pdes import (
+    helmholtz_decomposition,
+    solve_laplace_equation,
+    solve_poisson_equation,
+)
 
 
 def test_pde_poisson_solver_1d():
@@ -59,3 +63,24 @@ def test_pde_poisson_solver_2d():
     # test more complex case for exceptions
     bcs = {"x": {"value": "sin(y)"}, "y": {"curvature": "sin(x)"}}
     res = solve_laplace_equation(grid, bc=bcs)
+
+
+def test_helmholtz_decomposition_1d():
+    """Test the helmholtz decomposition in 1D."""
+    grid = CartesianGrid([[0, 2 * np.pi]], 32, periodic=True)
+    field = VectorField.from_expression(grid, ["sin(x)"])
+    phi, vec = helmholtz_decomposition(field, bc="auto_periodic_neumann")
+    phi_grad = phi.gradient("auto_periodic_neumann")
+    np.testing.assert_allclose(field.data, phi_grad.data, atol=1e-2, rtol=1e-2)
+    np.testing.assert_allclose(vec.data, 0, atol=1e-2, rtol=1e-2)
+
+
+def test_helmholtz_decomposition_2d():
+    """Test the helmholtz decomposition in 2D."""
+    grid = CartesianGrid([[0, 2 * np.pi]] * 2, 32, periodic=True)
+    field = VectorField.from_expression(grid, ["sin(x)", "cos(x)"])
+    phi, vec = helmholtz_decomposition(field, bc="auto_periodic_neumann")
+    phi_grad = phi.gradient("auto_periodic_neumann")
+    assert not np.allclose(field.data, phi_grad.data, atol=1e-2, rtol=1e-2)
+    assert not np.allclose(vec.data, 0, atol=1e-2, rtol=1e-2)
+    np.testing.assert_allclose(field.data, (phi_grad + vec).data, atol=1e-2, rtol=1e-2)

@@ -5,7 +5,14 @@
 import numpy as np
 import pytest
 
-from pde import DiffusionPDE, FieldCollection, ScalarField, Tensor2Field, VectorField
+from pde import (
+    DiffusionPDE,
+    FieldCollection,
+    ScalarField,
+    Tensor2Field,
+    VectorField,
+    get_backend,
+)
 from pde.grids import CylindricalSymGrid, PolarSymGrid, SphericalSymGrid, UnitGrid
 from pde.grids._mesh import GridMesh, _get_optimal_decomposition
 from pde.tools import mpi
@@ -36,7 +43,7 @@ def test_basic_mpi_methods():
     assert value == list(range(mpi.size))
 
 
-@pytest.mark.parametrize("grid, decomposition", GRIDS)
+@pytest.mark.parametrize(("grid", "decomposition"), GRIDS)
 def test_generic_meshes(grid, decomposition):
     """Test generic functions of the grid mesh."""
     mesh = GridMesh.from_grid(grid, decomposition)
@@ -68,9 +75,9 @@ def test_split_fields_mpi(decomp, dtype, rng):
     mesh = GridMesh.from_grid(grid, decomp)
 
     field = ScalarField(grid, dtype=dtype)
-    if dtype == int:
+    if dtype is int:
         field._data_full = rng.integers(0, 10, size=grid._shape_full)
-    elif dtype == complex:
+    elif dtype is complex:
         field._data_full.real = rng.random(size=grid._shape_full)
         field._data_full.imag = rng.random(size=grid._shape_full)
     else:
@@ -186,11 +193,11 @@ def test_boundary_conditions_numba(bc, rng):
     # split without ghost cells
     f1 = mesh.split_field_mpi(field)
     bc1 = f1.grid.get_boundary_conditions(bc)
-    bc1.make_ghost_cell_setter()(f1._data_full)
+    get_backend("numba_mpi").make_ghost_cell_setter(bc1)(f1._data_full)
 
     # split after setting ghost cells
     bc2 = field.grid.get_boundary_conditions(bc)
-    bc2.make_ghost_cell_setter()(field._data_full)
+    get_backend("numba_mpi").make_ghost_cell_setter(bc2)(field._data_full)
     f2 = mesh.split_field_mpi(field)
 
     np.testing.assert_equal(f1._data_full[1:-1, :], f2._data_full[1:-1, :])
@@ -218,7 +225,7 @@ def test_vector_boundary_conditions(rng):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("grid, decomposition", GRIDS)
+@pytest.mark.parametrize(("grid", "decomposition"), GRIDS)
 def test_noncartesian_grids(grid, decomposition, rng):
     """Test whether we can deal with non-cartesian grids."""
     field = ScalarField.random_uniform(grid, rng=rng)
@@ -228,19 +235,19 @@ def test_noncartesian_grids(grid, decomposition, rng):
         "state": field,
         "t_range": 1,
         "dt": 0.1,
-        "backend": "numpy",
+        "backend": "numba_mpi",
         "tracker": None,
     }
     res = eq.solve(solver="explicit_mpi", decomposition=decomposition, **args)
 
     if mpi.is_main:
         # check results in the main process
-        expect = eq.solve(solver="explicit", **args)
+        expect = eq.solve(solver="euler", **args)
         np.testing.assert_allclose(res.data, expect.data)
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("grid, decomposition", GRIDS)
+@pytest.mark.parametrize(("grid", "decomposition"), GRIDS)
 @pytest.mark.parametrize("rank", [0, 2])
 def test_integration_parallel(grid, decomposition, rank):
     """Test integration of fields over grids."""
@@ -258,7 +265,7 @@ def test_integration_parallel(grid, decomposition, rank):
     np.testing.assert_allclose(subfield.integral, expected)
 
     # numba version
-    res = subfield.grid.make_integrator()(subfield.data)
+    res = subfield.grid.make_integrator(backend="numba_mpi")(subfield.data)
     assert rank > 0 or np.isscalar(res)
     np.testing.assert_allclose(res, expected)
 

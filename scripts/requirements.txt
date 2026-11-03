@@ -1,0 +1,5 @@
+-r ../requirements.txt
+docformatter>=1.7
+mypy>=1.8
+pre-commit>=3
+ruff>=0.6

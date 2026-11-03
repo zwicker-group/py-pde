@@ -9,7 +9,7 @@ from pde.tools.linear_stability import make_linear_operator
 
 def test_linop_basics():
     """Test basic operations."""
-    from sympy.abc import a, b, c, x
+    from sympy.abc import a, x
 
     linop = make_linear_operator([x])
 
@@ -20,7 +20,7 @@ def test_linop_basics():
 
 def test_linop_series_1var():
     """Test series expansion of linear operators of one variable."""
-    from sympy.abc import a, b, c, x
+    from sympy.abc import x
 
     f = sympy.Function("f")
     g = sympy.Function("g")

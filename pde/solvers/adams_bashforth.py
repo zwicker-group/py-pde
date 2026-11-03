@@ -5,41 +5,39 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import TYPE_CHECKING
 
-import numba as nb
 import numpy as np
 
-from ..fields.base import FieldBase
-from ..tools.numba import jit
 from .base import SolverBase
+
+if TYPE_CHECKING:
+    from ..tools.typing import InnerStepperType, NumericArray, TField
 
 
 class AdamsBashforthSolver(SolverBase):
     """Explicit Adams-Bashforth multi-step solver."""
 
-    name = "adams–bashforth"
+    name = "adams-bashforth"
 
-    def _make_fixed_stepper(
-        self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float, int, Any], float]:
-        """Return a stepper function using an explicit scheme with fixed time steps.
+    def _make_inner_stepper(self, state: TField) -> InnerStepperType:
+        """Create the executable Adams-Bashforth stepping function.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            dt (float):
-                Time step of the explicit stepping
         """
         if self.pde.is_sde:
-            raise NotImplementedError
+            msg = "Deterministic Adams-Bashforth does not support stochastic equations"
+            raise RuntimeError(msg)
 
-        rhs_pde = self._make_pde_rhs(state, backend=self.backend)
+        dt = float(self.info["dt"])
+        rhs_pde = self.backend.make_pde_rhs(self.pde, state)
         post_step_hook = self._make_post_step_hook(state)
 
         def single_step(
-            state_data: np.ndarray, t: float, state_prev: np.ndarray
+            state_data: NumericArray, t: float, state_prev: NumericArray
         ) -> None:
             """Perform a single Adams-Bashforth step."""
             rhs_prev = rhs_pde(state_prev, t - dt).copy()
@@ -51,15 +49,14 @@ class AdamsBashforthSolver(SolverBase):
         state_prev = np.empty_like(state.data)
         init_state_prev = True
 
-        if self._compiled:
-            sig_single_step = (nb.typeof(state.data), nb.double, nb.typeof(state_prev))
-            single_step = jit(sig_single_step)(single_step)
-
         def fixed_stepper(
-            state_data: np.ndarray, t_start: float, steps: int, post_step_data
+            state_data: NumericArray, t_start: float, t_end: float
         ) -> float:
             """Perform `steps` steps with fixed time steps."""
             nonlocal state_prev, init_state_prev
+
+            # calculate number of steps that lead to an end time closest to t_end
+            steps = max(1, round((t_end - t_start) / self.info["dt"]))
 
             if init_state_prev:
                 # initialize the state_prev with an estimate of the previous step
@@ -70,10 +67,15 @@ class AdamsBashforthSolver(SolverBase):
                 # calculate the right hand side
                 t = t_start + i * dt
                 single_step(state_data, t, state_prev)
-                post_step_hook(state_data, t, post_step_data=post_step_data)
+                state_data, self.info["post_step_data"] = post_step_hook(
+                    state_data, t, post_step_data=self.info["post_step_data"]
+                )
 
+            self.info["steps"] += steps
             return t + dt
 
-        self._logger.info("Init explicit Adams-Bashforth stepper with dt=%g", dt)
+        self._logger.info(
+            "Initialize explicit Adams-Bashforth stepping function with dt=%g", dt
+        )
 
         return fixed_stepper

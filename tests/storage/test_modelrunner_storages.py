@@ -10,7 +10,8 @@ from pde.tools.misc import module_available
 
 
 @pytest.mark.skipif(
-    not module_available("modelrunner"), reason="requires `py-modelrunner` package"
+    not module_available("modelrunner", strict=True),
+    reason="requires `py-modelrunner` package",
 )
 def test_storage_write_trajectory(tmp_path):
     """Test simple storage writing."""

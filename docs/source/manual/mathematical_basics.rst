@@ -3,7 +3,7 @@ Mathematical basics
 
 To solve partial differential equations (PDEs), the `py-pde` package provides
 differential operators to express spatial derivatives.
-These operators are implemented using the `finite difference method 
+These operators are implemented using the `finite-difference method
 <https://en.wikipedia.org/wiki/Finite_difference_method>`_ to support various 
 boundary conditions.
 The time evolution of the PDE is then calculated using the method of lines by
@@ -15,17 +15,17 @@ methods as described below.
 Curvilinear coordinates
 """""""""""""""""""""""
 The package supports multiple curvilinear coordinate systems through :mod:`pde.grids.coordinates`.
-They allow to exploit
+They permit exploiting
 symmetries present in physical systems. Consequently, many grids implemented in
 `py-pde` inherently assume symmetry of the described fields. However, a drawback of
-curvilinear coordinates are the fact that the basis vectors now depend on position,
+curvilinear coordinates is the fact that the basis vectors now depend on position,
 which makes tensor fields less intuitive and complicates the expression of differential
-operators. To avoid confusion, we here specify the used coordinate systems explicitly:
+operators. To avoid confusion, we specify the used coordinate systems explicitly:
 
 Polar coordinates
 -----------------
 Polar coordinates describe points by a radius :math:`r` and an angle :math:`\phi` in a
-two-dimensional coordinates system. They are defined by the transformation
+two-dimensional Cartesian coordinate system. They are defined by the transformation
 
 .. math::
     \begin{cases}
@@ -37,8 +37,8 @@ two-dimensional coordinates system. They are defined by the transformation
 
 
 The associated symmetric grid :class:`~pde.grids.spherical.PolarSymGrid` assumes that
-fields only depend on the radial coordinate :math:`r`. Note that vector and tensor
-fields can still have components in the polar direction. In particular, vector fields
+fields depend only on the radial coordinate :math:`r`. Note that vector and tensor
+fields can still have components in the angular direction. In particular, vector fields
 still have two components: :math:`\vec v(r) = v_r(r) \vec e_r +  v_\phi(r) \vec e_\phi`. 
 
 
@@ -60,8 +60,8 @@ coordinates reads
 
 
 The associated symmetric grid  :class:`~pde.grids.spherical.SphericalSymGrid`
-assumes that fields only depend on the radial coordinate :math:`r`. Note that vector and
-tensor fields can still have components in the two angular direction. 
+assumes that fields depend only on the radial coordinate :math:`r`. Note that vector and
+tensor fields can still have components in the two angular directions. 
 
 .. warning::
    Not all results of differential operators on vectorial and tensorial fields can be
@@ -88,8 +88,8 @@ coordinates reads
     \phi \in [0, 2\pi)
 
 
-The associated symmetric grid  :class:`~pde.grids.cylindrical.CylindricalSymGrid`
-assumes that fields only depend on the coordinates :math:`r` and :math:`z`. Vector and
+The associated symmetric grid :class:`~pde.grids.cylindrical.CylindricalSymGrid`
+assumes that fields depend only on the coordinates :math:`r` and :math:`z`. Vector and
 tensor fields still specify all components in the three-dimensional space. 
 
 .. warning::
@@ -107,16 +107,16 @@ Spatial discretization
    :width: 350px
    :class: float-right
 
-The finite differences scheme used by `py-pde` is currently restricted to 
+The finite-difference scheme used by `py-pde` is currently restricted to
 orthogonal coordinate systems with uniform discretization.
 Because of the orthogonality, each axis of the grid can be discretized
 independently.
-For simplicity, we only consider uniform grids, where the support points  are
+For simplicity, we only consider uniform grids, where the support points are
 spaced equidistantly along a given axis, i.e., the discretization
 :math:`\Delta x` is constant.
 If a given axis covers values in a range
 :math:`[x_\mathrm{min}, x_\mathrm{max}]`, a discretization with :math:`N`
-support points can then be though of as covering the axis with :math:`N`
+support points can then be thought of as covering the axis with :math:`N`
 equal-sized boxes; see inset.
 Field values are then specified for each box, i.e., the support points lie at
 the centers of the box:
@@ -152,9 +152,13 @@ Temporal evolution
 Once the fields have been discretized, the PDE reduces to a set of coupled ordinary
 differential equations (ODEs), which can be solved using standard methods.
 This reduction is also known as the method of lines.
-The `py-pde` package implements the simple Euler scheme and a more advanced
-`Runge-Kutta scheme <https://en.wikipedia.org/wiki/Runge–Kutta_methods>`_ in 
-the :class:`~pde.solvers.explicit.ExplicitSolver` class.
+The `py-pde` package implements the simple Euler scheme in the
+:class:`~pde.solvers.euler.EulerSolver` class, and a more advanced
+`Runge-Kutta scheme <https://en.wikipedia.org/wiki/Runge–Kutta_methods>`_ in
+the :class:`~pde.solvers.runge_kutta.RungeKuttaSolver` class.
+Conceptually, solver objects store the strategy and configuration, while the
+actual state updates are performed by stepping functions created from these
+solver objects.
 For the simple implementations of these explicit methods, the user typically specifies
 a fixed time step, although adaptive methods, which adjust the time step automatically,
 are also often used and available in the package.

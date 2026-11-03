@@ -15,7 +15,10 @@ from __future__ import annotations
 import re
 import textwrap
 from functools import partial
-from typing import Callable, TypeVar
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .typing import TFunc
 
 DOCSTRING_REPLACEMENTS = {
     # description of function arguments
@@ -42,10 +45,11 @@ DOCSTRING_REPLACEMENTS = {
         Determines when the tracker interrupts the simulation. A single numbers
         determines an interval (measured in the simulation time unit) of regular
         interruption. A string is interpreted as a duration in real time assuming the
-        format 'hh:mm:ss'. A list of numbers is taken as explicit simulation time points.
+        format 'hh:mm:ss'. A list of values is taken as explicit simulation time points.
         More fine-grained control is possible by passing an instance of classes defined
         in :mod:`~pde.trackers.interrupts`.
         """,
+    # plot_quantities and plot_scale are deprecated since 2026-07-10
     "ARG_PLOT_QUANTITIES": """
         A 2d list of quantities that are shown in a rectangular arrangement.
         If `quantities` is a simple list, the panels will be rendered as a
@@ -62,7 +66,7 @@ DOCSTRING_REPLACEMENTS = {
         """,
     "ARG_PLOT_SCALE": """
         Flag determining how the range of the color scale is determined. In the
-        simplest case a tuple of numbers marks the lower and upper end of the 
+        simplest case a tuple of numbers marks the lower and upper end of the
         scalar values that will be shown. If only a single number is supplied,
         the range starts at zero and ends at the given number. Additionally, the
         special value 'automatic' determines the range from the range of scalar
@@ -96,7 +100,7 @@ DOCSTRING_REPLACEMENTS = {
         """,
     # notes in the docstring
     "WARNING_EXEC": r"""
-        This implementation uses :func:`exec` and should therefore not be used 
+        This implementation uses :func:`exec` and should therefore not be used
         in a context where malicious input could occur.
         """,
 }
@@ -121,9 +125,6 @@ def get_text_block(identifier: str) -> str:
     return "".join(textwrap.dedent(raw_text))
 
 
-TFunc = TypeVar("TFunc", bound=Callable)
-
-
 def replace_in_docstring(
     f: TFunc, token: str, value: str, docstring: str | None = None
 ) -> TFunc:
@@ -141,7 +142,11 @@ def replace_in_docstring(
     # initialize textwrapper for formatting docstring
 
     def repl(matchobj) -> str:
-        """Helper function replacing token in docstring."""
+        """Helper function replacing token in docstring.
+
+        Args:
+            matchobj: The regex match object
+        """
         bare_text = textwrap.dedent(value).strip()
         return textwrap.indent(bare_text, matchobj.group(1))
 
@@ -160,13 +165,22 @@ def replace_in_docstring(
 
 
 def fill_in_docstring(f: TFunc) -> TFunc:
-    """Decorator that replaces text in the docstring of a function."""
+    """Decorator that replaces text in the docstring of a function.
+
+    Args:
+        f: The function to decorate
+    """
     tw = textwrap.TextWrapper(
         width=80, expand_tabs=True, replace_whitespace=True, drop_whitespace=True
     )
 
     def repl(matchobj, value: str) -> str:
-        """Helper function replacing token in docstring."""
+        """Helper function replacing token in docstring.
+
+        Args:
+            matchobj: The regex match object
+            value: The replacement value
+        """
         tw.initial_indent = tw.subsequent_indent = matchobj.group(1)
         return tw.fill(textwrap.dedent(value))
 

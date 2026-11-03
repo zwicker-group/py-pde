@@ -9,28 +9,36 @@ REPLACEMENTS = [
     ("Union[int, float, complex, numpy.ndarray]", "NumberOrArray"),
     ("Union[int, float, complex]", "Number"),
     (
-        "Optional[Union[_SupportsArray[dtype], _NestedSequence[_SupportsArray[dtype]], "
-        "bool, int, float, complex, str, bytes, _NestedSequence[Union[bool, int, "
-        "float, complex, str, bytes]]]]",
+        (
+            "Optional[Union[_SupportsArray[dtype], _NestedSequence[_SupportsArray[dtype]], "  # noqa: E501
+            "bool, int, float, complex, str, bytes, _NestedSequence[Union[bool, int, "
+            "float, complex, str, bytes]]]]"
+        ),
         "NumberOrArray",
     ),
     (
-        "Union[dtype[Any], None, Type[Any], _SupportsDType[dtype[Any]], str, "
-        "Tuple[Any, int], Tuple[Any, Union[SupportsIndex, Sequence[SupportsIndex]]], "
-        "List[Any], _DTypeDict, Tuple[Any, Any]]",
+        (
+            "Union[dtype[Any], None, Type[Any], _SupportsDType[dtype[Any]], str, "
+            "Tuple[Any, int], Tuple[Any, Union[SupportsIndex, Sequence[SupportsIndex]]], "  # noqa: E501
+            "List[Any], _DTypeDict, Tuple[Any, Any]]"
+        ),
         "DType",
     ),
     # Complex types describing the boundary conditions
     (
-        "Dict[str, Dict | str | BCBase] | Dict | str | BCBase | "
-        "Tuple[Dict | str | BCBase, Dict | str | BCBase] | BoundaryAxisBase | "
-        "Sequence[Dict[str, Dict | str | BCBase] | Dict | str | BCBase | "
-        "Tuple[Dict | str | BCBase, Dict | str | BCBase] | BoundaryAxisBase]",
+        (
+            "Dict[str, Dict | str | BCBase] | Dict | str | BCBase | "
+            "Tuple[Dict | str | BCBase, Dict | str | BCBase] | BoundaryAxisBase | "
+            "Sequence[Dict[str, Dict | str | BCBase] | Dict | str | BCBase | "
+            "Tuple[Dict | str | BCBase, Dict | str | BCBase] | BoundaryAxisBase]"
+        ),
         "BoundariesData",
     ),
     (
-        "Dict[str, Dict | str | BCBase] | Dict | str | BCBase | "
-        "Tuple[Dict | str | BCBase, Dict | str | BCBase] | BoundaryAxisBase",
+        (
+            "Dict[str, Dict | str | BCBase] | Dict | str | BCBase | "
+            "Tuple[Dict | str | BCBase, Dict | str | BCBase] | BoundaryAxisBase"
+        ),
         "BoundariesPairData",
     ),
     ("Dict | str | BCBase", "BoundaryData"),
@@ -51,6 +59,16 @@ REPLACEMENTS_REGEX = {
 }
 
 
+# restore module-qualified names for symbols that are exported from multiple modules
+# and thus become ambiguous when package prefixes are removed.
+DISAMBIGUATE_TYPES = {
+    r"(?<!\.)\bBackendBase\b": "pde.backends.base.BackendBase",
+    r"(?<!\.)\bScalarField\b": "pde.fields.scalar.ScalarField",
+    r"(?<!\.)\bVectorField\b": "pde.fields.vectorial.VectorField",
+    r"(?<!\.)\bTensor2Field\b": "pde.fields.tensorial.Tensor2Field",
+}
+
+
 def process_signature(
     app, what: str, name: str, obj, options, signature, return_annotation
 ):
@@ -63,6 +81,8 @@ def process_signature(
                 sig_obj = re.sub(key, value, sig_obj)
             for key, value in REPLACEMENTS:
                 sig_obj = sig_obj.replace(key, value)
+            for key, value in DISAMBIGUATE_TYPES.items():
+                sig_obj = re.sub(key, value, sig_obj)
         return sig_obj
 
     signature = process(signature)
@@ -76,6 +96,8 @@ def process_docstring(app, what: str, name: str, obj, options, lines):
     for i, line in enumerate(lines):
         for key, value in REPLACEMENTS:
             line = line.replace(key, value)
+        for key, value in DISAMBIGUATE_TYPES.items():
+            line = re.sub(key, value, line)
         lines[i] = line
 
 

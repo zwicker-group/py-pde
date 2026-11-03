@@ -7,19 +7,20 @@ store, or output it. The trackers defined in this module are:
    :nosignatures:
 
    ~trackers.CallbackTracker
-   ~trackers.ProgressTracker
-   ~trackers.PrintTracker
-   ~trackers.PlotTracker
-   ~trackers.LivePlotTracker
-   ~trackers.DataTracker
-   ~trackers.SteadyStateTracker
-   ~trackers.RuntimeTracker
    ~trackers.ConsistencyTracker
+   ~trackers.DataTracker
+   ~trackers.LivePlotTracker
+   ~trackers.MaterialConservationTracker
+   ~trackers.MaxRuntimeTracker
+   ~trackers.PlotTracker
+   ~trackers.PrintTracker
+   ~trackers.ProgressTracker
+   ~trackers.SteadyStateTracker
+   ~trackers.WalltimeTracker
    ~interactive.InteractivePlotTracker
 
-Some trackers can also be referenced by name for convenience when using them in
-simulations. The lit of supported names is returned by
-:func:`~pde.trackers.base.get_named_trackers`.
+Some trackers can be referenced by name for convenience when using them in simulations.
+The list of supported names is returned by :func:`~pde.registered_trackers`.
 
 Multiple trackers can be collected in a :class:`~base.TrackerCollection`, which provides
 methods for handling them efficiently. Moreover, custom trackers can be implemented by
@@ -38,21 +39,33 @@ one of the following classes:
    ~interrupts.FixedInterrupts
    ~interrupts.ConstantInterrupts
    ~interrupts.LogarithmicInterrupts
+   ~interrupts.GeometricInterrupts
    ~interrupts.RealtimeInterrupts
 
 In particular, interrupts can be specified conveniently using
 :func:`~interrupts.parse_interrupt`.
 
+Inheritance structure of the tracker classes:
+
+.. inheritance-diagram::
+      trackers.CallbackTracker
+      trackers.ConsistencyTracker
+      trackers.DataTracker
+      trackers.LivePlotTracker
+      trackers.MaxRuntimeTracker
+      trackers.PlotTracker
+      trackers.PrintTracker
+      trackers.ProgressTracker
+      trackers.SteadyStateTracker
+      trackers.WalltimeTracker
+      interactive.InteractivePlotTracker
+      pde.storage.base.StorageTracker
+   :parts: 1
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .base import get_named_trackers
-from .interactive import InteractivePlotTracker
-from .interrupts import (
-    ConstantInterrupts,
-    FixedInterrupts,
-    LogarithmicInterrupts,
-    RealtimeInterrupts,
-    parse_interrupt,
-)
-from .trackers import *
+from .base import *  # noqa: F403
+from .interactive import InteractivePlotTracker  # noqa: F401
+from .interrupts import *  # noqa: F403
+from .trackers import *  # noqa: F403

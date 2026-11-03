@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
+from pde.backends import get_backend
 from pde.tools.expressions import (
     BCDataError,
     ScalarExpression,
@@ -17,6 +18,16 @@ from pde.tools.expressions import (
     parse_expr_guarded,
     parse_number,
 )
+
+ALL_BACKENDS_NO_NUMBA = [
+    "numpy",
+    "jax-cpu",
+    "jax-cuda",
+    "torch-cpu",
+    "torch-mps",
+    "torch-cuda",
+]
+ALL_BACKENDS = ["numba", *ALL_BACKENDS_NO_NUMBA]
 
 
 def test_parse_number():
@@ -49,22 +60,26 @@ def test_parse_expr_guarded():
     assert peg("field + 1", symbols={"field": 1, "a": 2}).subs("field", 1) == 2
 
 
-@pytest.mark.parametrize("expr", [None, 1, "1", "a - a"])
+@pytest.mark.parametrize("expr", [None, 1, "1", "a - a", "3 + 2j"])
 def test_const(expr):
     """Test simple expressions with constants."""
     e = ScalarExpression() if expr is None else ScalarExpression(expr)
-    val = 0 if expr is None or expr == "a - a" else float(expr)
+    is_complex = "j" in str(expr)
+    if expr is None or expr == "a - a":
+        val = 0
+    elif is_complex:
+        val = 3 + 2j
+    else:
+        val = float(expr)
     assert e.constant
     assert e.value == val
-    assert e() == val
-    assert e.get_compiled()() == val
     assert not e.depends_on("a")
     assert e.differentiate("a").value == 0
     assert e.shape == ()
     assert e.rank == 0
     assert bool(e) == (val != 0)
     assert e.is_zero == (val == 0)
-    assert not e.complex
+    assert e.complex == is_complex
 
     g = e.derivatives
     assert g.constant
@@ -90,7 +105,7 @@ def test_wrong_const(caplog):
     assert "field" in caplog.text
     if not nb.config.DISABLE_JIT:
         with pytest.raises(nb.TypingError):
-            e.get_compiled()()
+            e.get_function("numba")()
 
 
 def test_single_arg(rng):
@@ -99,7 +114,6 @@ def test_single_arg(rng):
     assert not e.constant
     assert e.depends_on("a")
     assert e(4) == 8
-    assert e.get_compiled()(4) == 8
     assert e.differentiate("a").value == 2
     assert e.differentiate("b").value == 0
     assert e.shape == ()
@@ -113,25 +127,24 @@ def test_single_arg(rng):
 
     arr = rng.random(5)
     np.testing.assert_allclose(e(arr), 2 * arr)
-    np.testing.assert_allclose(e.get_compiled()(arr), 2 * arr)
 
     g = e.derivatives
     assert g.shape == (1,)
     assert g.constant
     assert g(3) == [2]
-    assert g.get_compiled()(3) == [2]
 
     with pytest.raises(TypeError):
         ScalarExpression(np.exp)
 
 
-def test_two_args(rng):
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_two_args(backend, rng):
     """Test simple expressions."""
     e = ScalarExpression("2 * a ** b")
     assert e.depends_on("b")
     assert not e.constant
     assert e(4, 2) == 32
-    assert e.get_compiled()(4, 2) == 32
+    assert e.get_function(backend)(4, 2) == 32
     assert e.differentiate("a")(4, 2) == 16
     assert e.differentiate("b")(4, 2) == pytest.approx(32 * np.log(4))
     assert e.differentiate("c").value == 0
@@ -141,23 +154,20 @@ def test_two_args(rng):
 
     for x in [rng.random(2), rng.random((2, 5))]:
         res = 2 * x[0] ** x[1]
-        np.testing.assert_allclose(e(*x), res)
-        np.testing.assert_allclose(e.get_compiled()(*x), res)
+        np.testing.assert_allclose(e.get_function(backend)(*x), res, rtol=1e-6)
         if x.ndim == 1:
-            func = e._get_function(single_arg=True)
-            np.testing.assert_allclose(func(x), res)
-            func = e.get_compiled(single_arg=True)
+            func = e.get_function(backend, single_arg=True)
             np.testing.assert_allclose(func(x), res)
 
     g = e.derivatives
     assert g.shape == (2,)
     assert g.rank == 1
     assert not g.constant
-    np.testing.assert_allclose(g(2, 3), [24, 16 * np.log(2)])
-    np.testing.assert_allclose(g.get_compiled()(2, 3), [24, 16 * np.log(2)])
+    np.testing.assert_allclose(g.get_function(backend)(2, 3), [24, 16 * np.log(2)])
 
 
-def test_derivatives():
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_derivatives(backend):
     """Test vector expressions."""
     e = ScalarExpression("a * b**2")
     assert e.depends_on("a")
@@ -168,12 +178,12 @@ def test_derivatives():
     d1 = e.derivatives
     assert d1.shape == (2,)
     np.testing.assert_allclose(d1(2, 3), [9, 12])
-    np.testing.assert_allclose(d1.get_compiled()(2, 3), [9, 12])
+    np.testing.assert_allclose(d1.get_function(backend)(2, 3), [9, 12])
 
     d2 = d1.derivatives
     assert d2.shape == (2, 2)
     np.testing.assert_allclose(d2(2, 3), [[0, 6], [6, 4]])
-    np.testing.assert_allclose(d2.get_compiled()(2, 3), [[0, 6], [6, 4]])
+    np.testing.assert_allclose(d2.get_function(backend)(2, 3), [[0, 6], [6, 4]])
 
     d3 = d2.derivatives
     assert d3.shape == (2, 2, 2)
@@ -181,10 +191,11 @@ def test_derivatives():
     d4 = d3.derivatives
     assert d4.shape == (2, 2, 2, 2)
     np.testing.assert_allclose(d4(2, 3), np.zeros((2, 2, 2, 2)))
-    np.testing.assert_allclose(d4.get_compiled()(2, 3), np.zeros((2, 2, 2, 2)))
+    np.testing.assert_allclose(d4.get_function(backend)(2, 3), np.zeros((2, 2, 2, 2)))
 
 
-def test_indexed():
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_indexed(backend):
     """Test simple expressions."""
     e = ScalarExpression("2 * a[0] ** a[1]", allow_indexed=True)
     assert not e.constant
@@ -192,7 +203,7 @@ def test_indexed():
 
     a = np.array([4, 2])
     assert e(a) == 32
-    assert e.get_compiled()(a) == 32
+    assert e.get_function(backend)(a) == 32
 
     assert e.differentiate("a[0]")(a) == 16
     assert e.differentiate("a[1]")(a) == pytest.approx(32 * np.log(4))
@@ -217,8 +228,6 @@ def test_tensor_expression():
     assert e.shape == (2, 2)
     assert e.rank == 2
     assert e.constant
-    np.testing.assert_allclose(e.get_compiled_array()(), [[0, 1], [2, 3]])
-    np.testing.assert_allclose(e.get_compiled_array()(()), [[0, 1], [2, 3]])
     assert e.differentiate("a") == TensorExpression("[[0, 0], [0, 0]]")
     np.testing.assert_allclose(e.value, np.arange(4).reshape(2, 2))
 
@@ -234,13 +243,62 @@ def test_tensor_expression():
     assert e[0] == ScalarExpression("a")
     assert e[1] == ScalarExpression("2*a")
     assert e[0:1] == TensorExpression("[a]")
-    np.testing.assert_allclose(e.get_compiled_array()(1.0), [1.0, 2.0])
-    np.testing.assert_allclose(e.get_compiled_array()(2.0), [2.0, 4.0])
 
     e2 = TensorExpression(e)
     assert isinstance(str(e2), str)
     assert e == e2
     assert e is not e2
+
+
+@pytest.mark.parametrize("backend", ["numba", "jax-cpu", "jax-cuda"], indirect=True)
+def test_tensor_expression_compiled(backend):
+    """Test TensorExpression with compilation"""
+    nx = backend.__array_namespace__()
+    e = TensorExpression("[[0, 1], [2, 3]]", signature=["a"])
+    func = backend._make_expression_array(e, single_arg=True)
+    # np.testing.assert_allclose(func(()), [[0, 1], [2, 3]])
+    np.testing.assert_allclose(func(nx.array([1])), [[0, 1], [2, 3]])
+    func = backend._make_expression_array(e, single_arg=False)
+    # np.testing.assert_allclose(func(), [[0, 1], [2, 3]])
+    np.testing.assert_allclose(func(nx.array(1)), [[0, 1], [2, 3]])
+
+    e = TensorExpression("[a, 2*a]")
+    func = backend._make_expression_array(e, single_arg=True)
+    np.testing.assert_allclose(func(nx.array([1.0])), [1.0, 2.0])
+    np.testing.assert_allclose(func(nx.array([2.0])), [2.0, 4.0])
+    np.testing.assert_allclose(func(nx.array([[1.0, 2.0]])), [[1.0, 2.0], [2.0, 4.0]])
+    func = backend._make_expression_array(e, single_arg=False)
+    np.testing.assert_allclose(func(nx.array(1.0)), [1.0, 2.0])
+    np.testing.assert_allclose(func(nx.array(2.0)), [2.0, 4.0])
+    np.testing.assert_allclose(func(nx.array([1.0, 2.0])), [[1.0, 2.0], [2.0, 4.0]])
+
+    e = TensorExpression("[a, b]")
+    func = backend._make_expression_array(e, single_arg=True)
+    np.testing.assert_allclose(func(nx.array([1.0, 2.0])), [1.0, 2.0])
+    np.testing.assert_allclose(
+        func(nx.array([[1.0, 2.0], [2.0, 4.0]])), [[1.0, 2.0], [2.0, 4.0]]
+    )
+    func = backend._make_expression_array(e, single_arg=False)
+    np.testing.assert_allclose(func(nx.array(1.0), nx.array(2.0)), [1.0, 2.0])
+    np.testing.assert_allclose(
+        func(nx.array([1.0, 2.0]), nx.array([2.0, 4.0])), [[1.0, 2.0], [2.0, 4.0]]
+    )
+
+    e = TensorExpression("[[a, a], [b, b]]")
+    func = backend._make_expression_array(e, single_arg=True)
+    np.testing.assert_allclose(func(nx.array([1.0, 2.0])), [[1.0, 1.0], [2.0, 2.0]])
+    np.testing.assert_allclose(
+        func(nx.array([[1.0, 2.0], [2.0, 4.0]])),
+        [[[1.0, 2.0], [1.0, 2.0]], [[2.0, 4.0], [2.0, 4.0]]],
+    )
+    func = backend._make_expression_array(e, single_arg=False)
+    np.testing.assert_allclose(
+        func(nx.array(1.0), nx.array(2.0)), [[1.0, 1.0], [2.0, 2.0]]
+    )
+    np.testing.assert_allclose(
+        func(nx.array([1.0, 2.0]), nx.array([2.0, 4.0])),
+        [[[1.0, 2.0], [1.0, 2.0]], [[2.0, 4.0], [2.0, 4.0]]],
+    )
 
 
 def test_expression_from_expression():
@@ -258,24 +316,34 @@ def test_expression_from_expression():
         ScalarExpression(expr, "b")
 
 
-def test_expression_user_funcs():
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_expression_user_funcs(backend):
     """Test the usage of user_funcs."""
     expr = ScalarExpression("func()", user_funcs={"func": lambda: 1})
     assert expr() == 1
-    assert expr.get_compiled()() == 1
+    assert expr.get_function(backend)() == 1
     assert expr.value == 1
 
-    expr = ScalarExpression("f(pi)", user_funcs={"f": np.sin})
-    assert expr.constant
-    assert expr() == pytest.approx(0)
-    assert expr.get_compiled()() == pytest.approx(0)
-    assert expr.value == pytest.approx(0)
+    if backend.implementation == "jax":
+        from jax import numpy as jnp
 
-    expr = TensorExpression("[0, f(pi)]", user_funcs={"f": np.sin})
+        user_funcs = {"f": jnp.sin}
+    else:
+        user_funcs = {"f": np.sin}
+
+    expr = ScalarExpression("f(pi)", user_funcs=user_funcs)
     assert expr.constant
-    np.testing.assert_allclose(expr(), np.array([0, 0]), atol=1e-14)
-    np.testing.assert_allclose(expr.get_compiled()(), np.array([0, 0]), atol=1e-14)
-    np.testing.assert_allclose(expr.value, np.array([0, 0]), atol=1e-14)
+    assert expr() == pytest.approx(0, abs=1e-7)
+    assert expr.get_function(backend)() == pytest.approx(0, abs=1e-7)
+    assert expr.value == pytest.approx(0, abs=1e-7)
+
+    expr = TensorExpression("[0, f(pi)]", user_funcs=user_funcs)
+    assert expr.constant
+    np.testing.assert_allclose(expr(), np.array([0, 0]), atol=1e-7)
+    np.testing.assert_allclose(
+        expr.get_function(backend)(), np.array([0, 0]), atol=1e-7
+    )
+    np.testing.assert_allclose(expr.value, np.array([0, 0]), atol=1e-7)
 
 
 def test_complex_expression():
@@ -301,33 +369,50 @@ def test_complex_expression():
     np.testing.assert_allclose(expr.value, np.array([[1, -1], [1j, 2]]))
 
 
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 @pytest.mark.parametrize(
-    "expression, value",
+    ("expression", "value"),
     [("Heaviside(x)", 0.5), ("Heaviside(x, 0.75)", 0.75), ("heaviside(x, 0.75)", 0.75)],
 )
-def test_expression_heaviside(expression, value):
+def test_expression_heaviside(backend, expression, value):
     """Test special cases of expressions."""
     expr = ScalarExpression(expression)
     assert not expr.constant
-    assert expr(-1) == 0
-    assert expr(0) == value
-    assert expr(1) == 1
-    np.testing.assert_allclose(expr(np.array([-1, 0, 1])), np.array([0, value, 1]))
+    assert expr(-1.0) == 0
+    assert expr(0.0) == value
+    assert expr(1.0) == 1
+    np.testing.assert_allclose(
+        expr(np.array([-1.0, 0.0, 1.0])), np.array([0, value, 1])
+    )
 
-    f = expr.get_compiled()
-    assert f(-1) == 0
-    assert f(0) == value
-    assert f(1) == 1
-    np.testing.assert_allclose(f(np.array([-1, 0, 1])), np.array([0, value, 1]))
+    f = expr.get_function(backend)
+    # we need to test different dtype, because torch handles then only in some cases
+    assert f(-1.0) == 0
+    assert f(0.0) == value
+    assert f(1.0) == 1
+    np.testing.assert_allclose(f(np.array([-1.0, 0.0, 1.0])), np.array([0, value, 1]))
 
 
-def test_expression_consts():
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_expression_hypot(backend):
+    """Test special cases of hypot expressions."""
+    expr = ScalarExpression("hypot(a, b)")
+    assert not expr.constant
+    assert expr(3, 4) == 5
+
+    f = expr.get_function(backend)
+    assert f(3.0, 4.0) == 5.0
+
+
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_expression_consts(backend):
     """Test the usage of consts."""
+    backend_obj = get_backend(backend)
     expr = ScalarExpression("a", consts={"a": 1})
     assert expr.constant
     assert not expr.depends_on("a")
     assert expr() == 1
-    assert expr.get_compiled()() == 1
+    assert expr.get_function(backend)() == 1
     assert expr.value == 1
 
     expr = ScalarExpression("a + b", consts={"a": 1})
@@ -335,77 +420,100 @@ def test_expression_consts():
     assert not expr.depends_on("a")
     assert expr.depends_on("b")
     assert expr(2) == 3
-    assert expr.get_compiled()(2) == 3
+    assert expr.get_function(backend)(2) == 3
 
     expr = ScalarExpression("a + b", consts={"a": np.array([1, 2])})
     assert not expr.constant
     np.testing.assert_allclose(expr(np.array([2, 3])), np.array([3, 5]))
-    np.testing.assert_allclose(expr.get_compiled()(np.array([2, 3])), np.array([3, 5]))
+    res = backend_obj._apply_function(expr.get_function(backend), np.array([2, 3]))
+    np.testing.assert_allclose(res, np.array([3, 5]))
+    expr = ScalarExpression("a * b", consts={"a": np.array([1, 2])})
+    dexpr_da = expr.differentiate("b")
+    np.testing.assert_allclose(dexpr_da(np.array([2, 3])), np.array([1, 2]))
+    dexpr = expr.derivatives
+    assert dexpr.shape == (1,)
+    np.testing.assert_allclose(dexpr(np.array([2, 3])), np.array([[1, 2]]))
 
 
-def test_evaluate_func_scalar():
+def test_tensor_expression_consts():
+    """Test the usage of consts in TensorExpression."""
+    e = TensorExpression("[a, a*b]", consts={"b": 5})
+    assert e[0](2) == 2
+    assert e[1](2) == 10
+    d1 = e.differentiate("a")
+    assert d1[0](2) == 1
+    assert d1[1](2) == 5
+
+
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_evaluate_func_scalar(backend):
     """Test the evaluate function with scalar fields."""
     grid = UnitGrid([2, 4])
     field = ScalarField.from_expression(grid, "x")
 
-    res1 = evaluate("laplace(a)", {"a": field})
+    res1 = evaluate("laplace(a)", {"a": field}, backend=backend)
     res2 = field.laplace("auto_periodic_neumann")
     np.testing.assert_almost_equal(res1.data, res2.data)
 
-    res = evaluate("a - x", {"a": field})
+    res = evaluate("a - x", {"a": field}, backend=backend)
     np.testing.assert_almost_equal(res.data, 0)
 
     field_c = ScalarField.from_expression(grid, "1 + 1j")
-    res = evaluate("c", {"c": field_c})
+    res = evaluate("c", {"c": field_c}, backend=backend)
     assert res.dtype == "complex"
     np.testing.assert_almost_equal(res.data, field_c.data)
 
-    res = evaluate("abs(a)**2", {"a": field_c})
+    res = evaluate("abs(a)**2", {"a": field_c}, backend=backend)
     assert res.dtype == "float"
     np.testing.assert_allclose(res.data, 2)
 
     # edge case
-    res = evaluate("sin", {"a": field_c}, consts={"sin": 3.14})
+    res = evaluate("sin", {"a": field_c}, consts={"sin": 3.14}, backend=backend)
     assert res.dtype == "float"
     np.testing.assert_allclose(res.data, 3.14)
 
 
-def test_evaluate_func_vector():
+# TODO: Support numba
+@pytest.mark.parametrize("backend", ALL_BACKENDS_NO_NUMBA, indirect=True)
+def test_evaluate_func_vector(backend):
     """Test the evaluate function with vector fields."""
     grid = UnitGrid([3])
     field = ScalarField.from_expression(grid, "x")
     vec = VectorField.from_expression(grid, ["x"])
 
-    res = evaluate("inner(v, v)", {"v": vec})
+    res = evaluate("inner(v, v)", {"v": vec}, backend=backend)
     assert isinstance(res, ScalarField)
     np.testing.assert_almost_equal(res.data, grid.axes_coords[0] ** 2)
 
-    res = evaluate("outer(v, v)", {"v": vec})
+    res = evaluate("outer(v, v)", {"v": vec}, backend=backend)
     assert isinstance(res, Tensor2Field)
     np.testing.assert_almost_equal(res.data, [[grid.axes_coords[0] ** 2]])
 
-    assert isinstance(evaluate("gradient(a)", {"a": field}), VectorField)
+    assert isinstance(
+        evaluate("gradient(a)", {"a": field}, backend=backend), VectorField
+    )
 
 
-def test_evaluate_func_invalid():
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_evaluate_func_invalid(backend):
     """Test the evaluate function with invalid data."""
     field = ScalarField.from_expression(UnitGrid([3]), "x")
 
     with pytest.raises(ValueError):
-        evaluate("x", {})
+        evaluate("x", {}, backend=backend)
 
     with pytest.raises(ValueError):
-        evaluate("x", {"x": field})
+        evaluate("x", {"x": field}, backend=backend)
 
     field2 = ScalarField.from_expression(UnitGrid([4]), "x")
     with pytest.raises(ValueError):
-        evaluate("a + b", {"a": field, "b": field2})
+        evaluate("a + b", {"a": field, "b": field2}, backend=backend)
 
     with pytest.raises(BCDataError):
-        evaluate("laplace(a)", {"a": field}, bc=Ellipsis)
+        evaluate("laplace(a)", {"a": field}, bc=Ellipsis, backend=backend)
 
     with pytest.raises(RuntimeError):
-        evaluate("a + b", {"a": field})
+        evaluate("a + b", {"a": field}, backend=backend)
 
 
 def test_evaluate_func_bcs_warning(caplog):
@@ -421,19 +529,21 @@ def test_evaluate_func_bcs_warning(caplog):
     assert "Unused" in caplog.text
 
 
-def test_evaluate_func_collection():
+# TODO: Support numba
+@pytest.mark.parametrize("backend", ALL_BACKENDS_NO_NUMBA, indirect=True)
+def test_evaluate_func_collection(backend):
     """Test the evaluate function with a field collection."""
     grid = UnitGrid([3])
     field = ScalarField.from_expression(grid, "x")
     vec = VectorField.from_expression(grid, ["x"])
     col = FieldCollection({"v": vec, "a": field})
 
-    res = evaluate("inner(v, v)", col)
+    res = evaluate("inner(v, v)", col, backend=backend)
     assert isinstance(res, ScalarField)
     np.testing.assert_almost_equal(res.data, grid.axes_coords[0] ** 2)
 
-    assert isinstance(evaluate("gradient(a)", col), VectorField)
-    assert isinstance(evaluate("a * v", col), VectorField)
+    assert isinstance(evaluate("gradient(a)", col, backend=backend), VectorField)
+    assert isinstance(evaluate("a * v", col, backend=backend), VectorField)
 
     col.labels = ["a", "a"]
     with pytest.raises(RuntimeError):
@@ -455,3 +565,16 @@ def test_expression_repl(rng):
     assert e(4) == 8
     assert e.differentiate("σ").value == 0
     assert e.differentiate("sigma").value == 2
+
+
+def test_expression_signature_consts():
+    """Test the combination of specifying a signature and a constant."""
+    e = ScalarExpression("a * c", signature=["a", "b"], consts={"c": 3})
+    assert e(2, 2) == 6
+    assert e.depends_on("a")
+    assert not e.depends_on("c")
+    assert e.differentiate("a")(6, 7) == 3
+
+    e = ScalarExpression("a * c", signature=["a", "b"], consts={"c": np.arange(3)})
+    np.testing.assert_allclose(e(1, 2), np.arange(3))
+    np.testing.assert_allclose(e.differentiate("a")(6, 7), np.arange(3))

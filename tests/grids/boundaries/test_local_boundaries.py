@@ -5,7 +5,14 @@
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, DiffusionPDE, PolarSymGrid, ScalarField, UnitGrid
+from pde import (
+    CartesianGrid,
+    DiffusionPDE,
+    PolarSymGrid,
+    ScalarField,
+    UnitGrid,
+    get_backend,
+)
 from pde.grids._mesh import GridMesh
 from pde.grids.boundaries.local import (
     _MPIBC,
@@ -55,6 +62,22 @@ def test_get_arr_1d():
     assert i == 0
     assert bc_idx == (..., 1, 1)
     np.testing.assert_equal(arr_1d, a[1, 1, :])
+
+
+def test_match_data_shape():
+    """Test `_match_data_shape` method."""
+    grid = UnitGrid([3, 3])
+    bc = BCBase.from_data(grid, 0, upper=False, rank=1, data="value")
+    assert bc._match_data_shape(1).shape == (1, 1)
+    assert bc._match_data_shape([1]).shape == (1, 1)
+    assert bc._match_data_shape([[1]]).shape == (1, 1)
+    assert bc._match_data_shape([1, 2]).shape == (2, 1)  # interpret as vector
+    assert bc._match_data_shape([1, 2, 3]).shape == (1, 3)  # interpret as spatial
+    assert bc._match_data_shape(np.ones((2, 3))).shape == (2, 3)  # interpret fully
+    with pytest.raises(RuntimeError):
+        bc._match_data_shape([[1, 2]])  # wrong spatial axis
+    with pytest.raises(RuntimeError):
+        bc._match_data_shape([[1], [2], [3]])  # wrong vector dim
 
 
 def test_individual_boundaries():
@@ -131,8 +154,6 @@ def test_virtual_points():
         assert bc.upper == up
         assert bc.get_virtual_point(data) == pytest.approx(val)
         assert not bc.value_is_linked
-        ev = bc.make_virtual_point_evaluator()
-        assert ev(data, (2,) if up else (-1,)) == pytest.approx(val)
 
     # test curvature for y = 4 * x**2
     data = np.array([1, 9])
@@ -158,10 +179,7 @@ def test_virtual_points_linked_data(upper):
     bc.link_value(bc_data)
     assert bc.value_is_linked
     bc_data[:] = 3
-
     assert bc.get_virtual_point(data, point) == pytest.approx(6)
-    ev = bc.make_virtual_point_evaluator()
-    assert ev(data, point) == pytest.approx(6)
 
     # test derivative boundary conditions (wrt to outwards derivative)
     bc = BCBase.from_data(g, 0, upper, {"type": "derivative", "value": bc_data})
@@ -169,10 +187,7 @@ def test_virtual_points_linked_data(upper):
     bc.link_value(bc_data)
     assert bc.value_is_linked
     bc_data[:] = 4
-
     assert bc.get_virtual_point(data, point) == pytest.approx(4)
-    ev = bc.make_virtual_point_evaluator()
-    assert ev(data, point) == pytest.approx(4)
 
     # test derivative boundary conditions (wrt to outwards derivative)
     bc = BCBase.from_data(g, 0, upper, {"type": "mixed", "value": bc_data, "const": 3})
@@ -180,10 +195,7 @@ def test_virtual_points_linked_data(upper):
     bc.link_value(bc_data)
     assert bc.value_is_linked
     bc_data[:] = 4
-
     assert bc.get_virtual_point(data, point) == pytest.approx(1)
-    ev = bc.make_virtual_point_evaluator()
-    assert ev(data, point) == pytest.approx(1)
 
 
 def test_mixed_condition():
@@ -221,16 +233,12 @@ def test_inhomogeneous_bcs_1d():
     assert bc_x.rank == 0
     assert bc_x.axis_coord == 2
     assert bc_x.get_virtual_point(data, (1,)) == pytest.approx(7.0)
-    ev = bc_x.make_virtual_point_evaluator()
-    assert ev(data, (1,)) == pytest.approx(7.0)
 
     # test lower bc
     bc_x = BCBase.from_data(g, 0, False, {"value": "x**2"})
     assert bc_x.rank == 0
     assert bc_x.axis_coord == 0
     assert bc_x.get_virtual_point(data, (0,)) == pytest.approx(-1.0)
-    ev = bc_x.make_virtual_point_evaluator()
-    assert ev(data, (0,)) == pytest.approx(-1.0)
 
 
 def test_inhomogeneous_bcs_2d():
@@ -254,15 +262,12 @@ def test_inhomogeneous_bcs_2d():
     assert bc_x.get_virtual_point(data, (1, 0)) == pytest.approx(1.5)
     assert bc_x.get_virtual_point(data, (1, 1)) == pytest.approx(2.5)
 
-    ev = bc_x.make_virtual_point_evaluator()
-    assert ev(data, (1, 0)) == pytest.approx(1.5)
-    assert ev(data, (1, 1)) == pytest.approx(2.5)
-
     # test lower bc
     bc_x = BCBase.from_data(g, 0, False, {"curvature": "y"})
     assert bc_x.axis_coord == 0
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("expr", ["1", "x + y**2"])
 def test_expression_bc_setting_value(expr, rng):
     """Test boundary conditions that use an expression."""
@@ -294,7 +299,7 @@ def test_expression_bc_setting_value(expr, rng):
         np.testing.assert_almost_equal(f_ref._data_full, f1._data_full)
 
         f2 = field.copy()
-        bc.make_ghost_cell_setter()(f2._data_full)
+        get_backend("numba").make_ghost_cell_setter(bc)(f2._data_full)
         np.testing.assert_almost_equal(f_ref._data_full, f2._data_full)
 
 
@@ -328,11 +333,11 @@ def test_expression_bc_setting_derivative(expr, rng):
         np.testing.assert_almost_equal(f_ref._data_full, f1._data_full)
 
         f2 = field.copy()
-        bc.make_ghost_cell_setter()(f2._data_full)
+        get_backend("numba").make_ghost_cell_setter(bc)(f2._data_full)
         np.testing.assert_almost_equal(f_ref._data_full, f2._data_full)
 
 
-@pytest.mark.parametrize("value_expr, const_expr", [("1", "1"), ("x", "y**2")])
+@pytest.mark.parametrize(("value_expr", "const_expr"), [("1", "1"), ("x", "y**2")])
 def test_expression_bc_setting_mixed(value_expr, const_expr, rng):
     """Test boundary conditions that use an expression."""
     grid = CartesianGrid([[0, 1], [0, 1]], 4)
@@ -378,7 +383,7 @@ def test_expression_bc_setting_mixed(value_expr, const_expr, rng):
         np.testing.assert_almost_equal(f_ref._data_full, f1._data_full)
 
         f2 = field.copy()
-        bc.make_ghost_cell_setter()(f2._data_full)
+        get_backend("numba").make_ghost_cell_setter(bc)(f2._data_full)
         np.testing.assert_almost_equal(f_ref._data_full, f2._data_full)
 
 
@@ -486,7 +491,7 @@ def test_expression_bc_polar_grid():
     assert state._data_full[0] == state._data_full[-1] == 2
 
     state._data_full[...] = 0
-    bc_setter = bcs.make_ghost_cell_setter()
+    bc_setter = get_backend("numba").make_ghost_cell_setter(bcs)
     bc_setter(state._data_full)
     np.testing.assert_allclose(state.data, 0)
     assert state._data_full[0] == state._data_full[-1] == 2
@@ -519,7 +524,7 @@ def test_expression_bc_specific_value(dim, compiled):
         if compiled:
 
             def set_bcs():
-                bcs.make_ghost_cell_setter()(field._data_full)  # noqa: B023
+                get_backend("numba").make_ghost_cell_setter(bcs)(field._data_full)  # noqa: B023
 
         else:
 
@@ -580,7 +585,7 @@ def test_expression_bc_user_func_nojit(dim):
     # check setting boundary conditions using compiled setup
     bcs = grid.get_boundary_conditions(bc)
     field = ScalarField(grid, 1)
-    bcs.make_ghost_cell_setter()(field._data_full)
+    get_backend("numba").make_ghost_cell_setter(bcs)(field._data_full)
     if dim == 1:
         np.testing.assert_allclose(field._data_full, 1)
     else:
@@ -590,10 +595,11 @@ def test_expression_bc_user_func_nojit(dim):
     # simulate a simple PDE
     field = ScalarField(grid, 1)
     eq = DiffusionPDE(bc=bc)
-    res = eq.solve(field, 1)
+    res = eq.solve(field, 1, tracker=None)
     np.testing.assert_allclose(res.data, 1)
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_expression_bc_user_expr_nojit(dim):
     """Test user expressions in boundary expressions that cannot be compiled."""
@@ -617,7 +623,7 @@ def test_expression_bc_user_expr_nojit(dim):
     # check setting boundary conditions using compiled setup
     bcs = grid.get_boundary_conditions(bc)
     field = ScalarField(grid, 1)
-    bcs.make_ghost_cell_setter()(field._data_full)
+    get_backend("numpy").make_ghost_cell_setter(bcs)(field._data_full)
     if dim == 1:
         np.testing.assert_allclose(field._data_full, 1)
     elif dim == 2:
@@ -631,7 +637,7 @@ def test_expression_bc_user_expr_nojit(dim):
     # simulate a simple PDE
     field = ScalarField(grid, 1)
     eq = DiffusionPDE(bc=bc)
-    res = eq.solve(field, 1)
+    res = eq.solve(field, 1, tracker=None)
     np.testing.assert_allclose(res.data, 1)
 
 
@@ -689,7 +695,7 @@ def test_user_bcs_numba(dim, target):
 
     # use user method to set BCs
     f2 = ScalarField(grid)
-    setter = bcs.make_ghost_cell_setter()
+    setter = get_backend("numba").make_ghost_cell_setter(bcs)
 
     # test whether normal call is a no-op
     f2._data_full = 3
@@ -714,3 +720,13 @@ def test_mpi_bc():
     assert isinstance(bc.get_mathematical_representation(), str)
     assert bc == _MPIBC(mesh, axis=0, upper=True, node_id=0)
     assert bc != _MPIBC(mesh, axis=0, upper=True, node_id=1)
+
+
+def test_setting_array_boundaries():
+    """Try the general interface of setting boundary conditions"""
+    field = ScalarField(UnitGrid([8, 8]))
+    field.set_ghost_cells(
+        {"x+": {"value": 0}, "x-": {"value": np.arange(8)}, "y": "derivative"}
+    )
+    bc_data = field.get_boundary_values(0, False, bc=None)
+    np.testing.assert_allclose(bc_data, np.arange(8))

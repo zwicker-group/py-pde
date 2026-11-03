@@ -1,14 +1,25 @@
-"""
+"""Base classes for coordinate systems.
+
+.. autosummary::
+   :nosignatures:
+
+   CoordinatesBase
+   DimensionError
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
 
-import warnings
+from typing import TYPE_CHECKING
 
 import numpy as np
-from numpy.typing import ArrayLike
 from scipy import integrate, optimize
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+
+    from ...tools.typing import FloatingArray
 
 
 class DimensionError(ValueError):
@@ -16,7 +27,7 @@ class DimensionError(ValueError):
 
 
 class CoordinatesBase:
-    """Base class for orthonormal coordinate systems."""
+    """Base class for coordinate systems."""
 
     # properties that are defined in subclasses
     dim: int
@@ -40,11 +51,11 @@ class CoordinatesBase:
                 res[axes_alt] = axes_name
         return res
 
-    def _pos_to_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_to_cart(self, points: FloatingArray) -> FloatingArray:
         # actual calculation needs to be implemented by sub-class
         raise NotImplementedError
 
-    def pos_to_cart(self, points: np.ndarray, *, axis: int = -1) -> np.ndarray:
+    def pos_to_cart(self, points: FloatingArray, *, axis: int = -1) -> FloatingArray:
         """Convert coordinates to Cartesian coordinates.
 
         Args:
@@ -58,17 +69,17 @@ class CoordinatesBase:
         """
         points = np.atleast_1d(points)
         if points.shape[axis] != self.dim:
-            raise DimensionError(f"Shape {points.shape} cannot denote points")
+            msg = f"Shape {points.shape} cannot denote points"
+            raise DimensionError(msg)
         if axis == -1 or axis == self.dim - 1:
             return self._pos_to_cart(points)
-        else:
-            return np.apply_along_axis(self._pos_to_cart, axis, points)
+        return np.apply_along_axis(self._pos_to_cart, axis, points)
 
-    def _pos_from_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_from_cart(self, points: FloatingArray) -> FloatingArray:
         # actual calculation needs to be implemented by sub-class
         raise NotImplementedError
 
-    def pos_from_cart(self, points: np.ndarray, *, axis: int = -1) -> np.ndarray:
+    def pos_from_cart(self, points: FloatingArray, *, axis: int = -1) -> FloatingArray:
         """Convert Cartesian coordinates to coordinates in this system.
 
         Args:
@@ -82,13 +93,15 @@ class CoordinatesBase:
         """
         points = np.atleast_1d(points)
         if points.shape[axis] != self.dim:
-            raise DimensionError(f"Shape {points.shape} cannot denote points")
+            msg = f"Shape {points.shape} cannot denote points"
+            raise DimensionError(msg)
         if axis == -1 or axis == self.dim - 1:
             return self._pos_from_cart(points)
-        else:
-            return np.apply_along_axis(self._pos_from_cart, axis, points)
+        return np.apply_along_axis(self._pos_from_cart, axis, points)
 
-    def distance(self, p1: np.ndarray, p2: np.ndarray, *, axis: int = -1) -> float:
+    def distance(
+        self, p1: FloatingArray, p2: FloatingArray, *, axis: int = -1
+    ) -> float | FloatingArray:
         """Calculate the distance between two points.
 
         Args:
@@ -100,17 +113,19 @@ class CoordinatesBase:
                 Determines the axis along which the coordinates of the points are given
 
         Returns:
-            float: Distance between the two positions
+            float or :class:`~numpy.ndarray`: Distance between the positions. A scalar
+            is returned for individual points; an array is returned for vectorized
+            inputs.
         """
         # this can be overwritten if a more efficient calculation is possible
         x1 = self.pos_to_cart(p1, axis=axis)
         x2 = self.pos_to_cart(p2, axis=axis)
-        return np.linalg.norm(x2 - x1, axis=axis)  # type: ignore
+        return np.linalg.norm(x2 - x1, axis=axis)
 
-    def _scale_factors(self, points: np.ndarray) -> np.ndarray:
+    def _scale_factors(self, points: FloatingArray) -> FloatingArray:
         return np.diag(self.metric(points)) ** 2
 
-    def scale_factors(self, points: np.ndarray) -> np.ndarray:
+    def scale_factors(self, points: FloatingArray) -> FloatingArray:
         """Calculate the scale factors at various points.
 
         Args:
@@ -122,21 +137,24 @@ class CoordinatesBase:
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != self.dim:
-            raise DimensionError(f"Shape {points.shape} cannot denote points")
+            msg = f"Shape {points.shape} cannot denote points"
+            raise DimensionError(msg)
         return self._scale_factors(points)
 
-    def _mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
+    def _mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
         # Basic implementation based on finite difference, which should be overwritten
         # using analytical expressions for speed and accuracy
-        jac = np.apply_along_axis(
-            lambda p: optimize.approx_fprime(p, self.pos_to_cart), 0, points
+        jac: FloatingArray = np.apply_along_axis(  # type: ignore
+            lambda p: optimize.approx_fprime(p, self.pos_to_cart),  # type: ignore
+            axis=0,
+            arr=points,
         )
         if self.dim == 1 and jac.ndim != points.ndim + 1:
             # this happens with some versions of scipy, which collapses dimensions
             jac = jac[..., np.newaxis]
         return jac
 
-    def mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
+    def mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
         """Returns the Jacobian matrix of the coordinate mapping.
 
         Args:
@@ -148,14 +166,15 @@ class CoordinatesBase:
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != self.dim:
-            raise DimensionError(f"Shape {points.shape} cannot denote points")
+            msg = f"Shape {points.shape} cannot denote points"
+            raise DimensionError(msg)
         return self._mapping_jacobian(points)
 
-    def _volume_factor(self, points: np.ndarray) -> ArrayLike:
+    def _volume_factor(self, points: FloatingArray) -> ArrayLike:
         # default implementation based on scale factors
-        return np.prod(self._scale_factors(points), axis=0)  # type: ignore
+        return np.prod(self._scale_factors(points), axis=0)
 
-    def volume_factor(self, points: np.ndarray) -> ArrayLike:
+    def volume_factor(self, points: FloatingArray) -> ArrayLike:
         """Calculate the volume factors at various points.
 
         Args:
@@ -167,20 +186,24 @@ class CoordinatesBase:
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != self.dim:
-            raise DimensionError(f"Shape {points.shape} cannot denote points")
+            msg = f"Shape {points.shape} cannot denote points"
+            raise DimensionError(msg)
         return self._volume_factor(points)
 
-    def _cell_volume(self, c_low: np.ndarray, c_high: np.ndarray) -> np.ndarray:
+    def _cell_volume(
+        self, c_low: FloatingArray, c_high: FloatingArray
+    ) -> FloatingArray:
         # Basic implementation based on numerical integration, which should be
         # overwritten if the integration can be done analytically
         cell_volumes = np.empty(c_low.shape[:-1])
         for i in np.ndindex(*cell_volumes.shape):
             cell_volumes[i] = integrate.nquad(
-                lambda *x: self._volume_factor(np.array(x)), np.c_[c_low[i], c_high[i]]
+                lambda *x: self._volume_factor(np.array(x)),  # type: ignore
+                ranges=np.c_[c_low[i], c_high[i]],
             )[0]
         return cell_volumes
 
-    def cell_volume(self, c_low: np.ndarray, c_high: np.ndarray) -> np.ndarray:
+    def cell_volume(self, c_low: FloatingArray, c_high: FloatingArray) -> FloatingArray:
         """Calculate the volume between coordinate lines.
 
         Args:
@@ -194,13 +217,15 @@ class CoordinatesBase:
         """
         c_low = np.atleast_1d(c_low)
         if c_low.shape[-1] != self.dim:
-            raise DimensionError(f"Shape {c_low.shape} cannot denote points")
+            msg = f"Shape {c_low.shape} cannot denote points"
+            raise DimensionError(msg)
         c_high = np.atleast_1d(c_high)
         if c_high.shape[-1] != self.dim:
-            raise DimensionError(f"Shape {c_high.shape} cannot denote points")
+            msg = f"Shape {c_high.shape} cannot denote points"
+            raise DimensionError(msg)
         return self._cell_volume(c_low, c_high)
 
-    def metric(self, points: np.ndarray) -> np.ndarray:
+    def metric(self, points: FloatingArray) -> FloatingArray:
         """Calculate the metric tensor at coordinate points.
 
         Args:
@@ -212,14 +237,14 @@ class CoordinatesBase:
         """
         # This general implementation assumes that the metric is diagonal!
         points = np.atleast_1d(points)
-        metric = np.zeros((self.dim, self.dim) + points.shape[:-1])
+        metric = np.zeros((self.dim, self.dim, *points.shape[:-1]))
         metric[range(self.dim), range(self.dim)] = self.scale_factors(points) ** 2
         return metric
 
-    def _basis_rotation(self, points: np.ndarray) -> np.ndarray:
+    def _basis_rotation(self, points: FloatingArray) -> FloatingArray:
         raise NotImplementedError
 
-    def basis_rotation(self, points: np.ndarray) -> np.ndarray:
+    def basis_rotation(self, points: FloatingArray) -> FloatingArray:
         """Returns rotation matrix rotating basis vectors to Cartesian coordinates.
 
         Args:
@@ -227,16 +252,19 @@ class CoordinatesBase:
                 Coordinates of the point(s)
 
         Returns:
-            :class:`~numpy.ndarray`: Rotation matrices for all points. The returned array
-            has the shape `(dim, dim) + points_shape`, assuming `points` has the shape
-            `points_shape + (dim,)`.
+            :class:`~numpy.ndarray`: Rotation matrices for all points. The returned
+            array has the shape `(dim, dim) + points_shape`, assuming `points` has the
+            shape `points_shape + (dim,)`.
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != self.dim:
-            raise DimensionError(f"Shape {points.shape} cannot denote points")
+            msg = f"Shape {points.shape} cannot denote points"
+            raise DimensionError(msg)
         return self._basis_rotation(points)
 
-    def vec_to_cart(self, points: np.ndarray, components: np.ndarray) -> np.ndarray:
+    def vec_to_cart(
+        self, points: FloatingArray, components: FloatingArray
+    ) -> FloatingArray:
         """Convert the vectors at given points to a Cartesian basis.
 
         Args:
@@ -251,16 +279,19 @@ class CoordinatesBase:
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != self.dim:
-            raise DimensionError(f"Shape {points.shape} cannot denote points")
+            msg = f"Shape {points.shape} cannot denote points"
+            raise DimensionError(msg)
         shape = points.shape[:-1]  # shape of array describing the different points
-        vec_shape = (self.dim,) + shape
+        vec_shape = (self.dim, *shape)
 
         components = np.atleast_1d(components)
         if components.shape != vec_shape:
-            raise DimensionError(f"`components` must have shape {vec_shape}")
+            msg = f"`components` must have shape {vec_shape}"
+            raise DimensionError(msg)
 
         # convert the basis of the vectors to Cartesian
         basis = self.basis_rotation(points)
-        if basis.shape != (self.dim, self.dim) + shape:
-            raise DimensionError("Incompatible dimensions in rotation matrix")
+        if basis.shape != (self.dim, self.dim, *shape):
+            msg = "Incompatible dimensions in rotation matrix"
+            raise DimensionError(msg)
         return np.einsum("j...,ji...->i...", components, basis)  # type: ignore

@@ -6,62 +6,52 @@
 from __future__ import annotations
 
 import json
+import math
 import warnings
-from collections.abc import Iterator, Mapping, Sequence
-from typing import Any, Callable, Literal, overload
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
-from matplotlib import cm
-from matplotlib.colors import LinearSegmentedColormap, Normalize
-from numpy.typing import DTypeLike
 
-try:
-    from matplotlib import colormaps
-except ImportError:
-    # fall-back to access cm.get_cmap
-    from matplotlib import cm as colormaps  # type: ignore
-
-from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import Number, number_array
+from ..tools.misc import number_array
 from ..tools.plotting import PlotReference, plot_on_axes, plot_on_figure
-from ..tools.typing import NumberOrArray
 from .base import FieldBase
 from .datafield_base import DataFieldBase
 from .scalar import ScalarField
+
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from ..grids.base import GridBase
+    from ..tools.typing import Number, NumberOrArray, NumericArray
 
 
 class FieldCollection(FieldBase):
     """Collection of fields defined on the same grid.
 
     Note:
-        All fields in a collection must have the same data type. This might lead to
-        up-casting, where for instance a combination of a real-valued and a
-        complex-valued field will be both stored as complex fields.
+        Collections are initialized with a list of individual fields, whose data is
+        copied into the collection, so that changing the original fields will not change
+        the collection. All fields in a collection must have the same data type. This
+        might lead to up-casting, where for instance a combination of a real-valued and
+        a complex-valued field will be both stored as complex fields.
     """
 
     def __init__(
         self,
         fields: Sequence[DataFieldBase] | Mapping[str, DataFieldBase],
         *,
-        copy_fields: bool = False,
         label: str | None = None,
         labels: list[str | None] | _FieldLabels | None = None,
-        dtype: DTypeLike = None,
+        dtype: DTypeLike | None = None,
+        copy_fields: bool | None = None,
     ):
         """
         Args:
             fields (sequence or mapping of :class:`DataFieldBase`):
                 Sequence or mapping of the individual fields. If a mapping is used, the
                 keys set the names of the individual fields.
-            copy_fields (bool):
-                Flag determining whether the individual fields given in `fields` are
-                copied. Note that fields are always copied if some of the supplied
-                fields are identical. If fields are copied the original fields will be
-                left untouched. Conversely, if `copy_fields == False`, the original
-                fields are modified so their data points to the collection. It is thus
-                basically impossible to have fields that are linked to multiple
-                collections at the same time.
             label (str):
                 Label of the field collection
             labels (list of str):
@@ -69,7 +59,9 @@ class FieldCollection(FieldBase):
                 `fields` argument are used.
             dtype (numpy dtype):
                 The data type of the field. All the numpy dtypes are supported. If
-                omitted, it will be determined from `data` automatically.
+                omitted, it will be  automatically determined from the given fields.
+            copy_fields (bool):
+                Deprecated option.
         """
         if isinstance(fields, FieldCollection):
             # support assigning a field collection for convenience
@@ -82,58 +74,64 @@ class FieldCollection(FieldBase):
             fields = list(fields.values())
 
         if len(fields) == 0:
-            raise ValueError("At least one field must be defined")
+            msg = "At least one field must be defined"
+            raise ValueError(msg)
+
+        # `copy_fields` is deprecated since 2026-09-26
+        if copy_fields is not None:
+            warnings.warn(
+                "The `copy_fields` argument is deprecated and linking fields is no "
+                "longer supported.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         # check if grids are compatible
         grid = fields[0].grid
         if any(grid != f.grid for f in fields[1:]):
             grids = [f.grid for f in fields]
-            raise RuntimeError(f"Grids are incompatible: {grids}")
+            msg = f"Grids are incompatible: {grids}"
+            raise RuntimeError(msg)
 
-        # check whether some fields are identical
-        if not copy_fields and len(fields) != len({id(field) for field in fields}):
-            self._logger.warning("Creating a copy of identical fields in collection")
-            copy_fields = True
-
-        # create the list of underlying fields
-        if copy_fields:
-            self._fields = [field.copy() for field in fields]
-        else:
-            self._fields = fields  # type: ignore
-
-        # extract data from individual fields
-        fields_data: list[np.ndarray] = []
+        # collect data from individual fields and store it in a flattened array
+        fields_data: list[NumericArray] = []
         self._slices: list[slice] = []
-        dof = 0  # count local degrees of freedom
-        for field in self.fields:
+        for field in fields:
             if not isinstance(field, DataFieldBase):
-                raise RuntimeError(
-                    "Individual fields must be of type DataFieldBase. Field "
+                msg = (
+                    "Individual fields must be of type `DataFieldBase`. Field "
                     "collections cannot be nested."
                 )
+                raise TypeError(msg)
             start = len(fields_data)
             this_data = field._data_flat
             fields_data.extend(this_data)
             self._slices.append(slice(start, len(fields_data)))
-            dof += len(this_data)
 
         # initialize the data from the individual fields
-        data_arr = number_array(fields_data, dtype=dtype, copy=None)
+        data_arr = number_array(fields_data, dtype=dtype, copy=True)
+        self.data_shape = (len(data_arr),)
 
         # initialize the class
         super().__init__(grid, data_arr, label=label)
 
-        if not copy_fields:
-            # link the data of the original fields back to self._data
-            for i, field in enumerate(self.fields):
-                field_shape = field.data.shape
-                field._data_flat = self._data_full[self._slices[i]]
-
-                # check whether the field data is based on our data field
-                if field.data.shape != field_shape:
-                    raise RuntimeError("Field shapes have changed!")
-                if not np.may_share_memory(field._data_full, self._data_full):
-                    raise RuntimeError("Spurious copy of data detected!")
+        # link the data of the original fields back to self._data
+        self._fields = []
+        for i, external_field in enumerate(fields):
+            # generate internal field object
+            data_shape = external_field._data_full.shape
+            internal_field = external_field.__class__(
+                self.grid,
+                data=self._data_full[self._slices[i]].reshape(data_shape),
+                label=external_field.label,
+                dtype=self.dtype,
+                with_ghost_cells=True,
+            )
+            # check whether the field data is based on our data field
+            if not np.may_share_memory(internal_field._data_full, self._data_full):
+                msg = "Spurious copy of data detected!"
+                raise RuntimeError(msg)
+            self._fields.append(internal_field)
 
         if labels is not None:
             self.labels = labels  # type: ignore
@@ -174,19 +172,20 @@ class FieldCollection(FieldBase):
             # simple numerical index -> return single field
             return self.fields[index]
 
-        elif isinstance(index, str):
+        if isinstance(index, str):
             # index specifying the label of the field -> return a single field
             for field in self.fields:
                 if field.label == index:
                     return field
-            raise KeyError(f"No field with name `{index}`")
+            msg = f"No field with name `{index}`"
+            raise KeyError(msg)
 
-        elif isinstance(index, slice):
+        if isinstance(index, slice):
             # range of indices -> collection is returned
-            return FieldCollection(self.fields[index], copy_fields=True)
+            return FieldCollection(self.fields[index])
 
-        else:
-            raise TypeError(f"Unsupported index `{index}`")
+        msg = f"Unsupported index `{index}`"
+        raise TypeError(msg)
 
     def __setitem__(self, index: int | str, value: NumberOrArray):
         """Set the value of a specific field.
@@ -204,24 +203,26 @@ class FieldCollection(FieldBase):
         # break the connection between the data fields
         if isinstance(index, int):
             # simple numerical index
-            self.fields[index].data = value  # type: ignore
+            self.fields[index].data = value
 
         elif isinstance(index, str):
             # index specifying the label of the field
             for field in self.fields:
                 if field.label == index:
-                    field.data = value  # type: ignore
+                    field.data = value
                     break  # indicates that a field has been found
             else:
-                raise KeyError(f"No field with name `{index}`")
+                msg = f"No field with name `{index}`"
+                raise KeyError(msg)
 
         else:
-            raise TypeError(f"Unsupported index `{index}`")
+            msg = f"Unsupported index `{index}`"
+            raise TypeError(msg)
 
     @property
     def fields(self) -> list[DataFieldBase]:
         """list: the fields of this collection"""
-        # return shallow copy of list so the internal list is not modified accidentially
+        # return shallow copy of list so the internal list is not modified accidentally
         return self._fields[:]
 
     @property
@@ -240,8 +241,9 @@ class FieldCollection(FieldBase):
     def labels(self, values: list[str | None]):
         """Sets the labels of all fields."""
         if len(values) != len(self):
-            raise ValueError("Require a label for each field")
-        for field, value in zip(self.fields, values):
+            msg = "Require a label for each field"
+            raise ValueError(msg)
+        for field, value in zip(self.fields, values, strict=False):
             field.label = value
 
     def __eq__(self, other):
@@ -252,7 +254,9 @@ class FieldCollection(FieldBase):
 
     @classmethod
     def from_state(
-        cls, attributes: dict[str, Any], data: np.ndarray | None = None
+        cls,
+        attributes: dict[str, Any],
+        data: NumericArray | Literal["empty", "zeros", "ones"] | None = None,
     ) -> FieldCollection:
         """Create a field collection from given state.
 
@@ -275,8 +279,20 @@ class FieldCollection(FieldBase):
         # create the collection
         collection = cls(fields, **attributes)  # type: ignore
 
-        if data is not None:
-            collection.data = data  # set the data of all fields
+        if data is None:
+            pass  # data will not be set
+        elif isinstance(data, str):
+            if data == "empty":
+                pass  # data will not be set
+            elif data == "zeros":
+                collection.data = 0
+            elif data == "ones":
+                collection.data = 1
+            else:
+                msg = f"Data `{data}` is not accepted."
+                raise ValueError(msg)
+        else:
+            collection.data = np.asanyarray(data)  # set the data of all fields
 
         return collection
 
@@ -285,12 +301,12 @@ class FieldCollection(FieldBase):
         cls,
         field_classes,
         grid: GridBase,
-        data: np.ndarray,
+        data: NumericArray,
         *,
         with_ghost_cells: bool = True,
         label: str | None = None,
         labels: list[str | None] | _FieldLabels | None = None,
-        dtype: DTypeLike = None,
+        dtype: DTypeLike | None = None,
     ) -> FieldCollection:
         """Create a field collection from classes and data.
 
@@ -318,7 +334,8 @@ class FieldCollection(FieldBase):
         start = 0
         for field_class in field_classes:
             if not issubclass(field_class, DataFieldBase):
-                raise RuntimeError("Individual fields must be of type DataFieldBase.")
+                msg = "Individual fields must be of type DataFieldBase."
+                raise TypeError(msg)
             field = field_class(grid)
             end = start + grid.num_axes**field.rank
             if with_ghost_cells:
@@ -328,7 +345,7 @@ class FieldCollection(FieldBase):
             fields.append(field)
             start = end
 
-        return cls(fields, copy_fields=False, label=label, labels=labels, dtype=dtype)
+        return cls(fields, label=label, labels=labels, dtype=dtype)
 
     @classmethod
     def _from_hdf_dataset(cls, dataset) -> FieldCollection:
@@ -368,13 +385,13 @@ class FieldCollection(FieldBase):
             other (FieldBase): Other field this is compared to
             accept_scalar (bool, optional): Determines whether it is acceptable
                 that `other` is an instance of
-                :class:`~pde.fields.ScalarField`.
+                :class:`~pde.fields.scalar.ScalarField`.
         """
         super().assert_field_compatible(other, accept_scalar=accept_scalar)
 
         # check whether all sub fields are compatible
         if isinstance(other, FieldCollection):
-            for f1, f2 in zip(self, other):
+            for f1, f2 in zip(self, other, strict=False):
                 f1.assert_field_compatible(f2, accept_scalar=accept_scalar)
 
     @classmethod
@@ -388,7 +405,7 @@ class FieldCollection(FieldBase):
         consts: dict[str, NumberOrArray] | None = None,
         label: str | None = None,
         labels: Sequence[str] | None = None,
-        dtype: DTypeLike = None,
+        dtype: DTypeLike | None = None,
     ) -> FieldCollection:
         """Create a field collection on a grid from given expressions.
 
@@ -435,7 +452,7 @@ class FieldCollection(FieldBase):
                 label=sublabel,
                 dtype=dtype,
             )
-            for expression, sublabel in zip(expressions, labels)
+            for expression, sublabel in zip(expressions, labels, strict=False)
         ]
 
         # create vector field from the data
@@ -476,6 +493,51 @@ class FieldCollection(FieldBase):
         return cls(
             [
                 ScalarField.random_uniform(grid, vmin, vmax, label=labels[i], rng=rng)
+                for i in range(num_fields)
+            ],
+            label=label,
+        )
+
+    @classmethod
+    def scalar_random_normal(
+        cls,
+        num_fields: int,
+        grid: GridBase,
+        mean: float = 0,
+        std: float = 1,
+        *,
+        label: str | None = None,
+        labels: Sequence[str] | None = None,
+        **kwargs,
+    ) -> FieldCollection:
+        r"""Creates Gaussian random fields with normal distributed random values.
+
+        Details of methods and additional options are described in
+        :func:`~pde.fields.datafield_base.DataFieldBase.random_normal`.
+
+        Args:
+            num_fields (int):
+                The number of fields to create
+            grid (:class:`~pde.grids.base.GridBase`):
+                Grid defining the space on which this field is defined
+            mean (float):
+                Mean of the Gaussian distribution
+            std (float):
+                Standard deviation of the Gaussian distribution
+            label (str, optional):
+                Name of the returned field
+            labels (list of str, optional):
+                Names of the individual fields
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
+            **kwargs:
+                Additional parameters can affect details of the correlation function.
+        """
+        if labels is None:
+            labels = [None] * num_fields  # type: ignore
+        return cls(
+            [
+                ScalarField.random_normal(grid, mean, std, label=labels[i], **kwargs)
                 for i in range(num_fields)
             ],
             label=label,
@@ -535,7 +597,7 @@ class FieldCollection(FieldBase):
         self: FieldCollection,
         *,
         label: str | None = None,
-        dtype: DTypeLike = None,
+        dtype: DTypeLike | None = None,
     ) -> FieldCollection:
         """Return a copy of the data, but not of the grid.
 
@@ -551,7 +613,7 @@ class FieldCollection(FieldBase):
         fields = [f.copy() for f in self.fields]
 
         # create the collection from the copied fields
-        return self.__class__(fields, copy_fields=False, label=label, dtype=dtype)
+        return self.__class__(fields, label=label, dtype=dtype)
 
     def append(
         self,
@@ -560,8 +622,13 @@ class FieldCollection(FieldBase):
     ) -> FieldCollection:
         """Create new collection with appended field(s)
 
+        Warning:
+            Appending fields requires a full copy of the data. Moreover, links to other
+            fields will not be copied, but these links stay with the original
+            collection.
+
         Args:
-            fields (`FieldCollection` or `DataFieldBase`):
+            *fields (`FieldCollection` or `DataFieldBase`):
                 A sequence of single fields or collection of fields that will be
                 appended to the fields in the current collection. The data of all fields
                 will be copied.
@@ -583,11 +650,30 @@ class FieldCollection(FieldBase):
                 _labels.append(field.label)
 
         return FieldCollection(
-            _fields,
-            copy_fields=True,
-            label=self.label if label is None else label,
-            labels=_labels,
+            _fields, label=self.label if label is None else label, labels=_labels
         )
+
+    def _apply_to_fields(
+        self,
+        func: Callable[[DataFieldBase], DataFieldBase],
+        *,
+        label: str | None = None,
+    ) -> FieldCollection:
+        """Apply function to every individual field.
+
+        Args:
+            func (callable):
+                Function applied to every field of this collections
+            label (str, optional):
+                Name of the returned collection. If omitted, the current label is used.
+
+        Returns:
+            :class:`~pde.fields.collection.FieldCollection`: Modified fields
+        """
+        if label is None:
+            label = self.label
+        fields = [func(fields) for fields in self.fields]
+        return self.__class__(fields, label=label)
 
     def _unary_operation(self: FieldCollection, op: Callable) -> FieldCollection:
         """Perform an unary operation on this field collection.
@@ -623,12 +709,11 @@ class FieldCollection(FieldBase):
                 Name of the returned field collection
 
         Returns:
-            :class:`~pde.fields.coolection.FieldCollection`: Interpolated data
+            :class:`~pde.fields.collection.FieldCollection`: Interpolated data
         """
-        if label is None:
-            label = self.label
-        fields = [f.interpolate_to_grid(grid, fill=fill) for f in self.fields]
-        return self.__class__(fields, label=label)
+        return self._apply_to_fields(
+            lambda f: f.interpolate_to_grid(grid, fill=fill), label=label
+        )
 
     def smooth(
         self,
@@ -642,16 +727,18 @@ class FieldCollection(FieldBase):
         This function respects periodic boundary conditions of the underlying
         grid, using reflection when no periodicity is specified.
 
-        sigma (float):
-            Gives the standard deviation of the smoothing in real length units
-            (default: 1)
-        out (FieldCollection, optional):
-            Optional field into which the smoothed data is stored
-        label (str, optional):
-            Name of the returned field
+        Args:
+            sigma (float):
+                Gives the standard deviation of the smoothing in real length units
+                (default: 1)
+            out (FieldCollection, optional):
+                Optional field into which the smoothed data is stored
+            label (str, optional):
+                Name of the returned field
 
         Returns:
-            Field collection with smoothed data, stored at `out` if given.
+            :class:`~pde.fields.collection.FieldCollection`:
+                Smoothed data, stored at `out` if given.
         """
         # allocate memory for storing output
         if out is None:
@@ -662,7 +749,7 @@ class FieldCollection(FieldBase):
                 out.label = label
 
         # apply Gaussian smoothing for each axis
-        for f_in, f_out in zip(self, out):
+        for f_in, f_out in zip(self, out, strict=False):
             f_in.smooth(sigma=sigma, out=f_out)
 
         return out
@@ -678,9 +765,71 @@ class FieldCollection(FieldBase):
         return [field.average for field in self]
 
     @property
-    def magnitudes(self) -> np.ndarray:
+    def magnitudes(self) -> NumericArray:
         """:class:`~numpy.ndarray`: scalar magnitudes of all fields."""
         return np.array([field.magnitude for field in self])
+
+    def project(
+        self,
+        axes: int | str | Sequence[int | str],
+        *,
+        label: str | None = None,
+        **kwargs,
+    ) -> FieldCollection:
+        """Project fields along given axes.
+
+        This is currently only implemented for scalar fields. If any field in the
+        collection has higher rank, the entire process fails.
+
+        Args:
+            axes (list of int or str):
+                The names of the axes that are removed by the projection operation. The
+                valid names for a given grid are the ones in the :attr:`GridBase.axes`
+                attribute.
+            label (str, optional):
+                Name of the returned collection. If omitted, the current label is used.
+            **kwargs:
+                Additional arguments forwarded to the projection method. In particular,
+                this allows selecting a projection method.
+
+        Returns:
+            :class:`~pde.fields.collection.FieldCollection`:
+                The projected data of all fields on a subgrid of the original grid.
+        """
+        if not all(isinstance(f, ScalarField) for f in self):
+            msg = "All fields must be scalar fields to project data"
+            raise TypeError(msg)
+        return self._apply_to_fields(lambda f: f.project(axes, **kwargs), label=label)  # type: ignore
+
+    def slice(
+        self, position: dict[int | str, float], *, label: str | None = None, **kwargs
+    ) -> FieldCollection:
+        """Slice all fields at a given position.
+
+        This is currently only implemented for scalar fields. If any field in the
+        collection has higher rank, the entire process fails.
+
+        Args:
+            position (dict):
+                Determines the location of the slice using a dictionary supplying
+                coordinate values for a subset of axes. Axes not mentioned in the
+                dictionary are retained and form the slice. For instance, in a 2d
+                Cartesian grid, `position = {'x': 1}` slices along the y-direction at
+                x=1. Additionally, the special positions 'low', 'mid', and 'high' are
+                supported to reference relative positions along the axis.
+            label (str, optional):
+                Name of the returned collection. If omitted, the current label is used.
+            **kwargs:
+                Additional arguments forwarded to the slicing method (e.g., method).
+
+        Returns:
+            :class:`~pde.fields.collection.FieldCollection`:
+                The projected data of all fields on a subgrid of the original grid.
+        """
+        if not all(isinstance(f, ScalarField) for f in self):
+            msg = "All fields must be scalar fields to slice data"
+            raise TypeError(msg)
+        return self._apply_to_fields(lambda f: f.slice(position, **kwargs), label=label)  # type: ignore
 
     def get_line_data(  # type: ignore
         self,
@@ -710,7 +859,7 @@ class FieldCollection(FieldBase):
 
         Args:
             index (int): Index of the field whose data is returned
-            \**kwargs: Arguments forwarded to the `get_image_data` method
+            **kwargs: Arguments forwarded to the `get_image_data` method
 
         Returns:
             dict: Information useful for plotting an image of the field
@@ -727,7 +876,7 @@ class FieldCollection(FieldBase):
         transpose: bool = False,
         vmin: float | list[float | None] | None = None,
         vmax: float | list[float | None] | None = None,
-    ) -> tuple[np.ndarray, dict[str, Any]]:
+    ) -> tuple[NumericArray, dict[str, Any]]:
         """Obtain data required for a merged plot.
 
         Args:
@@ -746,14 +895,20 @@ class FieldCollection(FieldBase):
                 for colormaps specified in `colors`.
             transpose (bool):
                 Determines whether the transpose of the data is plotted
-            vmin, vmax (float, list of float):
-                Define the data range that the color chanels cover. By default, they
-                cover the complete value range of the supplied data.
+            vmin (float or list of float or None):
+                Lower bound of the value range for each color channel. If `None`,
+                the minimum value is determined from the corresponding field.
+            vmax (float or list of float or None):
+                Upper bound of the value range for each color channel. If `None`,
+                the maximum value is determined from the corresponding field.
 
         Returns:
             tuple: a :class:`~numpy.ndarray` of the merged data together with a dict of
             additional information, e.g., about the extent and the axes.
         """
+        from matplotlib import cm, colormaps
+        from matplotlib.colors import LinearSegmentedColormap, Normalize
+
         num_fields = len(self)
         if colors is None:
             colors = [f"C{i}" for i in range(num_fields)]
@@ -791,7 +946,8 @@ class FieldCollection(FieldBase):
         elif projection == "sum":
             rgb_arr = np.sum(arr, axis=0)
         else:
-            raise ValueError(f"Undefined projection `{projection}`")
+            msg = f"Undefined projection `{projection}`"
+            raise ValueError(msg)
         if inverse_projection:
             rgb_arr = 1 - rgb_arr
 
@@ -806,7 +962,8 @@ class FieldCollection(FieldBase):
         """
         # obtain image data
         data_args = reference.parameters.copy()
-        data_args.pop("kind")
+        kind = data_args.pop("kind")
+        assert kind == "merged_image"
         rgb_arr, _ = self._get_merged_image_data(**data_args)
         # update the axes image
         reference.element.set_data(rgb_arr)
@@ -824,7 +981,7 @@ class FieldCollection(FieldBase):
         vmax: float | list[float | None] | None = None,
         **kwargs,
     ) -> PlotReference:
-        r"""Visualize fields by mapping to different color chanels in a 2d density plot.
+        r"""Visualize fields by mapping to different color channels in 2d density plot.
 
         Args:
             ax (:class:`matplotlib.axes.Axes`):
@@ -844,9 +1001,12 @@ class FieldCollection(FieldBase):
                 for colormaps specified in `colors`.
             transpose (bool):
                 Determines whether the transpose of the data is plotted
-            vmin, vmax (float, list of float):
-                Define the data range that the color chanels cover. By default, they
-                cover the complete value range of the supplied data.
+            vmin (float or list of float or None):
+                Lower bound of the value range for each color channel. If `None`,
+                the minimum value is determined from the corresponding field.
+            vmax (float or list of float or None):
+                Upper bound of the value range for each color channel. If `None`,
+                the maximum value is determined from the corresponding field.
             \**kwargs:
                 Additional keyword arguments that affect the image. Non-Cartesian grids
                 might support `performance_goal` to influence how an image is created
@@ -886,6 +1046,103 @@ class FieldCollection(FieldBase):
         }
         return PlotReference(ax, axes_image, parameters)
 
+    def _update_merged_line_plot(self, reference: PlotReference) -> None:
+        """Update a merged line plot with the current field values.
+
+        Args:
+            reference (:class:`PlotReference`):
+                The reference to the plot that is updated
+        """
+        import matplotlib as mpl
+
+        # obtain data for the plot
+        assert reference.parameters.get("kind", "merged_lines") == "merged_lines"
+        scalar = reference.parameters.get("scalar", "auto")
+        extract = reference.parameters.get("extract", "auto")
+
+        line_data = [
+            field.get_line_data(scalar=scalar, extract=extract) for field in self
+        ]
+
+        lines = reference.element
+        for line, data in zip(lines, line_data, strict=True):
+            if isinstance(line, mpl.lines.Line2D):
+                # update old plot
+                line.set_xdata(data["data_x"])
+                line.set_ydata(data["data_y"].real)
+
+            else:
+                msg = f"Unsupported plot reference {reference}"
+                raise TypeError(msg)
+
+    @plot_on_axes(update_method="_update_merged_line_plot")
+    def _plot_merged_lines(
+        self,
+        ax,
+        scalar: str = "auto",
+        extract: str = "auto",
+        ylabel: str | None = None,
+        ylim: tuple[float, float] | None = None,
+        legend: bool = False,
+        **kwargs,
+    ) -> PlotReference:
+        r"""Visualize 1d fields using a combined line plot.
+
+        Args:
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting.
+            scalar (str):
+                Method used for extracting a scalar representation; see
+                :meth:`DataFieldBase.to_scalar`.
+            extract (str):
+                Method used for extracting one-dimensional line data from the grid.
+            ylabel (str):
+                Label of the y-axis.
+            ylim (tuple of float):
+                Limits of the y-axis. If omitted, the data range is used
+            legend (bool):
+                Display the legend to distinguish the different plots
+            \**kwargs:
+                Additional keyword arguments that affect the line plot.
+
+        Returns:
+            :class:`PlotReference`: Instance that contains information to update the
+            plot with new data later.
+        """
+        # obtain data for the plot
+        line_data = [
+            field.get_line_data(scalar=scalar, extract=extract) for field in self
+        ]
+
+        # warn if there is an imaginary part
+        if any(np.any(np.iscomplex(data["data_y"])) for data in line_data):
+            self._logger.warning("Only the real part of the complex data is shown")
+
+        # do the plot
+        lines, labels = [], []
+        for data in line_data:
+            (line2d,) = ax.plot(data["data_x"], data["data_y"].real, **kwargs)
+            lines.append(line2d)
+            labels.append(data["label_y"])
+
+        # set some default properties
+        ax.set_xlabel(data["label_x"])  # take the x-label from the last data point
+        if ylabel:
+            ax.set_ylabel(ylabel)
+        if ylim is not None:
+            ax.set_ylim(ylim)
+        if legend:
+            ax.legend(lines, labels)
+
+        parameters = {
+            "kind": "merged_lines",
+            "scalar": scalar,
+            "extract": extract,
+            "ylabel": ylabel,
+            "ylim": ylim,
+        }
+        return PlotReference(ax, lines, parameters)
+
     def _update_plot(self, reference: list[PlotReference]) -> None:
         """Update a plot collection with the current field values.
 
@@ -893,20 +1150,24 @@ class FieldCollection(FieldBase):
             reference (list of :class:`PlotReference`):
                 All references of the plot to update
         """
-        if reference[0].parameters.get("kind", None) == "merged_image":
+        kind = reference[0].parameters.get("kind", None)
+        if kind == "merged_lines":
+            self._update_merged_line_plot(reference[0])
+        elif kind == "merged_image":
             self._update_merged_image_plot(reference[0])
         else:
-            for field, ref in zip(self.fields, reference):
+            for field, ref in zip(self.fields, reference, strict=False):
                 field._update_plot(ref)
 
     @plot_on_figure(update_method="_update_plot")
     def plot(
         self,
         kind: str | Sequence[str] = "auto",
-        figsize="auto",
-        arrangement: Literal["horizontal", "vertical"] = "horizontal",
-        fig=None,
+        figsize: Literal["auto"] | tuple[float, float] = "auto",
+        arrangement: Literal["horizontal", "vertical", "square"]
+        | tuple[int, int] = "horizontal",
         subplot_args=None,
+        fig=None,
         **kwargs,
     ) -> list[PlotReference]:
         r"""Visualize all the fields in the collection.
@@ -923,16 +1184,18 @@ class FieldCollection(FieldBase):
                 `default` is passed. Conversely, the size is adjusted automatically when
                 `auto` is passed. Finally, a specific figure size can be specified using
                 two values, using :func:`matplotlib.figure.Figure.set_size_inches`.
-            arrangement (str):
-                Determines how the subpanels will be arranged. The default value
-                `horizontal` places all subplots next to each other. The alternative
-                value `vertical` puts them below each other.
-            {PLOT_ARGS}
+            arrangement (str or tuple of int):
+                Determines how the sub panels will be arranged. The default value
+                `horizontal` places all subplots next to each other, whereas `vertical`
+                puts them below each other. Alternatively, an exact number of rows and
+                columns can be specified by the tuple :code:`(nrows, ncols)`. Negative
+                values will be replaced by suitable values that ensure enough panels.
             subplot_args (list):
                 Additional arguments for the specific subplots. Should be a list with a
                 dictionary of arguments for each subplot. Supplying an empty dict allows
                 to keep the default setting of specific subplots.
-            \**kwargs:
+            {PLOT_ARGS}
+            **kwargs:
                 All additional keyword arguments are forwarded to the actual plotting
                 function of all subplots.
 
@@ -940,43 +1203,60 @@ class FieldCollection(FieldBase):
             List of :class:`PlotReference`: Instances that contain information
             to update all the plots with new data later.
         """
-        if kind in {"merged"}:
+        # determine how many panels we need
+        if kind in {"merged", "merged_image", "merged_lines"}:
             num_panels = 1
         else:
             num_panels = len(self)
+        if subplot_args is None:
+            subplot_args = [{}] * num_panels
+
+        # determine the number of rows and columns in the plot
+        if arrangement == "square":
+            arrangement = (-1, -1)
+        if arrangement == "horizontal":
+            nrows, ncols = 1, num_panels
+        elif arrangement == "vertical":
+            nrows, ncols = num_panels, 1
+        else:
+            nrows, ncols = arrangement
+            if ncols < 0 and nrows < 0:
+                nrows = ncols = math.ceil(np.sqrt(num_panels))
+            elif ncols < 0:
+                ncols = math.ceil(num_panels / nrows)
+            elif nrows < 0:
+                nrows = math.ceil(num_panels / ncols)
 
         # set the size of the figure
         if figsize == "default":
             pass  # just leave the figure size at its default value
-
         elif figsize == "auto":
-            # adjust the size of the figure
-            if arrangement == "horizontal":
-                fig.set_size_inches((4 * num_panels, 3), forward=True)
-            elif arrangement == "vertical":
-                fig.set_size_inches((4, 3 * num_panels), forward=True)
-
+            # adjust the size of the figure according to panels
+            fig.set_size_inches((4 * ncols, 3 * nrows), forward=True)
         else:
             # assume that an actual tuple is given
             fig.set_size_inches(figsize, forward=True)
 
         # create all the subpanels
-        if arrangement == "horizontal":
-            (axs,) = fig.subplots(1, num_panels, squeeze=False)
-        elif arrangement == "vertical":
-            axs = fig.subplots(num_panels, 1, squeeze=False)
-            axs = [a[0] for a in axs]  # transpose
-        else:
-            raise ValueError(f"Unknown arrangement `{arrangement}`")
+        axs = fig.subplots(nrows=nrows, ncols=ncols, squeeze=False)
 
-        if subplot_args is None:
-            subplot_args = [{}] * num_panels
+        if kind == "merged":
+            # automatically determine kind of merged plot
+            kind = "merged_lines" if self.grid.num_axes == 1 else "merged_image"
 
-        if kind in {"merged"}:
+        if kind == "merged_lines":
+            # plot all lines in a single image
+            reference = [
+                self._plot_merged_lines(
+                    ax=axs[0, 0], action="none", **kwargs, **subplot_args[0]
+                )
+            ]
+
+        elif kind == "merged_image":
             # plot a single RGB representation
             reference = [
                 self._plot_merged_image(
-                    ax=axs[0], action="none", **kwargs, **subplot_args[0]
+                    ax=axs[0, 0], action="none", **kwargs, **subplot_args[0]
                 )
             ]
 
@@ -986,7 +1266,9 @@ class FieldCollection(FieldBase):
                 kind = [kind] * num_panels
             reference = [
                 field.plot(kind=knd, ax=ax, action="none", **kwargs, **sp_args)
-                for field, knd, ax, sp_args in zip(self.fields, kind, axs, subplot_args)
+                for field, knd, ax, sp_args in zip(
+                    self.fields, kind, axs.flat, subplot_args, strict=False
+                )
             ]
 
         # return the references for all subplots
@@ -996,7 +1278,7 @@ class FieldCollection(FieldBase):
         r"""Returns data for plotting all fields.
 
         Args:
-            \**kwargs: all arguments are forwarded to `_get_napari_layer_data`
+            **kwargs: all arguments are forwarded to `_get_napari_layer_data`
 
         Returns:
             dict: all the information necessary to plot all fields
@@ -1035,16 +1317,16 @@ class _FieldLabels:
         for field in self.collection:
             yield field.label
 
-    def __getitem__(self, index: int | slice) -> str | None | list[str | None]:
+    def __getitem__(self, index: int | slice) -> str | list[str | None] | None:
         """Return one or many labels of a field in the collection."""
         if isinstance(index, int):
             return self.collection[index].label
-        elif isinstance(index, slice):
+        if isinstance(index, slice):
             return list(self)[index]
-        else:
-            raise TypeError("Unsupported index type")
+        msg = "Unsupported index type"
+        raise TypeError(msg)
 
-    def __setitem__(self, index: int | slice, value: None | str | list[str | None]):
+    def __setitem__(self, index: int | slice, value: str | list[str | None] | None):
         """Change one or many labels of a field in the collection."""
         if isinstance(index, int):
             self.collection.fields[index].label = value  # type: ignore
@@ -1053,11 +1335,13 @@ class _FieldLabels:
             if value is None or isinstance(value, str):
                 value = [value] * len(fields)
             if len(fields) != len(value):
-                raise ValueError("Require a label for each field")
-            for field, label in zip(fields, value):
+                msg = "Require a label for each field"
+                raise ValueError(msg)
+            for field, label in zip(fields, value, strict=False):
                 field.label = label
         else:
-            raise TypeError("Unsupported index type")
+            msg = "Unsupported index type"
+            raise TypeError(msg)
 
     def index(self, label: str) -> int:
         """Return the index in the field labels where a certain label is stored.
@@ -1072,4 +1356,5 @@ class _FieldLabels:
         for i, field in enumerate(self.collection):
             if field.label == label:
                 return i
-        raise ValueError(f"Label `{label}` is not present in the collection")
+        msg = f"Label `{label}` is not present in the collection"
+        raise ValueError(msg)

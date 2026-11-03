@@ -4,7 +4,7 @@ Getting started
 When (not) to use the package
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-`py-pde` provides a straight-forward way to simulate partial differential equations (PDEs) using a finite-difference scheme.
+`py-pde` provides a straightforward way to simulate partial differential equations (PDEs) using a finite-difference scheme.
 Advantages of this approach include:
 
 * Supports non-linear PDEs with complex boundary conditions.
@@ -13,17 +13,17 @@ Advantages of this approach include:
 
 However, there are of course also disadvantages to the approach taken by `py-pde`:
 
-* Only suited for simple geometries (like rectangles, disks, or cylinders) with a fixed discretization.
-* Optimized for PDEs that describe the time-evolution of a physical system. Neither time-independent systems nor integro-differential equation are fully supported.
+* Only suited to simple geometries (like rectangles, disks, or cylinders) with a fixed discretization.
+* Optimized for PDEs that describe the time-evolution of a physical system. Neither time-independent systems nor integro-differential equations are fully supported.
 * Finite-differences can lead to numerical instabilities.
-* Provided generic solvers might not be most suitable choice for particular equations.
+* The provided generic solvers might not be the most suitable choice for particular equations.
 
 
 Installation
 ^^^^^^^^^^^^
 
-The `py-pde` package is developed for python |PythonMinVersion| and has been tested up
-to version |PythonMaxVersion| under Linux, Windows, and macOS.
+The `py-pde` package is developed for Python |PythonMinVersion| and has been tested up
+to version |PythonMaxVersion| on Linux, Windows, and macOS.
 Before you can start using the package, you need to install it using one of the
 following methods.
 
@@ -44,9 +44,12 @@ install the following optional packages:
 
 .. code-block:: bash
 
-    pip install h5py pandas pyfftw tqdm
+    pip install h5py pandas pyfftw tqdm av
 
-Moreover, :command:`ffmpeg` needs to be installed and for creating movies.    
+The optional :mod:`av` package is used by :class:`~pde.storage.MovieStorage` to read and
+write video files. The :command:`ffmpeg` executable is separately needed for creating
+plotted movies with :func:`~pde.visualization.movie` or
+:class:`~pde.visualization.movies.Movie`.
 
 
 Install using conda
@@ -72,7 +75,7 @@ or if the latest source code should be installed from github.
 Required prerequisites
 """"""""""""""""""""""
 
-The code builds on other python packages, which need to be installed for
+The code builds on other Python packages, which need to be installed for
 `py-pde` to function properly.
 The required packages are listed in the table below:
 
@@ -90,7 +93,7 @@ The simplest way to install these packages is to use the
     pip install -r requirements.txt
 
 
-Alternatively, these package can be installed via your operating system's
+Alternatively, these packages can be installed via your operating system's
 package manager, e.g. using :command:`macports`, :command:`homebrew`, or
 :command:`conda`.
 The package versions given above are minimal requirements, although
@@ -107,7 +110,8 @@ The following packages should be installed to use some miscellaneous features:
    :file: _static/requirements_optional.csv
    :header-rows: 1
 
-For making movies, the :command:`ffmpeg` should be available.
+For plotted movies, the :command:`ffmpeg` executable should be available. Reading and
+writing :class:`~pde.storage.MovieStorage` files uses the optional `av` package.
 Additional packages might be required for running the tests in the folder
 :file:`tests` and to build the documentation in the folder :file:`docs`.
 These packages are listed in the files :file:`requirements.txt` in the
@@ -125,9 +129,46 @@ the root folder of the package into the :envvar:`PYTHONPATH` environment variabl
 This documentation can be built by calling the :command:`make html` in the
 :file:`docs` folder.
 The final documentation will be available in :file:`docs/build/html`.
-Note that a LaTeX documentation can be build using :command:`make latexpdf`.
+Note that LaTeX documentation can be built using :command:`make latexpdf`.
 
 
+A simple example
+^^^^^^^^^^^^^^^^
+
+After installation, the easiest way to get started is to run a diffusion simulation
+on a one-dimensional grid.
+The example below shows the full workflow: create a grid, initialize a field,
+define a PDE, solve it, and inspect the final result.
+
+.. code-block:: python
+
+    import pde
+
+    # 1. Define a one-dimensional domain with 64 support points
+    grid = pde.UnitGrid([64])
+
+    # 2. Create an initial scalar field with random values
+    state = pde.ScalarField.random_uniform(grid, vmin=0, vmax=1)
+
+    # 3. Define a simple PDE (diffusion equation)
+    eq = pde.DiffusionPDE(diffusivity=0.1)
+
+    # 4. Evolve the field in time
+    result = eq.solve(state, t_range=1, dt=1e-3)
+
+    # 5. Inspect the final state
+    result.plot()
+
+This script runs with the default solver and uses only the core API.
+In practice, this is often enough to prototype a first model quickly.
+Running the script should open a line plot of the final one-dimensional field.
+Since the initial condition is random and diffusion smooths spatial variations,
+the final profile is typically less jagged than the initial state.
+
+
+You can read more about the package in the next section or move on to the
+:doc:`manual/basic_usage` section to learn about boundary conditions, custom equations,
+trackers, and result storage.
 
 Package overview
 ^^^^^^^^^^^^^^^^
@@ -157,7 +198,7 @@ calling the method :meth:`~pde.fields.scalar.ScalarField.laplace`, which
 returns another instance of :class:`~pde.fields.scalar.ScalarField`, whereas
 :meth:`~pde.fields.scalar.ScalarField.gradient` returns a
 :class:`~pde.fields.vectorial.VectorField`.
-Combining these functions with ordinary arithmetics on fields allows to
+Combining these functions with ordinary arithmetic on fields allows us to
 represent the right hand side of many partial differential equations that appear
 in physics.
 Importantly, the differential operators work with flexible boundary conditions. 
@@ -171,10 +212,13 @@ Most notably, PDEs can be specified by their expression using the convenient
 :class:`~pde.pdes.pde.PDE` class.
 
 The PDEs are solved using solver classes, where a simple explicit solver is
-implemented by :class:`~pde.solvers.explicit.ExplicitSolver`, but more advanced
-implementations can be done. 
-To obtain more details during the simulation, trackers can be attached to the
-solver instance, which analyze intermediate states periodically. Typical
+implemented by :class:`~pde.solvers.euler.EulerSolver`, but more advanced
+implementations are available.
+Each solver object represents the integration strategy and configuration; during
+simulation it constructs an executable stepping function that advances the state
+in time.
+To obtain more details during the simulation, trackers can be supplied to the
+controller, which analyze intermediate states periodically. Typical
 trackers include
 :class:`~pde.trackers.trackers.ProgressTracker` (display simulation progress),
 :class:`~pde.trackers.trackers.PlotTracker` (display images of the simulation),
@@ -183,4 +227,4 @@ a stationary state is reached).
 Others can be found in the :mod:`~pde.trackers.trackers` module.
 Moreover, we provide :class:`~pde.storage.memory.MemoryStorage` and
 :class:`~pde.storage.file.FileStorage`, which can be used as trackers
-to store the intermediate state to memory and to a file, respectively. 
+to store intermediate states in memory and in files, respectively.

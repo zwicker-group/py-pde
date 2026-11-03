@@ -8,10 +8,17 @@ import pickle
 import numpy as np
 import pytest
 
-from pde import Controller, ExplicitSolver, MemoryStorage, ScalarField, UnitGrid
+from pde import (
+    Controller,
+    EulerSolver,
+    FieldCollection,
+    MemoryStorage,
+    ScalarField,
+    UnitGrid,
+)
 from pde.pdes import AllenCahnPDE, CahnHilliardPDE, DiffusionPDE
 from pde.tools.misc import module_available
-from pde.trackers import get_named_trackers, trackers
+from pde.trackers import registered_trackers, trackers
 from pde.trackers.base import TrackerBase
 from pde.trackers.interrupts import ConstantInterrupts
 from pde.visualization.movies import Movie
@@ -84,8 +91,7 @@ def test_trackers(rng):
             None,  # should be ignored
             data,
         ]
-        if module_available("matplotlib"):
-            tracker_list.append(trackers.PlotTracker(interrupts=0.1, show=False))
+        tracker_list.append(trackers.PlotTracker(interrupts=0.1, show=False))
 
         grid = UnitGrid([16, 16])
         state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
@@ -187,24 +193,35 @@ def test_small_tracker_dt(rng):
     eq = DiffusionPDE()
     c0 = ScalarField.random_uniform(UnitGrid([4, 4]), 0.1, 0.2, rng=rng)
     eq.solve(
-        c0, 1e-2, dt=1e-3, solver="explicit", tracker=storage.tracker(interrupts=1e-4)
+        c0, 1e-2, dt=1e-3, solver="euler", tracker=storage.tracker(interrupts=1e-4)
     )
     assert len(storage) == 11
 
 
-def test_runtime_tracker(rng):
-    """Test the RuntimeTracker."""
+def test_maxruntime_tracker(rng):
+    """Test the MaxRuntimeTracker."""
     s = ScalarField.random_uniform(UnitGrid([128]), rng=rng)
-    tracker = trackers.RuntimeTracker("0:01")
-    sol = ExplicitSolver(DiffusionPDE())
-    con = Controller(sol, t_range=1e4, tracker=["progress", tracker])
+    tracker = trackers.MaxRuntimeTracker("0:01")
+    sol = EulerSolver(DiffusionPDE())
+    con = Controller(sol, t_range=1e4, tracker=tracker)
     con.run(s, dt=1e-3)
+
+
+def test_walltime_tracker(rng):
+    """Test the WalltimeTracker."""
+    state = ScalarField.random_uniform(UnitGrid([16]), rng=rng)
+    eq = DiffusionPDE()
+    tracker = trackers.WalltimeTracker(2)
+    eq.solve(state, t_range=11, tracker=tracker)
+    data = np.asarray(tracker.data)
+    np.testing.assert_allclose(data[:, 0], np.arange(0, 11, 2))
+    assert all(np.diff(data[:, 1]) > 0)
 
 
 def test_consistency_tracker(rng):
     """Test the ConsistencyTracker."""
     s = ScalarField.random_uniform(UnitGrid([128]), rng=rng)
-    sol = ExplicitSolver(DiffusionPDE(1e3))
+    sol = EulerSolver(DiffusionPDE(1e3))
     con = Controller(sol, t_range=1e5, tracker=["consistency"])
     with np.errstate(all="ignore"):
         con.run(s, dt=1)
@@ -215,20 +232,20 @@ def test_material_conservation_tracker(rng):
     """Test the MaterialConservationTracker."""
     state = ScalarField.random_uniform(UnitGrid([8, 8]), 0, 1, rng=rng)
 
-    solver = ExplicitSolver(CahnHilliardPDE())
+    solver = EulerSolver(CahnHilliardPDE())
     controller = Controller(solver, t_range=1, tracker=["material_conservation"])
     controller.run(state, dt=1e-3)
     assert controller.info["t_final"] >= 1
 
-    solver = ExplicitSolver(AllenCahnPDE())
+    solver = EulerSolver(AllenCahnPDE())
     controller = Controller(solver, t_range=1, tracker=["material_conservation"])
     controller.run(state, dt=1e-3)
     assert controller.info["t_final"] <= 1
 
 
-def test_get_named_trackers():
-    """Test the get_named_trackers function."""
-    for name, cls in get_named_trackers().items():
+def test_registered_trackers():
+    """Test the registered_trackers function."""
+    for name, cls in registered_trackers().items():
         assert isinstance(name, str)
         tracker = TrackerBase.from_data(name)
         assert isinstance(tracker, cls)
@@ -246,3 +263,43 @@ def test_double_tracker(rng):
 
     np.testing.assert_allclose(times1, np.arange(5))
     np.testing.assert_allclose(times2, np.arange(5))
+
+
+def test_plot_tracker_transformation(tmp_path, rng):
+    """Test whether the plot tracker works with transformations."""
+    output_file = tmp_path / "img.png"
+
+    def get_title(state, t):
+        return f"{state.integrals} at {t:g}"
+
+    def add_square(field, t):
+        return FieldCollection([field + t, field**2])
+
+    grid = UnitGrid([4, 4])
+    state = ScalarField.random_uniform(grid, rng=rng)
+    eq = DiffusionPDE()
+    tracker = trackers.PlotTracker(
+        output_file=output_file,
+        title=get_title,
+        interrupts=0.1,
+        show=False,
+        transformation=add_square,
+    )
+
+    eq.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend="numpy")
+
+    assert output_file.stat().st_size > 0
+
+
+def test_plot_tracker_transformation_warning(rng):
+    """Test whether the plot tracker warns when wrong transformation is used."""
+    grid = UnitGrid([4, 4])
+    state = ScalarField.random_uniform(grid, rng=rng)
+    eq = DiffusionPDE()
+    tracker = trackers.PlotTracker(interrupts=0.1, transformation=lambda state: None)
+
+    with (
+        pytest.raises(RuntimeError),
+        pytest.warns(UserWarning, match="did not return a field"),
+    ):
+        eq.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend="numpy")

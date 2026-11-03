@@ -5,11 +5,15 @@
 
 from __future__ import annotations
 
-import modelrunner as mr
-import numpy as np
+from typing import TYPE_CHECKING, Self
 
-from ..fields.base import FieldBase
 from .base import InfoDict, StorageBase, WriteModeType
+
+if TYPE_CHECKING:
+    import modelrunner as mr
+
+    from ..fields.base import FieldBase
+    from ..tools.typing import NumericArray
 
 
 class ModelrunnerStorage(StorageBase):
@@ -54,6 +58,7 @@ class ModelrunnerStorage(StorageBase):
                 (data is cleared for the first writing, but appended subsequently).
                 Alternatively, specifying 'readonly' will disable writing completely.
         """
+
         super().__init__(info=info, write_mode=write_mode)
         self.storage = storage
         self.loc = loc
@@ -66,7 +71,7 @@ class ModelrunnerStorage(StorageBase):
             self._writer.close()
             self._writer = None
 
-    def __enter__(self) -> ModelrunnerStorage:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
@@ -82,6 +87,8 @@ class ModelrunnerStorage(StorageBase):
         if self._writer is not None:
             return self._writer
         if self._reader is None:
+            import modelrunner as mr
+
             self._reader = mr.storage.Trajectory(self.storage, loc=self.loc)
         return self._reader
 
@@ -93,7 +100,7 @@ class ModelrunnerStorage(StorageBase):
     @property
     def data(self):
         """:class:`~numpy.ndarray`: The actual data for all time."""
-        return self._io._storage.read_array(self._io._loc + ["data"])
+        return self._io._storage.read_array([*self._io._loc, "data"])
 
     def clear(self, clear_data_shape: bool = False):
         """Truncate the storage by removing all stored data.
@@ -103,7 +110,8 @@ class ModelrunnerStorage(StorageBase):
                 Flag determining whether the data shape is also deleted.
         """
         if self.loc in self.storage:
-            raise NotImplementedError("Cannot delete existing trajectory")
+            msg = "Cannot delete existing trajectory"
+            raise NotImplementedError(msg)
         super().clear(clear_data_shape=clear_data_shape)
 
     def start_writing(self, field: FieldBase, info: InfoDict | None = None) -> None:
@@ -116,8 +124,11 @@ class ModelrunnerStorage(StorageBase):
             info (dict):
                 Supplies extra information that is stored in the storage
         """
+        import modelrunner as mr
+
         if self._writer:
-            raise RuntimeError(f"{self.__class__.__name__} is already in writing mode")
+            msg = f"{self.__class__.__name__} is already in writing mode"
+            raise RuntimeError(msg)
         if self._reader:
             self._reader.close()
 
@@ -134,12 +145,14 @@ class ModelrunnerStorage(StorageBase):
         if self.write_mode == "truncate_once":
             self.write_mode = "append"  # do not truncate for next writing
         elif self.write_mode == "readonly":
-            raise RuntimeError("Cannot write in read-only mode")
+            msg = "Cannot write in read-only mode"
+            raise RuntimeError(msg)
         elif self.write_mode not in {"truncate", "append"}:
-            raise ValueError(
+            msg = (
                 f"Unknown write mode `{self.write_mode}`. Possible values are "
                 "`truncate_once`, `truncate`, and `append`"
             )
+            raise ValueError(msg)
 
         if info:
             self.info.update(info)
@@ -147,7 +160,7 @@ class ModelrunnerStorage(StorageBase):
             self.storage, loc=self.loc, attrs=self.info, mode="append"
         )
 
-    def _append_data(self, data: np.ndarray, time: float) -> None:
+    def _append_data(self, data: NumericArray, time: float) -> None:
         """Append a new data set.
 
         Args:

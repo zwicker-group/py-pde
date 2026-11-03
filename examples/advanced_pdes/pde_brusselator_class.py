@@ -2,7 +2,7 @@ r"""
 Brusselator - Using custom class
 ================================
 
-This example implements the `Brusselator 
+This example implements the `Brusselator
 <https://en.wikipedia.org/wiki/Brusselator>`_ with spatial coupling,
 
 .. math::
@@ -14,11 +14,10 @@ Here, :math:`D_0` and :math:`D_1` are the respective diffusivity and the
 parameters :math:`a` and :math:`b` are related to reaction rates.
 
 Note that the PDE can also be implemented using the :class:`~pde.pdes.pde.PDE`
-class; see :doc:`the example <pde_brusselator_expression>`. However, that implementation
-is less flexible and might be more difficult to extend later.
+class; see :doc:`the example <../simple_pdes/pde_brusselator_expression>`. However, that
+implementation is less flexible and might be more difficult to extend later.
 """
 
-import numba as nb
 import numpy as np
 
 from pde import FieldCollection, PDEBase, PlotTracker, ScalarField, UnitGrid
@@ -49,21 +48,21 @@ class BrusselatorPDE(PDEBase):
         rhs[1] = d1 * v.laplace(self.bc) + self.b * u - u**2 * v
         return rhs
 
-    def _make_pde_rhs_numba(self, state):
-        """Nunmba-compiled implementation of the PDE."""
+    def make_evolution_rate(self, state, backend):
+        """Compilable implementation of the PDE."""
         d0, d1 = self.diffusivity
         a, b = self.a, self.b
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
+        laplace = state.grid.make_operator(
+            "laplace", bc=self.bc, backend=backend, dtype=state.dtype
+        )
 
-        @nb.njit
         def pde_rhs(state_data, t):
             u = state_data[0]
             v = state_data[1]
 
-            rate = np.empty_like(state_data)
-            rate[0] = d0 * laplace(u) + a - (1 + b) * u + v * u**2
-            rate[1] = d1 * laplace(v) + b * u - v * u**2
-            return rate
+            rate_u = d0 * laplace(u) + a - (1 + b) * u + v * u**2
+            rate_v = d1 * laplace(v) + b * u - v * u**2
+            return np.stack((rate_u, rate_v))
 
         return pde_rhs
 

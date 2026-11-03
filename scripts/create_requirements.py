@@ -10,22 +10,19 @@ from pathlib import Path
 from string import Template
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
-MIN_PYTHON_VERSION = "3.9"
-MAX_PYTHON_VERSION = "3.13"
+MIN_PYTHON_VERSION = "3.12"
+MAX_PYTHON_VERSION = "3.15"
 
 
 @dataclass
 class Requirement:
-    """Simple class collecting data for a single required python package."""
+    """Simple class collecting data for a single python package."""
 
     name: str  # name of the python package
     version_min: str  # minimal version
     usage: str = ""  # description for how the package is used in py-pde
     relation: str | None = None  # relation used to compare version number
-    essential: bool = False  # basic requirement for the package
-    docs_only: bool = False  # only required for creating documentation
-    tests_only: bool = False  # only required for running tests
-    collections: set[str] = field(default_factory=set)  # collections where this fits
+    groups: set[str] = field(default_factory=set)  # define requirement groups
 
     @property
     def short_version(self) -> str:
@@ -60,118 +57,133 @@ REQUIREMENTS = [
         name="matplotlib",
         version_min="3.1",
         usage="Visualizing results",
-        essential=True,
+        groups={"essential"},
     ),
     Requirement(
         name="numba",
         version_min="0.59",
         usage="Just-in-time compilation to accelerate numerics",
-        essential=True,
+        groups={"essential"},
     ),
     Requirement(
         name="numpy",
-        version_min="1.22",
+        version_min="2.0",
         usage="Handling numerical data",
-        essential=True,
+        groups={"essential"},
     ),
     Requirement(
         name="scipy",
         version_min="1.10",
         usage="Miscellaneous scientific functions",
-        essential=True,
+        groups={"essential"},
     ),
     Requirement(
         name="sympy",
         version_min="1.9",
         usage="Dealing with user-defined mathematical expressions",
-        essential=True,
+        groups={"essential"},
     ),
     Requirement(
         name="tqdm",
         version_min="4.66",
         usage="Display progress bars during calculations",
-        essential=True,
+        groups={"essential"},
     ),
     # general, optional requirements
     Requirement(
-        name="ffmpeg-python",
-        version_min="0.2",
+        name="av",
+        version_min="12.0",
         usage="Reading and writing videos",
-        collections={"full", "docs"},
+        groups={"full", "docs"},
     ),
     Requirement(
         name="h5py",
         version_min="2.10",
         usage="Storing data in the hierarchical file format",
-        collections={"full", "multiprocessing", "docs"},
+        groups={"full", "multiprocessing", "docs"},
     ),
     Requirement(
         name="py-modelrunner",
-        version_min="0.19",
+        version_min="0.20.2",
         usage="Running simulations and handling I/O",
-        collections={"full", "docs"},
+        groups={"full", "docs"},
     ),
     Requirement(
         name="pandas",
         version_min="2",
         usage="Handling tabular data",
-        collections={"full", "multiprocessing", "docs"},
+        groups={"full", "multiprocessing", "docs"},
     ),
     Requirement(
         name="pyfftw",
         version_min="0.12",
         usage="Faster Fourier transforms",
-        collections=set(),  # include in "full" collection when pyfftw supports python 3.12
+        groups=set(),
+        # TODO: include in "full" group when pyfftw supports python 3.12
     ),
     Requirement(
         name="rocket-fft",
         version_min="0.2.4",
         usage="Numba-compiled fast Fourier transforms",
-        collections={"full"},
+        groups={"full"},
+    ),
+    Requirement(
+        name="jax",
+        version_min="0.7",
+        usage="Using `jax` as a backend",
+        groups={"full", "docs"},
+    ),
+    Requirement(
+        name="torch",
+        version_min="2.9",
+        usage="Using `torch` as a backend",
+        groups={"full", "docs"},
     ),
     Requirement(
         name="ipywidgets",
         version_min="8",
         usage="Jupyter notebook support",
-        collections={"full", "interactive"},
+        groups={"full", "interactive"},
     ),
     Requirement(
         name="mpi4py",
         version_min="3",
         usage="Parallel processing using MPI",
-        collections={"multiprocessing"},
+        groups={"multiprocessing", "docs"},
     ),
     Requirement(
         name="napari",
         version_min="0.4.8",
         usage="Displaying images interactively",
-        collections={"interactive"},
+        groups={"interactive"},
     ),
     Requirement(
         name="numba-mpi",
         version_min="0.22",
         usage="Parallel processing using MPI+numba",
-        collections={"multiprocessing"},
+        groups={"multiprocessing", "docs"},
     ),
-    # for documentation only
-    Requirement(name="Sphinx", version_min="4", docs_only=True),
-    Requirement(name="sphinx-autodoc-annotation", version_min="1.0", docs_only=True),
-    Requirement(name="sphinx-gallery", version_min="0.6", docs_only=True),
-    Requirement(name="sphinx-rtd-theme", version_min="1", docs_only=True),
-    Requirement(name="Pillow", version_min="7.0", docs_only=True),
-    # for tests only
+    # mostly for documentation
+    Requirement(name="Sphinx", version_min="4", groups={"docs"}),
+    Requirement(name="sphinx-autodoc-annotation", version_min="1.0", groups={"docs"}),
+    Requirement(name="sphinx-gallery", version_min="0.6", groups={"docs"}),
+    Requirement(name="sphinx-rtd-theme", version_min="1", groups={"docs"}),
+    Requirement(name="pydot", version_min="3", groups={"docs"}),
+    Requirement(name="Pillow", version_min="7.0", groups={"docs"}),
+    Requirement(name="utilitiez", version_min="0.3", groups={"docs", "tests"}),
+    # mostly for scripts
+    Requirement(name="docformatter", version_min="1.7", groups={"scripts"}),
+    Requirement(name="pre-commit", version_min="3", groups={"scripts"}),
+    Requirement(name="ruff", version_min="0.6", groups={"scripts"}),
+    Requirement(name="mypy", version_min="1.8", groups={"scripts", "tests"}),
+    # mostly for testing
     Requirement(
-        name="jupyter_contrib_nbextensions", version_min="0.5", tests_only=True
+        name="jupyter_contrib_nbextensions", version_min="0.5", groups={"tests"}
     ),
-    Requirement(name="docformatter", version_min="1.7", tests_only=True),
-    Requirement(name="importlib-metadata", version_min="5", tests_only=True),
-    Requirement(name="mypy", version_min="1.8", tests_only=True),
-    Requirement(name="notebook", version_min="7", tests_only=True),
-    Requirement(name="pre-commit", version_min="3", tests_only=True),
-    Requirement(name="pytest", version_min="5.4", tests_only=True),
-    Requirement(name="pytest-cov", version_min="2.8", tests_only=True),
-    Requirement(name="pytest-xdist", version_min="1.30", tests_only=True),
-    Requirement(name="ruff", version_min="0.6", tests_only=True),
+    Requirement(name="notebook", version_min="7", groups={"tests"}),
+    Requirement(name="pytest", version_min="5.4", groups={"tests"}),
+    Requirement(name="pytest-cov", version_min="2.8", groups={"tests"}),
+    Requirement(name="pytest-xdist", version_min="1.30", groups={"tests"}),
 ]
 
 
@@ -222,7 +234,7 @@ def write_requirements_csv(
     """
     print(f"Write `{path}`")
     with path.open("w") as fp:
-        writer = csv.writer(fp)
+        writer = csv.writer(fp, lineterminator="\n")
         if incl_version:
             writer.writerow(["Package", "Minimal version", "Usage"])
         else:
@@ -252,11 +264,14 @@ def write_requirements_py(path: Path, requirements: list[Requirement]):
                 break
             content.append(line)
         else:
-            raise ValueError("Could not find the token 'GENERATED CODE'")
+            msg = "Could not find the token 'GENERATED CODE'"
+            raise ValueError(msg)
 
     # add generated code
-    for r in sorted(requirements, key=lambda r: r.name.lower()):
-        content.append(f'check_package_version("{r.name}", "{r.version_min}")\n')
+    content.extend(
+        f'check_package_version("{r.name}", "{r.version_min}")\n'
+        for r in sorted(requirements, key=lambda r: r.name.lower())
+    )
     content.append("del check_package_version\n")
 
     # write content back to file
@@ -326,19 +341,19 @@ def main():
     # write basic requirements
     write_requirements_txt(
         root / "requirements.txt",
-        [r for r in REQUIREMENTS if r.essential],
+        [r for r in REQUIREMENTS if "essential" in r.groups],
     )
     # write basic requirements
     write_requirements_txt(
         root / "pde" / "tools" / "resources" / "requirements_basic.txt",
-        [r for r in REQUIREMENTS if r.essential],
+        [r for r in REQUIREMENTS if "essential" in r.groups],
         comment="These are the basic requirements for the package",
     )
 
     # write minimal requirements to tests folder
     write_requirements_txt(
         root / "tests" / "requirements_min.txt",
-        [r for r in REQUIREMENTS if r.essential],
+        [r for r in REQUIREMENTS if "essential" in r.groups],
         relation="~=",
         comment="These are the minimal requirements used to test compatibility",
     )
@@ -346,59 +361,82 @@ def main():
     # write full requirements to tests folder
     write_requirements_txt(
         root / "tests" / "requirements_full.txt",
-        [r for r in REQUIREMENTS if r.essential or "full" in r.collections],
+        [r for r in REQUIREMENTS if "essential" in r.groups or "full" in r.groups],
         comment="These are the full requirements used to test all functions",
     )
+
     # write full requirements to tests folder
     write_requirements_txt(
         root / "pde" / "tools" / "resources" / "requirements_full.txt",
-        [r for r in REQUIREMENTS if r.essential or "full" in r.collections],
+        [r for r in REQUIREMENTS if "essential" in r.groups or "full" in r.groups],
         comment="These are the full requirements used to test all functions",
     )
 
     # write full requirements to tests folder
     write_requirements_txt(
         root / "tests" / "requirements_mpi.txt",
-        [r for r in REQUIREMENTS if r.essential or "multiprocessing" in r.collections],
+        [
+            r
+            for r in REQUIREMENTS
+            if "essential" in r.groups or "multiprocessing" in r.groups
+        ],
         comment="These are requirements used to test multiprocessing",
     )
     write_requirements_txt(
         root / "pde" / "tools" / "resources" / "requirements_mpi.txt",
-        [r for r in REQUIREMENTS if r.essential or "multiprocessing" in r.collections],
+        [
+            r
+            for r in REQUIREMENTS
+            if "essential" in r.groups or "multiprocessing" in r.groups
+        ],
         comment="These are requirements for supporting multiprocessing",
     )
 
     # write requirements to tests folder
     write_requirements_txt(
+        root / "scripts" / "requirements.txt",
+        [r for r in REQUIREMENTS if "scripts" in r.groups],
+        ref_base=True,
+    )
+    # write requirements to tests folder
+    write_requirements_txt(
         root / "tests" / "requirements.txt",
-        [r for r in REQUIREMENTS if r.tests_only or "tests" in r.collections],
+        [r for r in REQUIREMENTS if "tests" in r.groups],
         ref_base=True,
     )
 
     # write requirements to docs folder
     write_requirements_txt(
         root / "docs" / "requirements.txt",
-        [r for r in REQUIREMENTS if r.docs_only or "docs" in r.collections],
+        [r for r in REQUIREMENTS if "docs" in r.groups],
         ref_base=True,
     )
 
     # write requirements for documentation as CSV
     write_requirements_csv(
         root / "docs" / "source" / "_static" / "requirements_main.csv",
-        [r for r in REQUIREMENTS if r.essential],
+        [r for r in REQUIREMENTS if "essential" in r.groups],
     )
 
     # write requirements for documentation as CSV
     write_requirements_csv(
         root / "docs" / "source" / "_static" / "requirements_optional.csv",
-        [r for r in REQUIREMENTS if not (r.essential or r.tests_only or r.docs_only)],
+        [
+            r
+            for r in REQUIREMENTS
+            if any(
+                group in r.groups
+                for group in ["full", "interactive", "multiprocessing"]
+            )
+            and "essential" not in r.groups
+        ],
     )
 
     # write pyproject.toml
     write_from_template(
         root / "pyproject.toml",
         "_pyproject.toml",
-        requirements=[r for r in REQUIREMENTS if r.essential],
+        requirements=[r for r in REQUIREMENTS if "essential" in r.groups],
     )
 
     # write pyproject.toml

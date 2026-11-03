@@ -21,15 +21,11 @@ from __future__ import annotations
 import collections
 from typing import TYPE_CHECKING, Union
 
-import numpy as np
-from numba.extending import register_jitable
-
-from ...tools.typing import GhostCellSetter
 from ..base import GridBase, PeriodicityError
 from .local import _MPIBC, BCBase, BCDataError, BoundaryData, _PeriodicBC
 
 if TYPE_CHECKING:
-    from .._mesh import GridMesh
+    from ...tools.typing import NumericArray
 
 BoundaryPairData = Union[
     dict[str, BoundaryData],
@@ -63,7 +59,8 @@ class BoundaryAxisBase:
             or not high.upper
             or low.upper
         ):
-            raise ValueError(f"Incompatible {low!r} and {high!r}")
+            msg = f"Incompatible {low!r} and {high!r}"
+            raise ValueError(msg)
 
         # check consistency with the grid
         if not (
@@ -71,7 +68,8 @@ class BoundaryAxisBase:
             == isinstance(low, _PeriodicBC)
             == isinstance(high, _PeriodicBC)
         ):
-            raise PeriodicityError("Periodicity of conditions must match grid")
+            msg = "Periodicity of conditions must match grid"
+            raise PeriodicityError(msg)
 
         self.low = low
         self.high = high
@@ -82,8 +80,7 @@ class BoundaryAxisBase:
     def __str__(self):
         if self.low == self.high:
             return str(self.low)
-        else:
-            return f"({self.low}, {self.high})"
+        return f"({self.low}, {self.high})"
 
     @classmethod
     def get_help(cls) -> str:
@@ -129,16 +126,25 @@ class BoundaryAxisBase:
         yield self.high
 
     def __getitem__(self, index) -> BCBase:
-        """Returns one of the sides."""
+        """Returns one of the sides.
+
+        Args:
+            index (int or bool): The index of the boundary side
+        """
         if index == 0 or index is False:
             return self.low
-        elif index == 1 or index is True:
+        if index == 1 or index is True:
             return self.high
-        else:
-            raise IndexError("Index must be 0/False or 1/True")
+        msg = "Index must be 0/False or 1/True"
+        raise IndexError(msg)
 
     def __setitem__(self, index, data) -> None:
-        """Set one of the sides."""
+        """Set one of the sides.
+
+        Args:
+            index (int or bool): The index of the boundary side
+            data: Data describing the boundary condition
+        """
         # determine which side was selected
         upper = {0: False, 1: True}[index]
 
@@ -179,7 +185,11 @@ class BoundaryAxisBase:
         return self.low.rank
 
     def get_mathematical_representation(self, field_name: str = "C") -> tuple[str, str]:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         return (
             self.low.get_mathematical_representation(field_name),
             self.high.get_mathematical_representation(field_name),
@@ -188,28 +198,27 @@ class BoundaryAxisBase:
     def get_sparse_matrix_data(
         self, idx: tuple[int, ...]
     ) -> tuple[float, dict[int, float]]:
-        """Sets the elements of the sparse representation of this condition.
+        """Return data for the sparse representation of this condition.
 
         Args:
             idx (tuple):
-                The index of the point that must lie on the boundary condition
+                The index of the point that must lie on the boundary condition.
 
         Returns:
-            float, dict: A constant value and a dictionary with indices and
-            factors that can be used to calculate this virtual point
+            tuple[float, dict[int, float]]: A constant value and a dictionary mapping
+            indices to factors used to calculate this virtual point.
         """
         axis_coord = idx[self.axis]
         if axis_coord == -1:
             # the virtual point on the lower side
             return self.low.get_sparse_matrix_data(idx)
-        elif axis_coord == self.grid.shape[self.axis]:
+        if axis_coord == self.grid.shape[self.axis]:
             # the virtual point on the upper side
             return self.high.get_sparse_matrix_data(idx)
-        else:
-            # the normal case of an interior point
-            return 0, {axis_coord: 1}
+        # the normal case of an interior point
+        return 0, {axis_coord: 1}
 
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         """Set the ghost cell values for all boundaries.
 
         Args:
@@ -227,26 +236,6 @@ class BoundaryAxisBase:
         # set the actual ghost cells
         self.high.set_ghost_cells(data_full, args=args)
         self.low.set_ghost_cells(data_full, args=args)
-
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells for this axis on a full array."""
-        # get the functions that handle the data
-        ghost_cell_sender_low = self.low.make_ghost_cell_sender()
-        ghost_cell_sender_high = self.high.make_ghost_cell_sender()
-        ghost_cell_setter_low = self.low.make_ghost_cell_setter()
-        ghost_cell_setter_high = self.high.make_ghost_cell_setter()
-
-        @register_jitable
-        def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-            """Helper function setting the conditions on all axes."""
-            # send boundary information to other nodes if using MPI
-            ghost_cell_sender_low(data_full, args=args)
-            ghost_cell_sender_high(data_full, args=args)
-            # set the actual ghost cells
-            ghost_cell_setter_high(data_full, args=args)
-            ghost_cell_setter_low(data_full, args=args)
-
-        return ghost_cell_setter  # type: ignore
 
 
 class BoundaryPair(BoundaryAxisBase):
@@ -283,7 +272,8 @@ class BoundaryPair(BoundaryAxisBase):
                 d_high = data_copy.pop("high")
                 high = BCBase.from_data(grid, axis, upper=True, data=d_high, rank=rank)
                 if data_copy:
-                    raise BCDataError(f"Data items {data_copy.keys()} were not used.")
+                    msg = f"Data items {list(data_copy)} were not used."
+                    raise BCDataError(msg)
             else:
                 # one condition for both sides
                 low = BCBase.from_data(grid, axis, upper=False, data=data, rank=rank)
@@ -309,10 +299,11 @@ class BoundaryPair(BoundaryAxisBase):
                 if data_len == 2:
                     # assume that data is given for each boundary
                     if data[0] == "periodic" or data[1] == "periodic":
-                        raise BCDataError(
+                        msg = (
                             f"Only one side of {grid.axes[axis]} axis was set to have "
                             "periodic boundary conditions."
                         )
+                        raise BCDataError(msg)
                     low = BCBase.from_data(
                         grid, axis, upper=False, data=data[0], rank=rank
                     )
@@ -342,21 +333,29 @@ class BoundaryPair(BoundaryAxisBase):
         self.high.check_value_rank(rank)
 
 
-class BoundaryPeriodic(BoundaryPair):
+class BoundaryPeriodic(BoundaryAxisBase):
     """Represent a periodic axis."""
 
-    def __init__(self, grid: GridBase, axis: int, flip_sign: bool = False):
+    def __init__(
+        self, grid: GridBase, axis: int, rank: int = 0, flip_sign: bool = False
+    ):
         """
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
             axis (int):
                 The axis to which this boundary condition is associated
+            rank (int):
+                The tensorial rank of the field for this boundary condition
             flip_sign (bool):
                 Impose different signs on the two sides of the boundary
         """
-        low = _PeriodicBC(grid=grid, axis=axis, upper=False, flip_sign=flip_sign)
-        high = _PeriodicBC(grid=grid, axis=axis, upper=True, flip_sign=flip_sign)
+        low = _PeriodicBC(
+            grid=grid, axis=axis, upper=False, rank=rank, flip_sign=flip_sign
+        )
+        high = _PeriodicBC(
+            grid=grid, axis=axis, upper=True, rank=rank, flip_sign=flip_sign
+        )
         super().__init__(low, high)
 
     @property
@@ -368,18 +367,18 @@ class BoundaryPeriodic(BoundaryPair):
         res = f"{self.__class__.__name__}(grid={self.grid}, axis={self.axis}"
         if self.flip_sign:
             return res + ", flip_sign=True)"
-        else:
-            return res + ")"
+        return res + ")"
 
     def __str__(self):
         if self.flip_sign:
             return '"anti-periodic"'
-        else:
-            return '"periodic"'
+        return '"periodic"'
 
     def copy(self) -> BoundaryPeriodic:
         """Return a copy of itself, but with a reference to the same grid."""
-        return self.__class__(grid=self.grid, axis=self.axis, flip_sign=self.flip_sign)
+        return self.__class__(
+            grid=self.grid, axis=self.axis, rank=self.rank, flip_sign=self.flip_sign
+        )
 
     def check_value_rank(self, rank: int) -> None:
         """Check whether the values at the boundaries have the correct rank.
@@ -413,8 +412,19 @@ def get_boundary_axis(
     # covers the special case where `data == ("periodic", "periodic")` and similar
     # constructs. These are converted to `data == "periodic"`, so the next check can
     # catch them properly.
-    if isinstance(data, collections.abc.Sequence) and data[0] == data[1]:
-        data = data[0]
+    try:
+        if (
+            isinstance(data, collections.abc.Sequence)
+            and len(data) == 2
+            and data[0] == data[1]
+        ):
+            data = data[0]
+    except ValueError:
+        # This case can happen when `data` contains arrays, which often raise an error
+        # in the comparison data[0] == data[1] since numpy performs element-wise.
+        # However, we do not need to catch this here, since such complex boundary
+        # conditions are handled below.
+        pass
 
     # handle special case describing potentially periodic boundary conditions
     if isinstance(data, str) and data.startswith("auto_periodic_"):
@@ -429,13 +439,13 @@ def get_boundary_axis(
         isinstance(data, dict) and data.get("type") == "periodic"
     ):
         # initialize a periodic boundary condition
-        bcs = BoundaryPeriodic(grid, axis)
+        bcs = BoundaryPeriodic(grid, axis, rank=rank)
 
     elif data == "anti-periodic" or (
         isinstance(data, dict) and data.get("type") == "anti-periodic"
     ):
         # initialize an anti-periodic boundary condition
-        bcs = BoundaryPeriodic(grid, axis, flip_sign=True)
+        bcs = BoundaryPeriodic(grid, axis, rank=rank, flip_sign=True)
 
     else:
         # initialize independent boundary conditions for the two sides
@@ -443,5 +453,6 @@ def get_boundary_axis(
 
     # check consistency
     if bcs.periodic != grid.periodic[axis]:
-        raise PeriodicityError("Periodicity of conditions must match grid")
+        msg = "Periodicity of conditions must match grid"
+        raise PeriodicityError(msg)
     return bcs

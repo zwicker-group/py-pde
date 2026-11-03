@@ -5,14 +5,19 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from contextlib import contextmanager
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import FieldBase
 from .base import InfoDict, StorageBase, WriteModeType
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ..fields.base import FieldBase
+    from ..tools.typing import NumericArray
 
 
 class MemoryStorage(StorageBase):
@@ -21,7 +26,7 @@ class MemoryStorage(StorageBase):
     def __init__(
         self,
         times: Sequence[float] | None = None,
-        data: list[np.ndarray] | None = None,
+        data: list[NumericArray] | None = None,
         *,
         info: InfoDict | None = None,
         field_obj: FieldBase | None = None,
@@ -29,8 +34,9 @@ class MemoryStorage(StorageBase):
     ):
         """
         Args:
-            times (:class:`~numpy.ndarray`):
-                Sequence of times for which data is known
+            times (sequence of float or None):
+                Sequence of times for which data is known. If None, no times are
+                initially stored.
             data (list of :class:`~numpy.ndarray`):
                 The field data at the given times
             field_obj (:class:`~pde.fields.base.FieldBase`):
@@ -51,16 +57,17 @@ class MemoryStorage(StorageBase):
             self._grid = field_obj.grid
             self._data_shape = field_obj.data.shape
 
-        self.data: list[np.ndarray] = [] if data is None else data
+        self.data: list[NumericArray] = [] if data is None else data
         if self._data_shape is None and len(self.data) > 0:
             self._data_shape = self.data[0].shape
 
         # check consistency
         if len(self.times) != len(self.data):
-            raise ValueError(
+            msg = (
                 "Length of the supplied `times` and `fields` are inconsistent "
                 f"({len(self.times)} != {len(self.data)})"
             )
+            raise ValueError(msg)
 
     @classmethod
     def from_fields(
@@ -94,7 +101,8 @@ class MemoryStorage(StorageBase):
             data = [fields[0].data]
             for field in fields[1:]:
                 if field_obj.grid != field.grid:
-                    raise ValueError("Grids of the fields are incompatible")
+                    msg = "Grids of the fields are incompatible"
+                    raise ValueError(msg)
                 data.append(field.data)
 
         return cls(
@@ -141,7 +149,8 @@ class MemoryStorage(StorageBase):
         # append data from further storages
         for storage in storages[1:]:
             if not np.allclose(times, storage.times, rtol=rtol, atol=atol):
-                raise ValueError("Storages have incompatible times")
+                msg = "Storages have incompatible times"
+                raise ValueError(msg)
             for i, field in enumerate(storage):
                 data[i].append(field)
 
@@ -186,23 +195,26 @@ class MemoryStorage(StorageBase):
             self.clear()
 
         elif self.write_mode == "readonly":
-            raise RuntimeError("Cannot write in read-only mode")
+            msg = "Cannot write in read-only mode"
+            raise RuntimeError(msg)
 
         elif self.write_mode != "append":
-            raise ValueError(
+            msg = (
                 f"Unknown write mode `{self.write_mode}`. Possible values are "
-                "`truncate_once`, `truncate`, and `append`"
+                "`append`, `readonly`, `truncate_once`, and `truncate`."
             )
+            raise ValueError(msg)
 
-    def _append_data(self, data: np.ndarray, time: float) -> None:
+    def _append_data(self, data: NumericArray, time: float) -> None:
         """Append a new data set.
 
         Args:
             data (:class:`~numpy.ndarray`): The actual data
-            time (float, optional): The time point associated with the data
+            time (float): The time point associated with the data
         """
         if data.shape != self.data_shape:
-            raise ValueError(f"Data must have shape {self.data_shape}")
+            msg = f"Data must have shape {self.data_shape}"
+            raise ValueError(msg)
         self.data.append(np.array(data))  # store copy of the data
         self.times.append(time)
 

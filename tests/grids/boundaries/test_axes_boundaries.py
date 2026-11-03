@@ -7,7 +7,7 @@ import itertools
 import numpy as np
 import pytest
 
-from pde import PolarSymGrid, ScalarField, UnitGrid
+from pde import PolarSymGrid, ScalarField, UnitGrid, get_backend
 from pde.grids.base import PeriodicityError
 from pde.grids.boundaries.axes import (
     BCDataError,
@@ -92,13 +92,17 @@ def test_mixed_boundary_condition(rng):
     """Test limiting cases of the mixed boundary condition."""
     g = UnitGrid([2])
     d = rng.random(2)
-    g1 = g.make_operator("gradient", bc={"x-": {"mixed": 0}, "x+": {"mixed": np.inf}})
-    g2 = g.make_operator("gradient", bc={"x-": "derivative", "x+": "value"})
+    g1 = g.make_operator(
+        "gradient", bc={"x-": {"mixed": 0}, "x+": {"mixed": np.inf}}, backend="numba"
+    )
+    g2 = g.make_operator(
+        "gradient", bc={"x-": "derivative", "x+": "value"}, backend="numba"
+    )
     np.testing.assert_allclose(g1(d), g2(d))
 
 
 @pytest.mark.parametrize(
-    "cond,is_value",
+    ("cond", "is_value"),
     [
         ("auto_periodic_neumann", False),
         ("auto_periodic_dirichlet", True),
@@ -146,7 +150,7 @@ def test_set_ghost_cells(dim, periodic, rng):
     bcs.set_ghost_cells(arr1)
 
     arr2 = field._data_full.copy()
-    setter = bcs.make_ghost_cell_setter()
+    setter = get_backend("numba").make_ghost_cell_setter(bcs)
     setter(arr2)
 
     # test valid BCs:
@@ -226,10 +230,11 @@ def test_boundaries_setter_1d(periodic, rng):
             data[0] = data[1]  # Neumann
             data[-1] = -data[-2]  # Dirichlet
 
-    f1 = ScalarField.random_normal(UnitGrid([4], periodic=periodic))
+    grid = UnitGrid([4], periodic=periodic)
+    f1 = ScalarField.random_normal(grid)
     f2 = f1.copy()
 
-    f1.set_ghost_cells(bc=BoundariesSetter(setter))
+    f1.set_ghost_cells(bc=BoundariesSetter(setter, grid))
     if periodic:
         f2.set_ghost_cells(bc="periodic")
     else:
@@ -246,10 +251,11 @@ def test_boundaries_setter_2d(rng):
         data[:, 0] = data[:, -2]  # periodic
         data[:, -1] = data[:, 1]  # periodic
 
-    f1 = ScalarField.random_normal(UnitGrid([4, 4], periodic=[False, True]))
+    grid = UnitGrid([4, 4], periodic=[False, True])
+    f1 = ScalarField.random_normal(grid)
     f2 = f1.copy()
 
-    f1.set_ghost_cells(bc=BoundariesSetter(setter))
+    f1.set_ghost_cells(bc=BoundariesSetter(setter, grid))
     f2.set_ghost_cells(bc={"x-": "neumann", "x+": "dirichlet", "y": "periodic"})
     # compare full fields without corner points
     mask = np.ones((6, 6), dtype=bool)

@@ -11,8 +11,6 @@ describes the dynamics of flame fronts:
     \partial_t u = -\frac12 |\nabla u|^2 - \nabla^2 u - \nabla^4 u
 """
 
-import numba as nb
-
 from pde import PDEBase, ScalarField, UnitGrid
 
 
@@ -30,12 +28,15 @@ class KuramotoSivashinskyPDE(PDEBase):
         state_grad_sq = state.gradient_squared(bc=self.bc)
         return -state_grad_sq / 2 - state_lap - state_lap2
 
-    def _make_pde_rhs_numba(self, state):
-        """Nunmba-compiled implementation of the PDE."""
-        gradient_squared = state.grid.make_operator("gradient_squared", bc=self.bc)
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
+    def make_evolution_rate(self, state, backend):
+        """Compilable implementation of the PDE."""
+        gradient_squared = state.grid.make_operator(
+            "gradient_squared", bc=self.bc, backend=backend, dtype=state.dtype
+        )
+        laplace = state.grid.make_operator(
+            "laplace", bc=self.bc, backend=backend, dtype=state.dtype
+        )
 
-        @nb.njit
         def pde_rhs(data, t):
             return -0.5 * gradient_squared(data) - laplace(data + laplace(data))
 

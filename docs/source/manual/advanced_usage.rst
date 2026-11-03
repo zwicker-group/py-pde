@@ -57,7 +57,7 @@ field (:code:`bc="value_expression"`) or its derivative
 (:code:`bc="derivative_expression"`). Beyond the spatial coordinates that are already
 supported for the constant conditions above, the expressions of these boundary
 conditions can depend on the time variable :code:`t`. Moreover, these boundary
-conditions also except python functions with signature `(adjacent_value, dx, *coords, t)`,
+conditions also accept python functions with signature `(adjacent_value, dx, *coords, t)`,
 thus greatly enlarging the flexibility with which boundary conditions can be expressed.
 Note that PDEs need to supply the current time `t` when setting the boundary conditions,
 e.g., when applying the differential operators. The pre-defined PDEs and the general
@@ -79,7 +79,7 @@ the following boundary condition can be used:
 
     grid = pde.UnitGrid([16, 16], periodic=[True, False])
     field = pde.ScalarField(grid)
-    field.laplace({"x": "periodic", "y": {"derivative": 0})
+    field.laplace({"x": "periodic", "y": {"derivative": 0}})
 
 For convenience, this typical situation can be described with the special boundary
 condition `auto_periodic_neumann`, e.g., calling the Laplace operator using 
@@ -167,7 +167,7 @@ several places, most prominently in defining PDEs using :class:`~pde.pdes.pde.PD
 in creating fields using :meth:`~pde.fields.scalar.ScalarField.from_expression`, and in
 defining boundary conditions; see section above.
 Expressions are parsed using :mod:`sympy`, so  the expected syntax is defined by this
-python package. While we describe some common use cases below, it might be best to test
+Python package. While we describe some common use cases below, it might be best to test
 the abilities using the :func:`~pde.tools.expressions.evaluate` function.  
 
 
@@ -219,10 +219,10 @@ A simple implementation for the Kuramoto–Sivashinsky equation could read
 
         def evolution_rate(self, state, t=0):
             """Evaluate the right hand side of the evolution equation."""
-            state_lapacian = state.laplace(bc="auto_periodic_neumann")
+            state_laplacian = state.laplace(bc="auto_periodic_neumann")
             state_gradient = state.gradient(bc="auto_periodic_neumann")
-            return (- state_lapacian.laplace(bc="auto_periodic_neumann")
-                    - state_lapacian
+            return (- state_laplacian.laplace(bc="auto_periodic_neumann")
+                    - state_laplacian
                     - 0.5 * state_gradient.to_scalar("squared_sum"))
 
 A slightly more advanced example would allow for attributes that for
@@ -240,13 +240,13 @@ instance define the boundary conditions and the diffusivity:
 
         def evolution_rate(self, state, t=0):
             """Evaluate the right hand side of the evolution equation."""
-            state_lapacian = state.laplace(bc=self.bc)
+            state_laplacian = state.laplace(bc=self.bc)
             state_gradient = state.gradient(bc=self.bc)
-            return (- state_lapacian.laplace(bc=self.bc_laplace)
-                    - state_lapacian
+            return (- state_laplacian.laplace(bc=self.bc_laplace)
+                    - state_laplacian
                     - 0.5 * self.diffusivity * (state_gradient @ state_gradient))
 
-We here replaced the call to :code:`to_scalar('squared_sum')` by a 
+We replaced the call to :code:`to_scalar('squared_sum')` with a 
 dot product with itself (using the `@` notation), which is equivalent.
 Note that the numpy implementation of the right hand side of the PDE is rather
 slow since it runs mostly in pure python and constructs a lot of intermediate
@@ -257,13 +257,13 @@ computations should be performed with compiled PDEs as described below.
 Another feature of custom PDE classes is a special function that is called after every
 time step. This function is defined by :meth:`~pde.pdes.PDEBase.make_post_step_hook` and
 allows direct manipulation of the state data and also abortion of the simulation by
-raising :class:`StopIteration`.
+raising :class:`StopIteration` (this latter function does not work with all backends).
 
 .. code-block:: python
 
     class AbortEarlyPDE(PDEBase):
 
-        def make_post_step_hook(self, state):
+        def make_post_step_hook(self, state, backend):
             """Create a hook function that is called after every time step."""
 
             def post_step_hook(state_data, t, post_step_data):
@@ -272,6 +272,7 @@ raising :class:`StopIteration`.
                 if state_data.std() > 1:
                     raise StopIteration  # abort simulation
                 post_step_data += 1  # increment number of times hook was called
+                return state_data, post_step_data
 
             return post_step_hook, 0  # hook function and initial value for data
 
@@ -283,7 +284,7 @@ We here use a simple constant evolution equation. The hook defined by the first 
 does two things: First, it limits the state to the interval `[-1, 1]` using
 :func:`numpy.clip`. Second, it evaluates the standard deviation across the entire data,
 aborting the simulation when the value exceeds one. Note that the hook always receives
-the data always as a :class:`~numpy.ndarray` and not as a full field class. The hook can
+the data as a :class:`~numpy.ndarray` and not as a full field class. The hook can
 also keep track of additional data via :code:`post_step_data`, which is a
 :class:`~numpy.ndarray` that can be updated in place.
 
@@ -291,14 +292,14 @@ also keep track of additional data via :code:`post_step_data`, which is a
 Low-level operators
 """""""""""""""""""
 This section explains how to use the low-level version of the field operators.
-This is necessary for the numba-accelerated implementations described above and
+This is necessary for the compiled implementations described above and
 it might be necessary to use parts of the `py-pde` package in other packages.
 
 
 Differential operators
 **********************
 Applying a differential operator to an instance of
-:class:`~pde.fields.scalar.ScalarField` is a simple as calling
+:class:`~pde.fields.scalar.ScalarField` is as simple as calling
 :code:`field.laplace(bc)`, where `bc` denotes the boundary conditions.
 Calling this method returns another :class:`~pde.fields.scalar.ScalarField`,
 which in this case contains the discretized Laplacian of the original field.
@@ -333,7 +334,7 @@ This operator is then applied to a random field and the resulting
 :class:`numpy.ndarray` represents the 2-dimensional vector field.
 
 The :code:`make_operator` method of the grids generally supports the following
-differential operators: :code:`'laplacian'`, :code:`'gradient'`,
+differential operators: :code:`'laplace'`, :code:`'gradient'`,
 :code:`'gradient_squared'`, :code:`'divergence'`, :code:`'vector_gradient'`,
 :code:`'vector_laplace'`, and :code:`'tensor_divergence'`.
 Moreover, generic operators that perform a derivative along a single axis are supported:
@@ -372,7 +373,7 @@ translated to code that does not use the full package:
 .. code-block:: python
 
     grid = UnitGrid([6, 8])
-    interpolate = grid.make_interpolator_compiled(bc="auto_periodic_neumann")
+    interpolate = grid.make_integrator(bc="auto_periodic_neumann")
 
     data = np.random.random((6, 8))
     value = interpolate(data, np.array([3.5, 7.9]))
@@ -383,7 +384,7 @@ Note that the coordinates of the point need to be supplied as a
 :class:`numpy.ndarray` and that only the interpolation at single points is
 supported.
 However, iteration over multiple points can be fast when the loop is compiled
-with :mod:`numba`.
+by a backend.
 
 
 Inner products
@@ -409,8 +410,8 @@ Here, :code:`result` is the data of the scalar field resulting from the dot
 product. 
 
 
-Numba-accelerated PDEs
-""""""""""""""""""""""
+Compiled implementations of PDEs
+""""""""""""""""""""""""""""""""
 The compiled operators introduced in the previous section can be used to
 implement a compiled method for the evolution rate of PDEs.
 As an example, we now extend the class :class:`KuramotoSivashinskyPDE`
@@ -419,144 +420,202 @@ introduced above:
 
 .. code-block:: python
 
-    from pde.tools.numba import jit
-
-
     class KuramotoSivashinskyPDE(PDEBase):
 
         def __init__(self, diffusivity=1, bc="auto_periodic_neumann", bc_laplace="auto_periodic_neumann"):
-            """ initialize the class with a diffusivity and boundary conditions
-            for the actual field and its second derivative """
+            """Initialize class with diffusivity and boundary conditions."""
             self.diffusivity = diffusivity
             self.bc = bc
             self.bc_laplace = bc_laplace
 
 
         def evolution_rate(self, state, t=0):
-            """ numpy implementation of the evolution equation """
-            state_lapacian = state.laplace(bc=self.bc)
-            state_gradient = state.gradient(bc="auto_periodic_neumann")
-            return (- state_lapacian.laplace(bc=self.bc_laplace)
-                    - state_lapacian
+            """Evaluate right hand side of PDE."""
+            state_laplacian = state.laplace(bc=self.bc)
+            state_gradient = state.gradient(bc=self.bc)
+            return (- state_laplacian.laplace(bc=self.bc_laplace)
+                    - state_laplacian
                     - 0.5 * self.diffusivity * (state_gradient @ state_gradient))
 
 
-        def _make_pde_rhs_numba(self, state):
-            """ the numba-accelerated evolution equation """
-            # make attributes locally available             
+        def make_evolution_rate(self, state, backend):
+            """Make compilable implementation of the evolution rate."""
+            # make attributes locally available
             diffusivity = self.diffusivity
 
-            # create operators
-            laplace_u = state.grid.make_operator("laplace", bc=self.bc)
-            gradient_u = state.grid.make_operator("gradient", bc=self.bc)
-            laplace2_u = state.grid.make_operator("laplace", bc=self.bc_laplace)
-            dot = VectorField(state.grid).make_dot_operator()
+            # create operators with correct attributes
+            args = {"backend": backend, "dtype": state.dtype}
+            laplace_u = state.grid.make_operator("laplace", bc=self.bc, **args)
+            gradient_u = state.grid.make_operator("gradient", bc=self.bc, **args)
+            laplace2_u = state.grid.make_operator("laplace", bc=self.bc_laplace, **args)
+            dot = VectorField(state.grid).make_dot_operator(backend=backend)
 
-            @jit
             def pde_rhs(state_data, t=0):
-                """ compiled helper function evaluating right hand side """
-                state_lapacian = laplace_u(state_data)
+                """Evaluate right hand side of PDE."""
+                state_laplacian = laplace_u(state_data)
                 state_grad = gradient_u(state_data)
-                return (- laplace2_u(state_lapacian)
-                        - state_lapacian
+                return (- laplace2_u(state_laplacian)
+                        - state_laplacian
                         - diffusivity / 2 * dot(state_grad, state_grad))
 
             return pde_rhs
 
 
 To activate the compiled implementation of the evolution rate, we simply have
-to overwrite the :meth:`~pde.pdes.base.PDEBase._make_pde_rhs_numba` method.
+to overwrite the :meth:`~pde.pdes.base.PDEBase.make_evolution_rate` method.
 This method expects an example of the state class (e.g., an instance of
-:class:`~pde.fields.scalar.ScalarField`) and returns a function that calculates
-the evolution rate.
+:class:`~pde.fields.scalar.ScalarField`) and a backend.
+The method returns a function that calculates the evolution rate.
 The `state` argument is necessary to define the grid and the dimensionality of
 the data that the returned function is supposed to be handling.
 The implementation of the compiled function is split in several parts, where we 
 first copy the attributes that are required by the implementation.
-This is necessary, since :mod:`numba` freezes the values when compiling the
-function, so that in the example above the diffusivity cannot be altered without
-recompiling.
+This is necessary, since backends, such as those based on :mod:`numba` or :mod:`torch`,
+freeze the values when compiling the function, so that in the example above the
+diffusivity cannot be altered without recompiling.
 In the next step, we create all operators that we need subsequently.
 Here, we use the boundary conditions defined by the attributes, which
 requires two different laplace operators, since their boundary conditions might
 differ.
 In the last step, we define the actual implementation of the evolution rate as
-a local function that is compiled using the :code:`jit` decorator.
-Here, we use the implementation shipped with `py-pde`, which sets some default
-values.
-However, we could have also used the usual numba implementation.
-It is important that the implementation of the evolution rate only uses python
-constructs that numba can compile.
+a local function, which is returned and can be compiled by the backend.
 
-One advantage of the numba compiled implementation is that we can now use loops,
-which will be much faster than their python equivalents.
-For instance, we could have written the dot product in the last line as an
-explicit loop:
 
+Stochastic partial differential equation
+""""""""""""""""""""""""""""""""""""""""
+We also support stochastic differential equations, which can be a lot trickier to deal
+with than their deterministic counterparts.
+The simplest way to define such an equation is the `noise` argument of the
+:class:`~pde.pdes.pde.PDE` class, which sets the variance of the Gaussian white noise
+that is added to each field:
 
 .. code-block:: python
 
-    [...]
+    eq = pde.PDE({"c": "laplace(c)"}, noise=0.1)
 
-        def _make_pde_rhs_numba(self, state):
-            """ the numba-accelerated evolution equation """
-            # make attributes locally available             
-            diffusivity = self.diffusivity
+Multiplicative noise, where the variance depends on the fields themselves, the position,
+or the time, is specified by an expression:
 
-            # create operators
-            laplace_u = state.grid.make_operator("laplace", bc=self.bc)
-            gradient_u = state.grid.make_operator("gradient", bc=self.bc)
-            laplace2_u = state.grid.make_operator("laplace", bc=self.bc_laplace)
-            dot = VectorField(state.grid).make_dot_operator()
-            dim = state.grid.dim
+.. code-block:: python
 
-            @jit
-            def pde_rhs(state_data, t=0):
-                """ compiled helper function evaluating right hand side """
-                state_lapacian = laplace_u(state_data)
-                state_grad = gradient_u(state_data)
-                result = - laplace2_u(state_lapacian) - state_lapacian
+    eq = pde.PDE({"c": "laplace(c)"}, noise={"c": "0.1 * c**2"}, noise_interpretation="ito")
 
-                for i in range(state_data.size):
-                    for j in range(dim):
-                        result.flat[i] -= diffusivity / 2 * state_grad[j].flat[i]**2
+Here, the keys of the dictionary denote the fields, so different noise variances can be
+given for coupled equations; the wildcard key ``"*"`` sets the variance of all fields
+that are not mentioned explicitly.
+These expressions must be local, i.e., they cannot contain differential operators.
+Since the derivative of the variance is obtained by differentiating the expression
+symbolically, such equations can also be integrated using the
+:class:`~pde.solvers.milstein.MilsteinSolver` and with interpretations other than Itô 
+(set by the ``noise_interpretation`` argument).
 
-                return result
+If the noise cannot be expressed like this, we offer two different interfaces to define
+the noise of a custom PDE class.
+In the simplest case, one inherits from :class:`~pde.pdes.base.SDEBase`, which already
+implements additive Gaussian white noise.
+The following listing is thus sufficient to enable noise
 
-            return pde_rhs
+.. code-block:: python
 
-Here, we extract the total number of elements in the state using its
-:attr:`size` attribute and we obtain the dimensionality of the space from the
-grid attribute :attr:`dim`.
-Note that we access numpy arrays using their :attr:`flat` attribute to provide
-an implementation that works for all dimensions.
+    class NoisyPDE(SDEBase):
+
+        def evolution_rate(self, state, t=0):
+            ...
 
 
-.. _configuration:
+    eq = NoisyPDE(noise=1)
 
-Configuration parameters
-""""""""""""""""""""""""
+In this case, the `noise` argument controls the variance of the additive noise.
 
-Configuration parameters affect how the package behaves.
-They can be set using a dictionary-like interface of the configuration
-:data:`~pde.config`, which can be imported from the base package.
-Here is a list of all configuration options that can be adjusted in the package:
+In many situations, more complex multiplicative noise is needed.
+Multiplicative noise implies that the noise variance depends on the value of the field
+itself.
+To allow such field-dependent noise, one can overwrite the method
+:meth:`~pde.pdes.base.SDEBase.make_noise_variance`, which implements the additive noise
+described above.
+In the simplest case, we thus have
 
-.. package_configuration ::
+.. code-block:: python
 
+    class NoisyPDE(PDEBase):
 
-.. tip::
+        use_noise_variance = True
 
-    To disable parallel computing via multithreading in the package, the following code
-    could be added to the start of the script:
+        def evolution_rate(self, state, t=0):
+            ...
 
+        def make_noise_variance(self, state, backend, ret_diff=False):
+            def noise_variance(state_data, t):
+                return state_data**2
+            return noise_variance
 
-    .. code-block:: python
+    eq = NoisyPDE()
 
-        from pde import config
-        config["numba.multithreading"] = "never"
+Here, the factory method returns a function that can be evaluated to determine the noise
+variance depending on the field (and time).
 
-        # actual code using py-pde
+Stochastic differential equations with `multiplicative noise <https://en.wikipedia.org/wiki/Multiplicative_noise>`_
+are much more difficult to analyze and simulate.
+For instance, it is not sufficient to just give the evolution equation, but it needs to
+be accompanied with an *interpretation*.
+By default, we use the standard Itô interpretation, but it is possible to simulate other
+interpretations by supplying the argument ``noise_interpretation`` to subclasses of
+:class:`~pde.pdes.base.SDEBase`.
+If another interpretation, such as ``stratonovich`` or ``anti-ito``, is specified, the
+standard solvers automatically add the corresponding drift terms to convert the equation
+to the standard Itô form.
+To make this possible, the :meth:`~pde.pdes.base.SDEBase.make_noise_variance` now also
+needs to return the derivative of the noise variance with respect to the field values:
 
-    The default value `only_local` already disables multithreading when the package
-    detects it is run in an HPC environment.
+.. code-block:: python
+
+    class NoisyPDE(SDEBase):
+
+        use_noise_variance = True
+
+        def evolution_rate(self, state, t=0):
+            ...
+
+        def make_noise_variance(self, state, backend, ret_diff=False):
+            if ret_diff:
+                def noise_variance(state_data, t):
+                    return state_data**2, 2 * state_data
+            else:
+                def noise_variance(state_data, t):
+                    return state_data**2
+            return noise_variance
+
+    eq = NoisyPDE(noise_interpretation="stratonovich")
+
+Note that supplying the derivative is also required to use the
+:class:`~pde.solvers.milstein.MilsteinSolver`, which has better convergence properties.
+
+Finally, we offer a completely different way of implementing noise, which is a bit more
+low-level.
+Enabling the :attr:`use_noise_realization` flag of the PDE, the solvers look for
+:meth:`~pde.pdes.base.SDEBase.make_noise_realization`, which should return a function
+that can be called to determine a realization of the noise, which will be directly used
+during time stepping.
+In this setup, simple additive noise can be implemented as
+
+.. code-block:: python
+
+    class NoisyPDE(SDEBase):
+
+        use_noise_variance = False
+        use_noise_realization = True
+
+        def make_noise_realization(self, state, backend):
+            data_shape = state.data.shape
+            scale = np.sqrt(1 / state.grid.cell_volumes)
+
+            def noise_realization(state_data, t):
+                return scale * np.random.randn(*data_shape)
+
+            return noise_realization
+
+This complex approach is more versatile.
+For example, it allows implementing non-Gaussian or conserved noise, if this is needed.
+However, this approach does not benefit from the automatic evaluation of derivatives,
+which is required to use the :class:`~pde.solvers.milstein.MilsteinSolver` and to
+change the interpretation of the equation.

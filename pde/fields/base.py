@@ -1,5 +1,11 @@
 """Defines base class of fields or collections, which are discretized on grids.
 
+.. autosummary::
+   :nosignatures:
+
+   FieldBase
+   RankError
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -10,17 +16,20 @@ import logging
 import warnings
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, Self, TypeVar
 
 import numpy as np
-from numpy.typing import DTypeLike
 
-from ..grids.base import GridBase
 from ..tools.plotting import napari_add_layers, napari_viewer
-from ..tools.typing import NumberOrArray
 
 if TYPE_CHECKING:
-    from .scalar import ScalarField
+    from collections.abc import Callable
+
+    from numpy.typing import DTypeLike
+
+    from ..grids.base import GridBase
+    from ..tools.typing import NumberOrArray, NumericArray
+    from .datafield_base import DataFieldBase
 
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
@@ -36,17 +45,20 @@ class RankError(TypeError):
 class FieldBase(metaclass=ABCMeta):
     """Abstract base class for describing (discretized) fields."""
 
+    data_shape: tuple[int, ...]
+    """tuple: the shape of the data at each grid point"""
+
     _subclasses: dict[str, type[FieldBase]] = {}  # all classes inheriting from this
     _grid: GridBase  # the grid on which the field is defined
-    __data_full: np.ndarray  # the data on the grid including ghost points
-    _data_valid: np.ndarray  # the valid data without ghost points
+    __data_full: NumericArray  # the data on the grid including ghost points
+    _data_valid: NumericArray  # the valid data without ghost points
     _label: str | None  # name of the field
     _logger: logging.Logger  # logger instance to output information
 
     def __init__(
         self,
         grid: GridBase,
-        data: np.ndarray,
+        data: NumericArray,
         *,
         label: str | None = None,
     ):
@@ -73,7 +85,7 @@ class FieldBase(metaclass=ABCMeta):
         # register all subclasses to reconstruct them later
         if cls is not FieldBase:
             if cls.__name__ in cls._subclasses:
-                warnings.warn(f"Redefining class {cls.__name__}")
+                warnings.warn(f"Redefining class {cls.__name__}", stacklevel=2)
             cls._subclasses[cls.__name__] = cls
 
     def __getstate__(self) -> dict[str, Any]:
@@ -82,7 +94,7 @@ class FieldBase(metaclass=ABCMeta):
         return state
 
     @property
-    def data(self) -> np.ndarray:
+    def data(self) -> NumericArray:
         """:class:`~numpy.ndarray`: discretized data at the support points."""
         return self._data_valid
 
@@ -109,7 +121,7 @@ class FieldBase(metaclass=ABCMeta):
         return idx_comp + self.grid._idx_valid
 
     @property
-    def _data_full(self) -> np.ndarray:
+    def _data_full(self) -> NumericArray:
         """:class:`~numpy.ndarray`: the full data including ghost cells."""
         return self.__data_full
 
@@ -123,7 +135,8 @@ class FieldBase(metaclass=ABCMeta):
                 is supplied all data points get the same value.
         """
         if not self.writeable:
-            raise ValueError("assignment destination is read-only")
+            msg = "assignment destination is read-only"
+            raise ValueError(msg)
 
         if np.isscalar(value):
             # supplied value is a scalar
@@ -132,31 +145,33 @@ class FieldBase(metaclass=ABCMeta):
         elif isinstance(value, np.ndarray):
             # check the shape of the supplied array
             if value.shape[-self.grid.num_axes :] != self.grid._shape_full:
-                raise ValueError(
+                msg = (
                     f"Supplied data has wrong shape: {value.shape} is not compatible "
                     f"with {self.grid._shape_full}"
                 )
+                raise ValueError(msg)
             # actually set the data
             self.__data_full = value
 
         else:
-            raise TypeError(f"Cannot set field values to {value}")
+            msg = f"Cannot set field values to {value}"
+            raise TypeError(msg)
 
         # set reference to valid data
         self._data_valid = self.__data_full[self._idx_valid]
 
     @property
-    def _data_flat(self) -> np.ndarray:
+    def _data_flat(self) -> NumericArray:
         """:class:`~numpy.ndarray`: flat version of discretized data with ghost
         cells."""
-        # flatten the first dimension of the internal data by creating a view and then
-        # setting the new shape. This disallows accidental copying of the data
-        data_flat = self._data_full.view()
-        data_flat.shape = (-1, *self.grid._shape_full)
-        return data_flat
+        # Flatten the first dimension of the internal data by creating a view and then
+        # setting the new shape. This raises an error if such reshaping is impossible
+        # without making a copy of the array.
+        shape = (-1, *self.grid._shape_full)
+        return np.reshape(self._data_full, shape, copy=False)
 
     @_data_flat.setter
-    def _data_flat(self, value: np.ndarray) -> None:
+    def _data_flat(self, value: NumericArray) -> None:
         """Set the full data including ghost cells from a flattened array."""
         # simply set the data -> this might need to be overwritten
         self._data_full = value
@@ -183,11 +198,12 @@ class FieldBase(metaclass=ABCMeta):
         if value is None or isinstance(value, str):
             self._label = value
         else:
-            raise TypeError("Label must be a string or None")
+            msg = "Label must be a string or None"
+            raise TypeError(msg)
 
     @classmethod
     def from_state(
-        cls, attributes: dict[str, Any], data: np.ndarray | None = None
+        cls, attributes: dict[str, Any], data: NumericArray | None = None
     ) -> FieldBase:
         """Create a field from given state.
 
@@ -204,7 +220,8 @@ class FieldBase(metaclass=ABCMeta):
         class_name = attributes.pop("class")
 
         if class_name == cls.__name__:
-            raise RuntimeError(f"Cannot reconstruct abstract class `{class_name}`")
+            msg = f"Cannot reconstruct abstract class `{class_name}`"
+            raise RuntimeError(msg)
 
         # call possibly overwritten classmethod from subclass
         return cls._subclasses[class_name].from_state(attributes, data)
@@ -244,14 +261,15 @@ class FieldBase(metaclass=ABCMeta):
 
             elif len(fp) == 1:
                 # a single field is stored in the data
-                dataset = fp[list(fp.keys())[0]]  # retrieve only dataset
+                dataset = fp[next(iter(fp))]  # retrieve only dataset
                 obj = cls._from_hdf_dataset(dataset)  # type: ignore
 
             else:
-                raise RuntimeError(
+                msg = (
                     "Multiple data fields were found in the file but no "
                     "`FieldCollection` is expected."
                 )
+                raise RuntimeError(msg)
         return obj
 
     @classmethod
@@ -295,7 +313,7 @@ class FieldBase(metaclass=ABCMeta):
         Args:
             filename (str):
                 Path where the data is stored
-            \**kwargs:
+            **kwargs:
                 Additional parameters may be supported for some formats
         """
         extension = Path(filename).suffix.lower()
@@ -312,7 +330,8 @@ class FieldBase(metaclass=ABCMeta):
             self._write_to_image(filename, **kwargs)
 
         else:
-            raise ValueError(f"Do not know how to save data to `*{extension}`")
+            msg = f"Do not know how to save data to `*{extension}`"
+            raise ValueError(msg)
 
     def _write_hdf_dataset(self, hdf_path, key: str = "data") -> None:
         """Write data to a given hdf5 path `hdf_path`"""
@@ -328,8 +347,10 @@ class FieldBase(metaclass=ABCMeta):
 
         Args:
             filename (str): The path to the image that will be created
+            **kwargs: Additional parameters may be supported by subclasses
         """
-        raise NotImplementedError(f"Cannot save {self.__class__.__name__} as an image")
+        msg = f"Cannot save {self.__class__.__name__} as an image"
+        raise NotImplementedError(msg)
 
     @abstractmethod
     def copy(
@@ -349,7 +370,7 @@ class FieldBase(metaclass=ABCMeta):
         """
 
     def assert_field_compatible(
-        self, other: FieldBase, accept_scalar: bool = False
+        self, other: FieldBase, *, accept_scalar: bool = False
     ) -> None:
         """Checks whether `other` is compatible with the current field.
 
@@ -358,7 +379,7 @@ class FieldBase(metaclass=ABCMeta):
                 The other field this one is compared to
             accept_scalar (bool, optional):
                 Determines whether it is acceptable that `other` is an instance of
-                :class:`~pde.fields.ScalarField`.
+                :class:`~pde.fields.scalar.ScalarField`.
         """
         from .scalar import ScalarField
 
@@ -366,17 +387,19 @@ class FieldBase(metaclass=ABCMeta):
         is_scalar = accept_scalar and isinstance(other, ScalarField)
         class_compatible = self.__class__ == other.__class__ or is_scalar
         if not class_compatible:
-            raise TypeError(f"Fields {self} and {other} are incompatible")
+            msg = f"Fields {self} and {other} are incompatible"
+            raise TypeError(msg)
 
         # check whether the associated grids are identical
         if not self.grid.compatible_with(other.grid):
-            raise ValueError(f"Grids {self.grid} and {other.grid} are incompatible")
+            msg = f"Grids {self.grid} and {other.grid} are incompatible"
+            raise ValueError(msg)
 
     @property
     def dtype(self) -> DTypeLike:
         """:class:`~DTypeLike`: the numpy dtype of the underlying data."""
-        # this property is necessary to support np.iscomplexobj for DataFieldBases
-        return self.data.dtype  # type: ignore
+        # this property is necessary to support np.iscomplexobj for DataFieldBase
+        return self.data.dtype
 
     @property
     def is_complex(self) -> bool:
@@ -421,7 +444,8 @@ class FieldBase(metaclass=ABCMeta):
         class_name = json.loads(attributes["class"])
 
         if class_name == cls.__name__:
-            raise RuntimeError(f"Cannot reconstruct abstract class `{class_name}`")
+            msg = f"Cannot reconstruct abstract class `{class_name}`"
+            raise RuntimeError(msg)
 
         # call possibly overwritten classmethod from subclass
         return cls._subclasses[class_name].unserialize_attributes(attributes)
@@ -432,7 +456,7 @@ class FieldBase(metaclass=ABCMeta):
             return NotImplemented
         return self.grid == other.grid and np.array_equal(self.data, other.data)
 
-    def _unary_operation(self: TField, op: Callable) -> TField:
+    def _unary_operation(self, op: Callable) -> Self:
         """Perform an unary operation on this field.
 
         Args:
@@ -445,16 +469,16 @@ class FieldBase(metaclass=ABCMeta):
         return self.__class__(grid=self.grid, data=op(self.data), label=self.label)
 
     @property
-    def real(self: TField) -> TField:
+    def real(self) -> Self:
         """:class:`FieldBase`: Real part of the field."""
         return self._unary_operation(np.real)
 
     @property
-    def imag(self: TField) -> TField:
+    def imag(self) -> Self:
         """:class:`FieldBase`: Imaginary part of the field."""
         return self._unary_operation(np.imag)
 
-    def conjugate(self: TField) -> TField:
+    def conjugate(self) -> Self:
         """Returns complex conjugate of the field.
 
         Returns:
@@ -498,7 +522,8 @@ class FieldBase(metaclass=ABCMeta):
             if scalar_second:
                 # right operator must be a scalar or scalar field
                 if not isinstance(other, ScalarField):
-                    raise TypeError("Right operator must be a scalar field")
+                    msg = "Right operator must be a scalar field"
+                    raise TypeError(msg)
                 self.grid.assert_grid_compatible(other.grid)
                 result: FieldBase = self.copy(dtype=dtype)
 
@@ -523,8 +548,8 @@ class FieldBase(metaclass=ABCMeta):
         return result
 
     def _binary_operation_inplace(
-        self: TField, other, op_inplace: Callable, scalar_second: bool = True
-    ) -> TField:
+        self, other, op_inplace: Callable, scalar_second: bool = True
+    ) -> Self:
         """Perform an in-place binary operation between this field and `other`
 
         Args:
@@ -545,7 +570,8 @@ class FieldBase(metaclass=ABCMeta):
             if scalar_second:
                 # right operator must be a scalar
                 if not isinstance(other, ScalarField):
-                    raise TypeError("Right operator must be a scalar field")
+                    msg = "Right operator must be a scalar field"
+                    raise TypeError(msg)
                 self.grid.assert_grid_compatible(other.grid)
             else:
                 # left operator is tensor and right one might be anything
@@ -566,7 +592,7 @@ class FieldBase(metaclass=ABCMeta):
 
     __radd__ = __add__
 
-    def __iadd__(self: TField, other) -> TField:
+    def __iadd__(self, other) -> Self:
         """Add `other` to the current field."""
         return self._binary_operation_inplace(other, np.add, scalar_second=False)
 
@@ -580,7 +606,7 @@ class FieldBase(metaclass=ABCMeta):
             other, lambda x, y, out: np.subtract(y, x, out=out), scalar_second=False
         )
 
-    def __isub__(self: TField, other) -> TField:
+    def __isub__(self, other) -> Self:
         """Add `other` to the current field."""
         return self._binary_operation_inplace(other, np.subtract, scalar_second=False)
 
@@ -590,7 +616,7 @@ class FieldBase(metaclass=ABCMeta):
 
     __rmul__ = __mul__
 
-    def __imul__(self: TField, other) -> TField:
+    def __imul__(self, other) -> Self:
         """Multiply field by value."""
         return self._binary_operation_inplace(other, np.multiply, scalar_second=False)
 
@@ -606,49 +632,57 @@ class FieldBase(metaclass=ABCMeta):
 
         return self._binary_operation(other, rdivision, scalar_second=True)
 
-    def __itruediv__(self: TField, other) -> TField:
+    def __itruediv__(self, other) -> Self:
         """Divide field by value."""
         return self._binary_operation_inplace(other, np.true_divide, scalar_second=True)
 
     def __pow__(self, exponent: float) -> FieldBase:
         """Raise data of the field to a certain power."""
         if not np.isscalar(exponent):
-            raise NotImplementedError("Only scalar exponents are supported")
+            msg = "Only scalar exponents are supported"
+            raise NotImplementedError(msg)
         return self._binary_operation(exponent, np.power, scalar_second=True)
 
-    def __ipow__(self: TField, exponent: float) -> TField:
+    def __ipow__(self, exponent: float) -> Self:
         """Raise data of the field to a certain power in-place."""
         if not np.isscalar(exponent):
-            raise NotImplementedError("Only scalar exponents are supported")
+            msg = "Only scalar exponents are supported"
+            raise NotImplementedError(msg)
         self.data **= exponent
         return self
 
     def apply(
-        self: TField,
+        self,
         func: Callable | str,
-        out: TField | None = None,
+        out: DataFieldBase | None = None,
         *,
         label: str | None = None,
         evaluate_args: dict[str, Any] | None = None,
-    ) -> TField:
+    ) -> DataFieldBase:
         """Applies a function/expression to the data and returns it as a field.
+
+        Note:
+            This function doesn't support field collections very well. While collections
+            can be passed as input (so this method can be called on collections), the
+            output is expected to be a single field, i.e., an instance of
+            :class:`~pde.fields.datafield_base.DataFieldBase`.
 
         Args:
             func (callable or str):
-                The (vectorized) function being applied to the data or an expression
-                that can be parsed using sympy (:func:`~pde.tools.expression.evaluate`
+                (Vectorized) function being applied to the data or an expression
+                that can be parsed using sympy (:func:`~pde.tools.expressions.evaluate`
                 is used in this case). The local field values can be accessed using the
                 field labels for a field collection and via the variable `c` otherwise.
-            out (FieldBase, optional):
+            out (:class:`DataFieldBase`, optional):
                 Optional field into which the data is written
             label (str, optional):
                 Name of the returned field
             evaluate_args (dict):
-                Additional arguments passed to :func:`~pde.tools.expression.evaluate`.
+                Additional arguments passed to :func:`~pde.tools.expressions.evaluate`.
                 Only used when `func` is a string.
 
         Returns:
-            :class:`FieldBase`: Field with new data. Identical to `out` if given.
+            :class:`DataFieldBase`: Field with new data. Identical to `out` if given.
         """
         from .datafield_base import DataFieldBase  # avoid circular import
 
@@ -660,34 +694,55 @@ class FieldBase(metaclass=ABCMeta):
             if evaluate_args is None:
                 evaluate_args = {}
             if isinstance(self, DataFieldBase):
-                result = evaluate(func, {"c": self}, **evaluate_args)
+                fields: dict[str, DataFieldBase] = {"c": self}
+                if self.label is not None:
+                    fields[self.label] = self
+                result = evaluate(func, fields, **evaluate_args)
             elif isinstance(self, FieldCollection):
                 result = evaluate(func, self, **evaluate_args)
             else:
-                raise TypeError("self must be DataFieldBase or FieldCollection")
+                msg = "self must be DataFieldBase or FieldCollection"
+                raise TypeError(msg)
 
             if out is None:
-                out = result  # type: ignore
+                out = result
             else:
                 result.assert_field_compatible(out)
                 out.data[...] = result.data
 
         elif callable(func):
             # function should directly be applied to the data
+            if out is not None and not self.grid.compatible_with(out.grid):
+                msg = f"Grids {self.grid} and {out.grid} are incompatible"
+                raise ValueError(msg)
+
+            data = func(self.data)
+            rank = data.ndim - self.grid.num_axes
             if out is None:
-                out = self.copy(label=label)
+                # create a output field of appropriate rank
+                dtype = np.result_type(self.dtype, np.asarray(data).dtype)
+                cls = DataFieldBase.get_class_by_rank(rank)
+                out = cls(grid=self.grid, data=data, label=label, dtype=dtype)
+            elif isinstance(out, DataFieldBase):
+                # store result in given output
+                if out.rank != rank:
+                    msg = f"Output field has incompatible rank ({out.rank} != {rank})"
+                    raise ValueError(msg)
+                out.data[...] = data
             else:
-                self.assert_field_compatible(out)
-            out.data[...] = func(self.data)
+                msg = "Output field must be a single field"
+                raise TypeError(msg)
 
         else:
-            raise TypeError("`func` must be string or callable")
+            msg = "`func` must be string or callable"
+            raise TypeError(msg)
 
         if not isinstance(out, FieldBase):
-            raise TypeError("`out` must be of type `FieldBase`")
+            msg = "`out` must be of type `FieldBase`"
+            raise TypeError(msg)
         if label:
             out.label = label
-        return out  # type: ignore
+        return out
 
     @abstractmethod
     def get_line_data(
@@ -710,15 +765,6 @@ class FieldBase(metaclass=ABCMeta):
     @abstractmethod
     def get_image_data(self) -> dict[str, Any]:
         r"""Return data for plotting an image of the field.
-
-        Args:
-            scalar (str or int):
-                The method for extracting scalars as described in
-                :meth:`DataFieldBase.to_scalar`.
-            transpose (bool):
-                Determines whether the transpose of the data should is plotted
-            \**kwargs:
-                Additional parameters are forwarded to `grid.get_image_data`
 
         Returns:
             dict: Information useful for plotting an image of the field
@@ -750,16 +796,15 @@ class FieldBase(metaclass=ABCMeta):
             viewer_args = {}
 
         if self.grid.num_axes == 1:
-            raise RuntimeError(
-                "Interactive plotting needs at least 2 spatial dimensions"
-            )
+            msg = "Interactive plotting needs at least 2 spatial dimensions"
+            raise RuntimeError(msg)
 
         with napari_viewer(self.grid, **viewer_args) as viewer:
             napari_add_layers(viewer, self._get_napari_data(**kwargs))
 
     def split_mpi(
-        self: TField, decomposition: Literal["auto"] | int | list[int] = "auto"
-    ) -> TField:
+        self, decomposition: Literal["auto"] | int | list[int] = "auto"
+    ) -> Self:
         """Splits the field onto subgrids in an MPI run.
 
         In a normal serial simulation, the method simply returns the field itself. In
@@ -785,7 +830,8 @@ class FieldBase(metaclass=ABCMeta):
         if not mpi.parallel_run:
             return self
         if self.grid._mesh is not None:
-            raise RuntimeError("Cannot split an already split field")
+            msg = "Cannot split an already split field"
+            raise RuntimeError(msg)
 
         # create the grid mesh using the decomposition information
         mesh = GridMesh.from_grid(self.grid, decomposition)

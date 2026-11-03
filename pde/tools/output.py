@@ -30,18 +30,21 @@ def get_progress_bar_class(fancy: bool = True):
         fancy (bool):
             Flag determining whether a fancy progress bar should be used in jupyter
             notebooks (if :mod:`ipywidgets` is installed)
+
+    Returns:
+        type: The progress-bar class selected for the requested environment.
     """
     if fancy:
         # try using notebook progress bar
         try:
             # check whether progress bar can use a widget
-            import ipywidgets
+            import ipywidgets  # noqa: F401
         except ImportError:
             # widgets are not available => use standard tqdm
             progress_bar_class = tqdm.tqdm
         else:
             # use the fancier version of the progress bar in jupyter
-            from tqdm.auto import tqdm as progress_bar_class
+            from tqdm.auto import tqdm as progress_bar_class  # type: ignore
     else:
         # only import text progress bar
         progress_bar_class = tqdm.tqdm
@@ -59,8 +62,8 @@ def display_progress(iterator, total=None, enabled=True, **kwargs):
         **kwargs: All extra arguments are forwarded to the progress bar class
 
     Returns:
-        A class that behaves as the original iterator, but shows the progress
-        alongside iteration.
+        An iterator displaying progress, or the original iterator if progress
+        reporting is disabled.
     """
     if not enabled:
         return iterator
@@ -121,7 +124,7 @@ class JupyterOutput(OutputBase):
         try:
             from IPython.display import HTML, display
         except ImportError:
-            print("\n".join(self.lines))
+            print("\n".join(self.lines), file=sys.stderr)
         else:
             html = self.header + "".join(self.lines) + self.footer
             display(HTML(html))
@@ -130,7 +133,7 @@ class JupyterOutput(OutputBase):
 def in_jupyter_notebook() -> bool:
     """Checks whether we are in a jupyter notebook."""
     try:
-        from IPython import display, get_ipython
+        from IPython import display, get_ipython  # noqa: F401
     except ImportError:
         return False
 

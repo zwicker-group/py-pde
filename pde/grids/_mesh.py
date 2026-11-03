@@ -1,27 +1,36 @@
 """Defines a class used for subdividing a grid for parallel execution using MPI.
 
+.. autosummary::
+   :nosignatures:
+
+   GridMesh
+   MPIFlags
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
 from enum import IntEnum
-from typing import Any, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import numpy as np
 
 from ..fields import FieldCollection
 from ..fields.base import FieldBase
 from ..fields.datafield_base import DataFieldBase
-from ..tools import mpi
 from ..tools.cache import cached_method
 from ..tools.plotting import plot_on_axes
-from .base import GridBase
 from .boundaries.axes import BoundariesBase, BoundariesList
 from .boundaries.axis import BoundaryAxisBase, BoundaryPair
 from .boundaries.local import _MPIBC
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ..tools.typing import NumericArray
+    from .base import GridBase
 
 
 class MPIFlags(IntEnum):
@@ -37,16 +46,14 @@ class MPIFlags(IntEnum):
         """Flag for connection between my lower boundary and `other_id`"""
         if my_id <= other_id:
             return 2 * my_id + cls._boundary_lower
-        else:
-            return 2 * other_id + cls._boundary_upper
+        return 2 * other_id + cls._boundary_upper
 
     @classmethod
     def boundary_upper(cls, my_id: int, other_id: int) -> int:
         """Flag for connection between my upper boundary and `other_id`"""
         if my_id <= other_id:
             return 2 * my_id + cls._boundary_upper
-        else:
-            return 2 * other_id + cls._boundary_lower
+        return 2 * other_id + cls._boundary_lower
 
 
 def _get_optimal_decomposition(shape: Sequence[int], mpi_size: int) -> list[int]:
@@ -86,7 +93,7 @@ def _get_optimal_decomposition(shape: Sequence[int], mpi_size: int) -> list[int]
     return decomposition
 
 
-def _subdivide(num: int, chunks: int) -> np.ndarray:
+def _subdivide(num: int, chunks: int) -> NumericArray:
     r"""Subdivide `num` intervals in `chunk` chunks.
 
     Args:
@@ -99,7 +106,8 @@ def _subdivide(num: int, chunks: int) -> np.ndarray:
         list: The number of intervals per chunk
     """
     if chunks > num:
-        raise RuntimeError("Cannot divide in more chunks than support points")
+        msg = "Cannot divide in more chunks than support points"
+        raise RuntimeError(msg)
     return np.diff(np.linspace(0, num, chunks + 1).astype(int))
 
 
@@ -107,6 +115,8 @@ def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> list[GridBa
     """Subdivide the grid along a given axis.
 
     Args:
+        grid (:class:`~pde.grids.base.GridBase`):
+            The grid to subdivide
         axis (int):
             The axis along which the subdivision will happen
         chunks (int):
@@ -116,17 +126,17 @@ def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> list[GridBa
         list: A list of subgrids
     """
     if chunks <= 0:
-        raise ValueError("Chunks must be a positive Integer")
-    elif chunks == 1:
+        msg = "Chunks must be a positive Integer"
+        raise ValueError(msg)
+    if chunks == 1:
         return [grid]  # no subdivision necessary
 
     def replace_in_axis(arr, value):
         if isinstance(arr, tuple):
-            return arr[:axis] + (value,) + arr[axis + 1 :]
-        else:
-            res = arr.copy()
-            res[axis] = value
-            return res
+            return (*arr[:axis], value, *arr[axis + 1 :])
+        res = arr.copy()
+        res[axis] = value
+        return res
 
     subgrids = []
     start = 0
@@ -171,7 +181,8 @@ class GridMesh:
                 The nested grids representing the subdivision
         """
         if basegrid._mesh is not None:
-            raise ValueError("Cannot subdivide a subgrid further")
+            msg = "Cannot subdivide a subgrid further"
+            raise ValueError(msg)
         self.basegrid = basegrid
         self.subgrids = np.asarray(subgrids)
         for subgrid in self.subgrids.flat:
@@ -198,6 +209,8 @@ class GridMesh:
         Returns:
             :class:`GridMesh`: The grid mesh created from the grid
         """
+        from ..tools import mpi
+
         if decomposition == "auto":
             # determine decomposition automatically
             decomposition = _get_optimal_decomposition(grid.shape, mpi.size)
@@ -214,11 +227,13 @@ class GridMesh:
                     if var_index is None:
                         var_index = i
                     else:
-                        raise ValueError("Can only specify one unknown dimension")
+                        msg = "Can only specify one unknown dimension"
+                        raise ValueError(msg)
                 elif num > 0:
                     size *= num
                 else:
-                    raise RuntimeError(f"Unknown size `{num}`")
+                    msg = f"Unknown size `{num}`"
+                    raise RuntimeError(msg)
 
             # replace potential variable index with correct value
             if var_index is not None:
@@ -226,20 +241,22 @@ class GridMesh:
                 if dim > 0:
                     decomposition[var_index] = dim
                 else:
-                    raise RuntimeError("Not enough nodes to satisfy decomposition")
+                    msg = "Not enough nodes to satisfy decomposition"
+                    raise RuntimeError(msg)
 
             # fill up with 1s until the grid size is met
             decomposition += [1] * (grid.num_axes - len(decomposition))
 
         # check compatibility with number of nodes
         if mpi.size > 1 and math.prod(decomposition) != mpi.size:
-            raise RuntimeError(
+            msg = (
                 f"Node count ({mpi.size}) incompatible with decomposition "
                 f"({decomposition})"
             )
+            raise RuntimeError(msg)
 
         # subdivide the base grid according to the decomposition
-        subgrids: np.ndarray = np.empty(decomposition, dtype=object)
+        subgrids = np.empty(decomposition, dtype=object)
         subgrids.flat[0] = grid.copy()  # seed the initial grid at the top-left
         idx_set: list[Any] = [0] * subgrids.ndim  # indices to extract all grids
         for axis, chunks in enumerate(decomposition):
@@ -262,7 +279,7 @@ class GridMesh:
     @property
     def shape(self) -> tuple[int, ...]:
         """tuple: the number of subgrids along each axis"""
-        return self.subgrids.shape
+        return self.subgrids.shape  # type: ignore
 
     def __len__(self) -> int:
         """Total number of subgrids."""
@@ -271,6 +288,8 @@ class GridMesh:
     @property
     def current_node(self) -> int:
         """int: current MPI node"""
+        from ..tools import mpi
+
         return mpi.rank
 
     def __getitem__(self, node_id: int | None) -> GridBase:
@@ -342,7 +361,7 @@ class GridMesh:
         return indices_1d
 
     @cached_method()
-    def _get_data_indices(self, with_ghost_cells: bool = False) -> np.ndarray:
+    def _get_data_indices(self, with_ghost_cells: bool = False) -> NumericArray:
         """Indices to extract valid field data for each subgrid.
 
         Args:
@@ -355,7 +374,7 @@ class GridMesh:
         indices_1d = self._get_data_indices_1d(with_ghost_cells)
 
         # combine everything into a full indices
-        indices: np.ndarray = np.empty(self.shape, dtype=object)
+        indices: NumericArray = np.empty(self.shape, dtype=object)
         for idx in np.ndindex(self.shape):
             indices[idx] = tuple(indices_1d[n][i] for n, i in enumerate(idx))
 
@@ -365,7 +384,7 @@ class GridMesh:
         """Get MPI flag indicating the boundary between this node and its neighbor.
 
         Args:
-            node_id (int):
+            neighbor (int):
                 The ID of the neighboring node
             upper (bool):
                 Flag indicating the boundary of the current node
@@ -376,9 +395,8 @@ class GridMesh:
         if upper:
             # my upper boundary (lower boundary of right cell)
             return MPIFlags.boundary_upper(self.current_node, neighbor)
-        else:
-            # my lower boundary (upper boundary of left cell)
-            return MPIFlags.boundary_lower(self.current_node, neighbor)
+        # my lower boundary (upper boundary of left cell)
+        return MPIFlags.boundary_lower(self.current_node, neighbor)
 
     def get_neighbor(
         self, axis: int, upper: bool, *, node_id: int | None = None
@@ -427,11 +445,11 @@ class GridMesh:
 
     def extract_field_data(
         self,
-        field_data: np.ndarray,
+        field_data: NumericArray,
         node_id: int | None = None,
         *,
         with_ghost_cells: bool = False,
-    ) -> np.ndarray:
+    ) -> NumericArray:
         """Extract one subfield from a global one.
 
         Args:
@@ -457,8 +475,8 @@ class GridMesh:
 
         node_idx = self._id2idx(node_id)
         idx = self._get_data_indices_1d(with_ghost_cells)
-        i = (...,) + tuple(idx[n][j] for n, j in enumerate(node_idx))
-        return field_data[i]
+        i = (..., *tuple(idx[n][j] for n, j in enumerate(node_idx)))
+        return field_data[i]  # type: ignore
 
     def extract_subfield(
         self,
@@ -491,7 +509,7 @@ class GridMesh:
                 with_ghost_cells=with_ghost_cells,
             )
 
-            return field.__class__(  # type: ignore
+            return field.__class__(
                 grid=self[node_id],
                 data=data,
                 label=field.label,
@@ -499,7 +517,7 @@ class GridMesh:
                 with_ghost_cells=with_ghost_cells,
             )
 
-        elif isinstance(field, FieldCollection):
+        if isinstance(field, FieldCollection):
             # extract data from a field collection
 
             # extract individual fields
@@ -509,10 +527,10 @@ class GridMesh:
             ]
 
             # combine everything to a field collection
-            return field.__class__(fields, label=field.label)  # type: ignore
+            return field.__class__(fields, label=field.label)
 
-        else:
-            raise TypeError(f"Field type {field.__class__.__name__} unsupported")
+        msg = f"Field type {field.__class__.__name__} unsupported"
+        raise TypeError(msg)
 
     def extract_boundary_conditions(self, bcs_base: BoundariesBase) -> BoundariesList:
         """Extract boundary conditions for current subgrid from global conditions.
@@ -526,12 +544,13 @@ class GridMesh:
             the subgrid
         """
         if not isinstance(bcs_base, BoundariesList):
-            raise TypeError(
+            msg = (
                 "Simulations parallelized with MPI only work with boundary conditions "
                 "based on the `BoundariesList` class, i.e., conditions need to be "
                 "specified for each axes separately and cannot be set using a "
                 "function globally."
             )
+            raise TypeError(msg)
 
         bcs: list[BoundaryAxisBase] = []
         for axis in range(self.num_axes):
@@ -550,27 +569,26 @@ class GridMesh:
         return BoundariesList(bcs)
 
     def split_field_data_mpi(
-        self, field_data: np.ndarray, *, with_ghost_cells: bool = False
-    ) -> np.ndarray:
+        self, field_data: NumericArray, *, with_ghost_cells: bool = False
+    ) -> NumericArray:
         """Extract one subfield from a global field.
 
         Args:
-            field (:class:`~pde.fields.base.DataFieldBase`):
-                The field that will be split. An array with the correct shape and dtype
-                also needs to be passed to the receiving nodes.
+            field_data (:class:`~numpy.ndarray`):
+                The field data array that will be split. An array with the correct shape
+                and dtype also needs to be passed to the receiving nodes.
             with_ghost_cells (bool):
                 Indicates whether the ghost cells are included in data. If `True`,
                 `field_data` must be the full data field.
 
         Returns:
-            :class:`~pde.fields.base.DataFieldBase`: The sub field of the current node
+            :class:`~numpy.ndarray`: The sub field data of the current node
         """
-        from ..tools.mpi import mpi_recv, mpi_send
+        from ..tools import mpi
 
         if len(self) != mpi.size:
-            raise RuntimeError(
-                f"GridMesh size differs from MPI size ({len(self)} != {mpi.size})"
-            )
+            msg = f"GridMesh size differs from MPI size ({len(self)} != {mpi.size})"
+            raise RuntimeError(msg)
 
         if mpi.is_main:
             # mpi_send fields to all client processes
@@ -578,24 +596,23 @@ class GridMesh:
                 subfield_data = self.extract_field_data(
                     field_data, i, with_ghost_cells=with_ghost_cells
                 )
-                mpi_send(subfield_data, i, MPIFlags.field_split)
+                mpi.mpi_send(subfield_data, i, MPIFlags.field_split)
 
             # extract field for the current process
             return self.extract_field_data(
                 field_data, 0, with_ghost_cells=with_ghost_cells
             )
 
-        else:
-            # receive subfield from main process
-            subgrid = self.current_grid
+        # receive subfield from main process
+        subgrid = self.current_grid
 
-            # determine shape of resulting data
-            shape = field_data.shape[: -self.num_axes]
-            shape += subgrid._shape_full if with_ghost_cells else subgrid.shape
+        # determine shape of resulting data
+        shape = field_data.shape[: -self.num_axes]
+        shape += subgrid._shape_full if with_ghost_cells else subgrid.shape
 
-            subfield_data = np.empty(shape, dtype=field_data.dtype)
-            mpi_recv(subfield_data, 0, MPIFlags.field_split)
-            return subfield_data
+        subfield_data = np.empty(shape, dtype=field_data.dtype)
+        mpi.mpi_recv(subfield_data, 0, MPIFlags.field_split)
+        return subfield_data
 
     def split_field_mpi(self: GridMesh, field: TField) -> TField:
         """Split a field onto the subgrids by communicating data via MPI.
@@ -614,7 +631,7 @@ class GridMesh:
 
         if isinstance(field, DataFieldBase):
             # split individual field
-            return field.__class__(  # type: ignore
+            return field.__class__(
                 self.current_grid,
                 data=self.split_field_data_mpi(field._data_full, with_ghost_cells=True),
                 label=field.label,
@@ -622,7 +639,7 @@ class GridMesh:
                 with_ghost_cells=True,
             )
 
-        elif isinstance(field, FieldCollection):
+        if isinstance(field, FieldCollection):
             # split field collection
             field_classes = [f.__class__ for f in field]
             data = self.split_field_data_mpi(field._data_full, with_ghost_cells=True)
@@ -634,16 +651,16 @@ class GridMesh:
                 labels=field.labels,
             )
 
-        else:
-            raise TypeError(f"Field type {field.__class__.__name__} unsupported")
+        msg = f"Field type {field.__class__.__name__} unsupported"
+        raise TypeError(msg)
 
     def combine_field_data(
         self,
-        subfields: Sequence[np.ndarray],
-        out: np.ndarray | None = None,
+        subfields: Sequence[NumericArray],
+        out: NumericArray | None = None,
         *,
         with_ghost_cells: bool = False,
-    ) -> np.ndarray:
+    ) -> NumericArray:
         """Combine data of multiple fields defined on subgrids.
 
         Args:
@@ -680,11 +697,11 @@ class GridMesh:
 
     def combine_field_data_mpi(
         self,
-        subfield: np.ndarray,
-        out: np.ndarray | None = None,
+        subfield: NumericArray,
+        out: NumericArray | None = None,
         *,
         with_ghost_cells: bool = False,
-    ) -> np.ndarray | None:
+    ) -> NumericArray | None:
         """Combine data of all subfields using MPI.
 
         Args:
@@ -701,7 +718,7 @@ class GridMesh:
             other cases, this function returns `None`. On the main node, this array is
             `out` if `out` was supplied.
         """
-        from ..tools.mpi import mpi_recv, mpi_send
+        from ..tools import mpi
 
         assert len(self) == mpi.size
 
@@ -717,7 +734,7 @@ class GridMesh:
                 else:
                     shape = element_shape + self[i].shape
                 subfield_data = np.empty(shape, dtype=subfield.dtype)
-                mpi_recv(subfield_data, i, MPIFlags.field_combine)
+                mpi.mpi_recv(subfield_data, i, MPIFlags.field_combine)
                 field_data.append(subfield_data)
 
             # combine the data into a single field
@@ -725,10 +742,9 @@ class GridMesh:
                 field_data, out=out, with_ghost_cells=with_ghost_cells
             )
 
-        else:
-            # mpi_send our subfield to the main node
-            mpi_send(subfield, 0, MPIFlags.field_combine)
-            return None
+        # mpi_send our subfield to the main node
+        mpi.mpi_send(subfield, 0, MPIFlags.field_combine)
+        return None
 
     def broadcast(self, data: TData) -> TData:
         """Distribute a value from the main node to all nodes.
@@ -752,12 +768,28 @@ class GridMesh:
                 The data that will be sent to the main node
 
         Returns:
-            None on all nodes, except the main node, which receives an ordered list with
-            the data from all nodes.
+            None on all nodes except the main node, which receives a list containing
+            the data from all nodes, ordered by MPI rank.
         """
         from mpi4py.MPI import COMM_WORLD
 
         return COMM_WORLD.gather(data, root=0)
+
+    def scatter(self, data: list[TData] | None) -> TData:
+        """Scatter a value form the main node to all nodes.
+
+        Args:
+            data:
+                The list of data that will be sent from the main node to all others
+
+        Returns:
+            Each node receives one item from the main node.
+        """
+        from mpi4py.MPI import COMM_WORLD
+
+        if data:
+            assert len(data) == len(self)
+        return COMM_WORLD.scatter(data, root=0)  # type: ignore
 
     def allgather(self, data: TData) -> list[TData]:
         """Gather a value from reach node and sends them to all nodes.
@@ -784,9 +816,8 @@ class GridMesh:
                 e.g., to set the color of the lines
         """
         if self.num_axes not in {1, 2}:
-            raise NotImplementedError(
-                f"Cannot plot data of dimension {self.basegrid.dim}"
-            )
+            msg = f"Cannot plot data of dimension {self.basegrid.dim}"
+            raise NotImplementedError(msg)
 
         kwargs.setdefault("color", "k")
         for x in np.arange(self.shape[0] + 1) - 0.5:

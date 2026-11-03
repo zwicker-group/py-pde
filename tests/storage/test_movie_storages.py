@@ -9,20 +9,22 @@ import numpy as np
 import pytest
 
 import pde
-from pde import FileStorage, MovieStorage
+from pde import MovieStorage
 from pde.tools.ffmpeg import formats
 from pde.tools.misc import module_available
 
-RESOURCES_PATH = Path(__file__).resolve().parent / "resources"
+RESOURCES_PATH = (
+    Path(__file__).resolve().parents[1] / "resources" / "MovieStorage" / "legacy_errors"
+)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
-@pytest.mark.parametrize("dim", [1, 2])
-def test_movie_storage_scalar(dim, tmp_path, rng):
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
+@pytest.mark.parametrize("grid_shape", [(16,), (16, 16), (5, 9)])
+def test_movie_storage_scalar(grid_shape, tmp_path, rng):
     """Test storing scalar field as movie."""
     path = tmp_path / "test_movie_storage_scalar.avi"
 
-    grid = pde.UnitGrid([16] * dim)
+    grid = pde.UnitGrid(grid_shape)
     field = pde.ScalarField.random_uniform(grid, rng=rng)
     eq = pde.DiffusionPDE()
     writer = MovieStorage(path)
@@ -43,7 +45,36 @@ def test_movie_storage_scalar(dim, tmp_path, rng):
         np.testing.assert_allclose(field.data, storage[i].data, atol=0.01)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
+@pytest.mark.parametrize("suffix", [".avi", ".mkv", ".mov"])
+@pytest.mark.parametrize("write_times", [False, True])
+@pytest.mark.parametrize("bits", [8, 16])
+def test_movie_storage_container_roundtrip(suffix, write_times, bits, tmp_path):
+    """Test the documented container formats."""
+    path = tmp_path / f"test_container{suffix}"
+    grid = pde.UnitGrid([4, 3])
+    times = [0, 0.5, 2] if write_times else [0, 1, 2]
+
+    writer = MovieStorage(
+        path, bits_per_channel=bits, write_times=write_times, info={"payload": "x"}
+    )
+    if not write_times:
+        writer.info.update({"t_start": 0, "dt": 1})
+    writer.start_writing(pde.ScalarField(grid, 0))
+    for t in times:
+        writer.append(pde.ScalarField(grid, 0.1 + t / 4), t)
+    writer.end_writing()
+
+    reader = MovieStorage(path)
+    assert len(reader) == 3
+    np.testing.assert_allclose(reader.times, times)
+    assert reader.info["payload"] == "x"
+    assert formats[reader.info["video_format"]].bits_per_channel == bits
+    for t, field in zip(times, reader, strict=True):
+        np.testing.assert_allclose(field.data, 0.1 + t / 4, atol=1 / 2**bits * 2)
+
+
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 @pytest.mark.parametrize("dim", [1, 2])
 @pytest.mark.parametrize("num_fields", [1, 2, 3])
 def test_movie_storage_collection(dim, num_fields, tmp_path):
@@ -51,7 +82,7 @@ def test_movie_storage_collection(dim, num_fields, tmp_path):
     path = tmp_path / f"test_movie_storage_collection_{dim}_{num_fields}.avi"
 
     grid = pde.UnitGrid([8] * dim)
-    field = pde.FieldCollection([pde.ScalarField(grid)] * num_fields, copy_fields=True)
+    field = pde.FieldCollection([pde.ScalarField(grid)] * num_fields)
     eq = pde.PDE(dict([("a", "1"), ("b", "2"), ("c", "3")][:num_fields]))
     writer = MovieStorage(path, vmax=[5, 10, 15])
     eq.solve(field, t_range=3.5, dt=0.1, backend="numpy", tracker=writer.tracker(1))
@@ -65,7 +96,7 @@ def test_movie_storage_collection(dim, num_fields, tmp_path):
             np.testing.assert_allclose(field.data, (i + 1) * t, atol=0.02, rtol=0.02)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 @pytest.mark.parametrize("dim", [1, 2])
 def test_movie_storage_vector(dim, tmp_path, rng):
     """Test storing scalar field as movie."""
@@ -91,11 +122,11 @@ def test_movie_storage_vector(dim, tmp_path, rng):
     for i, field in enumerate(reader):
         assert field.grid == grid
         assert isinstance(field, pde.VectorField)
-        assert field.data.shape == (dim,) + grid.shape
+        assert field.data.shape == (dim, *grid.shape)
         np.testing.assert_allclose(field.data, storage[i].data, atol=0.01)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 @pytest.mark.parametrize("ext", [".mov", ".avi", ".mkv"])
 def test_movie_storage_containers(ext, tmp_path, rng):
     """Test storing scalar field as movie with different extensions."""
@@ -122,15 +153,16 @@ def test_movie_storage_containers(ext, tmp_path, rng):
         np.testing.assert_allclose(field.data, storage[i].data, atol=0.01)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
-@pytest.mark.parametrize("name,video_format", formats.items())
-def test_video_format(name, video_format, tmp_path, rng):
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
+@pytest.mark.parametrize(("name", "video_format"), formats.items())
+@pytest.mark.parametrize("ext", [".avi", ".mov"])
+def test_video_format(name, video_format, ext, tmp_path, rng):
     """Test all video_formats."""
     if np.issubdtype(video_format.dtype, np.integer):
         assert video_format.max_value == np.iinfo(video_format.dtype).max
     assert np.dtype(video_format.dtype).itemsize == video_format.bytes_per_channel
 
-    path = tmp_path / f"test_movie_storage_{name}.avi"
+    path = tmp_path / f"test_movie_storage_{name}{ext}"
 
     field = pde.ScalarField.random_uniform(pde.UnitGrid([16]), rng=rng)
     writer = MovieStorage(path, video_format=name)
@@ -149,19 +181,19 @@ def test_video_format(name, video_format, tmp_path, rng):
         np.testing.assert_allclose(field.data, storage[i].data, atol=atol)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 def test_too_many_channels(tmp_path, rng):
     """Test that data with too many channels throws an error."""
     path = tmp_path / "test_movie_complex.avi"
 
     field = pde.FieldCollection.scalar_random_uniform(5, pde.UnitGrid([16]), rng=rng)
     writer = MovieStorage(path)
-    eq = pde.PDE({s: "0" for s in "abcde"})
+    eq = pde.PDE(dict.fromkeys("abcde", "0"))
     with pytest.raises(RuntimeError):
         eq.solve(field, t_range=3.5, backend="numpy", tracker=writer.tracker(2))
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 def test_complex_data(tmp_path, rng):
     """Test that complex data throws an error."""
     path = tmp_path / "test_movie_complex.avi"
@@ -174,17 +206,17 @@ def test_complex_data(tmp_path, rng):
         )
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 def test_wrong_format():
     """Test how wrong files are dealt with."""
-    from ffmpeg._run import Error as FFmpegError
+    import av
 
     reader = MovieStorage(RESOURCES_PATH / "does_not_exist.avi")
     with pytest.raises(OSError):
         print(reader.times)
 
     reader = MovieStorage(RESOURCES_PATH / "empty.avi")
-    with pytest.raises(FFmpegError):
+    with pytest.raises(av.FFmpegError):
         print(reader.times)
 
     reader = MovieStorage(RESOURCES_PATH / "no_metadata.avi")
@@ -193,24 +225,9 @@ def test_wrong_format():
         reader[0]
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
-@pytest.mark.parametrize("path", RESOURCES_PATH.glob("*.hdf5"))
-def test_stored_files(path):
-    """Test stored files."""
-    file_reader = FileStorage(path)
-    movie_reader = MovieStorage(path.with_suffix(".avi"))
-
-    np.testing.assert_allclose(file_reader.times, movie_reader.times)
-    assert file_reader.info["payload"] == movie_reader.info["payload"]
-    np.testing.assert_allclose(file_reader.times, movie_reader.times)
-    for a, b in zip(file_reader, movie_reader):
-        assert a.grid == b.grid
-        np.testing.assert_allclose(a.data, b.data, atol=1e-4)
-
-
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 @pytest.mark.parametrize(
-    "interrupt, expected",
+    ("interrupt", "expected"),
     [
         (pde.FixedInterrupts([0.5, 0.7, 1.4]), [0.5, 0.7, 1.4]),
         (pde.ConstantInterrupts(1, t_start=1), [1, 2]),
@@ -235,7 +252,7 @@ def test_stored_times(interrupt, expected, tmp_path):
     np.testing.assert_allclose(reader.times, expected, atol=0.01)
 
 
-@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.skipif(not module_available("av"), reason="requires `av`")
 def test_unequal_spaced_times(tmp_path, caplog):
     """Test whether a warning is generated for unequally spaced times."""
     path = tmp_path / "test_movie_unequal_times.avi"

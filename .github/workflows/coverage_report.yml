@@ -1,6 +1,14 @@
 name: "Generate coverage report"
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'README.md'
+  pull_request:
+    paths-ignore:
+      - 'README.md'
 
 jobs:
   coverage_report:
@@ -8,12 +16,12 @@ jobs:
     timeout-minutes: 30
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
-        python-version: '3.11'
+        python-version: '3.12'
 
     - name: Setup FFmpeg
       uses: AnimMouse/setup-ffmpeg@v1
@@ -32,34 +40,53 @@ jobs:
     - name: Generate serial coverage report
       env:
         NUMBA_DISABLE_JIT: 1
+        JAX_DISABLE_JIT: 1
         MPLBACKEND: agg
         PYPDE_TESTRUN: 1
       run: |
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
-        pytest --cov-config=pyproject.toml --cov=pde -n auto tests
+        export COVERAGE_FILE=".coverage.serial"
+        pytest -v -rP -o log_cli=true --cov-config=pyproject.toml --cov=pde -n auto tests 
 
     - name: Setup MPI
       uses: mpi4py/setup-mpi@v1
+      with:
+        mpi: "openmpi"
 
     - name: Generate parallel coverage report
       env:
         NUMBA_DISABLE_JIT: 1
+        JAX_DISABLE_JIT: 1
         MPLBACKEND: agg
         PYPDE_TESTRUN: 1
       run: |
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
         pip install -r tests/requirements_mpi.txt
-        mpiexec -n 2 pytest --cov-config=pyproject.toml --cov-append --cov=pde --use_mpi tests
+        # mpiexec -n 2 pytest -v -rP -o log_cli=true --cov-config=pyproject.toml --cov=pde --use_mpi tests
+
+        # run pytest under MPI, but avoid sharing cache/coverage state between ranks
+        mpiexec -n 2 bash -lc '
+          export COVERAGE_FILE=".coverage.mpi.${OMPI_COMM_WORLD_RANK:-0}"
+          export TMPDIR="$(pwd)/.tmp_mpi_${OMPI_COMM_WORLD_RANK:-0}"
+          mkdir -p "$TMPDIR"
+          pytest -v -rP -o log_cli=true \
+            --cov-config=pyproject.toml --cov=pde \
+            -p no:cacheprovider \
+            --use_mpi tests
+        '
+
+        # combine per-rank coverage data into the main file for the later "coverage xml"
+        coverage combine .coverage.serial .coverage.mpi.*
 
     - name: Create coverage report
       run: |
         coverage xml -o coverage_report.xml 
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage_report.xml
+        files: ./coverage_report.xml
         flags: unittests
         name: codecov-pydev
         fail_ci_if_error: true

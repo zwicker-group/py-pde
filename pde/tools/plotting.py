@@ -23,12 +23,15 @@ import functools
 import logging
 import sys
 import warnings
-from collections.abc import Generator
 from typing import TYPE_CHECKING, Any, Literal
 
+from .. import config
 from ..tools.docstrings import replace_in_docstring
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    import matplotlib as mpl
     import matplotlib.cm
     import matplotlib.figure as mpl_figure
     import napari
@@ -176,12 +179,20 @@ class PlotReference:
 
     __slots__ = ["ax", "element", "parameters"]
 
-    def __init__(self, ax, element: Any, parameters: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        ax: matplotlib.axes.Axes,
+        element: Any,
+        parameters: dict[str, Any] | None = None,
+    ):
         """
         Args:
-            ax (:class:`matplotlib.axes.Axes`): The axes of the element
-            element (:class:`matplotlib.artist.Artist`): The actual element
-            parameters (dict): Parameters to recreate the plot element
+            ax (:class:`matplotlib.axes.Axes`):
+                The figure axes which shows the element
+            element (:class:`matplotlib.artist.Artist`):
+                The actual matplotlib element or a list
+            parameters (dict):
+                Additional parameters necessary to recreate the plot element
         """
         self.ax = ax
         self.element = element
@@ -201,9 +212,9 @@ def plot_on_axes(wrapped=None, update_method=None):
     text. Note that the decorator can be used on both functions and methods.
 
     Example:
-        The following example illustrates how this decorator can be used to
-        implement plotting for a given class. In particular, supplying the
-        `update_method` will allow efficient dynamical plotting::
+        The following example illustrates how this decorator can be used to implement
+        plotting for a given class. In particular, supplying the `update_method` will
+        allow efficient dynamical plotting::
 
             class State:
                 def __init__(self) -> None:
@@ -229,9 +240,8 @@ def plot_on_axes(wrapped=None, update_method=None):
         wrapped (callable):
             Function to be wrapped
         update_method (callable or str):
-            Method to call to update the plot. The argument of the new
-            method will be the result of the initial call of the wrapped
-            method.
+            Method to call to update the plot. The argument of the new method will be
+            the result of the initial call of the wrapped method.
     """
     if wrapped is None:
         # handle the case where decorator was called without brackets
@@ -249,17 +259,16 @@ def plot_on_axes(wrapped=None, update_method=None):
     ):
         """This docstring will replace {PLOT_ARGS} in the wrapped function.
 
-        Title (str):
+        title (str):
             Title of the plot. If omitted, the title might be chosen automatically.
         filename (str, optional):
             If given, the plot is written to the specified file.
         action (str):
             Decides what to do with the final figure. If the argument is set to `show`,
             :func:`matplotlib.pyplot.show` will be called to show the plot. If the value
-            is `none`, the figure will be created, but not necessarily shown. The value
-            `close` closes the figure, after saving it to a file when `filename` is
-            given. The default value `auto` implies that the plot is shown if it is not
-            a nested plot call.
+            is `auto` or `none`, the figure will be created, but not necessarily shown.
+            The value `close` closes the figure, after saving it to a file when
+            `filename` is given.
         ax_style (dict):
             Dictionary with properties that will be changed on the axis after the plot
             has been drawn by calling :meth:`matplotlib.pyplot.setp`. A special item i
@@ -274,87 +283,76 @@ def plot_on_axes(wrapped=None, update_method=None):
             new figure, while "reuse" attempts to reuse an existing figure, which is
             the default.
         """
-        # Note on docstring: This docstring replaces the token {PLOT_ARGS} in
-        # the wrapped function
+        # NOTE: The docstring replaces the token {PLOT_ARGS} in the wrapped function
         import matplotlib as mpl
         import matplotlib.pyplot as plt
 
+        if action == "auto":
+            # decide automatically what to do with the figure
+            if isinstance(ax, mpl.axes.Axes) or ax == "reuse":
+                action = "none"  # do nothing if explicit axes are given
+            elif in_ipython():
+                action = "sca"  # set to current axis in interactive environment
+            else:
+                action = "show"  # show plot when nothing is specified
         if ax_style is None:
             ax_style = {}
 
-        # Show figure by calling `plt.show` automatically only if
-        #    - action == 'auto'
-        #    - axis is not given, i.e., ax == None
-        #    - backend is not `inline` (which would show figure anyway)
-        # This safeguard is necessary to allow specifying subplot axes explicitly
-        # through the `ax` argument.
-        auto_show_figure = ax is None and "backend_inline" not in mpl.get_backend()
+        # retrieve an axis object, depending on what is supplied by the `ax` argument
+        if ax is None:
+            # create new figure
+            backend = mpl.get_backend()
+            if "backend_inline" in backend or backend == "nbAgg":
+                plt.close("all")  # close left over figures
+            fig, ax = plt.subplots()
 
-        # some logic to check for nested plotting calls:
-        with nested_plotting_check() as is_outermost_plot_call:
-            # disable interactive plotting temporarily
-            with disable_interactive():
-                if ax is None:
-                    # create new figure
-                    backend = mpl.get_backend()
-                    if "backend_inline" in backend or backend == "nbAgg":
-                        plt.close("all")  # close left over figures
-                        auto_show_figure = True  # show this figure if action == 'auto'
-                    fig, ax = plt.subplots()
+        elif ax == "reuse":
+            # try to reuse an existing figure (or create a new one)
+            ax = plt.gca()
+            fig = ax.get_figure()
 
-                elif ax == "reuse":
-                    # try to reuse an existing figure (or create a new one)
-                    ax = plt.gca()
-                    fig = ax.get_figure()
+        else:
+            # assume an axes was given
+            fig = ax.get_figure()
 
-                else:
-                    # assume an axes was given
-                    fig = ax.get_figure()
+        # call the actual plotting function
+        reference = wrapped(*args, ax=ax, **kwargs)
 
-                # call the actual plotting function
-                reference = wrapped(*args, ax=ax, **kwargs)
+        # finishing touches...
+        if title is not None:
+            ax.set_title(title)
 
-                # finishing touches...
-                if title is not None:
-                    ax.set_title(title)
+        use_offset = ax_style.pop("use_offset", False)
+        if use_offset is not None:
+            ax.get_xaxis().get_major_formatter().set_useOffset(use_offset)
+            ax.get_yaxis().get_major_formatter().set_useOffset(use_offset)
+        if ax_style:
+            plt.setp(ax, **ax_style)
+        if fig_style:
+            plt.setp(fig, **fig_style)
+        if filename:
+            fig.savefig(filename)
 
-                use_offset = ax_style.pop("use_offset", False)
-                if use_offset is not None:
-                    ax.get_xaxis().get_major_formatter().set_useOffset(use_offset)
-                    ax.get_yaxis().get_major_formatter().set_useOffset(use_offset)
-                if ax_style:
-                    plt.setp(ax, **ax_style)
-                if fig_style:
-                    plt.setp(fig, **fig_style)
-                if filename:
-                    fig.savefig(filename)
+        # decide what to do with the final plot
 
-            # decide what to do with the final plot
-            if action == "auto":
-                if is_outermost_plot_call and auto_show_figure:
-                    # only call show on the outermost plot call and only in the
-                    # circumstances determined above
-                    action = "show"
-                else:
-                    action = "sca"
+        if action == "sca":
+            # set the axes as the current axes, so subsequent plot calls modify it
+            plt.sca(ax)
 
-            if action == "sca":
-                # set the axes as the current axes, so subsequent plot calls modify it
-                plt.sca(ax)
+        elif action == "show":
+            # show the entire figure
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                plt.show()
 
-            elif action == "show":
-                # show the entire figure
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    plt.show()
+        elif action == "close":
+            # close the figure, e.g., because it has already been used
+            plt.close(fig)
 
-            elif action == "close":
-                # close the figure, e.g., because it has already been used
-                plt.close(fig)
-
-            elif action != "none":
-                # do nothing if "none", otherwise raise error
-                raise ValueError(f"Unknown action `{action}`")
+        elif action != "none":
+            # do nothing if "none", otherwise raise error
+            msg = f"Unknown action `{action}`"
+            raise ValueError(msg)
 
         return reference
 
@@ -401,9 +399,9 @@ def plot_on_figure(wrapped=None, update_method=None):
     text. Note that the decorator can be used on both functions and methods.
 
     Example:
-        The following example illustrates how this decorator can be used to
-        implement plotting for a given class. In particular, supplying the
-        `update_method` will allow efficient dynamical plotting::
+        The following example illustrates how this decorator can be used to implement
+        plotting for a given class. In particular, supplying the `update_method` will
+        allow efficient dynamical plotting::
 
             class State:
                 def __init__(self) -> None:
@@ -426,18 +424,15 @@ def plot_on_figure(wrapped=None, update_method=None):
             def make_plot(fig): ...
 
 
-        When `update_method` is not supplied, the method can still be used for
-        plotting, but dynamic updating, e.g., by
-        :class:`pde.trackers.PlotTracker`, is not possible.
-
+        When `update_method` is not supplied, the method can still be used for plotting,
+        but dynamic updating, e.g., by :class:`pde.trackers.PlotTracker`, is impossible.
 
     Args:
         wrapped (callable):
             Function to be wrapped
         update_method (callable or str):
-            Method to call to update the plot. The argument of the new
-            method will be the result of the initial call of the wrapped
-            method.
+            Method to call to update the plot. The argument of the new method will be
+            the result of the initial call of the wrapped method.
     """
     if wrapped is None:
         # handle the case where decorator was called without brackets
@@ -480,54 +475,50 @@ def plot_on_figure(wrapped=None, update_method=None):
         fig (:class:`matplotlib.figures.Figure`):
             Figure that is used for plotting. If omitted, a new figure is created.
         """
-        # Note on docstring: This docstring replaces the token {PLOT_ARGS} in
-        # the wrapped function
+        # NOTE: The docstring replaces the token {PLOT_ARGS} in the wrapped function
         import matplotlib as mpl
         import matplotlib.pyplot as plt
 
-        # some logic to check for nested plotting calls:
-        with nested_plotting_check() as is_outermost_plot_call:
-            # disable interactive plotting temporarily
-            with disable_interactive():
-                if fig is None:
-                    # create new figure
-                    backend = mpl.get_backend()
-                    if "backend_inline" in backend or backend == "nbAgg":
-                        plt.close("all")  # close left over figures
-                    fig = plt.figure(constrained_layout=constrained_layout)
+        if action == "auto":
+            # decide automatically what to do with the figure
+            if fig is not None or in_ipython():
+                action = "none"  # do nothing if explicit axes are given
+            else:
+                action = "show"  # show plot when nothing is specified
 
-                # call the actual plotting function
-                reference = wrapped(*args, fig=fig, **kwargs)
+        if fig is None:
+            # create new figure
+            backend = mpl.get_backend()
+            if "backend_inline" in backend or backend == "nbAgg":
+                plt.close("all")  # close left over figures
+            fig = plt.figure(constrained_layout=constrained_layout)
 
-                # finishing touches...
-                if title is not None:
-                    fig.suptitle(title)
-                if fig_style:
-                    plt.setp(fig, **fig_style)
-                if filename:
-                    fig.savefig(filename)
+        # call the actual plotting function
+        reference = wrapped(*args, fig=fig, **kwargs)
 
-            # decide what to do with the final plot
-            if action == "auto":
-                if is_outermost_plot_call:
-                    # only call show on the outermost plot call
-                    action = "show"
-                else:
-                    action = "none"
+        # finishing touches...
+        if title is not None:
+            fig.suptitle(title)
+        if fig_style:
+            plt.setp(fig, **fig_style)
+        if filename:
+            fig.savefig(filename)
 
-            if action == "show":
-                # show the entire figure
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    plt.show()
+        # decide what to do with the final plot
+        if action == "show":
+            # show the entire figure
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                plt.show()
 
-            elif action == "close":
-                # close the figure, e.g., because it has already been used
-                plt.close(fig)
+        elif action == "close":
+            # close the figure, e.g., because it has already been used
+            plt.close(fig)
 
-            elif action != "none":
-                # do nothing if "none", otherwise raise error
-                raise ValueError(f"Unknown action `{action}`")
+        elif action not in {"auto", "none"}:
+            # do nothing if "none", otherwise raise error
+            msg = f"Unknown action `{action}`"
+            raise ValueError(msg)
 
         return reference
 
@@ -561,6 +552,35 @@ def plot_on_figure(wrapped=None, update_method=None):
     wrapper.update_method = update_method
 
     return wrapper
+
+
+def indicate_axes_periodicity(ax: mpl.axes.Axes, data: dict[str, Any]) -> None:
+    """Set spine styles to indicate periodic boundary conditions.
+
+    This function visually indicates which axes have periodic boundary conditions
+    by changing the spine linestyle to a dotted pattern. For periodic x-axes, the
+    left and right spines are styled; for periodic y-axes, the top and bottom
+    spines are styled.
+
+    Args:
+        ax (:class:`matplotlib.axes.Axes`):
+            The axes object to modify.
+        data (dict):
+            Dictionary containing plotting information. This function looks for keys
+            ``"periodic_x"`` and ``"periodic_y"``, which indicate whether the
+            corresponding axes have periodic boundary conditions.
+
+    Note:
+        The function uses a dotted line style to indicate periodic boundaries.
+        Non-periodic axes are not touched.
+    """
+    if config["plotting.indicate_grid_periodicity"]:
+        if data.get("periodic_x", False):
+            ax.spines["left"].set_linestyle((0, (4, 4)))
+            ax.spines["right"].set_linestyle((0, (4, 4)))
+        if data.get("periodic_y", False):
+            ax.spines["top"].set_linestyle((0, (4, 4)))
+            ax.spines["bottom"].set_linestyle((0, (4, 4)))
 
 
 class PlottingContextBase:
@@ -611,9 +631,10 @@ class PlottingContextBase:
             self.fig = plt.gcf()
             if len(self.fig.axes) == 0:
                 # The figure seems to be empty, which must be a mistake
-                raise RuntimeError("Plot figure does not contain axes")
+                msg = "Plot figure does not contain axes"
+                raise RuntimeError(msg)
 
-            elif len(self.fig.axes) == 1:
+            if len(self.fig.axes) == 1:
                 # The figure contains only a single axis, indicating that it is
                 # composed of a single panel
                 self._title = plt.title(self.title)
@@ -649,7 +670,7 @@ class BasicPlottingContext(PlottingContextBase):
                 If axes are given, they are used. If a figure is given, it is
                 set as active.
             title (str):
-                The shown in the plot
+                The title shown in the plot
             show (bool):
                 Flag determining whether plots are actually shown
         """
@@ -684,8 +705,8 @@ class JupyterPlottingContext(PlottingContextBase):
     """Flag indicating whether the context supports that plots can be updated with out
     redrawing the entire plot.
 
-    The jupyter backend (`inline`) requires
-    replotting of the entire figure, so an update is not supported.
+    The jupyter backend (`inline`) requires replotting of the entire figure, so an
+    update is not supported.
     """
 
     def __enter__(self):
@@ -761,11 +782,11 @@ def get_plotting_context(
     if context is None:
         # figure out whether plots are shown in jupyter notebook
 
-        if "backend_inline" in mpl.get_backend():
+        if mpl.get_backend() in {"inline", "backend_inline"}:
             # special context to support the `inline` backend
             try:
-                from IPython.display import display
-                from ipywidgets import Output
+                from IPython.display import display  # noqa: F401
+                from ipywidgets import Output  # noqa: F401
             except ImportError:
                 context_class: type[PlottingContextBase] = BasicPlottingContext
             else:
@@ -777,18 +798,18 @@ def get_plotting_context(
 
         return context_class(title=title, show=show)
 
-    elif isinstance(context, PlottingContextBase):
+    if isinstance(context, PlottingContextBase):
         # re-use an existing context
         context.title = title
         context.show = show
         return context
 
-    elif isinstance(context, (mpl_axes.Axes, mpl_figure.Figure)):
+    if isinstance(context, (mpl_axes.Axes, mpl_figure.Figure)):
         # create a basic context based on the given axes or figure
         return BasicPlottingContext(fig_or_ax=context, title=title, show=show)
 
-    else:
-        raise RuntimeError(f"Unknown plotting context `{context}`")
+    msg = f"Unknown plotting context `{context}`"
+    raise RuntimeError(msg)
 
 
 def in_ipython() -> bool:
@@ -796,8 +817,7 @@ def in_ipython() -> bool:
     ipy_module = sys.modules.get("IPython")
     if ipy_module:
         return bool(ipy_module.get_ipython())
-    else:
-        return False
+    return False
 
 
 @contextlib.contextmanager
@@ -834,7 +854,9 @@ def napari_viewer(
 
     # close the viewer if requested
     if close:
-        warnings.warn("Closing napari does not work reliably and is thus disabled")
+        warnings.warn(
+            "Closing napari does not work reliably and is thus disabled", stacklevel=2
+        )
         # viewer.close()
 
 
@@ -855,6 +877,7 @@ def napari_add_layers(
         try:
             add_layer = getattr(viewer, f"add_{layer_type}")
         except AttributeError as err:
-            raise RuntimeError(f"Unknown layer type: {layer_type}") from err
+            msg = f"Unknown layer type: {layer_type}"
+            raise RuntimeError(msg) from err
         else:
             add_layer(**layer_data)

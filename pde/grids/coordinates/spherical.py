@@ -4,10 +4,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
-from numpy.typing import ArrayLike
 
 from .base import CoordinatesBase
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+
+    from ...tools.typing import FloatingArray
 
 
 class SphericalCoordinates(CoordinatesBase):
@@ -34,7 +40,7 @@ class SphericalCoordinates(CoordinatesBase):
     def __eq__(self, other):
         return self.__class__ is other.__class__
 
-    def _pos_to_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_to_cart(self, points: FloatingArray) -> FloatingArray:
         r, θ, φ = points[..., 0], points[..., 1], points[..., 2]
         rsinθ = r * np.sin(θ)
         x = rsinθ * np.cos(φ)
@@ -42,14 +48,14 @@ class SphericalCoordinates(CoordinatesBase):
         z = r * np.cos(θ)
         return np.stack((x, y, z), axis=-1)
 
-    def _pos_from_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_from_cart(self, points: FloatingArray) -> FloatingArray:
         x, y, z = points[..., 0], points[..., 1], points[..., 2]
         r = np.linalg.norm(points, axis=-1)
         θ = np.arctan2(np.hypot(x, y), z)
         φ = np.arctan2(y, x)
         return np.stack((r, θ, φ), axis=-1)
 
-    def _mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
+    def _mapping_jacobian(self, points: FloatingArray) -> FloatingArray:
         r, θ, φ = points[..., 0], points[..., 1], points[..., 2]
         sinθ, cosθ = np.sin(θ), np.cos(θ)
         sinφ, cosφ = np.sin(φ), np.cos(φ)
@@ -61,20 +67,20 @@ class SphericalCoordinates(CoordinatesBase):
             ]
         )
 
-    def _volume_factor(self, points: np.ndarray) -> ArrayLike:
+    def _volume_factor(self, points: FloatingArray) -> ArrayLike:
         r, θ = points[..., 0], points[..., 1]
-        return r**2 * np.sin(θ)  # type: ignore
+        return r**2 * np.sin(θ)
 
-    def _cell_volume(self, c_low: np.ndarray, c_high: np.ndarray):
+    def _cell_volume(self, c_low: FloatingArray, c_high: FloatingArray):
         r1, θ1, φ1 = c_low[..., 0], c_low[..., 1], c_low[..., 2]
         r2, θ2, φ2 = c_high[..., 0], c_high[..., 1], c_high[..., 2]
         return (φ2 - φ1) * (np.cos(θ1) - np.cos(θ2)) * (r2**3 - r1**3) / 3
 
-    def _scale_factors(self, points: np.ndarray) -> np.ndarray:
+    def _scale_factors(self, points: FloatingArray) -> FloatingArray:
         r, θ = points[..., 0], points[..., 1]
         return np.array([np.ones_like(r), r, r * np.sin(θ)])
 
-    def _basis_rotation(self, points: np.ndarray) -> np.ndarray:
+    def _basis_rotation(self, points: FloatingArray) -> FloatingArray:
         θ, φ = points[..., 1], points[..., 2]
         sinθ, cosθ = np.sin(θ), np.cos(θ)
         sinφ, cosφ = np.sin(φ), np.cos(φ)

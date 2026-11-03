@@ -8,34 +8,57 @@ from copy import copy, deepcopy
 import numpy as np
 import pytest
 
-from pde import grids
-from pde.grids.base import (
-    GridBase,
-    OperatorInfo,
-    discretize_interval,
-    registered_operators,
-)
+from pde import get_backend, grids
+from pde.grids.base import GridBase, discretize_interval, registered_operators
 from pde.tools.misc import module_available
+from pde.tools.typing import OperatorInfo
+
+GRIDS: list[GridBase] = [grids.PolarSymGrid(3, 4), grids.SphericalSymGrid(3, 4)]
+for periodic in [True, False]:
+    GRIDS.extend(
+        [
+            grids.UnitGrid([3], periodic=periodic),
+            grids.UnitGrid([3, 3, 3], periodic=periodic),
+            grids.CartesianGrid([[-1, 2], [0, 3]], [5, 7], periodic=periodic),
+            grids.CylindricalSymGrid(3, [-1, 2], [7, 8], periodic_z=periodic),
+        ]
+    )
 
 
-def iter_grids():
-    """Generator providing some test grids."""
-    for periodic in [True, False]:
-        yield grids.UnitGrid([3], periodic=periodic)
-        yield grids.UnitGrid([3, 3, 3], periodic=periodic)
-        yield grids.CartesianGrid([[-1, 2], [0, 3]], [5, 7], periodic=periodic)
-        yield grids.CylindricalSymGrid(3, [-1, 2], [7, 8], periodic_z=periodic)
-    yield grids.PolarSymGrid(3, 4)
-    yield grids.SphericalSymGrid(3, 4)
-
-
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_basic_grid_properties(grid):
     """Test basic grid properties."""
     with pytest.raises(AttributeError):
         grid.periodic = True
     with pytest.raises(AttributeError):
         grid.shape = 12
+
+
+def test_get_axis_index():
+    """Test getting grid axis indices, including symmetric axes."""
+    grid = grids.CylindricalSymGrid(3, [-1, 2], [7, 8])
+
+    assert grid.get_axis_index("r") == 0
+    assert grid.get_axis_index("z") == 1
+    assert grid.get_axis_index(-1) == 1
+    with pytest.raises(IndexError):
+        grid.get_axis_index("φ")
+
+    assert grid.get_axis_index("φ", allow_symmetric=True) == 2
+    assert grid.get_axis_index(2, allow_symmetric=True) == 2
+    assert grid.get_axis_index(-1, allow_symmetric=True) == 2
+
+
+def test_get_axis_tuple():
+    """Test getting tuples of grid axis indices, including symmetric axes."""
+    grid = grids.CylindricalSymGrid(3, [-1, 2], [7, 8])
+
+    assert grid.get_axis_tuple("z") == (1,)
+    assert grid.get_axis_tuple((0, "z")) == (0, 1)
+    assert grid.get_axis_tuple(("r", "φ"), allow_symmetric=True) == (0, 2)
+    assert grid.get_axis_tuple((0, -1), allow_symmetric=True) == (0, 2)
+    with pytest.raises(IndexError):
+        grid.get_axis_tuple(("r", "φ"))
 
 
 def test_discretize(rng):
@@ -49,7 +72,7 @@ def test_discretize(rng):
     np.testing.assert_allclose(x, x_expect)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_serialization(grid):
     """Test whether grid can be serialized and copied."""
     g = GridBase.from_state(grid.state_serialized)
@@ -84,7 +107,7 @@ def test_iter_mirror_points():
         assert len(list(ps)) == num_expect
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_coordinate_conversion(grid, rng):
     """Test the conversion between cells and points."""
     p_empty = np.zeros((0, grid.dim))
@@ -105,17 +128,33 @@ def test_coordinate_conversion(grid, rng):
             np.testing.assert_allclose(p1, p3, err_msg=f"{coords} -> {target}")
 
 
-@pytest.mark.parametrize("grid", iter_grids())
-def test_integration_serial(grid, rng):
+@pytest.mark.parametrize("grid", GRIDS)
+@pytest.mark.parametrize(
+    "backend",
+    ["numpy", "numba", "jax-cpu", "jax-cuda", "torch-cpu", "torch-mps", "torch-cuda"],
+    indirect=True,
+)
+@pytest.mark.parametrize("rank", [0, 2])
+def test_integration_serial(grid, backend, rank, rng):
     """Test integration of fields."""
-    arr = rng.normal(size=grid.shape)
-    res = grid.make_integrator()(arr)
-    assert np.isscalar(res)
-    assert res == pytest.approx(grid.integrate(arr))
-    if grid.num_axes == 1:
-        assert res == pytest.approx(grid.integrate(arr, axes=0))
+    if backend == "torch" and not module_available("torch"):
+        pytest.skip("`torch` is not available")
+
+    arr = rng.normal(size=(grid.dim,) * rank + grid.shape)
+    arr_native = backend.numpy_to_native(arr)
+    res_native = grid.make_integrator(backend=backend)(arr_native)
+    res = backend.native_to_numpy(res_native)
+
+    if rank == 0:
+        assert np.asarray(res).size == 1
+        assert res == pytest.approx(grid.integrate(arr))
+        if grid.num_axes == 1:
+            assert res == pytest.approx(grid.integrate(arr, axes=0))
+        else:
+            assert res == pytest.approx(grid.integrate(arr, axes=range(grid.num_axes)))
     else:
-        assert res == pytest.approx(grid.integrate(arr, axes=range(grid.num_axes)))
+        # use reduced tolerance to support potential float32 backends
+        np.testing.assert_allclose(res, grid.integrate(arr), rtol=1e-5)
 
 
 def test_grid_plotting():
@@ -128,25 +167,6 @@ def test_grid_plotting():
 
     grids.PolarSymGrid(4, 8).plot()
     grids.PolarSymGrid((2, 4), 8).plot()
-
-
-@pytest.mark.parametrize("grid", iter_grids())
-def test_operators(grid):
-    """Test operator mechanism."""
-
-    def make_op(state):
-        return lambda state: state
-
-    assert "laplace" in grid.operators
-    with pytest.raises(ValueError):
-        grid.make_operator("not_existent", "auto_periodic_neumann")
-    grid.register_operator("noop", make_op)
-    assert "noop" in grid.operators
-    del grid._operators["noop"]  # reset original state
-
-    # test all instance operators
-    for op in grid.operators:
-        assert isinstance(grid._get_operator_info(op), OperatorInfo)
 
 
 def test_cartesian_operator_infos():
@@ -163,7 +183,48 @@ def test_registered_operators():
         assert all(op in grid_class_ops for op in ops)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+def test_operator_no_bc_returns_result():
+    """Test operator without BCs returning allocated result arrays."""
+    grid = grids.UnitGrid([4], periodic=True)
+    op_no_bc = grid.make_operator_no_bc("laplace", backend="numba")
+
+    data_full = np.ones(grid._shape_full)
+    result = op_no_bc(data_full)
+    np.testing.assert_allclose(result, 0)
+
+    out = np.empty(grid.shape)
+    result_out = op_no_bc(data_full, out=out)
+    assert result_out is out
+    np.testing.assert_allclose(out, 0)
+
+
+def test_operator_no_bc_returns_result_with_args():
+    """Test no-BC operators that return results and consume runtime args."""
+    grid = grids.UnitGrid([4], periodic=True)
+    backend = get_backend("numpy")
+
+    def factory(grid, **kwargs):
+        def operator(arr, out, args=None):
+            shift = 0 if args is None else args["shift"]
+            out[:] = arr[1:-1] + shift
+
+        return operator
+
+    op_no_bc = backend.make_operator_no_bc(
+        grid, OperatorInfo(factory=factory, rank_in=0, rank_out=0)
+    )
+    data_full = np.arange(grid._shape_full[0], dtype=float)
+
+    result = op_no_bc(data_full, args={"shift": 2})
+    np.testing.assert_allclose(result, data_full[1:-1] + 2)
+
+    out = np.empty(grid.shape)
+    result_out = op_no_bc(data_full, out=out, args={"shift": -1})
+    assert result_out is out
+    np.testing.assert_allclose(out, data_full[1:-1] - 1)
+
+
+@pytest.mark.parametrize("grid", GRIDS)
 def test_cell_volumes(grid):
     """Test calculation of cell volumes."""
     d2 = grid.discretization / 2
@@ -174,9 +235,9 @@ def test_cell_volumes(grid):
 
 
 @pytest.mark.skipif(
-    not module_available("modelrunner"), reason="requires `py-modelrunner`"
+    not module_available("modelrunner", strict=True), reason="requires `py-modelrunner`"
 )
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_grid_modelrunner_storage(grid, tmp_path):
     """Test storing grids in modelrunner storages."""
     from modelrunner import open_storage
@@ -190,7 +251,7 @@ def test_grid_modelrunner_storage(grid, tmp_path):
         assert storage["grid"] == grid
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_vector_to_cartesian(grid, rng):
     """Test vector_to_cartesian function of grids."""
     point = grid.get_random_point(coords="grid", rng=rng)
@@ -199,7 +260,7 @@ def test_vector_to_cartesian(grid, rng):
     if grid.dim == 1:
         return
 
-    elif grid.dim == 2:
+    if grid.dim == 2:
         vec1 = grid._vector_to_cartesian(point, [1, 0])
         vec2 = grid._vector_to_cartesian(point, [0, 1])
         u = [vec1, vec2]
@@ -222,3 +283,15 @@ def test_vector_to_cartesian(grid, rng):
 
     else:
         raise NotImplementedError
+
+
+@pytest.mark.parametrize("grid", GRIDS)
+def test_grid_distance_calculations(grid):
+    """Test grid distance calculations."""
+    ps = np.array([grid.get_random_point(coords="grid") for _ in range(5)])
+    d1 = grid.distance(ps[:, None], ps[None, :], coords="grid")
+    d2 = [grid.distance(p, ps, coords="grid") for p in ps]
+    d3 = [[grid.distance(p1, p2, coords="grid") for p1 in ps] for p2 in ps]
+
+    np.testing.assert_allclose(d1, d2)
+    np.testing.assert_allclose(d1, d3)

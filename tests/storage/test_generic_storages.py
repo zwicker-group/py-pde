@@ -29,7 +29,7 @@ except ImportError:
 
 STORAGE_CLASSES = [MemoryStorage, FileStorage]
 STORAGE_CLASSES_ALL = [(0, True, MemoryStorage), (0, True, FileStorage)]
-if module_available("ffmpeg"):
+if module_available("av"):
     STORAGE_CLASSES_ALL.append((0.1, False, MovieStorage))
 if mr is not None:
     STORAGE_CLASSES_ALL.append((0, False, mr.storage.MemoryStorage))
@@ -57,8 +57,8 @@ def storage_factory(tmp_path, storage_class):
 
     if storage_class is MovieStorage:
         # provide factory that initializes a MovieStorage with a file
-        if not module_available("ffmpeg"):
-            pytest.skip("No module `ffmpeg-python`")
+        if not module_available("av"):
+            pytest.skip("No module `av`")
         file_path = tmp_path / "test_storage_write.avi"
         return functools.partial(MovieStorage, file_path, vmax=5)
 
@@ -75,7 +75,7 @@ def storage_factory(tmp_path, storage_class):
     return storage_class
 
 
-@pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
 def test_storage_write(atol, can_clear, storage_factory):
     """Test simple memory storage."""
     dim = 5
@@ -125,11 +125,13 @@ def test_storage_truncation(tmp_path, rng):
         state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
         eq = DiffusionPDE()
 
-        eq.solve(state, t_range=0.1, dt=0.001, tracker=tracker_list)
+        eq.solve(state, t_range=0.1, dt=0.001, backend="numpy", tracker=tracker_list)
         if truncate:
             for storage in storages:
                 storage.clear()
-        eq.solve(state, t_range=[0.1, 0.2], dt=0.001, tracker=tracker_list)
+        eq.solve(
+            state, t_range=[0.1, 0.2], dt=0.001, backend="numpy", tracker=tracker_list
+        )
 
         times = np.arange(0.1, 0.201, 0.01)
         if not truncate:
@@ -138,7 +140,7 @@ def test_storage_truncation(tmp_path, rng):
             msg = f"truncate={truncate}, storage={storage}"
             np.testing.assert_allclose(storage.times, times, err_msg=msg)
 
-        if any(platform.win32_ver()):
+        if platform.system() == "Windows":
             for storage in storages:
                 if isinstance(storage, FileStorage):
                     storage.close()
@@ -146,7 +148,7 @@ def test_storage_truncation(tmp_path, rng):
         assert not storage.has_collection
 
 
-@pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
 def test_storing_extract_range(atol, can_clear, storage_factory):
     """Test methods specific to FieldCollections in memory storage."""
     sf = ScalarField(UnitGrid([1]))
@@ -161,9 +163,11 @@ def test_storing_extract_range(atol, can_clear, storage_factory):
     s1.end_writing()
 
     np.testing.assert_equal(s1[0].data, 0)
-    np.testing.assert_equal(s1[1].data, 2)
-    np.testing.assert_equal(s1[-1].data, 2)
-    np.testing.assert_equal(s1[-2].data, 0)
+    if not isinstance(s1, MovieStorage):
+        # skip the following for MovieStorage, because these tests are slow
+        np.testing.assert_equal(s1[1].data, 2)
+        np.testing.assert_equal(s1[-1].data, 2)
+        np.testing.assert_equal(s1[-2].data, 0)
 
     with pytest.raises(IndexError):
         s1[2]
@@ -171,15 +175,17 @@ def test_storing_extract_range(atol, can_clear, storage_factory):
         s1[-3]
 
     # test extraction
-    s2 = s1.extract_time_range()
-    assert s2.times == list(s1.times)
-    np.testing.assert_allclose(s2.data, s1.data)
     s3 = s1.extract_time_range(0.5)
     assert s3.times == s1.times[:1]
     np.testing.assert_allclose(s3.data, s1.data[:1])
-    s4 = s1.extract_time_range((0.5, 1.5))
-    assert s4.times == s1.times[1:]
-    np.testing.assert_allclose(s4.data, s1.data[1:])
+    if not isinstance(s1, MovieStorage):
+        # skip the following for MovieStorage, because these tests are slow
+        s2 = s1.extract_time_range()
+        assert s2.times == list(s1.times)
+        np.testing.assert_allclose(s2.data, s1.data)
+        s4 = s1.extract_time_range((0.5, 1.5))
+        assert s4.times == s1.times[1:]
+        np.testing.assert_allclose(s4.data, s1.data[1:])
 
 
 @pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
@@ -222,7 +228,7 @@ def test_storing_collection(storage_factory, rng):
 
 
 @pytest.mark.parametrize(
-    "atol,can_clear,storage_class", STORAGE_CLASSES_ALL + [(0, False, None)]
+    ("atol", "can_clear", "storage_class"), [*STORAGE_CLASSES_ALL, (0, False, None)]
 )
 def test_storage_apply(atol, can_clear, storage_factory):
     """Test the apply function of StorageBase."""
@@ -252,7 +258,7 @@ def test_storage_apply(atol, can_clear, storage_factory):
 
 
 @pytest.mark.parametrize(
-    "atol,can_clear,storage_class", STORAGE_CLASSES_ALL + [(0, False, None)]
+    ("atol", "can_clear", "storage_class"), [*STORAGE_CLASSES_ALL, (0, False, None)]
 )
 def test_storage_copy(atol, can_clear, storage_factory):
     """Test the copy function of StorageBase."""
@@ -287,7 +293,7 @@ def test_storage_types(storage_factory, dtype, rng):
     """Test storing different types."""
     grid = UnitGrid([32])
     field = ScalarField.random_uniform(grid, rng=rng).copy(dtype=dtype)
-    if dtype == complex:
+    if dtype is complex:
         field += 1j * ScalarField.random_uniform(grid, rng=rng)
 
     s = storage_factory()
@@ -303,8 +309,9 @@ def test_storage_types(storage_factory, dtype, rng):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
-def test_storage_mpi(atol, can_clear, storage_factory, rng):
+@pytest.mark.parametrize("solver", ["euler", "explicit_mpi"])
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
+def test_storage_mpi(solver, atol, can_clear, storage_factory, rng):
     """Test writing data using MPI."""
     eq = DiffusionPDE()
     grid = UnitGrid([8])
@@ -312,7 +319,11 @@ def test_storage_mpi(atol, can_clear, storage_factory, rng):
 
     storage = storage_factory()
     res = eq.solve(
-        field, t_range=0.1, dt=0.001, backend="numpy", tracker=[storage.tracker(0.01)]
+        field,
+        t_range=0.1,
+        dt=0.001,
+        solver=solver,
+        tracker=[storage.tracker(0.01)],
     )
 
     if mpi.is_main:
@@ -320,7 +331,7 @@ def test_storage_mpi(atol, can_clear, storage_factory, rng):
         assert len(storage) == 11
 
 
-@pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
 def test_storing_transformation_collection(atol, can_clear, storage_factory, rng):
     """Test transformation yielding field collections in storage classes."""
     grid = UnitGrid([8])
@@ -346,7 +357,7 @@ def test_storing_transformation_collection(atol, can_clear, storage_factory, rng
         np.testing.assert_allclose(a2.data, 2 * a.data + t, atol=atol)
 
 
-@pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
 def test_storing_transformation_scalar(atol, can_clear, storage_factory, rng):
     """Test transformations yielding scalar fields in storage classes."""
     grid = UnitGrid([8])
@@ -365,7 +376,7 @@ def test_storing_transformation_scalar(atol, can_clear, storage_factory, rng):
             np.testing.assert_allclose(sol.data, field.data**2)
 
 
-@pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
 def test_storage_view(atol, can_clear, storage_factory, rng):
     """Test StorageView."""
     grid = UnitGrid([2, 2])
@@ -398,3 +409,21 @@ def test_storage_view(atol, can_clear, storage_factory, rng):
     np.testing.assert_allclose(field.data, f2.data, atol=atol)
     field = StorageView(storage, field=1)[0]
     np.testing.assert_allclose(field.data, f2.data, atol=atol)
+
+
+@pytest.mark.parametrize(("atol", "can_clear", "storage_class"), STORAGE_CLASSES_ALL)
+def test_storage_simple_append(atol, can_clear, storage_factory):
+    """Test writing to storage without calling start_writing."""
+    grid = UnitGrid([2])
+    field = ScalarField(grid, [1, 2])
+
+    # store some data
+    storage = storage_factory()
+    storage.append(field, 0)
+    storage.append(field, 1)
+    storage.end_writing()
+
+    # read some data
+    assert len(storage) == 2
+    assert storage[0] == field
+    assert storage[1] == field

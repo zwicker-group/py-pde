@@ -5,33 +5,43 @@
 
 from __future__ import annotations
 
+import keyword
 import numbers
 import re
 import warnings
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Any
 
-import numba as nb
 import numpy as np
-from numba.extending import register_jitable
-from numba.typed import Dict as NumbaDict
-from sympy import Symbol
-from sympy.core.function import UndefinedFunction
+import sympy
 
+from ..backends import get_backend
 from ..fields import FieldCollection, VectorField
-from ..fields.base import FieldBase
 from ..fields.datafield_base import DataFieldBase
 from ..grids.boundaries import set_default_bc
-from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
-from ..pdes.base import PDEBase, TState
+from ..pdes.base import SDEBase
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
-from ..tools.typing import ArrayLike, NumberOrArray, StepperHook
 
 if TYPE_CHECKING:
-    import sympy
+    from collections.abc import Callable, Mapping, Sequence
 
+    import jax
+    import torch
+
+    from ..backends import BackendBase
+    from ..fields.base import FieldBase
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.expressions import ScalarExpression
+    from ..tools.typing import (
+        ArrayLike,
+        NumberOrArray,
+        NumericArray,
+        PostStepHook,
+        StepperHook,
+        TField,
+        TNativeArray,
+    )
 
 # Define short notations that can appear in mathematical equations and need to be
 # expanded. Since these replacements are replaced in order, it's advisable to start with
@@ -81,7 +91,7 @@ def _map_operators(expr, operators, variable="c", steady_state="c0", perturbatio
     return expr
 
 
-class PDE(PDEBase):
+class PDE(SDEBase):
     """PDE defined by mathematical expressions.
 
     Attributes:
@@ -100,10 +110,11 @@ class PDE(PDEBase):
         *,
         bc: BoundariesData | None = None,
         bc_ops: dict[str, BoundariesData] | None = None,
-        post_step_hook: Callable[[np.ndarray, float], None] | None = None,
+        post_step_hook: PostStepHook | None = None,
         user_funcs: dict[str, Callable] | None = None,
         consts: dict[str, NumberOrArray] | None = None,
-        noise: ArrayLike = 0,
+        noise: ArrayLike | Mapping[str, NumberOrArray | str] = 0,
+        noise_interpretation: str = "ito",
         rng: np.random.Generator | None = None,
     ):
         r"""
@@ -142,10 +153,9 @@ class PDE(PDEBase):
                 condition for all operators of the field named `c`.
             post_step_hook (callable):
                 A function with signature `(state_data, t)` that will be called after
-                every time step. The function can modify the :class:`~numpy.ndarray` of
-                the state_data in place and it can abort the simulation immediately by
-                raising `StopIteration`. Since the callback defined here will be called
-                often, it is best to compile the function with :mod:`numba` for speed.
+                every time step. The function must return `state_data`, which can be
+                modified in place. The hook can also abort the simulation immediately by
+                raising `StopIteration` (might not work with all backends).
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expressions in `rhs`.
@@ -153,16 +163,27 @@ class PDE(PDEBase):
                 A dictionary with user defined constants that can be used in the
                 expression. These can be either scalar numbers or fields defined on the
                 same grid as the actual simulation.
-            noise (float or :class:`~numpy.ndarray`):
-                Variance of additive Gaussian white noise. The default value of zero
+            noise (float, :class:`~numpy.ndarray`, str, or dict):
+                Variance of the Gaussian white noise. The default value of zero
                 implies deterministic partial differential equations will be solved.
                 Different noise magnitudes can be supplied for each field in coupled
                 PDEs by either specifying a sequence of numbers or a dictionary with
-                values for each field.
+                values for each field. In the latter case, the wildcard key "*" sets
+                the variance of all fields that are not specified explicitly.
+                Multiplicative noise is supported by specifying the variance as a
+                string that can be parsed by :mod:`sympy`. Such expressions may contain
+                the fields, the spatial coordinates of the grid, and `t` for the time,
+                but they must be local, i.e., they cannot contain differential
+                operators.
+            noise_interpretation (str):
+                Interpretation of the stochastic differential equation. Possible values
+                are `ito`, `stratonovich`, and `anti-ito`. Solvers can use this
+                information to implement drift terms that appear for multiplicative
+                noise, i.e., when `noise` depends on composition.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
                 used for stochastic simulations. Note that this random number generator
-                is only used for numpy function, while compiled numba code uses the
+                is only used for numpy functions, while compiled numba code uses the
                 random number generator of numba. Moreover, in simulations using
                 multiprocessing, setting the same generator in all processes might yield
                 unintended correlations in the simulation results.
@@ -177,19 +198,39 @@ class PDE(PDEBase):
 
         from ..tools.expressions import ScalarExpression
 
-        # parse noise strength
+        # parse noise strength, which can also be given by expressions
+        noise_exprs: dict[str, NumberOrArray | str] | None = None
+        noise_arr: ArrayLike = 0
         if isinstance(noise, dict):
-            noise = [noise.get(var, 0) for var in rhs]
-        if hasattr(noise, "__iter__") and len(noise) != len(rhs):  # type: ignore
-            raise ValueError("Number of noise strengths does not match field count")
+            noise_dict: Mapping[str, NumberOrArray | str] = noise
+            default = noise_dict.get("*", 0)  # variance used for unspecified fields
+            noise_values: dict[str, NumberOrArray | str] = {
+                var: noise_dict.get(var, default) for var in rhs
+            }
+            if any(isinstance(value, str) for value in noise_values.values()):
+                # at least one variance is given by an expression => treat all of them
+                # as expressions, which are parsed below
+                noise_exprs = noise_values
+            else:
+                noise_arr = np.array(list(noise_values.values()))
+        elif isinstance(noise, str):
+            # a single expression sets the noise variance of all fields
+            noise_exprs = dict.fromkeys(rhs, noise)
+        else:
+            noise_arr = noise  # type: ignore
+        if hasattr(noise_arr, "__iter__") and len(noise_arr) != len(rhs):  # type: ignore
+            msg = "Number of noise strengths does not match field count"
+            raise ValueError(msg)
 
-        super().__init__(noise=noise, rng=rng)
+        super().__init__(
+            noise=noise_arr, noise_interpretation=noise_interpretation, rng=rng
+        )
 
         # validate input
         if not isinstance(rhs, dict):
             rhs = dict(rhs)
-        if "t" in rhs:
-            raise ValueError("Cannot name field `t` since it denotes time")
+        for name in rhs:
+            self._check_identifier(name)
         if consts is None:
             consts = {}
 
@@ -207,7 +248,7 @@ class PDE(PDEBase):
                     self._logger.info("Transformed expression to `%s`", rhs_item)
 
             # create placeholder dictionary of constants that will be specified later
-            consts_d: dict[str, NumberOrArray] = {name: 0 for name in consts}
+            consts_d: dict[str, NumberOrArray] = dict.fromkeys(consts, 0)
             rhs_expr = ScalarExpression(
                 rhs_item,
                 user_funcs=user_funcs,
@@ -229,6 +270,36 @@ class PDE(PDEBase):
 
             self._rhs_expr[var] = rhs_expr
 
+        # turn the expressions for the noise variance into sympy expressions
+        self._noise_expr: dict[str, ScalarExpression] | None = None
+        if noise_exprs is not None:
+            self._noise_expr = {}
+            for var, noise_item in noise_exprs.items():
+                consts_d = dict.fromkeys(consts, 0)
+                noise_expr = ScalarExpression(
+                    noise_item,
+                    user_funcs=user_funcs,
+                    consts=consts_d,
+                    explicit_symbols=rhs.keys(),  # type: ignore
+                )
+
+                # noise expressions are evaluated locally, so they must not use any
+                # (differential) operators
+                operators = {
+                    func.__class__.__name__
+                    for func in noise_expr._sympy_expr.atoms(AppliedUndef)
+                    if func.__class__.__name__ not in noise_expr.user_funcs
+                }
+                if operators:
+                    ops_str = ", ".join(sorted(operators))
+                    msg = (
+                        f"Noise expression for `{var}` uses the operators {ops_str}, "
+                        "but only local expressions are supported"
+                    )
+                    raise ValueError(msg)
+
+                self._noise_expr[var] = noise_expr
+
         # set public instance attributes
         self.rhs = rhs
         self.variables = tuple(rhs.keys())
@@ -246,7 +317,8 @@ class PDE(PDEBase):
                 self._logger.warning("Found default BCs in `bcs` and `bc_ops`")
             bcs["*:*"] = bc  # append default boundary conditions
         else:
-            raise TypeError(f'`bc_ops` must be a dictionary, but got {type(bc_ops)}"')
+            msg = f'`bc_ops` must be a dictionary, but got {type(bc_ops)}"'
+            raise TypeError(msg)
 
         self.bcs: dict[str, Any] = {}
         for key_str, value in bcs.items():
@@ -256,14 +328,16 @@ class PDE(PDEBase):
                 if len(self.variables):
                     key = f"{self.variables[0]}:{key_str}"
                 else:
-                    raise ValueError(
+                    msg = (
                         f'Boundary condition "{key_str}" is ambiguous. Use format '
                         '"VARIABLE:OPERATOR" instead.'
                     )
+                    raise ValueError(msg)
             elif len(parts) == 2:
                 key = ":".join(parts)
             else:
-                raise ValueError(f'Cannot parse boundary condition "{key_str}"')
+                msg = f'Cannot parse boundary condition "{key_str}"'
+                raise ValueError(msg)
             if key in self.bcs:
                 self._logger.warning("Two boundary conditions for key %s", key)
             self.bcs[key] = value
@@ -284,33 +358,70 @@ class PDE(PDEBase):
         """Show the expressions of the PDE."""
         return {k: v.expression for k, v in self._rhs_expr.items()}
 
-    def _compile_rhs_single(
+    @property
+    def noise_expressions(self) -> dict[str, str]:
+        """Show the expressions of the noise variance.
+
+        The dictionary is empty if the noise variance was not given by expressions.
+        """
+        if self._noise_expr is None:
+            return {}
+        return {k: v.expression for k, v in self._noise_expr.items()}
+
+    @property
+    def is_sde(self) -> bool:
+        """bool: flag indicating whether this is a stochastic differential equation"""
+        # do not assume `_noise_expr` is defined in case __init__ is not called
+        noise_expr = getattr(self, "_noise_expr", None)
+        if noise_expr is None:
+            return super().is_sde
+        has_noise_var = any(not expr.is_zero for expr in noise_expr.values())
+        return (self.use_noise_variance and has_noise_var) or self.use_noise_realization
+
+    def _check_identifier(self, name: str) -> None:
+        """Checks the identifier of a field name.
+
+        Args:
+            name (str):
+                THe identifier to be checked
+        """
+        if not name.isidentifier():
+            msg = f"`{name}` is not a valid field name."
+            raise ValueError(msg)
+        if keyword.iskeyword(name):
+            msg = f"`{name}` is a keyword and cannot be a field name."
+            raise ValueError(msg)
+        if name == "t":
+            msg = "Cannot name field `t` since it denotes time"
+            raise ValueError(msg)
+
+    def _add_operators_to_expr(
         self,
         var: str,
+        expr: ScalarExpression,
         ops: dict[str, Callable],
+        *,
         state: FieldBase,
-        backend: Literal["numpy", "numba"] = "numpy",
-    ):
-        """Compile a function determining the right hand side for one variable.
+        backend: BackendBase,
+    ) -> None:
+        """Adds (differential) operators to an expression.
 
         Args:
             var (str):
                 The variable that is considered
+            expr (:class:`~pde.tools.expressions.ScalarExpression`):
+                The expression whose operators are being added
             ops (dict):
                 A dictionary of operators that can be used by this function. Note that
-                this dictionary might be modified in place
+                this dictionary might be modified in place.
             state (:class:`~pde.fields.FieldBase`):
                 The field describing the state of the PDE
-            backend (str):
-                The backend for which the data is prepared
-
-        Returns:
-            callable: The function calculating the RHS
+            backend (:class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
         """
-        # modify a copy of the expression and the general operator array
-        expr = self._rhs_expr[var].copy()
+        from sympy import Symbol
+        from sympy.core.function import UndefinedFunction
 
-        # obtain the (differential) operators for this variable
         for func in self._operators[var]:
             if func in ops:
                 continue
@@ -324,55 +435,110 @@ class PDE(PDEBase):
                     self.diagnostics["pde"]["bcs_used"].add(bc_key)  # register it
                     break  # continue with this BC
             else:
-                raise RuntimeError(
+                msg = (
                     "Could not find suitable boundary condition for function "
                     f"`{func}` applied in equation for `{var}`"
                 )
+                raise RuntimeError(msg)
 
             # Tell the user what BC we chose for a given operator
             msg = "Using boundary condition `%s` for operator `%s` in PDE for `%s`"
             self._logger.info(msg, bc, func, var)
 
-            # create the function evaluating the operator
+            # Create the function evaluating the operator. Note that we use the `numba`
+            # backend to create operators when `numpy` was selected since the `numpy`
+            # backend itself currently does not implement any operators.
+            dtype = self._cache[backend.name]["dtype"]
+            op_backend: str | BackendBase
+            if backend.implementation == "numpy":
+                from ..tools import mpi
+
+                op_backend = "numba" if mpi.size == 1 else "numba_mpi"
+            else:
+                op_backend = backend
             try:
-                ops[func] = state.grid.make_operator(func, bc=bc)
+                ops[func] = state.grid.make_operator(
+                    func, bc=bc, backend=op_backend, dtype=dtype
+                )
             except BCDataError:
                 # wrong data was supplied for the boundary condition
                 raise
             except Exception as err:
-                err.args += (
+                err.add_note(
                     f"Problems in boundary condition `{bc}` for operator `{func}` in "
-                    f"PDE for `{var}`",
+                    f"PDE for `{var}`"
                 )
-                raise err
+                raise
 
-            # add `bc_args` as an argument to the call of the operators to be able
-            # to pass additional information, like time
+            # Backends generically support `out` and `bc_args`` as arguments. Since we
+            # cannot use keyword arguments in sympy (at least we did not figure out how)
+            # we supply the arguments by position. Here, `None` indicates that we do not
+            # supply an output array, but we have the option to add arguments for BCs.
+            def func_call(expr):
+                return expr.func(*expr.args, Symbol("none"), Symbol("bc_args"))
+
+            # replace the call of undefined functions with the correct arguments
             expr._sympy_expr = expr._sympy_expr.replace(
-                # only modify the relevant operator
-                lambda expr: isinstance(expr.func, UndefinedFunction)
-                and expr.name == func  # noqa: B023
-                # and do not modify it when the bc_args have already been set
-                and not (
-                    isinstance(expr.args[-1], Symbol)
-                    and expr.args[-1].name == "bc_args"
+                lambda expr: (
+                    # only modify the relevant operator
+                    isinstance(expr.func, UndefinedFunction)
+                    and expr.name == func  # noqa: B023
+                    # and do not modify it when the bc_args have already been set
+                    and not (
+                        isinstance(expr.args[-1], Symbol)
+                        and expr.args[-1].name == "bc_args"
+                    )
                 ),
-                # otherwise, add None and bc_args as arguments
-                lambda expr: expr.func(*expr.args, Symbol("none"), Symbol("bc_args")),
+                func_call,
             )
 
-        # obtain the function to calculate the right hand side
-        signature = self.variables + ("t", "none", "bc_args")
+    def _compile_rhs_single(
+        self,
+        var: str,
+        ops: dict[str, Callable],
+        state: FieldBase,
+        *,
+        backend: BackendBase,
+    ):
+        """Compile a function determining the right hand side for one variable.
 
-        # check whether this function depends on additional input
+        Args:
+            var (str):
+                The variable that is considered
+            ops (dict):
+                A dictionary of operators that can be used by this function. Note that
+                this dictionary might be modified in place
+            state (:class:`~pde.fields.FieldBase`):
+                The field describing the state of the PDE
+            backend (:class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
+
+        Returns:
+            callable: The function calculating the RHS
+        """
+        # modify a copy of the expression and the general operator array
+        expr = self._rhs_expr[var].copy()
+
+        # obtain all (differential) operators for this variable
+        self._add_operators_to_expr(var, expr, ops=ops, state=state, backend=backend)
+
+        # Define the signature of the function to calculate the right hand side. Here,
+        # `variables` denotes all fields the PDE evolves, i.e., the dynamical degrees of
+        # freedom, `t` is the `time`, and `bc_args` are additional arguments that are
+        # simply forwarded to the function setting the boundary conditions. The `none`
+        # is added for consistency with the signature expected by operators, where it
+        # indicates that we do not supply an array to store the output.
+        signature = (*self.variables, "t", "none", "bc_args")
+
+        # We optionally, add explicit variables to denote the grid cell positions if
+        # they are used in the expression
         if any(expr.depends_on(c) for c in state.grid.axes):
-            # expression has a spatial dependence, too
-
-            # extend the signature
+            # extend the signature with the axes names
             signature += tuple(state.grid.axes)
             # inject the spatial coordinates into the expression for the rhs
             extra_args = tuple(
-                state.grid.cell_coords[..., i] for i in range(state.grid.num_axes)
+                backend.numpy_to_native(state.grid.cell_coords[..., i])
+                for i in range(state.grid.num_axes)
             )
 
         else:
@@ -383,33 +549,108 @@ class PDE(PDEBase):
         extra_vars = set(expr.vars) - set(signature)
         if extra_vars:
             extra_vars_str = ", ".join(sorted(extra_vars))
-            raise RuntimeError(f"Undefined variable in expression: {extra_vars_str}")
+            msg = f"Undefined variable in expression: {extra_vars_str}"
+            raise RuntimeError(msg)
         expr.vars = signature
 
         self._logger.info("RHS for `%s` has signature %s", var, signature)
 
         # prepare the actual function being called in the end
-        if backend == "numpy":
-            func_inner = expr._get_function(single_arg=False, user_funcs=ops)
-        elif backend == "numba":
-            func_pure = expr._get_function(
-                single_arg=False, user_funcs=ops, prepare_compilation=True
-            )
-            func_inner = jit(func_pure)
+        func_inner = expr.get_function(
+            backend=backend, single_arg=False, user_funcs=ops
+        )
+
+        if backend.implementation in {"numpy", "numba"}:
+            # Even in the `numpy` backend, we need to prepare the bc_args to be
+            # compatible with numba, since the standard operators in the `numpy`
+            # backend are still compiled with numba by default.
+            from numba.typed import Dict as NumbaDict
+
+            def rhs_func(*args) -> NumericArray:
+                """Wrapper that inserts the extra arguments and initialized bc_args."""
+                bc_args = NumbaDict()  # args for differential operators
+                bc_args["t"] = args[-1]  # pass time to differential operators
+                # Here, the `None` is required by the signature we choose. It
+                # essentially indicates that we do not supply an output array,
+                # consistent with the definition of operators.
+                return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
+
+        elif backend.implementation in {"jax", "torch"}:
+
+            def rhs_func(*args) -> jax.Array | torch.Tensor:  # type: ignore
+                """Wrapper that inserts the extra arguments and initialized bc_args."""
+                bc_args = {"t": args[-1]}
+                # Here, the `None` is required by the signature we choose. It
+                # essentially indicates that we do not supply an output array,
+                # consistent with the definition of operators.
+                return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
+
         else:
-            raise ValueError(f"Unsupported backend {backend}")
+            msg = f"Backend `{backend}` is not implemented"
+            raise NotImplementedError(msg)
 
-        def rhs_func(*args) -> np.ndarray:
-            """Wrapper that inserts the extra arguments and initialized bc_args."""
-            bc_args = NumbaDict()  # args for differential operators
-            bc_args["t"] = args[-1]  # pass time to differential operators
-            return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
+        # compile the function if necessary
+        return backend.compile_function(rhs_func)
 
-        return rhs_func
+    def _compile_noise_single(
+        self,
+        var: str,
+        expr: ScalarExpression,
+        state: FieldBase,
+        *,
+        backend: BackendBase,
+    ):
+        """Compile a function determining the noise variance for one variable.
 
-    def _prepare_cache(
-        self, state: TState, backend: Literal["numpy", "numba"] = "numpy"
-    ) -> dict[str, Any]:
+        Args:
+            var (str):
+                The variable that is considered
+            expr (:class:`~pde.tools.expressions.ScalarExpression`):
+                The expression determining the noise variance. Note that this expression
+                might be modified in place.
+            state (:class:`~pde.fields.FieldBase`):
+                The field describing the state of the PDE
+            backend (:class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
+
+        Returns:
+            callable: The function calculating the noise variance
+        """
+        # Noise variances are evaluated locally, so their signature only contains the
+        # fields and the time; see `PDE._compile_rhs_single` for more details.
+        signature = (*self.variables, "t")
+
+        # optionally add explicit variables denoting the grid cell positions
+        if any(expr.depends_on(c) for c in state.grid.axes):
+            signature += tuple(state.grid.axes)
+            extra_args = tuple(
+                backend.numpy_to_native(state.grid.cell_coords[..., i])
+                for i in range(state.grid.num_axes)
+            )
+        else:
+            extra_args = ()
+
+        # check whether all variables are accounted for. Note that we check the actual
+        # dependencies since the signature of the expression can also contain variables
+        # that dropped out, e.g., when the expression was differentiated.
+        extra_vars = {v for v in expr.vars if v not in signature and expr.depends_on(v)}
+        if extra_vars:
+            extra_vars_str = ", ".join(sorted(extra_vars))
+            msg = f"Undefined variable in noise expression: {extra_vars_str}"
+            raise RuntimeError(msg)
+        expr.vars = signature
+
+        self._logger.info("Noise for `%s` has signature %s", var, signature)
+
+        func_inner = expr.get_function(backend=backend, single_arg=False)
+
+        def noise_func(*args) -> NumericArray:
+            """Wrapper that inserts the extra arguments."""
+            return func_inner(*args, *extra_args)  # type: ignore
+
+        return backend.compile_function(noise_func)
+
+    def _prepare_cache(self, state: TField, *, backend: BackendBase) -> dict[str, Any]:
         """Prepare the expression by setting internal variables in the cache.
 
         Note that the expensive calculations in this method are only carried out if the
@@ -418,38 +659,48 @@ class PDE(PDEBase):
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 The field describing the state of the PDE
-            backend (str):
-                The backend for which the data is prepared
+            backend (:class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
 
         Returns:
             dict: A dictionary with information that can be reused
         """
         # check the cache
-        cache = self._cache.get(backend, {})
+        cache = self._cache.get(backend.name, {})
         if state.attributes == cache.get("state_attributes", None):
             return cache  # this cache was already prepared
-        cache = self._cache[backend] = {}  # clear cache, if there was any
+        cache = self._cache[backend.name] = {}  # clear cache, if there was any
+
+        # determine the dtype of the rhs
+        if not np.iscomplexobj(state.data) and self.complex_valued:
+            # choose complex dtype to be safe
+            dtype = np.ones((1,), dtype=state.dtype).astype(complex).dtype
+        else:
+            dtype = state.dtype  # type: ignore
+        cache["dtype"] = dtype
 
         # check whether PDE has variables with same names as grid axes
         name_overlap = set(self.rhs) & set(state.grid.axes)
         if name_overlap:
-            raise ValueError(f"Coordinate {name_overlap} cannot be used as field name")
+            msg = f"Coordinate {name_overlap} cannot be used as field name"
+            raise ValueError(msg)
 
         # check whether the state is compatible with the PDE
         num_fields: int = len(self.variables)
         self.diagnostics["pde"]["num_fields"] = num_fields
         if isinstance(state, FieldCollection):
             if num_fields != len(state):
-                raise ValueError(
+                msg = (
                     f"Expected {num_fields} fields in state, but got {len(state)} ones"
                 )
+                raise ValueError(msg)
         elif isinstance(state, DataFieldBase):
             if num_fields != 1:
-                raise ValueError(
-                    f"Expected {num_fields} fields in state, but got only one"
-                )
+                msg = f"Expected {num_fields} fields in state, but got only one"
+                raise ValueError(msg)
         else:
-            raise ValueError(f"Unknown state class {state.__class__.__name__}")
+            msg = f"Unknown state class {state.__class__.__name__}"
+            raise TypeError(msg)
 
         # check compatibility of constants and update the rhs accordingly
         for name, value in self.consts.items():
@@ -465,10 +716,14 @@ class PDE(PDEBase):
                     value.grid.assert_grid_compatible(state.grid)
                     value = value.data  # just keep the actual discretized data
             else:
-                raise TypeError(f"Constant has unsupported type {value.__class__}")
+                msg = f"Constant has unsupported type {value.__class__}"
+                raise TypeError(msg)
 
             for rhs in self._rhs_expr.values():
-                rhs.consts[name] = value  # type: ignore
+                rhs.consts[name] = value
+            if self._noise_expr is not None:
+                for noise_expr in self._noise_expr.values():
+                    noise_expr.consts[name] = value
 
         # obtain functions used in the expression
         ops_general: dict[str, Callable] = {}
@@ -484,20 +739,20 @@ class PDE(PDEBase):
             # inner is a synonym for dot product operator
             ops_general["inner"] = VectorField(state.grid).make_dot_operator(backend)
 
-        if "outer" in operators:
+        if "outer" in operators and backend != "torch":
             # generate an operator that calculates an outer product
             vec_field = VectorField(state.grid)
             ops_general["outer"] = vec_field.make_outer_prod_operator(backend)
 
         if "integral" in operators:
             # add an operator that integrates a field
-            ops_general["integral"] = state.grid.make_integrator()
+            ops_general["integral"] = state.grid.make_integrator(backend)
 
         # Create the right hand sides for all variables. It is important to do this in a
         # separate function, so the closures work reliably
         self.diagnostics["pde"]["bcs_used"] = set()  # keep track of the used BCs
         cache["rhs_funcs"] = [
-            self._compile_rhs_single(var, ops_general.copy(), state, backend)
+            self._compile_rhs_single(var, ops_general.copy(), state, backend=backend)
             for var in self.variables
         ]
 
@@ -508,12 +763,12 @@ class PDE(PDEBase):
 
         # add extra information for field collection
         if isinstance(state, FieldCollection):
-            # isscalar be False even if start == stop (e.g. vector fields)
+            # isscalar needs to be False even if start == stop (e.g. vector fields)
             isscalar: tuple[bool, ...] = tuple(field.rank == 0 for field in state)
             starts: tuple[int, ...] = tuple(slc.start for slc in state._slices)
             stops: tuple[int, ...] = tuple(slc.stop for slc in state._slices)
 
-            def get_data_tuple(state_data: np.ndarray) -> tuple[np.ndarray, ...]:
+            def get_data_tuple(state_data: NumericArray) -> tuple[NumericArray, ...]:
                 """Helper for turning state_data into a tuple of field data."""
                 return tuple(
                     (
@@ -533,7 +788,7 @@ class PDE(PDEBase):
         cache["state_attributes"] = state.attributes
         return cache
 
-    def evolution_rate(self, state: TState, t: float = 0.0) -> TState:
+    def evolution_rate(self, state: TField, t: float = 0.0) -> TField:
         """Evaluate the right hand side of the PDE.
 
         Args:
@@ -546,7 +801,7 @@ class PDE(PDEBase):
             :class:`~pde.fields.FieldBase`:
             Field describing the evolution rate of the PDE
         """
-        cache = self._prepare_cache(state, backend="numpy")
+        cache = self._prepare_cache(state, backend=get_backend("numpy"))
 
         # create an empty copy of the current field
         result = state.copy()
@@ -563,17 +818,22 @@ class PDE(PDEBase):
                 result[i].data[:] = cache["rhs_funcs"][i](*data_tpl, t)
 
         else:
-            raise TypeError(f"Unsupported field {state.__class__.__name__}")
+            msg = f"Unsupported field {state.__class__.__name__}"
+            raise TypeError(msg)
 
         return result
 
-    def make_post_step_hook(self, state: FieldBase) -> tuple[StepperHook, Any]:
+    def make_post_step_hook(
+        self, state: FieldBase, backend: str | BackendBase[TNativeArray] = "numpy"
+    ) -> tuple[StepperHook, Any]:
         """Returns a function that is called after each step.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
+            backend (str):
+                Determines how the function is created (like 'numpy' and 'numba')
 
         Returns:
             tuple: The first entry is the function that implements the hook. The second
@@ -584,25 +844,39 @@ class PDE(PDEBase):
             NotImplementedError: When :attr:`post_step_hook` is `None`.
         """
         if self.post_step_hook is None:
-            raise NotImplementedError("`post_step_hook` not set")
-        else:
-            post_step_hook = register_jitable(self.post_step_hook)
+            msg = "`post_step_hook` not set"
+            raise NotImplementedError(msg)
 
-            @register_jitable
-            def post_step_hook_impl(state_data, t, post_step_data):
-                post_step_hook(state_data, t)
+        from ..backends import get_backend
 
-            return post_step_hook_impl, 0  # hook function and initial value
+        post_step_hook = get_backend(backend).compile_function(self.post_step_hook)
 
-    # time will not be updated
-    def _make_pde_rhs_numba_coll(
-        self, state: FieldCollection, cache: dict[str, Any]
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """Create the compiled rhs if `state` is a field collection.
+        @get_backend(backend).compile_function
+        def post_step_hook_impl(
+            state_data: TNativeArray, t: float, post_step_data: Any
+        ) -> tuple[TNativeArray, Any]:
+            state_data = post_step_hook(state_data, t)
+            return state_data, None  # `None` indicates lack of `post_step_data`
+
+        return post_step_hook_impl, None  # hook function and initial value
+
+    def _make_collection_func_numba(
+        self,
+        state: FieldCollection,
+        funcs: Sequence[Callable],
+        *,
+        backend: BackendBase,
+        cache: dict[str, Any],
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Combine functions for all fields of a collection into a single function.
 
         Args:
             state (:class:`~pde.fields.FieldCollection`):
                 An example for the state defining the grid and data types
+            funcs (sequence of callable):
+                The functions evaluating the quantity for each field of the collection
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
             cache (dict):
                 Cached information that will be used in the function. The cache is
                 populated by :meth:`PDE._prepare_cache`.
@@ -610,12 +884,14 @@ class PDE(PDEBase):
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`~numpy.ndarray` of the state data and
-            the time to obtained an instance of :class:`~numpy.ndarray` giving
-            the evolution rate.
+            the time to obtain an instance of :class:`~numpy.ndarray` giving
+            the combined result of all fields.
         """
+        import numba as nb
+
         num_fields = len(state)
         data_shape = state.data.shape
-        rhs_list = tuple(jit(cache["rhs_funcs"][i]) for i in range(num_fields))
+        rhs_list = tuple(funcs)
 
         starts = tuple(slc.start for slc in state._slices)
         stops = tuple(slc.stop for slc in state._slices)
@@ -623,69 +899,346 @@ class PDE(PDEBase):
 
         def chain(
             i: int = 0,
-            inner: Callable[[np.ndarray, float, np.ndarray], None] | None = None,
-        ) -> Callable[[np.ndarray, float], np.ndarray]:
+            inner: Callable[[NumericArray, float, NumericArray], None] | None = None,
+        ) -> Callable[[NumericArray, float], NumericArray]:
             """Recursive helper function for applying all rhs."""
             # run through all functions
             rhs = rhs_list[i]
 
             if inner is None:
                 # the innermost function does not need to call a child
-                @jit
-                def wrap(data_tpl: np.ndarray, t: float, out: np.ndarray) -> None:
+                @nb.jit
+                def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
             else:
                 # all other functions need to call one deeper in the chain
-                @jit
-                def wrap(data_tpl: np.ndarray, t: float, out: np.ndarray) -> None:
-                    inner(data_tpl, t, out)  # type: ignore
+                @nb.jit
+                def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
+                    inner(data_tpl, t, out)
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
             if i < num_fields - 1:
                 # there are more items in the chain
                 return chain(i + 1, inner=wrap)
-            else:
-                # this is the outermost function
-                @jit
-                def evolution_rate(state_data: np.ndarray, t: float = 0) -> np.ndarray:
-                    out = np.empty(data_shape)
-                    with nb.objmode():
-                        data_tpl = get_data_tuple(state_data)
-                        wrap(data_tpl, t, out)
-                    return out
 
-                return evolution_rate  # type: ignore
+            # this is the outermost function
+            @nb.jit
+            def evolution_rate(state_data: NumericArray, t: float = 0) -> NumericArray:
+                out = np.empty(data_shape)
+                with nb.objmode():
+                    data_tpl = get_data_tuple(state_data)
+                    wrap(data_tpl, t, out)
+                return out
+
+            return evolution_rate  # type: ignore
 
         # compile the recursive chain
         return chain()
 
-    def _make_pde_rhs_numba(  # type: ignore
-        self, state: TState, **kwargs
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """Create a compiled function evaluating the right hand side of the PDE.
+    def _make_collection_func_torch(
+        self,
+        state: FieldCollection,
+        funcs: Sequence[Callable],
+        *,
+        backend: BackendBase,
+        cache: dict[str, Any],
+    ) -> Callable[[torch.Tensor, float], torch.Tensor]:
+        """Combine functions for all fields of a collection into a single function.
+
+        Args:
+            state (:class:`~pde.fields.FieldCollection`):
+                An example for the state defining the grid and data types
+            funcs (sequence of callable):
+                The functions evaluating the quantity for each field of the collection
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
+            cache (dict):
+                Cached information that will be used in the function. The cache is
+                populated by :meth:`PDE._prepare_cache`.
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called
+            with an instance of :class:`~numpy.ndarray` of the state data and
+            the time to obtain an instance of :class:`~numpy.ndarray` giving
+            the combined result of all fields.
+        """
+        import torch
+
+        data_shape = state.data.shape
+        dtype = backend.get_torch_dtype(state.dtype)  # type: ignore
+        rhs_list = tuple(funcs)
+
+        starts = tuple(slc.start for slc in state._slices)
+        stops = tuple(slc.stop for slc in state._slices)
+        get_data_tuple = cache["get_data_tuple"]
+
+        # this is the outermost function
+        def evolution_rate(state_data: torch.Tensor, t: float = 0) -> torch.Tensor:
+            data_tpl = get_data_tuple(state_data)
+            out = torch.empty(data_shape, dtype=dtype, device=state_data.device)
+            for i, rhs in enumerate(rhs_list):
+                out[starts[i] : stops[i]] = rhs(*data_tpl, t)
+            return out
+
+        # compile the recursive chain
+        return evolution_rate
+
+    def _make_collection_func_jax(
+        self,
+        state: FieldCollection,
+        funcs: Sequence[Callable],
+        *,
+        backend: BackendBase,
+        cache: dict[str, Any],
+    ) -> Callable[[jax.Array, float], jax.Array]:
+        """Combine functions for all fields of a collection into a single function.
+
+        Args:
+            state (:class:`~pde.fields.FieldCollection`):
+                An example for the state defining the grid and data types
+            funcs (sequence of callable):
+                The functions evaluating the quantity for each field of the collection
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
+            cache (dict):
+                Cached information that will be used in the function. The cache is
+                populated by :meth:`PDE._prepare_cache`.
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called
+            with an instance of :class:`~numpy.ndarray` of the state data and
+            the time to obtain an instance of :class:`~numpy.ndarray` giving
+            the combined result of all fields.
+        """
+        import jax.numpy as jnp
+
+        data_shape = state.data.shape
+        dtype = backend.get_jax_dtype(state.dtype)  # type: ignore
+        rhs_list = tuple(funcs)
+
+        starts = tuple(slc.start for slc in state._slices)
+        stops = tuple(slc.stop for slc in state._slices)
+        get_data_tuple = cache["get_data_tuple"]
+
+        # this is the outermost function
+        def evolution_rate(state_data: jax.Array, t: float = 0) -> jax.Array:
+            data_tpl = get_data_tuple(state_data)
+            out = jnp.empty(data_shape, dtype=dtype)
+            for i, rhs in enumerate(rhs_list):
+                out = out.at[starts[i] : stops[i]].set(rhs(*data_tpl, t))
+            return out
+
+        return evolution_rate
+
+    def _make_collection_func_numpy(
+        self,
+        state: FieldCollection,
+        funcs: Sequence[Callable],
+        *,
+        backend: BackendBase,
+        cache: dict[str, Any],
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Combine functions for all fields of a collection into a single function.
+
+        Args:
+            state (:class:`~pde.fields.FieldCollection`):
+                An example for the state defining the grid and data types
+            funcs (sequence of callable):
+                The functions evaluating the quantity for each field of the collection
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
+            cache (dict):
+                Cached information that will be used in the function. The cache is
+                populated by :meth:`PDE._prepare_cache`.
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called
+            with an instance of :class:`~numpy.ndarray` of the state data and
+            the time to obtain an instance of :class:`~numpy.ndarray` giving
+            the combined result of all fields.
+        """
+        data_shape = state.data.shape
+        dtype = state.dtype
+        rhs_list = tuple(funcs)
+
+        starts = tuple(slc.start for slc in state._slices)
+        stops = tuple(slc.stop for slc in state._slices)
+        get_data_tuple = cache["get_data_tuple"]
+
+        def evolution_rate(state_data: NumericArray, t: float = 0) -> NumericArray:
+            data_tpl = get_data_tuple(state_data)
+            out = np.empty(data_shape, dtype=dtype)
+            for i, rhs in enumerate(rhs_list):
+                out[starts[i] : stops[i]] = rhs(*data_tpl, t)
+            return out
+
+        return evolution_rate
+
+    def _make_combined_func(
+        self,
+        state: FieldBase,
+        funcs: Sequence[Callable],
+        *,
+        backend: BackendBase,
+        cache: dict[str, Any],
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
+        """Combine the functions of all fields of the state into a single function.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state defining the grid and data types
+            funcs (sequence of callable):
+                The functions evaluating the quantity for each field of the state
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
+            cache (dict):
+                Cached information that will be used in the function. The cache is
+                populated by :meth:`PDE._prepare_cache`.
 
         Returns:
             A function with signature `(state_data, t)`, which can be called with an
-            instance of :class:`~numpy.ndarray` of the state data and the time to
-            obtained an instance of :class:`~numpy.ndarray` giving the evolution rate.
+            instance of the state data and time to obtain the combined result.
         """
-        cache = self._prepare_cache(state, backend="numba")
-
         if isinstance(state, DataFieldBase):
-            # state is a single field
-            return jit(cache["rhs_funcs"][0])  # type: ignore
+            # state is a single field, so nothing needs to be combined
+            return funcs[0]
 
-        elif isinstance(state, FieldCollection):
+        if isinstance(state, FieldCollection):
             # state is a collection of fields
-            return self._make_pde_rhs_numba_coll(state, cache)
+            if backend.implementation == "numpy":
+                return self._make_collection_func_numpy(  # type: ignore
+                    state, funcs, backend=backend, cache=cache
+                )
+            if backend.implementation == "numba":
+                return self._make_collection_func_numba(  # type: ignore
+                    state, funcs, backend=backend, cache=cache
+                )
+            if backend.implementation == "torch":
+                return self._make_collection_func_torch(  # type: ignore
+                    state, funcs, backend=backend, cache=cache
+                )
+            if backend.implementation == "jax":
+                return self._make_collection_func_jax(  # type: ignore
+                    state, funcs, backend=backend, cache=cache
+                )
+            raise NotImplementedError
 
-        else:
-            raise TypeError(f"Unsupported field {state.__class__.__name__}")
+        msg = f"Unsupported field {state.__class__.__name__}"
+        raise TypeError(msg)
+
+    def make_noise_variance(  # type: ignore
+        self,
+        state: TField,
+        *,
+        backend: BackendBase[TNativeArray],
+        ret_diff: bool = False,
+    ) -> Callable[
+        [TNativeArray, float], TNativeArray | tuple[TNativeArray, TNativeArray]
+    ]:
+        """Make function that calculates the noise variance.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+            backend (str):
+                Determines the backend.
+            ret_diff (bool):
+                Determines whether only the noise variance or also its derivative with
+                respect to the field at this position is returned.
+
+        Returns:
+            A function with signature (state_data, t) that either returns just the noise
+            variance or also its derivative, depending on `ret_diff`.
+        """
+        if self._noise_expr is None:
+            # the noise variance is a constant, which the base class handles
+            return super().make_noise_variance(  # type: ignore
+                state, backend=backend, ret_diff=ret_diff
+            )
+
+        backend = get_backend(backend)
+        cache = self._prepare_cache(state, backend=backend)
+        variance = self._make_noise_func(state, backend=backend, cache=cache)
+        if not ret_diff:
+            return variance
+
+        variance_diff = self._make_noise_func(
+            state, backend=backend, cache=cache, diff=True
+        )
+
+        def noise_variance_diff(
+            state_data: TNativeArray, t: float
+        ) -> tuple[TNativeArray, TNativeArray]:
+            """Calculates noise variance and its derivative."""
+            return variance(state_data, t), variance_diff(state_data, t)
+
+        return noise_variance_diff
+
+    def _make_noise_func(
+        self,
+        state: TField,
+        *,
+        backend: BackendBase,
+        cache: dict[str, Any],
+        diff: bool = False,
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
+        """Create a function evaluating the noise variance of the full state.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                The field describing the state of the PDE
+            backend (:class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
+            cache (dict):
+                Cached information that will be used in the function. The cache is
+                populated by :meth:`PDE._prepare_cache`.
+            diff (bool):
+                Determines whether the derivative of the noise variance with respect to
+                the associated field is returned instead of the variance itself.
+
+        Returns:
+            A function with signature `(state_data, t)` evaluating the noise variance
+        """
+        assert self._noise_expr is not None
+        key = "noise_diff_funcs" if diff else "noise_funcs"
+        if key not in cache:
+            funcs = []
+            for var in self.variables:
+                expr = self._noise_expr[var]
+                # `differentiate` already returns a new expression, but the expression
+                # itself needs to be copied since compiling modifies its signature
+                expr = expr.differentiate(var) if diff else expr.copy()
+                funcs.append(
+                    self._compile_noise_single(var, expr, state, backend=backend)
+                )
+            cache[key] = funcs
+
+        return self._make_combined_func(state, cache[key], backend=backend, cache=cache)
+
+    def make_evolution_rate(
+        self, state: FieldCollection, backend: BackendBase
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
+        """Create a compiled function evaluating the right hand side of the PDE.
+
+        Args:
+            state (:class:`~pde.fields.ScalarField`):
+                An example for the state defining the grid and data types
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
+
+        Returns:
+            A function with signature `(state_data, t)`, which can be called with an
+            instance of the state data and time to obtain the associated evolution rate.
+        """
+        # load backend and initialize cache
+        backend = get_backend(backend)
+        cache = self._prepare_cache(state, backend=backend)
+
+        return self._make_combined_func(
+            state, cache["rhs_funcs"], backend=backend, cache=cache
+        )
 
     def _jacobian_spectral(
         self,
@@ -722,13 +1275,15 @@ class PDE(PDEBase):
         """
         import sympy
 
-        warnings.warn("This method is rather new and not well tested.")
+        warnings.warn("This method is rather new and not well tested.", stacklevel=2)
 
         # basic checks
         if wave_vector == "t":
-            raise ValueError("`wave_vector` must not be `t`")
+            msg = "`wave_vector` must not be `t`"
+            raise ValueError(msg)
         if wave_vector in self.variables:
-            raise ValueError(f"`wave_vector` must be different from {self.variables}")
+            msg = f"`wave_vector` must be different from {self.variables}"
+            raise ValueError(msg)
 
         if state_hom is None:
             state_dict: Mapping[str, float | complex] | None = None
@@ -739,14 +1294,16 @@ class PDE(PDEBase):
             else:
                 dim = len(self.variables)
                 if isinstance(state_hom, numbers.Number):
-                    state_dict = {v: state_hom for v in self.variables}  # type: ignore
+                    state_dict = dict.fromkeys(self.variables, state_hom)  # type: ignore
                 elif len(state_hom) != dim:
-                    raise ValueError(f"Expect {dim} values in `state_hom`")
+                    msg = f"Expect {dim} values in `state_hom`"
+                    raise ValueError(msg)
                 else:
                     state_dict = {v: state_hom[i] for i, v in enumerate(self.variables)}
             for v, state in state_dict.items():
                 if not isinstance(state, numbers.Number):
-                    raise TypeError(f"Value for field `{v}` is not a number")
+                    msg = f"Value for field `{v}` is not a number"
+                    raise TypeError(msg)
 
         # prepare fourier transformed operators
         q_sym = sympy.symbols(wave_vector)
@@ -772,10 +1329,11 @@ class PDE(PDEBase):
                     exprF0_val = float(exprF0.subs(state_dict))
                 except Exception as e:
                     if len(e.args) >= 1:
-                        e.args = (e.args[0] + f" (Expression: {exprF0})",) + e.args[1:]
+                        e.args = (e.args[0] + f" (Expression: {exprF0})", *e.args[1:])
                     raise
                 if not np.isclose(exprF0_val, 0):
-                    raise RuntimeError("State is not a stationary state")
+                    msg = "State is not a stationary state"
+                    raise RuntimeError(msg)
 
             # calculate Jacobian
             jac_line = []
@@ -790,10 +1348,10 @@ class PDE(PDEBase):
     def _dispersion_relation(
         self,
         state_hom: list | dict[str, float],
-        qs: np.ndarray | None = None,
+        qs: NumericArray | None = None,
         *,
         t: float = 0,
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NumericArray, NumericArray]:
         """Evaluate the dispersion relation.
 
         Args:

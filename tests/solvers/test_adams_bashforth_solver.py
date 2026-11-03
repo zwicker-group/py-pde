@@ -16,7 +16,7 @@ def test_adams_bashforth():
         state,
         t_range=2.1,
         dt=0.5,
-        solver="adams–bashforth",
+        solver="adams-bashforth",
         tracker=storage.tracker(0.5),
     )
     np.testing.assert_allclose(

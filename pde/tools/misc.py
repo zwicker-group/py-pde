@@ -5,7 +5,6 @@
 
    module_available
    ensure_directory_exists
-   preserve_scalars
    decorator_arguments
    import_class
    classproperty
@@ -24,35 +23,60 @@ from __future__ import annotations
 import errno
 import functools
 import importlib
+import importlib.util
 import json
-import os
-import warnings
 from pathlib import Path
-from typing import Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, Protocol, overload
 
 import numpy as np
-from numpy.typing import DTypeLike
 
-from .typing import ArrayLike, Number
+if TYPE_CHECKING:
+    import types
+    from collections.abc import Callable
 
-TFunc = TypeVar("TFunc", bound=Callable[..., Any])
+    from numpy.typing import DTypeLike
+
+    from .typing import ArrayLike, Number, NumericArray, TFunc, TNativeArray
 
 
-def module_available(module_name: str) -> bool:
+_MODULE_AVAILABILITY_CACHE: dict[str, bool] = {}
+
+
+def module_available(
+    module_name: str, *, cache: bool = True, strict: bool = False
+) -> bool:
     """Check whether a python module is available.
 
     Args:
-        module_name (str): The name of the module
+        module_name (str):
+            The name of the module to search
+        cache (bool):
+            Flag determining whether an internal cache is used to speed up the check
+        strict (bool):
+            If True, we actually try to import the full package
 
     Returns:
         `True` if the module can be imported and `False` otherwise
     """
-    try:
-        importlib.import_module(module_name)
-    except ImportError:
-        return False
-    else:
-        return True
+    if cache and module_name in _MODULE_AVAILABILITY_CACHE:
+        return _MODULE_AVAILABILITY_CACHE[module_name]  # use cached entry
+
+    # determine whether module can be loaded in principle
+    is_available = importlib.util.find_spec(module_name) is not None
+
+    if is_available and strict:
+        # try to actually import the module
+        try:
+            __import__(module_name)
+        except ImportError:
+            is_available = False
+        else:
+            is_available = True
+
+    # store value in cache and return it
+    if cache:
+        _MODULE_AVAILABILITY_CACHE[module_name] = is_available
+    return is_available
 
 
 def ensure_directory_exists(folder: str | Path):
@@ -68,35 +92,19 @@ def ensure_directory_exists(folder: str | Path):
             raise
 
 
-def preserve_scalars(method: TFunc) -> TFunc:
-    """Decorator that makes vectorized methods work with scalars.
+class _FlexibleDecorator(Protocol):
+    """Type of a decorator that can be called with and without arguments."""
 
-    This decorator allows to call functions that are written to work on numpy
-    arrays to also accept python scalars, like `int` and `float`. Essentially,
-    this wrapper turns them into an array and unboxes the result.
+    @overload
+    def __call__(self, function: TFunc) -> TFunc: ...
 
-    Args:
-        method: The method being decorated
+    @overload
+    def __call__(self, *args, **kwargs) -> Callable[[TFunc], TFunc]: ...
 
-    Returns:
-        The decorated method
-    """
-    # deprecated on 2024-08-21
-    warnings.warn("Method `preserve_scalars` is deprecated", DeprecationWarning)
-
-    @functools.wraps(method)
-    def wrapper(self, *args):
-        args = [number_array(arg, copy=None) for arg in args]
-        if args[0].ndim == 0:
-            args = [arg[None] for arg in args]
-            return method(self, *args)[0]
-        else:
-            return method(self, *args)
-
-    return wrapper  # type: ignore
+    def __call__(self, *args, **kwargs) -> Callable: ...
 
 
-def decorator_arguments(decorator: Callable) -> Callable:
+def decorator_arguments(decorator: Callable) -> _FlexibleDecorator:
     r"""make a decorator usable with and without arguments:
 
     The resulting decorator can be used like `@decorator`
@@ -105,20 +113,20 @@ def decorator_arguments(decorator: Callable) -> Callable:
     Inspired by https://stackoverflow.com/a/14412901/932593
 
     Args:
-        decorator: the decorator that needs to be modified
+        decorator:
+            The decorator that needs to be modified
 
     Returns:
-        the decorated function
+        The decorated function
     """
 
     @functools.wraps(decorator)
     def new_decorator(*args, **kwargs):
         if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
-            # actual decorated function
+            # called without arguments, so function is first argument
             return decorator(args[0])
-        else:
-            # decorator arguments
-            return lambda realf: decorator(realf, *args, **kwargs)
+        # decorator is called with arguments, so we need to return a callable
+        return lambda func: decorator(func, *args, **kwargs)
 
     return new_decorator
 
@@ -137,9 +145,8 @@ def import_class(identifier: str):
     if module_path:
         module = importlib.import_module(module_path)
         return getattr(module, class_name)
-    else:
-        # this happens when identifier does not contain a dot
-        return importlib.import_module(class_name)
+    # this happens when identifier does not contain a dot
+    return importlib.import_module(class_name)
 
 
 class classproperty(property):
@@ -190,10 +197,12 @@ class classproperty(property):
         return super().getter(self._wrap_fget(fget))
 
     def setter(self, fset):
-        raise NotImplementedError("classproperty is read-only")
+        msg = "classproperty is read-only"
+        raise NotImplementedError(msg)
 
     def deleter(self, fdel):
-        raise NotImplementedError("classproperty is read-only")
+        msg = "classproperty is read-only"
+        raise NotImplementedError(msg)
 
     @staticmethod
     def _wrap_fget(orig_fget):
@@ -237,11 +246,16 @@ class hybridmethod:
         return self.finstance.__get__(instance, cls)
 
 
-def estimate_computation_speed(func: Callable, *args, **kwargs) -> float:
+def estimate_computation_speed(func: TFunc, *args, **kwargs) -> float:
     """Estimates the computation speed of a function.
 
     Args:
         func (callable): The function to call
+        *args:
+            Positional arguments passed to ``func``.
+        **kwargs:
+            Keyword arguments passed to ``func``; ``test_duration`` controls the
+            minimum benchmark duration.
 
     Returns:
         float: the number of times the function can be calculated in one second.
@@ -307,6 +321,8 @@ def number(value: Number | str) -> Number:
     Result:
         Number: A complex number or a float if the imaginary part vanishes
     """
+    if isinstance(value, str):
+        value = value.replace(" ", "")
     result = complex(value)
     return result.real if result.imag == 0 else result
 
@@ -326,8 +342,8 @@ def get_common_dtype(*args):
 
 
 def number_array(
-    data: ArrayLike, dtype: DTypeLike = None, copy: bool | None = None
-) -> np.ndarray:
+    data: ArrayLike, dtype: DTypeLike | None = None, copy: bool | None = None
+) -> NumericArray:
     """Convert data into an array, assuming float numbers if no dtype is given.
 
     Args:
@@ -365,3 +381,26 @@ def number_array(
         result = np.array(data, dtype=np.dtype(dtype), copy=copy)
 
     return result
+
+
+def get_array_namespace(arr: TNativeArray) -> types.ModuleType:
+    """Get the namespace associated with an array.
+
+    This function should be used to write general functions that can work with many
+    backends, such as :mod:`jax`. We define this as a function, so we can overload this
+    function for the `numba` backend, which does not yet support __array_namespace__.
+
+    Args:
+        arr (:class:`~numpy.ndarray` or another array type):
+            The array whose namespace will be returned
+
+    Returns:
+        A python module defining typical functions that can be applied to arrays. In
+        many cases this will be :mod:`numpy`.
+    """
+    if arr.__class__.__name__ == "Tensor":
+        # likely a torch Tensor
+        import torch
+
+        return torch
+    return arr.__array_namespace__()  # type: ignore

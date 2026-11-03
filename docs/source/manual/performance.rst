@@ -3,14 +3,30 @@ Performance
 
 Measuring performance
 """""""""""""""""""""
+..  figure:: /_images/performance_cahn_hilliard.*
+    :figwidth: 50%
+    :align: right
+    :alt: Runtime as a function of simulation time for various backends.
+
+    Performance of solving the Cahn-Hilliard equation with various backends.
 
 The performance of the `py-pde` package depends on many details and general 
 statements are thus difficult to make.
-However, since the core operators are just-in-time compiled using :mod:`numba`,
-many operations of the package proceed at performances close to most compiled
+However, since the core operators can be compiled using :mod:`numba`, :mod:`jax`, or
+:mod:`torch`, many operations of the package perform at speeds comparable to compiled
 languages.
-For instance, a simple Laplace operator applied to fields defined on a Cartesian
-grid has performance that is similar to the operators supplied by the popular
+For a simple test case, consider the plot on the right, which shows how much real time
+passed until a certain simulation time was reached.
+Here, the slope of the curve quantifies the raw speed of the solver, whereas the
+intercept with the y-axis indicates the start-up time, which is mainly dominated by the
+compilation of the code.
+The trade-off between compilation time and run time varies between backends and will
+also depend on details of the simulation.
+
+A more microscopic performance measurement concerns the actual operators, which can also
+be compiled using various backends.
+Generally, a simple Laplace operator applied to fields defined on a Cartesian
+grid has performance that is similar to the operators supplied by the
 `OpenCV <https://opencv.org>`_ package.
 The following figures illustrate this by showing the duration of evaluating the
 Laplacian on grids of increasing number of support points for
@@ -22,11 +38,13 @@ two different boundary conditions (lower duration is better):
 
 .. image:: /_images/performance_noflux.*
    :width: 49%
-   
-   
-Note that the call overhead is lower in the `py-pde` package, so that the
-performance on small grids is particularly good.
-However, realistic use-cases probably need more complicated operations and it is
+
+
+Note that the call overhead is generally lower in the `py-pde` package, so that the
+performance on small grids is particularly good using the `numba` backend (blue line).
+Moreover, further speed-up is possible (blue dotted line) if boundary conditions do not
+need to be set, i.e., if ghost cells were set by some other function before.
+However, realistic use cases probably need more complicated operations and it is
 thus always necessary to profile the respective code.
 This can be done using the function
 :func:`~pde.tools.misc.estimate_computation_speed` or the traditional
@@ -37,13 +55,24 @@ This can be done using the function
 Improving performance
 """""""""""""""""""""
 
-Beside the underlying implementation of the operators, a major factor for performance is
-numerical problem at hand and the methods that are used to solve it.
+Besides the underlying implementation of the operators, a major factor for performance is
+the specific numerical problem being solved and the methods that are used to address it.
+It is thus paramount to choose the right backend.
+Here, compiled backends, like `numba` and `torch`, provide the fastest speed,
+particularly for larger systems, but they require an initial compilation, which can be
+costly.
+For small systems, it can thus be advisable to use the `numpy` backend.
+Since some backends rely on optional packages, the function
+:func:`~pde.backends.registry.available_backends` lists the backends that can actually
+be used in the current environment.
+In contrast, :func:`~pde.backends.registry.registered_backends` lists all backends that
+the package knows about, including those whose packages are not installed.
+
 As a rule of thumb, simulations run faster when there are fewer degrees of freedom.
 In the case of partial differential equations, this often means using a coarser grid
 with fewer support points.
-However, there often also is an lower bound to the number of support points if
-structures of a certain length scales need to be resolved.
+However, there is often a lower bound on the number of support points needed to resolve
+structures with a given length scale.
 Reducing the number of support points not only reduces the number of variables to be
 treated, but it can also allow for larger time steps.
 This is particularly transparent for the simple diffusion equation, where a `von Neumann
@@ -51,15 +80,17 @@ stability analysis <https://en.wikipedia.org/wiki/Von_Neumann_stability_analysis
 reveals that the maximal time step scales as one over the discretization length squared!
 Choosing the right time step obviously also affects performance of a simulation.
 The package supports automatic choice of suitable time steps, using adaptive stepping
-schemes.
-To enable those, it's best to specify an initial time step, like so
+schemes. To enable those, simply specify this in the solver call:
 
 .. code-block:: python
 
-    eq.solve(t_range=10, dt=1e-3, adaptive=True)
+    eq.solve(state, t_range=10, adaptive=True)
 
+An initial time step can be supplied, but is not necessary.
 Additional factors influencing the performance of the package include the compiler used
 for :mod:`numpy`, :mod:`scipy`, and of course :mod:`numba`.
+Performance of compiled backends, such as `numba`, `jax`, or `torch`, can vary
+tremendously depending on problem size, the chosen device, and many other details.
 Moreover, the BLAS and LAPACK libraries might make a difference.
 The package has some basic support for multithreading, which can be accelerated
 using the `Threading Building Blocks` library.
@@ -77,6 +108,10 @@ of typical packages
     port install py312-numba +tbb
 
 Note that you can disable the automatic multithreading via :ref:`configuration`.
+
+Note that many details of the installed packages can affect performance and one should
+thus test various options if speed is critical. The suggestions above might also already
+be outdated.
 
 
 Multiprocessing using MPI
@@ -107,7 +142,7 @@ Taken together, a minimal example reads
    if result is not None:  # restrict the output to the main node
       result.plot()
 
-Saving this script as `multiprocessing.py`, we can evoke a parallel simulation using
+Saving this script as `multiprocessing.py`, we can invoke a parallel simulation using
 
 .. code-block:: bash
 
@@ -122,7 +157,7 @@ In the example above, two python processes will start in parallel and run indepe
 at first.
 In particular, both processes will load all packages and create the initial `state`
 field as well as the PDE class `eq`.
-Once the `explicit_mpi` solver is evoked, the processes will start communicating.
+Once the `explicit_mpi` solver is invoked, the processes will start communicating.
 `py-pde` will split up the full grid into two sub-grids, in this case of shape 32x64,
 distribute the associated sub-fields to both processes and ask each process to evolve
 the PDE for their sub-field.
@@ -151,4 +186,3 @@ specifies how often the particular axis is divided.
    each subgrid), while global operations might need synchronization between all
    subgrids. One example is integration, which has been implemented properly in `py-pde`.
    Consequently, it is safe to use :attr:`~pde.fields.scalar.ScalarField.integral`.
-

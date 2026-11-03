@@ -59,24 +59,21 @@ boundary.
 from __future__ import annotations
 
 import logging
-import math
-import os
 import warnings
 from abc import ABCMeta, abstractmethod
-from numbers import Number
-from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Literal, Self, TypeVar, Union
 
-import numba as nb
 import numpy as np
-from numba.extending import overload, register_jitable
 
 from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring
-from ...tools.numba import address_as_void_pointer, jit, numba_dict
-from ...tools.typing import FloatNumerical, GhostCellSetter, VirtualPointEvaluator
+from ...tools.misc import number
 from ..base import GridBase, PeriodicityError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from ...tools.typing import NumberOrArray, NumericArray
     from .._mesh import GridMesh
 
 _logger = logging.getLogger(__name__)
@@ -89,7 +86,9 @@ class BCDataError(ValueError):
     """Exception that signals that incompatible data was supplied for the BC."""
 
 
-def _get_arr_1d(arr, idx: tuple[int, ...], axis: int) -> tuple[np.ndarray, int, tuple]:
+def _get_arr_1d(
+    arr, idx: tuple[int, ...], axis: int
+) -> tuple[NumericArray, int, tuple]:
     """Extract the 1d array along axis at point idx.
 
     Args:
@@ -141,92 +140,7 @@ def _get_arr_1d(arr, idx: tuple[int, ...], axis: int) -> tuple[np.ndarray, int, 
     return arr_1d, i, bc_idx
 
 
-def _make_get_arr_1d(
-    dim: int, axis: int
-) -> Callable[[np.ndarray, tuple[int, ...]], tuple[np.ndarray, int, tuple]]:
-    """Create function that extracts a 1d array at a given position.
-
-    Args:
-        dim (int):
-            The dimension of the space, i.e., the number of axes in the supplied array
-        axis (int):
-            The axis that is returned as the 1d array
-
-    Returns:
-        function: A numba compiled function that takes the full array `arr` and
-        an index `idx` (a tuple of `dim` integers) specifying the point where
-        the 1d array is extract. The function returns a tuple (arr_1d, i, bc_i),
-        where `arr_1d` is the 1d array, `i` is the index `i` into this array
-        marking the current point and `bc_i` are the remaining components of
-        `idx`, which locate the point in the orthogonal directions.
-        Consequently, `i = idx[axis]` and `arr[..., idx] == arr_1d[..., i]`.
-    """
-    assert 0 <= axis < dim
-    ResultType = tuple[np.ndarray, int, tuple]
-
-    # extract the correct indices
-    if dim == 1:
-
-        def get_arr_1d(arr: np.ndarray, idx: tuple[int, ...]) -> ResultType:
-            """Extract the 1d array along axis at point idx."""
-            i = idx[0]
-            bc_idx: tuple = (...,)
-            arr_1d = arr
-            return arr_1d, i, bc_idx
-
-    elif dim == 2:
-        if axis == 0:
-
-            def get_arr_1d(arr: np.ndarray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                i, y = idx
-                bc_idx = (..., y)
-                arr_1d = arr[..., :, y]
-                return arr_1d, i, bc_idx
-
-        elif axis == 1:
-
-            def get_arr_1d(arr: np.ndarray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                x, i = idx
-                bc_idx = (..., x)
-                arr_1d = arr[..., x, :]
-                return arr_1d, i, bc_idx
-
-    elif dim == 3:
-        if axis == 0:
-
-            def get_arr_1d(arr: np.ndarray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                i, y, z = idx
-                bc_idx = (..., y, z)
-                arr_1d = arr[..., :, y, z]
-                return arr_1d, i, bc_idx
-
-        elif axis == 1:
-
-            def get_arr_1d(arr: np.ndarray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                x, i, z = idx
-                bc_idx = (..., x, z)
-                arr_1d = arr[..., x, :, z]
-                return arr_1d, i, bc_idx
-
-        elif axis == 2:
-
-            def get_arr_1d(arr: np.ndarray, idx: tuple[int, ...]) -> ResultType:
-                """Extract the 1d array along axis at point idx."""
-                x, y, i = idx
-                bc_idx = (..., x, y)
-                arr_1d = arr[..., x, y, :]
-                return arr_1d, i, bc_idx
-
-    else:
-        raise NotImplementedError
-
-    return register_jitable(inline="always")(get_arr_1d)  # type: ignore
-
-
+# define generic type variable of type BCBase
 TBC = TypeVar("TBC", bound="BCBase")
 
 
@@ -239,7 +153,7 @@ class BCBase(metaclass=ABCMeta):
     """bool: determines whether the boundary condition depends on space"""
     normal: bool = False
     """bool: determines whether the boundary condition only affects normal components.
-    
+
     If this flag is `False`, boundary conditions must specify values for all components
     of the field. If `True`, only the normal components at the boundary are specified.
     """
@@ -284,12 +198,16 @@ class BCBase(metaclass=ABCMeta):
         )
 
     def __init_subclass__(cls, **kwargs):
-        """Register all subclasses to reconstruct them later."""
+        """Register all subclasses to reconstruct them later.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent class
+        """
         super().__init_subclass__(**kwargs)
 
         if cls is not BCBase:
             if cls.__name__ in cls._subclasses:
-                warnings.warn(f"Redefining class {cls.__name__}")
+                warnings.warn(f"Redefining class {cls.__name__}", stacklevel=2)
             cls._subclasses[cls.__name__] = cls
 
             if hasattr(cls, "names"):
@@ -308,8 +226,28 @@ class BCBase(metaclass=ABCMeta):
         """float: value of the coordinate that defines this boundary condition"""
         if self.upper:
             return self.grid.axes_bounds[self.axis][1]
-        else:
-            return self.grid.axes_bounds[self.axis][0]
+        return self.grid.axes_bounds[self.axis][0]
+
+    def _match_data_shape(self, arr: NumberOrArray) -> NumericArray:
+        """Adds axis to a numpy array to be compatible with shape boundary."""
+        arr = np.asanyarray(arr)
+        if arr.shape == self._shape_tensor + self._shape_boundary:
+            # array has correct shape
+            return arr
+        if arr.shape == self._shape_tensor:
+            # array only provides the local shape tensor -> add spatial dimensions
+            boundary_num_axes = self.grid.num_axes - 1
+            return arr[(...,) + (None,) * boundary_num_axes]
+        if arr.shape == self._shape_boundary:
+            # array only provides spatial information -> add tensor dimensions
+            tensor_rank = len(self._shape_tensor)
+            return arr[(None,) * tensor_rank + (...,)]
+        if arr.size == 1:
+            tensor_rank = len(self._shape_tensor)
+            boundary_num_axes = self.grid.num_axes - 1
+            return arr.reshape((1,) * (tensor_rank + boundary_num_axes))
+        msg = f"Cannot interpret data shape `{arr.shape}` for boundary"
+        raise RuntimeError(msg)
 
     def _field_repr(self, field_name: str) -> str:
         """Return representation of the field to which the condition is applied.
@@ -328,11 +266,14 @@ class BCBase(metaclass=ABCMeta):
             field_indices = self._axes_indices[: self.rank]
         if field_indices:
             return f"{field_name}_{field_indices}"
-        else:
-            return f"{field_name}"
+        return f"{field_name}"
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         raise NotImplementedError
 
     @classmethod
@@ -371,7 +312,11 @@ class BCBase(metaclass=ABCMeta):
         return f"{self.__class__.__name__}({', '.join(args)})"
 
     def __eq__(self, other):
-        """Checks for equality neglecting the `upper` property."""
+        """Checks for equality neglecting the `upper` property.
+
+        Args:
+            other: The object to compare with
+        """
         if not isinstance(other, self.__class__):
             return NotImplemented
         return (
@@ -458,17 +403,15 @@ class BCBase(metaclass=ABCMeta):
             b_type = data.pop("type")
             return cls.from_str(grid, axis, upper, condition=b_type, rank=rank, **data)
 
-        elif len(data) == 1:
+        if len(data) == 1:
             # only a single items is given
             b_type, b_value = data.popitem()
             return cls.from_str(
                 grid, axis, upper, condition=b_type, rank=rank, value=b_value, **data
             )
 
-        else:
-            raise BCDataError(
-                f"Boundary conditions `{str(list(data.keys()))}` are not supported."
-            )
+        msg = f"Boundary conditions `{list(data)}` are not supported."
+        raise BCDataError(msg)
 
     @classmethod
     def from_data(
@@ -511,10 +454,12 @@ class BCBase(metaclass=ABCMeta):
                 # idea is that users only create boundary conditions for the full grid
                 # and that the splitting onto subgrids is only done once, automatically,
                 # and without involving calls to `from_data`
-                raise ValueError("Cannot create MPI subgrid BC from data")
+                msg = "Cannot create MPI subgrid BC from data"
+                raise ValueError(msg)
 
             if data.grid != grid or data.axis != axis or data.rank != rank:
-                raise ValueError(f"Incompatible: {data!r} & {grid=}, {axis=}, {rank=})")
+                msg = f"Incompatible: {data!r} & {grid=}, {axis=}, {rank=})"
+                raise ValueError(msg)
             bc = data.copy(upper=upper)
 
         elif isinstance(data, dict):
@@ -526,19 +471,22 @@ class BCBase(metaclass=ABCMeta):
             bc = cls.from_str(grid, axis, upper=upper, condition=data, rank=rank)
 
         elif data is None:
-            raise BCDataError(
-                f"Unspecified condition for boundary {grid.axes[axis]}{'-+'[int(upper)]}"
+            msg = (
+                "Unspecified condition for boundary "
+                f"{grid.axes[axis]}{'-+'[int(upper)]}"
             )
+            raise BCDataError(msg)
 
         else:
             raise BCDataError(f"Unsupported BC format: `{data}`. " + cls.get_help())
 
         # check consistency
         if bc.periodic != grid.periodic[axis]:
-            raise PeriodicityError("Periodicity of conditions must match grid")
+            msg = "Periodicity of conditions must match grid"
+            raise PeriodicityError(msg)
         return bc
 
-    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+    def to_subgrid(self, subgrid: GridBase) -> Self:
         """Converts this boundary condition to one valid for a given subgrid.
 
         Args:
@@ -548,7 +496,8 @@ class BCBase(metaclass=ABCMeta):
         Returns:
             :class:`BCBase`: Boundary conditions valid on the subgrid
         """
-        raise NotImplementedError("Boundary condition cannot be transfered to subgrid")
+        msg = "Boundary condition cannot be transferred to subgrid"
+        raise NotImplementedError(msg)
 
     def check_value_rank(self, rank: int) -> None:
         """Check whether the values at the boundaries have the correct rank.
@@ -561,11 +510,10 @@ class BCBase(metaclass=ABCMeta):
             RuntimeError: if the value does not have rank `rank`
         """
         if self.rank != rank:
-            raise RuntimeError(
-                f"Expected rank {rank}, but boundary condition had rank {self.rank}."
-            )
+            msg = f"Expected rank {rank}, but boundary condition had rank {self.rank}."
+            raise RuntimeError(msg)
 
-    def copy(self: TBC, upper: bool | None = None, rank: int | None = None) -> TBC:
+    def copy(self, upper: bool | None = None, rank: int | None = None) -> Self:
         raise NotImplementedError
 
     def get_sparse_matrix_data(
@@ -577,18 +525,7 @@ class BCBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        """Returns a function evaluating the value at the virtual support point.
-
-        Returns:
-            function: A function that takes the data array and an index marking
-            the current point, which is assumed to be a virtual point. The
-            result is the data value at this point, which is calculated using
-            the boundary condition.
-        """
-
-    @abstractmethod
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         """Set the ghost cell values for this boundary.
 
         Args:
@@ -603,16 +540,6 @@ class BCBase(metaclass=ABCMeta):
                 boundary (`derivative`).
         """
 
-    def make_ghost_cell_sender(self) -> GhostCellSetter:
-        """Return function that might mpi_send data to set ghost cells for this
-        boundary."""
-
-        @register_jitable
-        def noop(data_full: np.ndarray, args=None) -> None:
-            """No-operation as the default case."""
-
-        return noop  # type: ignore
-
     def _get_value_cell_index(self, with_ghost_cells: bool) -> int:
         """Determine index of the cell from which field value is read.
 
@@ -624,115 +551,10 @@ class BCBase(metaclass=ABCMeta):
         if self.upper:
             if with_ghost_cells:
                 return self.grid.shape[self.axis]
-            else:
-                return self.grid.shape[self.axis] - 1
-        else:
-            if with_ghost_cells:
-                return 1
-            else:
-                return 0
-
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells for this boundary."""
-        normal = self.normal
-        axis = self.axis
-
-        # get information of the virtual points (ghost cells)
-        vp_idx = self.grid.shape[self.axis] + 1 if self.upper else 0
-        np_idx = self._get_value_cell_index(with_ghost_cells=False)
-        vp_value = self.make_virtual_point_evaluator()
-
-        if self.grid.num_axes == 1:  # 1d grid
-
-            @register_jitable
-            def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                """Helper function setting the conditions on all axes."""
-                data_valid = data_full[..., 1:-1]
-                val = vp_value(data_valid, (np_idx,), args=args)
-                if normal:
-                    data_full[..., axis, vp_idx] = val
-                else:
-                    data_full[..., vp_idx] = val
-
-        elif self.grid.num_axes == 2:  # 2d grid
-            if self.axis == 0:
-                num_y = self.grid.shape[1]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1]
-                    for j in range(num_y):
-                        val = vp_value(data_valid, (np_idx, j), args=args)
-                        if normal:
-                            data_full[..., axis, vp_idx, j + 1] = val
-                        else:
-                            data_full[..., vp_idx, j + 1] = val
-
-            elif self.axis == 1:
-                num_x = self.grid.shape[0]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1]
-                    for i in range(num_x):
-                        val = vp_value(data_valid, (i, np_idx), args=args)
-                        if normal:
-                            data_full[..., axis, i + 1, vp_idx] = val
-                        else:
-                            data_full[..., i + 1, vp_idx] = val
-
-        elif self.grid.num_axes == 3:  # 3d grid
-            if self.axis == 0:
-                num_y, num_z = self.grid.shape[1:]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
-                    for j in range(num_y):
-                        for k in range(num_z):
-                            val = vp_value(data_valid, (np_idx, j, k), args=args)
-                            if normal:
-                                data_full[..., axis, vp_idx, j + 1, k + 1] = val
-                            else:
-                                data_full[..., vp_idx, j + 1, k + 1] = val
-
-            elif self.axis == 1:
-                num_x, num_z = self.grid.shape[0], self.grid.shape[2]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
-                    for i in range(num_x):
-                        for k in range(num_z):
-                            val = vp_value(data_valid, (i, np_idx, k), args=args)
-                            if normal:
-                                data_full[..., axis, i + 1, vp_idx, k + 1] = val
-                            else:
-                                data_full[..., i + 1, vp_idx, k + 1] = val
-
-            elif self.axis == 2:
-                num_x, num_y = self.grid.shape[:2]
-
-                @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    """Helper function setting the conditions on all axes."""
-                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
-                    for i in range(num_x):
-                        for j in range(num_y):
-                            val = vp_value(data_valid, (i, j, np_idx), args=args)
-                            if normal:
-                                data_full[..., axis, i + 1, j + 1, vp_idx] = val
-                            else:
-                                data_full[..., i + 1, j + 1, vp_idx] = val
-
-        else:
-            raise NotImplementedError("Too many axes")
-
-        return ghost_cell_setter  # type: ignore
+            return self.grid.shape[self.axis] - 1
+        if with_ghost_cells:
+            return 1
+        return 0
 
 
 class _MPIBC(BCBase):
@@ -767,22 +589,27 @@ class _MPIBC(BCBase):
         super().__init__(mesh[node_id], axis, upper, rank=rank)
         neighbor_id = mesh.get_neighbor(axis, upper, node_id=node_id)
         if neighbor_id is None:
-            raise RuntimeError("No neighboring cell for this boundary")
+            msg = "No neighboring cell for this boundary"
+            raise RuntimeError(msg)
         self._neighbor_id = neighbor_id
         self._mpi_flag = mesh.get_boundary_flag(self._neighbor_id, upper)
 
         # determine indices for reading and writing data
         idx: list[Any] = [slice(1, -1)] * self.grid.num_axes
         idx[self.axis] = -2 if self.upper else 1  # read valid data
-        self._idx_read = tuple([Ellipsis] + idx)
+        self._idx_read = (Ellipsis, *idx)
         idx[self.axis] = -1 if self.upper else 0  # write ghost cells
-        self._idx_write = tuple([Ellipsis] + idx)
+        self._idx_write = (Ellipsis, *idx)
 
     def _repr_value(self):
         return [f"neighbor={self._neighbor_id}"]
 
     def __eq__(self, other):
-        """Checks for equality neglecting the `upper` property."""
+        """Checks for equality neglecting the `upper` property.
+
+        Args:
+            other: The object to compare with
+        """
         if not isinstance(other, self.__class__):
             return NotImplemented
         return (
@@ -793,134 +620,49 @@ class _MPIBC(BCBase):
             and self._neighbor_id == other._neighbor_id
         )
 
+    def _cache_hash(self) -> int:
+        """Return a unique hash of the current instance"""
+        return hash(
+            (
+                self.__class__.__name__,
+                self.grid._cache_hash(),
+                self.axis,
+                self.rank,
+                self._neighbor_id,
+            )
+        )
+
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         axis_name = self.grid.axes[self.axis]
         return f"MPI @ {axis_name}={self.axis_coord}"
 
-    def send_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
-        """mpi_send the ghost cell values for this boundary.
+    def send_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
+        """Send the ghost cell values for this boundary.
 
         Args:
             data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
+            args:
+                Additional arguments that might be supported by special boundary
+                conditions
         """
         from ...tools.mpi import mpi_send
 
         mpi_send(data_full[self._idx_read], self._neighbor_id, self._mpi_flag)
 
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         from ...tools.mpi import mpi_recv
 
         mpi_recv(data_full[self._idx_write], self._neighbor_id, self._mpi_flag)
 
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        raise NotImplementedError
-
-    def make_ghost_cell_sender(self) -> GhostCellSetter:
-        """Return function that sends data to set ghost cells for other boundaries."""
-        from ...tools.mpi import mpi_send
-
-        cell = self._neighbor_id
-        flag = self._mpi_flag
-        num_axes = self.grid.num_axes
-        axis = self.axis
-        idx = -2 if self.upper else 1  # index for reading data
-
-        if num_axes == 1:
-
-            def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                mpi_send(data_full[..., idx], cell, flag)
-
-        elif num_axes == 2:
-            if axis == 0:
-
-                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    mpi_send(data_full[..., idx, 1:-1], cell, flag)
-
-            else:
-
-                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    mpi_send(data_full[..., 1:-1, idx], cell, flag)
-
-        elif num_axes == 3:
-            if axis == 0:
-
-                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    mpi_send(data_full[..., idx, 1:-1, 1:-1], cell, flag)
-
-            elif axis == 1:
-
-                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    mpi_send(data_full[..., 1:-1, idx, 1:-1], cell, flag)
-
-            else:
-
-                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    mpi_send(data_full[..., 1:-1, 1:-1, idx], cell, flag)
-
-        else:
-            raise NotImplementedError
-
-        return register_jitable(ghost_cell_sender)  # type: ignore
-
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells for this boundary."""
-        from ...tools.mpi import mpi_recv
-
-        cell = self._neighbor_id
-        flag = self._mpi_flag
-        num_axes = self.grid.num_axes
-        axis = self.axis
-        idx = -1 if self.upper else 0  # index for writing data
-
-        if num_axes == 1:
-
-            def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                if data_full.ndim == 1:
-                    # in this case, `data_full[..., idx]` is a scalar, which numba
-                    # treats differently, so `numba_mpi.mpi_recv` fails
-                    buffer = np.empty((), dtype=data_full.dtype)
-                    mpi_recv(buffer, cell, flag)
-                    data_full[..., idx] = buffer
-                else:
-                    mpi_recv(data_full[..., idx], cell, flag)
-
-        elif num_axes == 2:
-            if axis == 0:
-
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    mpi_recv(data_full[..., idx, 1:-1], cell, flag)
-
-            else:
-
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    mpi_recv(data_full[..., 1:-1, idx], cell, flag)
-
-        elif num_axes == 3:
-            if axis == 0:
-
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    mpi_recv(data_full[..., idx, 1:-1, 1:-1], cell, flag)
-
-            elif axis == 1:
-
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    mpi_recv(data_full[..., 1:-1, idx, 1:-1], cell, flag)
-
-            else:
-
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    mpi_recv(data_full[..., 1:-1, 1:-1, idx], cell, flag)
-
-        else:
-            raise NotImplementedError
-
-        return register_jitable(ghost_cell_setter)  # type: ignore
-
 
 class UserBC(BCBase):
-    """Represents a boundary whose virtual point are set by the user.
+    """Represents a boundary whose virtual points are set by the user.
 
     Boundary conditions will only be set when a dictionary :code:`{TARGET: value}` is
     supplied as argument `args` to :meth:`set_ghost_cells` or the numba equivalent.
@@ -938,12 +680,21 @@ class UserBC(BCBase):
     names = ["user"]
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         axis_name = self.grid.axes[self.axis]
         return f"user-controlled  @ {axis_name}={self.axis_coord}"
 
-    def copy(self: TBC, upper: bool | None = None, rank: int | None = None) -> TBC:
-        """Return a copy of itself, but with a reference to the same grid."""
+    def copy(self, upper: bool | None = None, rank: int | None = None) -> Self:
+        """Return a copy of itself, but with a reference to the same grid.
+
+        Args:
+            upper (bool): The upper flag of the returned object
+            rank (int): The rank of the returned object
+        """
         return self.__class__(
             grid=self.grid,
             axis=self.axis,
@@ -951,7 +702,7 @@ class UserBC(BCBase):
             rank=self.rank if rank is None else rank,
         )
 
-    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+    def to_subgrid(self, subgrid: GridBase) -> Self:
         """Converts this boundary condition to one valid for a given subgrid.
 
         Args:
@@ -968,7 +719,7 @@ class UserBC(BCBase):
             grid=subgrid, axis=self.axis, upper=self.upper, rank=self.rank
         )
 
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         if args is None:
             # usual case where set_ghost_cells is called automatically. In our case,
             # won't do anything since we expect the user to call the function manually
@@ -1007,82 +758,6 @@ class UserBC(BCBase):
                 raise RuntimeError
         # else: no-op for the default case where BCs are not set by user
 
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-        dx = self.grid.discretization[self.axis]
-
-        def extract_value(values, arr: np.ndarray, idx: tuple[int, ...]):
-            """Helper function that extracts the correct value from supplied ones."""
-            if isinstance(values, (nb.types.Number, Number)):
-                # scalar was supplied => simply return it
-                return values
-            elif isinstance(arr, (nb.types.Array, np.ndarray)):
-                # array was supplied => extract value at current position
-                _, _, bc_idx = get_arr_1d(arr, idx)
-                return values[bc_idx]
-            else:
-                raise TypeError("Either a scalar or an array must be supplied")
-
-        @overload(extract_value)
-        def ol_extract_value(values, arr: np.ndarray, idx: tuple[int, ...]):
-            """Helper function that extracts the correct value from supplied ones."""
-            if isinstance(values, (nb.types.Number, Number)):
-                # scalar was supplied => simply return it
-                def impl(values, arr: np.ndarray, idx: tuple[int, ...]):
-                    return values
-
-            elif isinstance(arr, (nb.types.Array, np.ndarray)):
-                # array was supplied => extract value at current position
-
-                def impl(values, arr: np.ndarray, idx: tuple[int, ...]):
-                    _, _, bc_idx = get_arr_1d(arr, idx)
-                    return values[bc_idx]
-
-            else:
-                raise TypeError("Either a scalar or an array must be supplied")
-
-            return impl
-
-        @register_jitable
-        def virtual_point(arr: np.ndarray, idx: tuple[int, ...], args):
-            """Evaluate the virtual point at `idx`"""
-            if "virtual_point" in args:
-                # set the virtual point directly
-                return extract_value(args["virtual_point"], arr, idx)
-
-            elif "value" in args:
-                # set the value at the boundary
-                value = extract_value(args["value"], arr, idx)
-                return 2 * value - arr[idx]
-
-            elif "derivative" in args:
-                # set the outward derivative at the boundary
-                value = extract_value(args["derivative"], arr, idx)
-                return dx * value + arr[idx]
-
-            else:
-                # no-op for the default case where BCs are not set by user
-                return math.nan
-
-        return virtual_point  # type: ignore
-
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """Return function that sets the ghost cells for this boundary."""
-        ghost_cell_setter_inner = super().make_ghost_cell_setter()
-
-        @register_jitable
-        def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-            """Helper function setting the conditions on all axes."""
-            if args is None:
-                return  # no-op when no specific arguments are given
-
-            if "virtual_point" in args or "value" in args or "derivative" in args:
-                # ghost cells will only be set if any of the above keys were supplied
-                ghost_cell_setter_inner(data_full, args=args)
-            # else: no-op for the default case where BCs are not set by user
-
-        return ghost_cell_setter  # type: ignore
-
 
 ExpressionBCTargetType = Literal["value", "derivative", "mixed", "virtual_point"]
 
@@ -1090,11 +765,11 @@ ExpressionBCTargetType = Literal["value", "derivative", "mixed", "virtual_point"
 class ExpressionBC(BCBase):
     """Represents a boundary whose virtual point is calculated from an expression.
 
-    The expression is given as a string and will be parsed by :mod:`sympy` or a function
-    that is optionally compiled with :mod:`numba`. The expression can contain typical
-    mathematical operators and may depend on the value at the last support point next to
-    the boundary (`value`), spatial coordinates defined by the grid marking the boundary
-    point (e.g., `x` or `r`), and time `t`.
+    The expression is given as a string that can be parsed by :mod:`sympy` or as a
+    function. The expression can contain typical mathematical operators and may depend
+    on the value at the last support point next to the boundary (`value`), spatial
+    coordinates defined by the grid marking the boundary point (e.g., `x` or `r`), and
+    time `t`.
     """
 
     names = ["virtual_point"]
@@ -1146,7 +821,8 @@ class ExpressionBC(BCBase):
                 Selects which value is actually set. Possible choices include `value`,
                 `derivative`, `mixed`, and `virtual_point`.
             user_funcs (dict, optional):
-                A dictionary with user defined functions that can be used in expressions
+                A dictionary with user defined functions that can be used in the
+                expression
             value_cell (int):
                 Determines which cells is read to determine the field value that is used
                 as `value` in the expression or the function call. The default (`None`)
@@ -1156,9 +832,8 @@ class ExpressionBC(BCBase):
         self.value_cell = value_cell
 
         if self.rank != 0:
-            raise NotImplementedError(
-                "Expression boundary conditions only work for scalar conditions"
-            )
+            msg = "Expression boundary conditions only work for scalar conditions"
+            raise NotImplementedError(msg)
 
         # store data for later use
         self._input: dict[str, Any] = {
@@ -1167,7 +842,7 @@ class ExpressionBC(BCBase):
             "target": target,
             "user_funcs": user_funcs,
         }
-        signature = ["value", "dx"] + grid.axes + ["t"]
+        signature = ["value", "dx", *grid.axes, "t"]
 
         if callable(value) or callable(const):
             # the coefficients are given as functions
@@ -1188,7 +863,8 @@ class ExpressionBC(BCBase):
                 enumerator = f"2 * dx * ({const}) + (2 - ({value}) * dx) * value"
                 expression = f"({enumerator}) / (({value}) * dx + 2)"
             else:
-                raise ValueError(f"Unknown target `{target}` for expression")
+                msg = f"Unknown target `{target}` for expression"
+                raise ValueError(msg)
 
             # parse this expression
             from pde.tools.expressions import ScalarExpression
@@ -1202,17 +878,16 @@ class ExpressionBC(BCBase):
 
         # quickly check whether the expression was parsed correctly
         try:
-            self._func(do_jit=False)(*self._test_values)
+            self._make_function()(*self._test_values)
         except Exception as err:
             if self._is_func:
-                raise BCDataError(
-                    f"Could not evaluate BC function. Expected signature {signature}."
-                ) from err
-            else:
-                raise BCDataError(
-                    f"Could not evaluate BC expression `{expression}` with signature "
-                    f"{signature}."
-                ) from err
+                msg = f"Could not evaluate BC function. Expected signature {signature}."
+                raise BCDataError(msg) from err
+            msg = (
+                f"Could not evaluate BC expression `{expression}` with signature "
+                f"{signature}."
+            )
+            raise BCDataError(msg) from err
 
     @property
     def _test_values(self) -> tuple[float, ...]:
@@ -1226,86 +901,55 @@ class ExpressionBC(BCBase):
         test_values.append(0)
         return tuple(test_values)
 
-    def _prepare_function(self, func: Callable | float, do_jit: bool) -> Callable:
-        """Helper function that compiles a single function given as a parameter."""
+    def _prepare_function(self, func: Callable | str | complex) -> Callable:
+        """Helper function that compiles a single function given as a parameter.
+
+        Args:
+            func (callable or str or complex): The function to prepare
+        """
         if not callable(func):
             # the function is just a number, which we also support
-            func_value = float(func)  # TODO: support complex numbers
+            func_value = number(func)
 
-            @register_jitable
             def value_func(*args):
                 return func_value
 
-            return value_func  # type: ignore
+            return value_func
 
-        elif not do_jit:
-            # function is callable, but does not need to be compiled
-            return func
+        return func
 
-        else:
-            # function is callable and needs to be compiled
-            try:
-                # try compiling the function
-                value_func = jit(func)
-                # and evaluate it, so compilation is forced
-                value_func(*self._test_values)
-
-                if os.environ.get("PYPDE_TESTRUN"):
-                    # ensure that the except path is also tested
-                    raise nb.NumbaError("Force except")
-
-            except nb.NumbaError:
-                # if compilation fails, we simply fall back to pure-python mode
-                _logger.warning("Cannot compile BC %s", self)
-
-                @register_jitable
-                def value_func(*args):
-                    with nb.objmode(value="double"):
-                        value = func(*args)
-                    return value
-
-            return value_func  # type: ignore
-
-    def _get_function_from_userfunc(self, do_jit: bool) -> Callable:
-        """Returns function from user function evaluating the value of the virtual
-        point.
-
-        Args:
-            do_jit (bool):
-                Determines whether the returned function is numba-compiled
-        """
+    @cached_method()
+    def _make_function(self) -> Callable:
+        """Returns function that evaluates the value of the virtual point."""
+        if not self._is_func:
+            return self._func_expression
         # `value` is a callable function
         target = self._input["target"]
-        value_func = self._prepare_function(self._input["value_expr"], do_jit=do_jit)
+        value_func = self._prepare_function(self._input["value_expr"])
 
         if target == "virtual_point":
             return value_func
 
-        elif target == "value":
+        if target == "value":
             # Dirichlet boundary condition
 
-            @register_jitable
             def virtual_from_value(adjacent_value, *args):
                 return 2 * value_func(adjacent_value, *args) - adjacent_value
 
-            return virtual_from_value  # type: ignore
+            return virtual_from_value
 
-        elif target == "derivative":
+        if target == "derivative":
             # Neumann boundary condition
 
-            @register_jitable
             def virtual_from_derivative(adjacent_value, dx, *args):
                 return dx * value_func(adjacent_value, dx, *args) + adjacent_value
 
-            return virtual_from_derivative  # type: ignore
+            return virtual_from_derivative
 
-        elif target == "mixed":
+        if target == "mixed":
             # special case of a Robin boundary condition, which also uses `const`
-            const_func = self._prepare_function(
-                self._input["const_expr"], do_jit=do_jit
-            )
+            const_func = self._prepare_function(self._input["const_expr"])
 
-            @register_jitable
             def virtual_from_mixed(adjacent_value, dx, *args):
                 value_dx = dx * value_func(adjacent_value, dx, *args)
                 const_value = const_func(adjacent_value, dx, *args)
@@ -1313,96 +957,20 @@ class ExpressionBC(BCBase):
                 expr_B = (value_dx - 2) / (value_dx + 2)
                 return expr_A - expr_B * adjacent_value
 
-            return virtual_from_mixed  # type: ignore
+            return virtual_from_mixed
 
-        else:
-            raise ValueError(f"Unknown target `{target}` for expression")
-
-    def _get_function_from_expression(self, do_jit: bool) -> Callable:
-        """Returns function from expression evaluating the value of the virtual point.
-
-        Args:
-            do_jit (bool):
-                Determines whether the returned function is numba-compiled
-        """
-        if not do_jit:
-            return self._func_expression
-
-        func = self._func_expression._get_function_cached(single_arg=False)
-        try:
-            # try to compile the expression that was given
-            value_func = jit(func)
-            # call the function to actually trigger compilation
-            value_func(*self._test_values)
-
-            if os.environ.get("PYPDE_TESTRUN"):
-                # ensure that the except path is also tested
-                raise nb.NumbaError("Force except")
-
-        except nb.NumbaError:
-            # if compilation fails, we simply fall back to pure-python mode
-            _logger.warning("Cannot compile BC %s", self._func_expression)
-            # calculate the expected value to test this later (and fail early)
-            expected = func(*self._test_values)
-
-            num_axes = self.grid.num_axes
-            if num_axes == 1:
-
-                @jit
-                def value_func(grid_value, dx, x, t):
-                    with nb.objmode(value="double"):
-                        value = func(grid_value, dx, x, t)
-                    return value
-
-            elif num_axes == 2:
-
-                @jit
-                def value_func(grid_value, dx, x, y, t):
-                    with nb.objmode(value="double"):
-                        value = func(grid_value, dx, x, y, t)
-                    return value
-
-            elif num_axes == 3:
-
-                @jit
-                def value_func(grid_value, dx, x, y, z, t):
-                    with nb.objmode(value="double"):
-                        value = func(grid_value, dx, x, y, z, t)
-                    return value
-
-            else:
-                # cheap way to signal a problem
-                raise ValueError from None
-
-            # compile the actual functio and check the result
-            result_compiled = value_func(*self._test_values)
-            if not np.allclose(result_compiled, expected):
-                raise RuntimeError(
-                    "Compiled function does not give same value"
-                ) from None
-
-        return value_func  # type: ignore
-
-    @cached_method()
-    def _func(self, do_jit: bool) -> Callable:
-        """Returns function that evaluates the value of the virtual point.
-
-        Args:
-            do_jit (bool):
-                Determines whether the returned function is numba-compiled
-        """
-        if self._is_func:
-            return self._get_function_from_userfunc(do_jit=do_jit)
-        else:
-            return self._get_function_from_expression(do_jit=do_jit)
+        msg = f"Unknown target `{target}` for expression"
+        raise ValueError(msg)
 
     def _repr_value(self):
         if self._input["target"] == "mixed":
             # treat the mixed case separately
             res = [
-                f'target="{self._input["target"]}", '
-                f'value="{self._input["value_expr"]}", '
-                f'const="{self._input["const_expr"]}"'
+                (
+                    f'target="{self._input["target"]}", '
+                    f'value="{self._input["value_expr"]}", '
+                    f'const="{self._input["const_expr"]}"'
+                )
             ]
         elif self._is_func:
             res = [f"{self._input['target']}=<function>"]
@@ -1413,7 +981,11 @@ class ExpressionBC(BCBase):
         return res
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         axis_name = self.grid.axes[self.axis]
         target = self._input["target"]
 
@@ -1426,22 +998,29 @@ class ExpressionBC(BCBase):
         field = self._field_repr(field_name)
         if target == "virtual_point":
             return f"{field} = {value_expr}   @ virtual point"
-        elif target == "value":
+        if target == "value":
             return f"{field} = {value_expr}   @ {axis_name}={self.axis_coord}"
-        elif target == "derivative":
+        if target == "derivative":
             sign = " " if self.upper else "-"
-            return f"{sign}∂{field}/∂{axis_name} = {value_expr}   @ {axis_name}={self.axis_coord}"
-        elif target == "mixed":
+            return (
+                f"{sign}∂{field}/∂{axis_name} = {value_expr}"
+                f"   @ {axis_name}={self.axis_coord}"
+            )
+        if target == "mixed":
             sign = " " if self.upper else "-"
             return (
                 f"{sign}∂{field}/∂{axis_name} + ({value_expr})*{field} = "
                 f"{const_expr}   @ {axis_name}={self.axis_coord}"
             )
-        else:
-            raise NotImplementedError(f"Unsupported target `{target}`")
+        msg = f"Unsupported target `{target}`"
+        raise NotImplementedError(msg)
 
     def __eq__(self, other):
-        """Checks for equality neglecting the `upper` property."""
+        """Checks for equality neglecting the `upper` property.
+
+        Args:
+            other: The object to compare with
+        """
         if not isinstance(other, self.__class__):
             return NotImplemented
         return (
@@ -1453,7 +1032,12 @@ class ExpressionBC(BCBase):
     def copy(
         self: ExpressionBC, upper: bool | None = None, rank: int | None = None
     ) -> ExpressionBC:
-        """Return a copy of itself, but with a reference to the same grid."""
+        """Return a copy of itself, but with a reference to the same grid.
+
+        Args:
+            upper (bool): The upper flag of the returned object
+            rank (int): The rank of the returned object
+        """
         return self.__class__(
             grid=self.grid,
             axis=self.axis,
@@ -1481,7 +1065,8 @@ class ExpressionBC(BCBase):
         assert issubclass(self.grid.__class__, subgrid.__class__)
 
         if self.value_cell is not None:
-            raise NotImplementedError("Custom value indices are not supported")
+            msg = "Custom value indices are not supported"
+            raise NotImplementedError(msg)
 
         bc = self.__class__(
             grid=subgrid,
@@ -1511,22 +1096,24 @@ class ExpressionBC(BCBase):
         if self.value_cell is None:
             # pick adjacent cell by default
             return super()._get_value_cell_index(with_ghost_cells)
-        elif self.value_cell >= 0:
+        if self.value_cell >= 0:
             # positive indexing
             idx = int(self.value_cell)
             if idx >= self.grid.shape[self.axis]:
                 size = self.grid.shape[self.axis]
-                raise IndexError(f"Index {self.value_cell} out of bounds ({size=})")
+                msg = f"Index {self.value_cell} out of bounds ({size=})"
+                raise IndexError(msg)
             return idx + 1 if with_ghost_cells else idx
-        else:  # self.value_cell < 0:
-            # negative indexing
-            idx = int(self.value_cell)
-            if idx < -self.grid.shape[self.axis]:
-                size = self.grid.shape[self.axis]
-                raise IndexError(f"Index {self.value_cell} out of bounds ({size=})")
-            return idx - 1 if with_ghost_cells else idx
+        # self.value_cell < 0:
+        # negative indexing
+        idx = int(self.value_cell)
+        if idx < -self.grid.shape[self.axis]:
+            size = self.grid.shape[self.axis]
+            msg = f"Index {self.value_cell} out of bounds ({size=})"
+            raise IndexError(msg)
+        return idx - 1 if with_ghost_cells else idx
 
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         dx = self.grid.discretization[self.axis]
 
         # prepare the array of slices to index bcs
@@ -1550,64 +1137,17 @@ class ExpressionBC(BCBase):
 
         if args is None:
             if not self._is_func and self._func_expression.depends_on("t"):
-                raise RuntimeError(
+                msg = (
                     "Require value for `t` for time-dependent BC. The value must be "
                     "passed explicitly via `args` when calling a differential operator."
                 )
+                raise RuntimeError(msg)
             t = 0.0
         else:
             t = float(args["t"])
 
         # calculate the virtual points
-        data_full[tuple(idx_write)] = self._func(do_jit=False)(values, dx, *coords, t)
-
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        dx = self.grid.discretization[self.axis]
-        num_axes = self.grid.num_axes
-        get_arr_1d = _make_get_arr_1d(num_axes, self.axis)
-        bc_coords = self.grid._boundary_coordinates(axis=self.axis, upper=self.upper)
-        bc_coords = np.moveaxis(bc_coords, -1, 0)  # point coordinates to first axis
-        assert num_axes <= 3
-
-        if self._is_func:
-            warn_if_time_not_set = False
-        else:
-            warn_if_time_not_set = self._func_expression.depends_on("t")
-        func = self._func(do_jit=True)
-
-        @jit
-        def virtual_point(arr: np.ndarray, idx: tuple[int, ...], args=None) -> float:
-            """Evaluate the virtual point at `idx`"""
-            _, _, bc_idx = get_arr_1d(arr, idx)
-            grid_value = arr[idx]
-            coords = bc_coords[bc_idx]
-
-            # extract time for handling time-dependent BCs
-            if args is None or "t" not in args:
-                if warn_if_time_not_set:
-                    raise RuntimeError(
-                        "Require value for `t` for time-dependent BC. The value must "
-                        "be passed explicitly via `args` when calling a differential "
-                        "operator."
-                    )
-                t = 0.0
-            else:
-                t = float(args["t"])
-
-            if num_axes == 1:
-                return func(grid_value, dx, coords[0], t)  # type: ignore
-            elif num_axes == 2:
-                return func(grid_value, dx, coords[0], coords[1], t)  # type: ignore
-            elif num_axes == 3:
-                return func(grid_value, dx, coords[0], coords[1], coords[2], t)  # type: ignore
-            else:
-                # cheap way to signal a problem
-                return math.nan
-
-        # evaluate the function to force compilation and catch errors early
-        virtual_point(np.zeros([3] * num_axes), (0,) * num_axes, numba_dict(t=0.0))
-
-        return virtual_point  # type: ignore
+        data_full[tuple(idx_write)] = self._make_function()(values, dx, *coords, t)
 
 
 class ExpressionValueBC(ExpressionBC):
@@ -1726,7 +1266,7 @@ class ExpressionMixedBC(ExpressionBC):
 class ConstBCBase(BCBase):
     """Base class representing a boundary whose virtual point is set from constants."""
 
-    _value: np.ndarray
+    _value: NumericArray
 
     value_is_linked: bool
     """ bool: flag that indicates whether the value associated with this
@@ -1741,7 +1281,7 @@ class ConstBCBase(BCBase):
         upper: bool,
         *,
         rank: int = 0,
-        value: float | np.ndarray | str = 0,
+        value: float | NumericArray | str = 0,
     ):
         """
         Warning:
@@ -1759,9 +1299,6 @@ class ConstBCBase(BCBase):
                 of the local normal vector of the boundary.
             rank (int):
                 The tensorial rank of the field for this boundary condition
-            normal (bool):
-                Flag indicating whether the condition is only applied in the normal
-                direction.
             value (float or str or :class:`~numpy.ndarray`):
                 a value stored with the boundary condition. The interpretation of this
                 value depends on the type of boundary condition. If value is a single
@@ -1771,21 +1308,25 @@ class ConstBCBase(BCBase):
                 on the axes names of the respective grid.
         """
         super().__init__(grid, axis, upper, rank=rank)
-        self.value = value  # type: ignore
+        self.value = value
 
     def __eq__(self, other):
-        """Checks for equality neglecting the `upper` property."""
+        """Checks for equality neglecting the `upper` property.
+
+        Args:
+            other: The object to compare with
+        """
         if not isinstance(other, self.__class__):
             return NotImplemented
         return super().__eq__(other) and np.array_equal(self.value, other.value)
 
     @property
-    def value(self) -> np.ndarray:
+    def value(self) -> NumericArray:
         return self._value
 
     @value.setter
     @fill_in_docstring
-    def value(self, value: float | np.ndarray | str = 0):
+    def value(self, value: float | NumericArray | str = 0):
         """Set the value of this boundary condition.
 
         Warning:
@@ -1805,37 +1346,35 @@ class ConstBCBase(BCBase):
             # inhomogeneous field
             self.homogeneous = False
         else:
-            raise ValueError(
+            msg = (
                 f"Dimensions {self._value.shape} of the value are incompatible with "
                 f"rank {self.rank} and spatial dimensions {self._shape_boundary}"
             )
+            raise ValueError(msg)
 
         self.value_is_linked = False
 
     def _repr_value(self):
         if self.value_is_linked:
             return [f"value=<linked: {self.value.ctypes.data}>"]
-        elif np.array_equal(self.value, 0):
+        if np.array_equal(self.value, 0):
             return []
-        else:
-            return [f"value={self.value!r}"]
+        return [f"value={self.value!r}"]
 
     def __str__(self):
         if hasattr(self, "names"):
             if np.array_equal(self.value, 0):
                 return f'"{self.names[0]}"'
-            elif self.value_is_linked:
+            if self.value_is_linked:
                 return (
                     f'{{"type": "{self.names[0]}", '
                     f'"value": <linked: {self.value.ctypes.data}>}}'
                 )
-            else:
-                return f'{{"type": "{self.names[0]}", "value": {self.value}}}'
-        else:
-            return self.__repr__()
+            return f'{{"type": "{self.names[0]}", "value": {self.value}}}'
+        return self.__repr__()
 
     @fill_in_docstring
-    def _parse_value(self, value: float | np.ndarray | str) -> np.ndarray:
+    def _parse_value(self, value: float | NumericArray | str) -> NumericArray:
         """Parses a boundary value.
 
         Warning:
@@ -1855,9 +1394,8 @@ class ConstBCBase(BCBase):
         if isinstance(value, str):
             # inhomogeneous value given by an expression
             if len(self._shape_tensor) > 0:
-                raise NotImplementedError(
-                    "Expressions for boundaries are only supported for scalar values."
-                )
+                msg = "Expressions for boundaries are only supported for scalar values."
+                raise NotImplementedError(msg)
 
             from ...tools.expressions import ScalarExpression
 
@@ -1885,12 +1423,12 @@ class ConstBCBase(BCBase):
                 # not depend on some of the variables, but we still want the array
                 # to contain a value at each boundary point
                 result = np.empty_like(bc_coords[0])
-                coords: dict[str, float] = {name: 0 for name in self.grid.axes}
+                coords: dict[str, float] = dict.fromkeys(self.grid.axes, 0)
                 # set the coordinate of this BC
                 coords[self.grid.axes[self.axis]] = self.axis_coord
                 for idx in np.ndindex(*result.shape):
                     for i, name in enumerate(bc_vars):
-                        coords[name] = bc_coords[i][idx]
+                        coords[name] = bc_coords[i][idx]  # type: ignore
                     result[idx] = expr(**coords)
 
             else:
@@ -1910,17 +1448,18 @@ class ConstBCBase(BCBase):
                 result = np.broadcast_to(value, self._shape_tensor)
             elif value.shape == self._shape_tensor + self._shape_boundary:
                 # inhomogeneous field with all tensor components
-                result = value
+                result = value  # type: ignore
             elif value.shape == self._shape_tensor:
                 # homogeneous field with all tensor components
-                result = value
+                result = value  # type: ignore
             else:
-                raise ValueError(
+                msg = (
                     f"Dimensions {value.shape} of the given value are incompatible "
                     f"with the expected shape {self._shape_tensor} of the boundary "
                     f"value and its spatial dimensions {self._shape_boundary}. "
                     f"(rank={self.rank}, normal={self.normal})"
                 )
+                raise ValueError(msg)
 
         # check consistency
         if np.any(np.isnan(result)):
@@ -1928,16 +1467,21 @@ class ConstBCBase(BCBase):
 
         return result
 
-    def link_value(self, value: np.ndarray):
-        """Link value of this boundary condition to external array."""
+    def link_value(self, value: NumericArray):
+        """Link value of this boundary condition to external array.
+
+        Args:
+            value (:class:`~numpy.ndarray`): The array to link to
+        """
         assert value.data.c_contiguous
 
         shape = self._shape_tensor + self._shape_boundary
         if value.shape != shape:
-            raise ValueError(
+            msg = (
                 f"The shape of the value, {value.shape}, is incompatible with the "
                 f"expected shape for this boundary condition, {shape}"
             )
+            raise ValueError(msg)
         self._value = value
         self.homogeneous = False
         self.value_is_linked = True
@@ -1946,9 +1490,18 @@ class ConstBCBase(BCBase):
         self: ConstBCBase,
         upper: bool | None = None,
         rank: int | None = None,
-        value: float | np.ndarray | str | None = None,
+        value: float | NumericArray | str | None = None,
     ) -> ConstBCBase:
-        """Return a copy of itself, but with a reference to the same grid."""
+        """Return a copy of itself, but with a reference to the same grid.
+
+        Args:
+            upper (bool):
+                The upper flag of the returned object
+            rank (int):
+                The rank of the returned object
+            value (float or :class:`~numpy.ndarray` or str):
+                The value of the returned object
+        """
         obj = self.__class__(
             grid=self.grid,
             axis=self.axis,
@@ -1974,7 +1527,8 @@ class ConstBCBase(BCBase):
         # `CartesianGrid`
         assert issubclass(self.grid.__class__, subgrid.__class__)
         if self.value_is_linked or not self.homogeneous:
-            raise NotImplementedError("Cannot transfer complicated BC to subgrid")
+            msg = "Cannot transfer complicated BC to subgrid"
+            raise NotImplementedError(msg)
 
         return self.__class__(
             grid=subgrid,
@@ -1984,52 +1538,13 @@ class ConstBCBase(BCBase):
             value=self.value,
         )
 
-    def _make_value_getter(self) -> Callable[[], np.ndarray]:
-        """Return a (compiled) function for obtaining the value.
-
-        Note:
-            This should only be used in numba compiled functions that need to
-            support boundary values that can be changed after the function has
-            been compiled. In essence, the helper function created here serves
-            to get around the compile-time constants that are otherwise created.
-
-        Warning:
-            The returned function has a hard-coded reference to the memory
-            address of the value error, which must thus be maintained in memory.
-            If the address of self.value changes, a new function needs to be
-            created by calling this factory function again.
-        """
-        # obtain details about the array
-        mem_addr = self.value.ctypes.data
-        shape = self.value.shape
-        dtype = self.value.dtype
-
-        # Note that we tried using register_jitable here, but this lead to
-        # problems with address_as_void_pointer
-
-        @nb.njit(nb.typeof(self._value)(), inline="always")
-        def get_value() -> np.ndarray:
-            """Helper function returning the linked array."""
-            return nb.carray(address_as_void_pointer(mem_addr), shape, dtype)  # type: ignore
-
-        # keep a reference to the array to prevent garbage collection
-        get_value._value_ref = self._value
-
-        return get_value  # type: ignore
-
 
 class ConstBC1stOrderBase(ConstBCBase):
     """Represents a single boundary in an BoundaryPair instance."""
 
     @abstractmethod
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         """Return data suitable for calculating virtual points.
-
-        Args:
-            compiled (bool):
-                Flag indicating whether a compiled version is required, which
-                automatically takes updated values into account when it is used
-                in numba-compiled code.
 
         Returns:
             tuple: the data structure associated with this virtual point
@@ -2081,9 +1596,8 @@ class ConstBC1stOrderBase(ConstBCBase):
             if self.grid.num_axes == 1:
                 idx = (self.grid.shape[0] if self.upper else -1,)
             else:
-                raise ValueError(
-                    "Index `idx` can only be deduced for grids with a single axis."
-                )
+                msg = "Index `idx` can only be deduced for grids with a single axis."
+                raise ValueError(msg)
 
         # extract the 1d array
         arr_1d, _, bc_idx = _get_arr_1d(arr, idx, axis=self.axis)
@@ -2093,48 +1607,9 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         if self.homogeneous:
             return const + factor * arr_1d[..., index]  # type: ignore
-        else:
-            return const[bc_idx] + factor[bc_idx] * arr_1d[..., index]  # type: ignore
+        return const[bc_idx] + factor[bc_idx] * arr_1d[..., index]  # type: ignore
 
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        normal = self.normal
-        axis = self.axis
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-
-        # calculate necessary constants
-        const, factor, index = self.get_virtual_point_data(compiled=True)
-
-        if self.homogeneous:
-
-            @jit
-            def virtual_point(
-                arr: np.ndarray, idx: tuple[int, ...], args=None
-            ) -> float:
-                """Evaluate the virtual point at `idx`"""
-                arr_1d, _, _ = get_arr_1d(arr, idx)
-                if normal:
-                    val_field = arr_1d[..., axis, index]
-                else:
-                    val_field = arr_1d[..., index]
-                return const() + factor() * val_field  # type: ignore
-
-        else:
-
-            @jit
-            def virtual_point(
-                arr: np.ndarray, idx: tuple[int, ...], args=None
-            ) -> float:
-                """Evaluate the virtual point at `idx`"""
-                arr_1d, _, bc_idx = get_arr_1d(arr, idx)
-                if normal:
-                    val_field = arr_1d[..., axis, index]
-                else:
-                    val_field = arr_1d[..., index]
-                return const()[bc_idx] + factor()[bc_idx] * val_field  # type: ignore
-
-        return virtual_point  # type: ignore
-
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         # calculate necessary constants
         const, factor, index = self.get_virtual_point_data()
 
@@ -2171,6 +1646,7 @@ class _PeriodicBC(ConstBC1stOrderBase):
         axis: int,
         upper: bool,
         *,
+        rank: int = 0,
         flip_sign: bool = False,
     ):
         """
@@ -2183,17 +1659,23 @@ class _PeriodicBC(ConstBC1stOrderBase):
                 Flag indicating whether this boundary condition is associated with the
                 upper side of an axis or not. In essence, this determines the direction
                 of the local normal vector of the boundary.
+            rank (int):
+                The tensorial rank of the field for this boundary condition
             flip_sign (bool):
                 Impose different signs on the two sides of the boundary
         """
-        super().__init__(grid, axis, upper)
+        super().__init__(grid, axis, upper, rank=rank)
         self.flip_sign = flip_sign
 
     def __str__(self):
         return '"periodic"'
 
     def copy(self: _PeriodicBC, upper: bool | None = None) -> _PeriodicBC:  # type: ignore
-        """Return a copy of itself, but with a reference to the same grid."""
+        """Return a copy of itself, but with a reference to the same grid.
+
+        Args:
+            upper (bool): The upper flag of the returned object
+        """
         return self.__class__(
             grid=self.grid,
             axis=self.axis,
@@ -2215,14 +1697,19 @@ class _PeriodicBC(ConstBC1stOrderBase):
         # `CartesianGrid`
         assert issubclass(self.grid.__class__, subgrid.__class__)
         if self.value_is_linked or not self.homogeneous:
-            raise NotImplementedError("Cannot transfer complicated BC to subgrid")
+            msg = "Cannot transfer complicated BC to subgrid"
+            raise NotImplementedError(msg)
 
         return self.__class__(
             grid=subgrid, axis=self.axis, upper=self.upper, flip_sign=self.flip_sign
         )
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         if self.upper:
             other_coord = self.grid.axes_bounds[self.axis][0]
         else:
@@ -2230,29 +1717,19 @@ class _PeriodicBC(ConstBC1stOrderBase):
 
         axis_name = self.grid.axes[self.axis]
         if self.flip_sign:
-            return f"{field_name}({axis_name}={self.axis_coord}) = -{field_name}({axis_name}={other_coord})"
-        else:
-            return f"{field_name}({axis_name}={self.axis_coord}) = {field_name}({axis_name}={other_coord})"
+            return (
+                f"{field_name}({axis_name}={self.axis_coord})"
+                f" = -{field_name}({axis_name}={other_coord})"
+            )
+        return (
+            f"{field_name}({axis_name}={self.axis_coord})"
+            f" = {field_name}({axis_name}={other_coord})"
+        )
 
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         index = 0 if self.upper else self.grid.shape[self.axis] - 1
         value = -1 if self.flip_sign else 1
-
-        if not compiled:
-            return (0.0, value, index)
-        else:
-            const = np.array(0)
-            factor = np.array(value)
-
-            @register_jitable(inline="always")
-            def const_func():
-                return const
-
-            @register_jitable(inline="always")
-            def factor_func():
-                return factor
-
-            return (const_func, factor_func, index)
+        return (0.0, value, index)
 
 
 class DirichletBC(ConstBC1stOrderBase):
@@ -2261,45 +1738,20 @@ class DirichletBC(ConstBC1stOrderBase):
     names = ["value", "dirichlet"]  # identifiers for this boundary condition
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         axis_name = self.grid.axes[self.axis]
         field = self._field_repr(field_name)
         return f"{field} = {self.value}   @ {axis_name}={self.axis_coord}"
 
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
-        const = 2 * self.value
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
+        const: NumberOrArray = 2 * self.value
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
-
-        if not compiled:
-            factor = -np.ones_like(const)
-            return (const, factor, index)
-        else:
-            # return boundary data such that dynamically calculated values can
-            # be used in numba compiled code. This is a work-around since numpy
-            # arrays are copied into closures, making them compile-time
-            # constants
-
-            const = np.array(const)
-            factor = np.full_like(const, -1)
-
-            if self.value_is_linked:
-                value = self._make_value_getter()
-
-                @register_jitable(inline="always")
-                def const_func():
-                    return 2 * value()
-
-            else:
-
-                @register_jitable(inline="always")
-                def const_func():
-                    return const
-
-            @register_jitable(inline="always")
-            def factor_func():
-                return factor
-
-            return (const_func, factor_func, index)
+        factor = -np.ones_like(const)
+        return (const, factor, index)
 
 
 class NeumannBC(ConstBC1stOrderBase):
@@ -2309,48 +1761,22 @@ class NeumannBC(ConstBC1stOrderBase):
     names = ["derivative", "neumann"]  # identifiers for this boundary condition
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         sign = " " if self.upper else "-"
         axis_name = self.grid.axes[self.axis]
         deriv = f"∂{self._field_repr(field_name)}/∂{axis_name}"
         return f"{sign}{deriv} = {self.value}   @ {axis_name}={self.axis_coord}"
 
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         dx = self.grid.discretization[self.axis]
-
         const = dx * self.value
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
-
-        if not compiled:
-            factor = np.ones_like(const)
-            return (const, factor, index)
-        else:
-            # return boundary data such that dynamically calculated values can
-            # be used in numba compiled code. This is a work-around since numpy
-            # arrays are copied into closures, making them compile-time
-            # constants
-
-            const = np.array(const)
-            factor = np.ones_like(const)
-
-            if self.value_is_linked:
-                value = self._make_value_getter()
-
-                @register_jitable(inline="always")
-                def const_func():
-                    return dx * value()
-
-            else:
-
-                @register_jitable(inline="always")
-                def const_func():
-                    return const
-
-            @register_jitable(inline="always")
-            def factor_func():
-                return factor
-
-            return (const_func, factor_func, index)
+        factor = np.ones_like(const)
+        return (const, factor, index)
 
 
 class MixedBC(ConstBC1stOrderBase):
@@ -2387,8 +1813,8 @@ class MixedBC(ConstBC1stOrderBase):
         upper: bool,
         *,
         rank: int = 0,
-        value: float | np.ndarray | str = 0,
-        const: float | np.ndarray | str = 0,
+        value: float | NumericArray | str = 0,
+        const: float | NumericArray | str = 0,
     ):
         r"""
         Args:
@@ -2418,7 +1844,11 @@ class MixedBC(ConstBC1stOrderBase):
         self.const = self._parse_value(const)
 
     def __eq__(self, other):
-        """Checks for equality neglecting the `upper` property."""
+        """Checks for equality neglecting the `upper` property.
+
+        Args:
+            other: The object to compare with
+        """
         if not isinstance(other, self.__class__):
             return NotImplemented
         return super().__eq__(other) and self.const == other.const
@@ -2427,10 +1857,21 @@ class MixedBC(ConstBC1stOrderBase):
         self: MixedBC,
         upper: bool | None = None,
         rank: int | None = None,
-        value: float | np.ndarray | str | None = None,
-        const: float | np.ndarray | str | None = None,
+        value: float | NumericArray | str | None = None,
+        const: float | NumericArray | str | None = None,
     ) -> MixedBC:
-        """Return a copy of itself, but with a reference to the same grid."""
+        """Return a copy of itself, but with a reference to the same grid.
+
+        Args:
+            upper (bool):
+                The upper flag of the returned object
+            rank (int):
+                The rank of the returned object
+            value (float or :class:`~numpy.ndarray` or str):
+                The value of the returned object
+            const (float or :class:`~numpy.ndarray` or str):
+                The constant value of the returned object
+        """
         obj = self.__class__(
             grid=self.grid,
             axis=self.axis,
@@ -2457,7 +1898,8 @@ class MixedBC(ConstBC1stOrderBase):
         # `CartesianGrid`
         assert issubclass(self.grid.__class__, subgrid.__class__)
         if self.value_is_linked or not self.homogeneous:
-            raise NotImplementedError("Cannot transfer complicated BC to subgrid")
+            msg = "Cannot transfer complicated BC to subgrid"
+            raise NotImplementedError(msg)
 
         return self.__class__(
             grid=subgrid,
@@ -2469,14 +1911,21 @@ class MixedBC(ConstBC1stOrderBase):
         )
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         sign = "" if self.upper else "-"
         axis_name = self.grid.axes[self.axis]
         field_repr = self._field_repr(field_name)
         deriv = f"∂{field_repr}/∂{axis_name}"
-        return f"{sign}{deriv} + {self.value} * {field_repr} = {self.const}   @ {axis_name}={self.axis_coord}"
+        return (
+            f"{sign}{deriv} + {self.value} * {field_repr} = {self.const}"
+            f"  @ {axis_name}={self.axis_coord}"
+        )
 
-    def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
+    def get_virtual_point_data(self) -> tuple[Any, Any, int]:
         # calculate values assuming finite factor
         dx = self.grid.discretization[self.axis]
         with np.errstate(invalid="ignore"):
@@ -2486,57 +1935,8 @@ class MixedBC(ConstBC1stOrderBase):
         # correct at places of infinite values
         const[~np.isfinite(factor)] = 0
         factor[~np.isfinite(factor)] = -1
-
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
-
-        if not compiled:
-            return (const, factor, index)
-
-        # return boundary data such that dynamically calculated values can
-        # be used in numba compiled code. This is a work-around since numpy
-        # arrays are copied into closures, making them compile-time
-        # constants
-        if self.value_is_linked:
-            const_val = np.array(self.const)
-            value_func = self._make_value_getter()
-
-            @register_jitable(inline="always")
-            def const_func():
-                value = value_func()
-                const = np.empty_like(value)
-                for i in range(value.size):
-                    val = value.flat[i]
-                    if np.isinf(val):
-                        const.flat[i] = 0
-                    else:
-                        const.flat[i] = 2 * dx * const_val / (2 + dx * val)
-                return const
-
-            @register_jitable(inline="always")
-            def factor_func():
-                value = value_func()
-                factor = np.empty_like(value)
-                for i in range(value.size):
-                    val = value.flat[i]
-                    if np.isinf(val):
-                        factor.flat[i] = -1
-                    else:
-                        factor.flat[i] = (2 - dx * val) / (2 + dx * val)
-                return factor
-
-        else:
-            const = np.array(const)
-            factor = np.array(factor)
-
-            @register_jitable(inline="always")
-            def const_func():
-                return const
-
-            @register_jitable(inline="always")
-            def factor_func():
-                return factor
-
-        return (const_func, factor_func, index)
+        return (const, factor, index)
 
 
 class ConstBC2ndOrderBase(ConstBCBase):
@@ -2599,9 +1999,8 @@ class ConstBC2ndOrderBase(ConstBCBase):
             if self.grid.num_axes == 1:
                 idx = (self.grid.shape[0] if self.upper else -1,)
             else:
-                raise ValueError(
-                    "Index can only be deduced for grids with a single axis."
-                )
+                msg = "Index can only be deduced for grids with a single axis."
+                raise ValueError(msg)
 
         # extract the 1d array
         arr_1d, _, bc_idx = _get_arr_1d(arr, idx, axis=self.axis)
@@ -2615,58 +2014,13 @@ class ConstBC2ndOrderBase(ConstBCBase):
                 + data[1] * arr_1d[..., data[2]]
                 + data[3] * arr_1d[..., data[4]]
             )
-        else:
-            return (  # type: ignore
-                data[0][bc_idx]
-                + data[1][bc_idx] * arr_1d[..., data[2]]
-                + data[3][bc_idx] * arr_1d[..., data[4]]
-            )
+        return (  # type: ignore
+            data[0][bc_idx]
+            + data[1][bc_idx] * arr_1d[..., data[2]]
+            + data[3][bc_idx] * arr_1d[..., data[4]]
+        )
 
-    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        normal = self.normal
-        axis = self.axis
-        size = self.grid.shape[self.axis]
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-
-        if size < 2:
-            raise ValueError(
-                f"Need two support points along axis {self.axis} to apply conditions"
-            )
-
-        # calculate necessary constants
-        data = self.get_virtual_point_data()
-
-        if self.homogeneous:
-
-            @register_jitable
-            def virtual_point(arr: np.ndarray, idx: tuple[int, ...], args=None):
-                """Evaluate the virtual point at `idx`"""
-                arr_1d, _, _ = get_arr_1d(arr, idx)
-                if normal:
-                    val1 = arr_1d[..., axis, data[2]]
-                    val2 = arr_1d[..., axis, data[4]]
-                else:
-                    val1 = arr_1d[..., data[2]]
-                    val2 = arr_1d[..., data[4]]
-                return data[0] + data[1] * val1 + data[3] * val2
-
-        else:
-
-            @register_jitable
-            def virtual_point(arr: np.ndarray, idx: tuple[int, ...], args=None):
-                """Evaluate the virtual point at `idx`"""
-                arr_1d, _, bc_idx = get_arr_1d(arr, idx)
-                if normal:
-                    val1 = arr_1d[..., axis, data[2]]
-                    val2 = arr_1d[..., axis, data[4]]
-                else:
-                    val1 = arr_1d[..., data[2]]
-                    val2 = arr_1d[..., data[4]]
-                return data[0][bc_idx] + data[1][bc_idx] * val1 + data[3][bc_idx] * val2
-
-        return virtual_point  # type: ignore
-
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         # calculate necessary constants
         data = self.get_virtual_point_data()
 
@@ -2715,7 +2069,11 @@ class CurvatureBC(ConstBC2ndOrderBase):
     names = ["curvature", "second_derivative", "extrapolate"]  # identifiers for this BC
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """Return mathematical representation of the boundary condition."""
+        """Return mathematical representation of the boundary condition.
+
+        Args:
+            field_name (str): Name of the field to use in the representation
+        """
         sign = " " if self.upper else "-"
         axis_name = self.grid.axes[self.axis]
         deriv = f"∂²{self._field_repr(field_name)}/∂{axis_name}²"
@@ -2723,7 +2081,7 @@ class CurvatureBC(ConstBC2ndOrderBase):
 
     def get_virtual_point_data(
         self,
-    ) -> tuple[np.ndarray, np.ndarray, int, np.ndarray, int]:
+    ) -> tuple[NumericArray, NumericArray, int, NumericArray, int]:
         """Return data suitable for calculating virtual points.
 
         Returns:
@@ -2733,9 +2091,8 @@ class CurvatureBC(ConstBC2ndOrderBase):
         dx = self.grid.discretization[self.axis]
 
         if size < 2:
-            raise RuntimeError(
-                "Need at least 2 support points to use curvature boundary condition"
-            )
+            msg = "Need at least 2 support points to use curvature boundary condition"
+            raise RuntimeError(msg)
 
         value = np.asarray(self.value * dx**2)
         f1 = np.full_like(value, 2.0)

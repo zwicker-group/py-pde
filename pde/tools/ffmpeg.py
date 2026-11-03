@@ -13,10 +13,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
-from numpy.typing import DTypeLike
+
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike
+
+    from .typing import NumericArray
 
 
 @dataclass
@@ -54,14 +58,13 @@ class FFmpegFormat:
         """Maximal value stored in a color channel."""
         if np.issubdtype(self.dtype, np.integer):
             return 2**self.bits_per_channel - 1  # type: ignore
-        else:
-            return 1.0
+        return 1.0
 
-    def data_to_frame(self, normalized_data: np.ndarray) -> np.ndarray:
+    def data_to_frame(self, normalized_data: NumericArray) -> NumericArray:
         """Converts normalized data to data being stored in a color channel."""
         return np.ascontiguousarray(normalized_data * self.max_value, dtype=self.dtype)
 
-    def data_from_frame(self, frame_data: np.ndarray):
+    def data_from_frame(self, frame_data: NumericArray):
         """Converts data stored in a color channel to normalized data."""
         return frame_data.astype(float) / self.max_value
 
@@ -83,8 +86,8 @@ formats = {
         dtype=np.uint8,
     ),
     "rgb32": FFmpegFormat(
-        pix_fmt_file="rgb32",
-        pix_fmt_data="rgb32",
+        pix_fmt_file="bgra",
+        pix_fmt_data="bgra",
         channels=4,
         bits_per_channel=8,
         dtype=np.uint8,
@@ -116,7 +119,7 @@ formats = {
 
 
 def find_format(channels: int, bits_per_channel: int = 8) -> str | None:
-    """Find a defined FFmpegFormat that satisifies the requirements.
+    """Find a defined FFmpegFormat that satisfies the requirements.
 
     Args:
         channels (int):
@@ -125,8 +128,8 @@ def find_format(channels: int, bits_per_channel: int = 8) -> str | None:
             Minimal number of bits per channel
 
     Returns:
-        str: Identifier for a format that satisifies the requirements (but might have
-        more channels or more bits per channel then requested. `None` is returned if no
+        str or None: Identifier for a format that satisfies the requirements (but might
+        have more channels or more bits per channel than requested), or `None` if no
         format can be identified.
     """
     n_best, f_best = None, None

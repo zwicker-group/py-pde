@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import os
 import subprocess as sp
 import sys
 import tempfile
-from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 PACKAGE = "pde"  # name of the package that needs to be tested
 PACKAGE_PATH = Path(__file__).resolve().parents[1]  # base path of the package
@@ -25,17 +29,23 @@ def _most_severe_exit_code(retcodes: Sequence[int]) -> int:
     """
     if all(retcode == 0 for retcode in retcodes):
         return 0
-    else:
-        return max(retcodes, key=lambda retcode: abs(retcode))
+    return max(retcodes, key=lambda retcode: abs(retcode))
 
 
 def show_config():
     """Show package configuration."""
-    from importlib.machinery import SourceFileLoader
+    import importlib.util
 
     # imports the package from the package path
-    mod_path = f"{PACKAGE_PATH / PACKAGE}/__init__.py"
-    mod = SourceFileLoader(PACKAGE, mod_path).load_module()
+    mod_path = PACKAGE_PATH / PACKAGE / "__init__.py"
+    spec = importlib.util.spec_from_file_location(PACKAGE, mod_path)
+    if spec is None or spec.loader is None:
+        msg = f"Could not load module spec for {mod_path}"
+        raise ImportError(msg)
+
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[PACKAGE] = mod
+    spec.loader.exec_module(mod)
     # obtain the package environment
     env = mod.environment()
 
@@ -51,7 +61,7 @@ def show_config():
     print("=" * 80)
 
 
-def test_codestyle(*, verbose: bool = True) -> int:
+def run_test_codestyle(*, verbose: bool = True) -> int:
     """Run the codestyle tests.
 
     Args:
@@ -74,7 +84,7 @@ def test_codestyle(*, verbose: bool = True) -> int:
     return _most_severe_exit_code(retcodes)
 
 
-def test_types(*, report: bool = False, verbose: bool = True) -> int:
+def run_test_types(*, report: bool = False, verbose: bool = True) -> int:
     """Run mypy to check the types of the python code.
 
     Args:
@@ -119,21 +129,29 @@ def run_unit_tests(
     num_cores: str | int = 1,
     coverage: bool = False,
     nojit: bool = False,
-    pattern: str = None,
+    pattern: str | None = None,
     use_memray: bool = False,
     pytest_args: list[str] | None = None,
 ) -> int:
     """Run the unit tests.
 
     Args:
-        runslow (bool): Whether to run the slow tests
-        runinteractive (bool): Whether to run the interactive tests
-        use_mpi (bool): Flag indicating whether tests are run using MPI
-        num_cores (int or str): Number of cores to use (`auto` for automatic choice)
-        coverage (bool): Whether to determine the test coverage
-        nojit (bool): Whether to disable numba jit compilation
-        pattern (str): A pattern that determines which tests are ran
-        use_memray (bool): Use memray to trace memory allocations during tests
+        runslow (bool):
+            Whether to run the slow tests
+        runinteractive (bool):
+            Whether to run the interactive tests
+        use_mpi (bool):
+            Flag indicating whether tests are run using MPI
+        num_cores (int or str):
+            Number of cores to use (`auto` for automatic choice)
+        coverage (bool):
+            Whether to determine the test coverage
+        nojit (bool):
+            Whether to disable numba jit compilation
+        pattern (str):
+            A pattern that determines which tests are ran
+        use_memray (bool):
+            Use memray to trace memory allocations during tests
         pytest_args (list of str):
             Additional arguments forwarded to py.test. For instance ["--maxfail=1"]
             fails tests early.
@@ -150,6 +168,8 @@ def run_unit_tests(
     env["MPLBACKEND"] = "agg"
     if nojit:
         env["NUMBA_DISABLE_JIT"] = "1"
+        env["JAX_DISABLE_JIT"] = "1"
+        env["TORCH_COMPILE_DISABLE"] = "1"
     else:
         env["NUMBA_WARNINGS"] = "1"
         env["NUMBA_BOUNDSCHECK"] = "1"
@@ -186,13 +206,11 @@ def run_unit_tests(
     if runinteractive:
         args.append("--runinteractive")  # also run interactive tests
     if use_mpi:
-        try:
-            import numba_mpi
-        except ImportError as err:
-            raise RuntimeError(
-                "Module `numba_mpi` is required to test with MPI"
-            ) from err
-        args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
+        if importlib.util.find_spec("numba_mpi"):
+            args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
+        else:
+            msg = "Module `numba_mpi` is required to test with MPI"
+            raise RuntimeError(msg)
 
     # run tests using multiple cores?
     if num_cores == "auto":
@@ -200,7 +218,7 @@ def run_unit_tests(
     else:
         num_cores = int(num_cores)
     if num_cores > 1:
-        args.extend(["-n", str(num_cores), "--durations=10"])
+        args.extend(["-n", str(num_cores), "--durations=32"])
 
     # run only a subset of the tests?
     if pattern is not None:
@@ -365,11 +383,11 @@ def main() -> int:
     # run the requested tests
     retcodes = []
     if run_all or args.style:
-        retcode = test_codestyle(verbose=not args.quite)
+        retcode = run_test_codestyle(verbose=not args.quite)
         retcodes.append(retcode)
 
     if run_all or args.types:
-        retcode = test_types(report=args.report, verbose=not args.quite)
+        retcode = run_test_types(report=args.report, verbose=not args.quite)
         retcodes.append(retcode)
 
     if run_all or args.unit:

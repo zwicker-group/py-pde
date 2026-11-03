@@ -5,23 +5,26 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
-from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, GridBase
+from ..grids.cartesian import CartesianGrid
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
 from ..tools.plotting import PlotReference, plot_on_figure
-from ..tools.typing import NumberOrArray
-from .datafield_base import DataFieldBase
+from .datafield_base import DataFieldBase, _prepare_vector_data
 from .scalar import ScalarField
 from .vectorial import VectorField
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
+    from numpy.typing import DTypeLike
+
     from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import NumberOrArray, NumericArray
 
 
 class Tensor2Field(DataFieldBase):
@@ -78,16 +81,22 @@ class Tensor2Field(DataFieldBase):
         """
         from ..tools.expressions import ScalarExpression
 
-        if (
-            isinstance(expressions, str)
-            or len(expressions) != grid.dim
-            or any(len(expr) != grid.dim for expr in expressions)
-        ):
+        # check whether the correct number of expressions is given
+        try:
+            dim_1 = len(expressions)
+            dim_2 = {len(expr) for expr in expressions}
+        except TypeError:
+            valid_exprs = False  # input is not a list of list
+        else:
+            # check whether dimension of inputs is correct
+            valid_exprs = dim_1 == grid.dim and dim_2 == {grid.dim}
+        if not valid_exprs:
             axes_names = grid.axes + grid.axes_symmetric
-            raise DimensionError(
+            msg = (
                 f"Expected a nested list of {grid.dim}x{grid.dim} expressions for the "
                 f"tensor components of the coordinates {axes_names}."
             )
+            raise DimensionError(msg)
 
         if any("cartesian" in str(expression) for expression in expressions):
             # support Cartesian coordinates via a special constant
@@ -101,8 +110,8 @@ class Tensor2Field(DataFieldBase):
         # obtain the coordinates of the grid points
         points = [grid.cell_coords[..., i] for i in range(grid.num_axes)]
 
-        # evaluate all vector components at all points
-        data: list[list[np.ndarray]] = [[None] * grid.dim for _ in range(grid.dim)]  # type: ignore
+        # evaluate all components at all points
+        data: list[list[NumericArray]] = [[None] * grid.dim for _ in range(grid.dim)]  # type: ignore
         for i in range(grid.dim):
             for j in range(grid.dim):
                 expr = ScalarExpression(
@@ -116,17 +125,27 @@ class Tensor2Field(DataFieldBase):
                 values = np.broadcast_to(expr(*points), grid.shape)
                 data[i][j] = values
 
-        # create vector field from the data
+        # create tensor field from the data
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 
     def _get_axes_index(self, key: tuple[int | str, int | str]) -> tuple[int, int]:
-        """Turns a general index of two axis into a tuple of two numeric indices."""
+        """Turns a general index of two axis into a tuple of two numeric indices.
+
+        Args:
+            key (tuple of str or int):
+                Specifies the two axes by their index or name
+
+        Returns:
+            tuple of int: The indices of the axes
+        """
         try:
             if len(key) != 2:
-                raise IndexError("Index must be given as two integers")
+                msg = "Index must be given as two integers"
+                raise IndexError(msg)
         except TypeError as err:
-            raise IndexError("Index must be given as two values") from err
-        return tuple(self.grid.get_axis_index(k) for k in key)  # type: ignore
+            msg = "Index must be given as two values"
+            raise IndexError(msg) from err
+        return self.grid.get_axis_tuple(key, allow_symmetric=True)  # type: ignore
 
     def __getitem__(self, key: tuple[int | str, int | str]) -> ScalarField:
         """Extract a single component of the tensor field as a scalar field."""
@@ -152,18 +171,38 @@ class Tensor2Field(DataFieldBase):
     @DataFieldBase._data_flat.setter  # type: ignore
     def _data_flat(self, value):
         """Set the data from a value from a collection."""
-        # create a view and reshape it to disallow copying
-        data_full = value.view()
+        # determine shape of flattened tensor field
         dim = self.grid.dim
         full_grid_shape = tuple(s + 2 for s in self.grid.shape)
-        data_full.shape = (dim, dim, *full_grid_shape)
+        shape = (dim, dim, *full_grid_shape)
 
-        # set the result as the full data array
-        self._data_full = data_full
+        # raise an error if such reshaping is impossible without making a copy
+        self._data_full = np.reshape(value, shape, copy=False)
 
-        # ensure that no copying happend
+        # ensure that no copying happened
         if not np.may_share_memory(self.data, value):
-            raise RuntimeError("Spurious copy detected!")
+            msg = "Spurious copy detected!"
+            raise RuntimeError(msg)
+
+    @overload
+    def dot(
+        self,
+        other: VectorField,
+        out: VectorField | None = ...,
+        *,
+        conjugate: bool = ...,
+        label: str = ...,
+    ) -> VectorField: ...
+
+    @overload
+    def dot(
+        self,
+        other: Tensor2Field,
+        out: Tensor2Field | None = ...,
+        *,
+        conjugate: bool = ...,
+        label: str = ...,
+    ) -> Tensor2Field: ...
 
     def dot(
         self,
@@ -175,9 +214,9 @@ class Tensor2Field(DataFieldBase):
     ) -> VectorField | Tensor2Field:
         """Calculate the dot product involving a tensor field.
 
-        This supports the dot product between two tensor fields as well as the
-        product between a tensor and a vector. The resulting fields will be a
-        tensor or vector, respectively.
+        This supports the dot product between two tensor fields as well as the product
+        between a tensor and a vector. The resulting fields will be a tensor or vector,
+        respectively.
 
         Args:
             other (VectorField or Tensor2Field):
@@ -191,23 +230,25 @@ class Tensor2Field(DataFieldBase):
 
         Returns:
             :class:`~pde.fields.vectorial.VectorField` or
-            :class:`~pde.fields.tensorial.Tensor2Field`: result of applying the dot operator
+            :class:`~pde.fields.tensorial.Tensor2Field`: result of applying dot operator
         """
         # check input
         self.grid.assert_grid_compatible(other.grid)
         if not isinstance(other, (VectorField, Tensor2Field)):
-            raise TypeError("Second term must be a vector or tensor field")
+            msg = "Second term must be a vector or tensor field"
+            raise TypeError(msg)
 
         # create and check the output instance
         if out is None:
             out = other.__class__(self.grid, dtype=get_common_dtype(self, other))
         else:
             if not isinstance(out, other.__class__):
-                raise TypeError(f"`out` must be of type `{other.__class__}`")
+                msg = f"`out` must be of type `{other.__class__}`"
+                raise TypeError(msg)
             self.grid.assert_grid_compatible(out.grid)
 
         # calculate the result
-        other_data = other.data.conjugate() if conjugate else other.data
+        other_data = other.data.conj() if conjugate else other.data
         np.einsum("ij...,j...->i...", self.data, other_data, out=out.data)
         if label is not None:
             out.label = label
@@ -233,9 +274,7 @@ class Tensor2Field(DataFieldBase):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES_OPTIONAL}
             out (VectorField, optional):
-                Optional scalar field to which the  result is written.
-            label (str, optional):
-                Name of the returned field
+                Optional vector field to which the result is written.
             **kwargs:
                 Additional arguments affecting how the operator behaves.
 
@@ -244,52 +283,18 @@ class Tensor2Field(DataFieldBase):
         """
         return self.apply_operator("tensor_divergence", bc=bc, out=out, **kwargs)  # type: ignore
 
-    @property
-    def integral(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: integral of each component over space."""
-        return self.grid.integrate(self.data)  # type: ignore
-
-    def transpose(self, label: str = "transpose") -> Tensor2Field:
-        """Return the transpose of the tensor field.
+    def is_symmetric(self, rtol=1e-05, atol=1e-08) -> bool:
+        """Returns whether the tensor is symmetric.
 
         Args:
-            label (str, optional): Name of the returned field
-
-        Returns:
-            :class:`~pde.fields.tensorial.Tensor2Field`: transpose of the tensor field
+            rtol (float):
+                The relative tolerance parameter (see :func:`~numpy.allclose`).
+            atol (float):
+                The absolute tolerance parameter (see :func:`~numpy.allclose`).
         """
-        axes = (1, 0) + tuple(range(2, 2 + self.grid.num_axes))
-        return Tensor2Field(self.grid, self.data.transpose(axes), label=label)
-
-    def symmetrize(
-        self, make_traceless: bool = False, inplace: bool = False
-    ) -> Tensor2Field:
-        """Symmetrize the tensor field in place.
-
-        Args:
-            make_traceless (bool):
-                Determines whether the result is also traceless
-            inplace (bool):
-                Flag determining whether to symmetrize the current field or
-                return a new one
-
-        Returns:
-            :class:`~pde.fields.tensorial.Tensor2Field`: result of the operation
-        """
-        if inplace:
-            out = self
-        else:
-            out = self.copy()
-
-        out += self.transpose()
-        out *= 0.5
-
-        if make_traceless:
-            dim = self.grid.dim
-            value = self.trace() / dim
-            for i in range(dim):
-                out.data[i, i] -= value.data
-        return out
+        # transpose the tensor data for each grid point
+        data_T = self.data.transpose((1, 0, *tuple(range(2, 2 + self.grid.num_axes))))
+        return np.allclose(self.data, data_T, rtol=rtol, atol=atol)
 
     def to_scalar(
         self, scalar: str = "auto", *, label: str | None = "scalar `{scalar}`"
@@ -308,7 +313,7 @@ class Tensor2Field(DataFieldBase):
 
         where `tr` denotes the trace and `det` denotes the determinant. Note that the
         three invariants can only be distinct and non-zero in three dimensions. In two
-        dimensional spaces, we have the identity :math:`2 I_2 = I_3` and in
+        dimensional spaces, we have the identity :math:`I_2 = I_3` and in
         one-dimensional spaces, we have :math:`I_1 = I_3` as well as
         :math:`I_2 = 0`.
 
@@ -341,39 +346,39 @@ class Tensor2Field(DataFieldBase):
             data = np.sum(self.data**2, axis=(0, 1))
 
         elif scalar == "norm_squared":
-            data = np.sum(self.data * self.data.conjugate(), axis=(0, 1))
+            data = np.sum(self.data * self.data.conj(), axis=(0, 1))
 
         elif scalar == "trace" or scalar == "invariant1":
             data = self.data.trace(axis1=0, axis2=1)
 
         elif scalar == "invariant2":
-            data = np.zeros(self.grid.shape)
+            data = np.zeros(self.grid.shape, dtype=get_common_dtype(self))
             for i in range(self.grid.dim):
                 for j in range(i):
                     data += (
                         self.data[i, i] * self.data[j, j]
                         - self.data[i, j] * self.data[j, i]
                     )
-            data *= 0.5
 
         elif scalar in {"det", "determinant", "invariant3"}:
             if self.grid.dim == 1:
                 data = self.data[0, 0]
             else:
-                data = np.zeros(self.grid.shape)
+                data = np.zeros(self.grid.shape, dtype=get_common_dtype(self))
                 # this iterates over all of space and might thus be slow, but
                 # the interface of np.linalg.det is not very flexible. We could
                 # in principle use the definition of np.linalg.det without the
                 # multiple checks to gain some speed
                 for idx in np.ndindex(*self.grid.shape):
-                    data[idx] = np.linalg.det(self.data[(...,) + idx])
+                    data[idx] = np.linalg.det(self.data[(..., *idx)])
 
         else:
-            raise ValueError(
+            msg = (
                 f"Unknown method `{scalar}` for `to_scalar`. Valid methods are `norm`, "
                 "`min`, `max`, squared_sum`, `norm_squared`, `trace`, `determinant`, "
                 "and `invariant#`, where # is 1, 2, or 3"
             )
+            raise ValueError(msg)
 
         # determine label of the result
         if self.label is None:
@@ -384,7 +389,60 @@ class Tensor2Field(DataFieldBase):
 
         return ScalarField(self.grid, data, label=label)
 
-    def trace(self, label: str | None = "trace") -> ScalarField:
+    def convert(
+        self,
+        form: Literal["symmetric", "anti-symmetric", "transposed", "traceless"],
+        inplace: bool = False,
+        *,
+        label: str | None = None,
+    ) -> Tensor2Field:
+        """Convert tensor to a specific form in each point in space.
+
+        Args:
+            form (str):
+                Determines the form (`symmetric`, `anti-symmetric`, `transposed`,
+                or `traceless`) that the converted tensors should have.
+            inplace (bool):
+                Overwrites current field if `True`
+            label (str, optional):
+                Name of the returned field
+
+        Returns:
+            :class:`~pde.fields.tensorial.Tensor2Field`: converted tensor field
+        """
+        # prepare field to return
+        out = self if inplace else self.copy()
+        if label:
+            out.label = label
+
+        # apply actual operation
+        if form == "symmetric":
+            out += self.transpose()
+            out *= 0.5
+
+        elif form == "anti-symmetric":
+            out -= self.transpose()
+            out *= 0.5
+
+        elif form == "transposed":
+            axes = (1, 0, *tuple(range(2, 2 + self.grid.num_axes)))
+            out.data = self.data.transpose(axes)
+            # This operation does an unnecessary copy, but we didn't figure out a safe
+            # way of transposing numpy arrays in place. In principle, this should be
+            # doable since transpose often returns a view.
+
+        elif form == "traceless":
+            trace = out.data.trace(axis1=0, axis2=1)
+            diag_idx = np.diag_indices(self.grid.dim, ndim=2)
+            out.data[diag_idx] -= trace / self.grid.dim
+
+        else:
+            msg = f"Undefined conversion `{form}`"
+            raise ValueError(msg)
+
+        return out
+
+    def trace(self, *, label: str | None = "trace") -> ScalarField:
         """Return the trace of the tensor field as a scalar field.
 
         Args:
@@ -395,8 +453,106 @@ class Tensor2Field(DataFieldBase):
         """
         return self.to_scalar(scalar="trace", label=label)
 
+    def transpose(
+        self, inplace: bool = False, *, label: str = "transpose"
+    ) -> Tensor2Field:
+        """Return the transpose of the tensor field.
+
+        Args:
+            inplace (bool):
+                Overwrites current field if `True`
+            label (str, optional):
+                Name of the returned field
+
+        Returns:
+            :class:`~pde.fields.tensorial.Tensor2Field`: transpose of the tensor field
+        """
+        return self.convert("transposed", inplace=inplace, label=label)
+
+    def symmetrize(
+        self,
+        make_traceless: bool = False,
+        inplace: bool = False,
+        *,
+        label: str | None = None,
+    ) -> Tensor2Field:
+        """Symmetrize the tensor field.
+
+        Args:
+            make_traceless (bool):
+                Determines whether the result is also traceless
+            inplace (bool):
+                Overwrites current field if `True`
+            label (str, optional):
+                Name of the returned field
+
+        Returns:
+            :class:`~pde.fields.tensorial.Tensor2Field`: result of the operation
+        """
+        res = self.convert("symmetric", inplace=inplace, label=label)
+        if make_traceless:
+            res.convert("traceless", inplace=True)
+        return res
+
+    def get_nematic_data(
+        self, transpose: bool = False, max_points: int | None = None, **kwargs
+    ) -> dict[str, Any]:
+        r"""Return data for a nematic plot of the field.
+
+        The tensor field is interpreted as a nematic order parameter, i.e., only the
+        symmetric, traceless part :math:`\boldsymbol{Q}` of the tensor is used. In two
+        dimensions, this part can be written as
+
+        .. math::
+            \boldsymbol{Q} = S \left(
+                \boldsymbol{n} \otimes \boldsymbol{n} - \frac{\mathbb{1}}{2}
+            \right)
+
+        where the director :math:`\boldsymbol{n}` is a unit vector and the nematic order
+        :math:`S \ge 0` is the difference of the two eigenvalues of
+        :math:`\boldsymbol{Q}`. The returned vectors are aligned with the director and
+        their length is given by the nematic order.
+
+        Note that the director is only defined up to its sign, so the returned vectors
+        should be plotted without arrow heads; see the `nematic` plot kind of
+        :meth:`~pde.fields.datafield_base.DataFieldBase.plot`.
+
+        Args:
+            transpose (bool):
+                Determines whether the transpose of the data should be plotted.
+            max_points (int):
+                The maximal number of points that is used along each axis. This
+                option can be used to sub-sample the data.
+            **kwargs:
+                Additional parameters forwarded to `grid.get_image_data`
+
+        Returns:
+            dict: Information useful for plotting a nematic field
+        """
+        if not isinstance(self.grid, CartesianGrid) or self.grid.dim != 2:
+            msg = "Nematic data is only available for 2d Cartesian grids"
+            raise DimensionError(msg)
+        if self.is_complex:
+            self._logger.warning("Only the real part of complex data is shown")
+
+        # extract the symmetric, traceless part, which reads [[a, b], [b, -a]]
+        tensor = self.data.real
+        a = 0.5 * (tensor[0, 0] - tensor[1, 1])
+        b = 0.5 * (tensor[0, 1] + tensor[1, 0])
+
+        # determine the nematic order and the orientation of the director
+        order = 2 * np.hypot(a, b)  # difference between the two eigenvalues
+        angle = 0.5 * np.arctan2(b, a)  # orientation of the leading eigenvector
+        director = np.array([order * np.cos(angle), order * np.sin(angle)])
+
+        # extract the image data
+        data = self.grid.get_vector_data(director, **kwargs)
+        data["title"] = self.label
+
+        return _prepare_vector_data(data, transpose=transpose, max_points=max_points)
+
     def _update_plot_components(self, reference: list[list[PlotReference]]) -> None:
-        """Update a plot collection with the current field values.
+        """Update a component plot with the current field values.
 
         Args:
             reference (list of :class:`PlotReference`):
@@ -421,7 +577,7 @@ class Tensor2Field(DataFieldBase):
                 or `line`. Alternatively, `auto` determines the best visualization based
                 on the grid.
             {PLOT_ARGS}
-            \**kwargs:
+            **kwargs:
                 All additional keyword arguments are forwarded to the actual plotting
                 function of all subplots.
 

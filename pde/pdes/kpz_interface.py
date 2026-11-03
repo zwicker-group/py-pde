@@ -5,20 +5,24 @@
 
 from __future__ import annotations
 
-from typing import Callable
-
-import numba as nb
-import numpy as np
+from typing import TYPE_CHECKING, Any
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
-from .base import PDEBase, expr_prod
+from .base import SDEBase, expr_prod
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    import numpy as np
+
+    from ..backends import BackendBase
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import TNativeArray
 
 
-class KPZInterfacePDE(PDEBase):
+class KPZInterfacePDE(SDEBase):
     r"""The Kardar–Parisi–Zhang (KPZ) equation.
 
     The mathematical definition is
@@ -52,7 +56,7 @@ class KPZInterfacePDE(PDEBase):
             nu (float):
                 Parameter :math:`\nu` for the strength of the diffusive term
             lmbda (float):
-                Parameter :math:`\lambda` for the strenth of the gradient term
+                Parameter :math:`\lambda` for the strength of the gradient term
             bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
@@ -61,7 +65,7 @@ class KPZInterfacePDE(PDEBase):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
                 used for stochastic simulations. Note that this random number generator
-                is only used for numpy function, while compiled numba code uses the
+                is only used for numpy functions, while compiled numba code uses the
                 random number generator of numba. Moreover, in simulations using
                 multiprocessing, setting the same generator in all processes might yield
                 unintended correlations in the simulation results.
@@ -95,39 +99,39 @@ class KPZInterfacePDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         if not isinstance(state, ScalarField):
-            raise ValueError("`state` must be ScalarField")
+            msg = "`state` must be ScalarField"
+            raise TypeError(msg)
         result = self.nu * state.laplace(bc=self.bc, args={"t": t})
         result += self.lmbda * state.gradient_squared(bc=self.bc, args={"t": t})
         result.label = "evolution rate"
         return result  # type: ignore
 
-    def _make_pde_rhs_numba(  # type: ignore
-        self, state: ScalarField
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    def make_evolution_rate(
+        self, state: ScalarField, backend: BackendBase
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 An example for the state defining the grid and data types
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
 
         Returns:
-            A function with signature `(state_data, t)`, which can be called
-            with an instance of :class:`~numpy.ndarray` of the state data and
-            the time to obtained an instance of :class:`~numpy.ndarray` giving
-            the evolution rate.
+            A function with signature `(state_data, t)`, which can be called with an
+            instance of the state data and time to obtain the associated evolution rate.
         """
-        arr_type = nb.typeof(state.data)
-        signature = arr_type(arr_type, nb.double)
-
         nu_value, lambda_value = self.nu, self.lmbda
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
-        gradient_squared = state.grid.make_operator("gradient_squared", bc=self.bc)
+        args: dict[str, Any] = {"backend": backend, "dtype": state.dtype}
+        laplace = state.grid.make_operator(operator="laplace", bc=self.bc, **args)
+        gradient_squared = state.grid.make_operator(
+            operator="gradient_squared", bc=self.bc, **args
+        )
 
-        @jit(signature)
-        def pde_rhs(state_data: np.ndarray, t: float):
-            """Compiled helper function evaluating right hand side."""
+        def pde_rhs(state_data, t=0):
+            """Evaluate right hand side of PDE."""
             result = nu_value * laplace(state_data, args={"t": t})
             result += lambda_value * gradient_squared(state_data, args={"t": t})
             return result
 
-        return pde_rhs  # type: ignore
+        return pde_rhs

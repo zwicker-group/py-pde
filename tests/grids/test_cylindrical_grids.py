@@ -19,7 +19,6 @@ def test_cylindrical_grid(periodic, r_inner, rng):
     rs, zs = grid.axes_coords
 
     assert grid.dim == 3
-    assert grid.numba_type == "f8[:, :]"
     assert grid.shape == (8, 9)
     assert grid.length == pytest.approx(3)
     assert grid.discretization[1] == pytest.approx(1 / 3)
@@ -77,3 +76,13 @@ def test_setting_boundary_conditions():
     grid.get_boundary_conditions({"r": "derivative", "z": "periodic"})
     with pytest.raises(RuntimeError):
         grid.get_boundary_conditions({"r": "derivative", "z": "derivative"})
+
+
+def test_mixed_derivatives():
+    """Test mixed derivatives of scalar fields."""
+    grid = CylindricalSymGrid(1, [-1, 0.5], [7, 9])
+    field = ScalarField.random_normal(grid, label="c")
+
+    res1 = field.apply("d_dz(d_dr(c))")
+    res2 = field.apply("d_dr(d_dz(c))")
+    np.testing.assert_allclose(res1.data, res2.data)

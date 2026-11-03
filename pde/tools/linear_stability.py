@@ -36,8 +36,7 @@ def make_linear_operator(dependent_variables):
             if isinstance(arg, sympy.Order):
                 if any(v in arg.args[0].free_symbols for v in cls.dependent):
                     return arg  # pull Order out of operator
-                else:
-                    return sympy.Number(0)  # Order variable is a constant
+                return sympy.Number(0)  # Order variable is a constant
 
             if not arg.free_symbols:
                 return sympy.Number(0)  # differential of a constant vanishes
@@ -46,7 +45,8 @@ def make_linear_operator(dependent_variables):
         def doit(self, deep=True, **hints):
             """Evaluates the differential operator for as many cases as we can."""
             if len(self.args) != 1:
-                raise ValueError("Operator expects exactly one argument")
+                msg = "Operator expects exactly one argument"
+                raise ValueError(msg)
             arg = self.args[0]  # extract singular argument
 
             if not any(v in arg.free_symbols for v in self.dependent):
@@ -88,7 +88,8 @@ def make_linear_operator(dependent_variables):
         def _eval_rewrite(self, rule, args, **hints):
             """Rewrite expressions using common replacements."""
             if len(args) != 1:
-                raise ValueError("Operator expects exactly one argument")
+                msg = "Operator expects exactly one argument"
+                raise ValueError(msg)
             arg = args[0]  # extract singular argument
 
             if rule == sympy.Add and isinstance(arg, sympy.Add):
@@ -113,16 +114,19 @@ def make_linear_operator(dependent_variables):
         def _eval_nseries(self, x, n, logx, cdir=0):
             """Evaluate power series of the linear operator."""
             if len(self.args) != 1:
-                raise ValueError("Operator expects exactly one argument")
+                msg = "Operator expects exactly one argument"
+                raise ValueError(msg)
             inner = self.args[0]._eval_nseries(x, n, logx, cdir=cdir)
             return self.__class__(inner)
 
         def _eval_as_leading_term(self, x, logx, cdir):
             """Return leading term of power series of the linear operator."""
             if len(self.args) != 1:
-                raise ValueError("Operator expects exactly one argument")
+                msg = "Operator expects exactly one argument"
+                raise ValueError(msg)
             if logx is not None:
-                raise NotImplementedError(f"Don't know how to deal with {logx=}")
+                msg = f"Don't know how to deal with {logx=}"
+                raise NotImplementedError(msg)
             # Not sure if the following works for all cases
             return sympy.diff(self.args[0], x)
 

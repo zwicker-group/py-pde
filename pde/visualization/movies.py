@@ -14,12 +14,15 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Any
+import warnings
+from typing import TYPE_CHECKING, Any, Self
 
-from ..storage.base import StorageBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress
 from .plotting import ScalarFieldPlot, ScaleData
+
+if TYPE_CHECKING:
+    from ..storage.base import StorageBase
 
 
 class Movie:
@@ -56,10 +59,10 @@ class Movie:
             framerate (float):
                 The number of frames per second, which determines how fast the
                 movie will appear to run.
-            dpi (float):
-                The resolution of the resulting movie. The default value is controlled
-                by :mod:`matplotlib` and is usally set to 100.
-            \**kwargs:
+            dpi (float or None):
+                The resolution of the resulting movie. If `None`, the default value is
+                controlled by :mod:`matplotlib` and is usually set to 100.
+            **kwargs:
                 Additional parameters are used to initialize
                 :class:`matplotlib.animation.FFMpegWriter`. Here, we can for instance
                 set the bit rate of the resulting video using the `bitrate` parameter.
@@ -71,16 +74,18 @@ class Movie:
 
         # check whether ffmpeg is available
         if not self.is_available():
-            raise RuntimeError(
+            msg = (
                 "FFMpegWriter is not available. This is most likely because a suitable "
                 "installation of FFMpeg was not found. See ffmpeg.org for how to "
                 "install it properly on your system."
             )
+            raise RuntimeError(msg)
 
         # check whether the path to which the movie is written is available
         folder = pathlib.Path(self.filename).parent
         if not folder.exists() or not folder.is_dir():
-            raise OSError(f"Folder `{folder}` does not exist")
+            msg = f"Folder `{folder}` does not exist"
+            raise OSError(msg)
 
         self._writer = None
 
@@ -95,7 +100,7 @@ class Movie:
 
         return FFMpegWriter.isAvailable()
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_value, exc_tb):
@@ -112,7 +117,7 @@ class Movie:
         """Adds the figure `fig` as a frame to the current movie.
 
         Args:
-            fig (:class:`~matplotlib.figures.Figure`):
+            fig (:class:`~matplotlib.figure.Figure`):
                 The plot figure that is added to the movie
         """
         if fig is None:
@@ -172,6 +177,13 @@ def movie_scalar(
         show (bool):
             Flag determining whether images are shown during making the movie
     """
+    # Deprecated since 2026-07-10
+    warnings.warn(
+        "`movie_scalar` is deprecated. Use `movie` instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     quantities = [{"title": "Concentration", "source": None}]
     if extras:
         for key, value in extras.items():
@@ -179,7 +191,12 @@ def movie_scalar(
 
     # initialize the plot with the first data point
     plot = ScalarFieldPlot.from_storage(
-        storage, quantities=quantities, scale=scale, tight=tight, show=show
+        storage,
+        quantities=quantities,
+        scale=scale,
+        tight=tight,
+        show=show,
+        skip_deprecation=True,
     )
     # make the full movie
     plot.make_movie(storage, filename, progress=progress)
@@ -208,7 +225,16 @@ def movie_multiple(
         progress (bool):
             Flag determining whether the progress of making the movie is shown.
     """
-    plot = ScalarFieldPlot.from_storage(storage, quantities=quantities, scale=scale)
+    # Deprecated since 2026-07-10
+    warnings.warn(
+        "`movie_multiple` is deprecated. Use `movie` instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+    plot = ScalarFieldPlot.from_storage(
+        storage, quantities=quantities, scale=scale, skip_deprecation=True
+    )
     plot.make_movie(storage, filename, progress=progress)
 
 

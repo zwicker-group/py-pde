@@ -7,13 +7,15 @@ import gc
 import numpy as np
 import pytest
 
-from fixtures.fields import get_cartesian_grid, iter_grids
+from fixtures.fields import GRIDS, get_cartesian_grid
+from pde import ScalarField, get_backend
 from pde.fields.base import FieldBase
-from pde.fields.scalar import ScalarField
 from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
 from pde.grids._mesh import GridMesh
 from pde.tools import mpi
 from pde.tools.misc import module_available
+
+ALL_BACKENDS = ["numba", "jax-cpu", "jax-cuda", "torch-cpu", "torch-mps", "torch-cuda"]
 
 
 def test_interpolation_singular():
@@ -46,7 +48,7 @@ def test_interpolation_edge():
     np.testing.assert_allclose(y, [1.0, 1.5, 2.0])
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_simple_shapes(grid, rng):
     """Test simple scalar fields."""
     pf = ScalarField.random_uniform(grid, rng=rng)
@@ -103,16 +105,17 @@ def test_scalars(rng):
     np.testing.assert_allclose((arr * s1).data, (s1 * arr).data)
 
 
-def test_laplacian(rng):
-    """Test the gradient operator."""
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_laplacian(backend, rng):
+    """Test the Laplace operator."""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
     s = ScalarField.random_harmonic(grid, axis_combination=np.add, modes=1, rng=rng)
 
-    s_lap = s.laplace("auto_periodic_neumann")
+    s_lap = s.laplace("auto_periodic_neumann", backend=backend)
     assert s_lap.data.shape == (16, 16)
     np.testing.assert_allclose(s_lap.data, -s.data, rtol=0.1, atol=0.1)
 
-    s.laplace("auto_periodic_neumann", out=s_lap)
+    s.laplace("auto_periodic_neumann", out=s_lap, backend=backend)
     assert s_lap.data.shape == (16, 16)
     np.testing.assert_allclose(s_lap.data, -s.data, rtol=0.1, atol=0.1)
 
@@ -135,7 +138,7 @@ def test_gradient():
     np.testing.assert_allclose(v.data[1], np.cos(y), rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_interpolation_to_grid(grid, rng):
     """Test whether data is interpolated correctly for different grids."""
     sf = ScalarField.random_uniform(grid, rng=rng)
@@ -151,17 +154,17 @@ def test_interpolation_bcs():
     np.testing.assert_allclose(res, np.array([42.0, 0.5, 1.5, 2.5, 3.5, 42.0]))
 
 
-@pytest.mark.parametrize("grid", iter_grids())
-@pytest.mark.parametrize("compiled", [True, False])
-def test_insert_scalar(grid, compiled, rng):
+@pytest.mark.parametrize("grid", GRIDS)
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_insert_scalar(grid, backend, rng):
     """Test the `insert` method."""
     f = ScalarField(grid)
     a = rng.random()
 
     c = grid.get_random_point(coords="cell", rng=rng).astype(int)  # pick a random cell
     p = grid.transform(c + 0.5, "cell", "grid")  # point at cell center
-    if compiled:
-        insert = grid.make_inserter_compiled()
+    if backend == "numba":
+        insert = get_backend("numba").make_inserter(grid)
         insert(f.data, p, a)  # add material to cell center
     else:
         f.insert(p, a)  # add material to cell center
@@ -181,7 +184,7 @@ def test_insert_1d(rng):
         f.data = g.data = 0
         f.insert(r, a)
         assert f.integral == pytest.approx(a)
-        grid.make_inserter_compiled()(g.data, r, a)
+        get_backend("numba").make_inserter(grid)(g.data, r, a)
         np.testing.assert_array_almost_equal(f.data, g.data)
 
 
@@ -195,7 +198,7 @@ def test_insert_polar(rng):
         f.data = g.data = 0
         f.insert(r, a)
         assert f.integral == pytest.approx(a)
-        grid.make_inserter_compiled()(g.data, r, a)
+        get_backend("numba").make_inserter(grid)(g.data, r, a)
         np.testing.assert_array_almost_equal(f.data, g.data)
 
 
@@ -206,6 +209,10 @@ def test_random_harmonic(rng):
     scaling = sum((2 * np.pi / L) ** 2 for L in grid.cuboid.size)
     y = -x.laplace("auto_periodic_neumann") / scaling
     np.testing.assert_allclose(x.data, y.data, rtol=1e-2, atol=1e-2)
+
+    z = ScalarField.random_harmonic(grid, dtype=complex)
+    assert not np.allclose(z.data.real, z.data.imag)
+    assert not np.allclose(z.data.imag, 0)
 
 
 def test_get_line_data(rng):
@@ -273,12 +280,12 @@ def test_to_scalar(rng):
         sf.to_scalar("nonsense")
 
 
-@pytest.mark.parametrize("grid", (grid for grid in iter_grids() if grid.num_axes > 1))
-@pytest.mark.parametrize("method", ["integral", "average"])
+@pytest.mark.parametrize("grid", [grid for grid in GRIDS if grid.num_axes > 1])
+@pytest.mark.parametrize("method", ["integral", "average", "max", "min"])
 def test_projection(grid, method, rng):
     """Test scalar projection."""
     sf = ScalarField.random_uniform(grid, rng=rng)
-    for ax in grid.axes:
+    for ax_i, ax in enumerate(grid.axes):
         sp = sf.project(ax, method=method)
         assert sp.grid.dim < grid.dim
         assert sp.grid.num_axes == grid.num_axes - 1
@@ -286,12 +293,18 @@ def test_projection(grid, method, rng):
             assert sp.integral == pytest.approx(sf.integral)
         elif method == "average":
             assert sp.average == pytest.approx(sf.average)
+        elif method == "max":
+            np.testing.assert_allclose(sp.data, np.max(sf.data, axis=ax_i))
+        elif method == "min":
+            np.testing.assert_allclose(sp.data, np.min(sf.data, axis=ax_i))
+        else:
+            raise NotImplementedError
 
     with pytest.raises(ValueError):
         sf.project(grid.axes[0], method="nonsense")
 
 
-@pytest.mark.parametrize("grid", (grid for grid in iter_grids() if grid.num_axes > 1))
+@pytest.mark.parametrize("grid", [grid for grid in GRIDS if grid.num_axes > 1])
 def test_slice(grid, rng):
     """Test scalar slicing."""
     sf = ScalarField(grid, 0.5)
@@ -304,7 +317,7 @@ def test_slice(grid, rng):
 
     with pytest.raises(boundaries.DomainError):
         sf.slice({grid.axes[0]: -10})
-    with pytest.raises(ValueError):
+    with pytest.raises(IndexError):
         sf.slice({"q": 0})
 
 
@@ -436,7 +449,7 @@ def test_complex_dtype():
 
     f = ScalarField(grid, 1)
     assert not f.is_complex
-    with pytest.raises(np.core._exceptions.UFuncTypeError):
+    with pytest.raises(TypeError):
         f += 1j
 
     f = f + 1j
@@ -500,7 +513,7 @@ def test_corner_interpolation():
     assert field.interpolate(np.array([0.0, 0.0])) == pytest.approx(0.0)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_generic_derivatives(grid, rng):
     """Test generic derivatives operators."""
     sf = ScalarField.random_uniform(grid, rng=rng)
@@ -593,3 +606,31 @@ def test_field_corner_interpolation_3d():
         ]
     )
     np.testing.assert_allclose(f._data_full, expect)
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        {"vmin": "symmetric"},
+        {"vmax": "symmetric"},
+        {"norm": "centered"},
+        {"norm": "symmetric"},
+    ],
+)
+def test_plot_symmetric(args, rng):
+    """Test symmetric plotting."""
+    grid = UnitGrid([3, 3])
+
+    # first plot
+    field = ScalarField.random_uniform(grid, rng=rng)
+    ref = field.plot(**args)
+    cbar = ref.ax.images[0].colorbar
+    cbar_max = cbar.vmax
+    assert cbar.vmin == pytest.approx(-cbar_max)  # colors are symmetric
+
+    # update plot
+    field = ScalarField.random_uniform(grid, rng=rng)
+    field._update_image_plot(ref)
+    cbar = ref.ax.images[0].colorbar
+    assert cbar.vmax != pytest.approx(cbar_max)  # colors have changed
+    assert cbar.vmin == pytest.approx(-cbar.vmax)  # colors are symmetric

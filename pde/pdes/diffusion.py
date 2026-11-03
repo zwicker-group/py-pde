@@ -5,20 +5,24 @@
 
 from __future__ import annotations
 
-from typing import Callable
-
-import numba as nb
-import numpy as np
+from typing import TYPE_CHECKING
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
-from .base import PDEBase, expr_prod
+from .base import SDEBase, expr_prod
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    import numpy as np
+
+    from ..backends import BackendBase
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import TNativeArray
 
 
-class DiffusionPDE(PDEBase):
+class DiffusionPDE(SDEBase):
     r"""A simple diffusion equation.
 
     The mathematical definition is
@@ -54,7 +58,7 @@ class DiffusionPDE(PDEBase):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
                 used for stochastic simulations. Note that this random number generator
-                is only used for numpy function, while compiled numba code uses the
+                is only used for numpy functions, while compiled numba code uses the
                 random number generator of numba. Moreover, in simulations using
                 multiprocessing, setting the same generator in all processes might yield
                 unintended correlations in the simulation results.
@@ -87,34 +91,33 @@ class DiffusionPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         if not isinstance(state, ScalarField):
-            raise ValueError("`state` must be ScalarField")
+            msg = "`state` must be ScalarField"
+            raise TypeError(msg)
         laplace = state.laplace(bc=self.bc, label="evolution rate", args={"t": t})
         return self.diffusivity * laplace  # type: ignore
 
-    def _make_pde_rhs_numba(  # type: ignore
-        self, state: ScalarField
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    def make_evolution_rate(
+        self, state: ScalarField, backend: BackendBase
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 An example for the state defining the grid and data types
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
 
         Returns:
-            A function with signature `(state_data, t)`, which can be called
-            with an instance of :class:`~numpy.ndarray` of the state data and
-            the time to obtained an instance of :class:`~numpy.ndarray` giving
-            the evolution rate.
+            A function with signature `(state_data, t)`, which can be called with an
+            instance of the state data and time to obtain the associated evolution rate.
         """
-        arr_type = nb.typeof(state.data)
-        signature = arr_type(arr_type, nb.double)
-
         diffusivity_value = self.diffusivity
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
+        laplace = state.grid.make_operator(
+            operator="laplace", bc=self.bc, backend=backend, dtype=state.dtype
+        )
 
-        @jit(signature)
-        def pde_rhs(state_data: np.ndarray, t: float):
-            """Compiled helper function evaluating right hand side."""
+        def pde_rhs(state_data, t=0):
+            """Evaluate right hand side of PDE."""
             return diffusivity_value * laplace(state_data, args={"t": t})
 
-        return pde_rhs  # type: ignore
+        return pde_rhs

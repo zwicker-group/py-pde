@@ -5,3 +5,7 @@
 .sphx-glr-script-out {
   display: none;
 }
+
+.wy-table-responsive table td {
+  white-space: inherit;
+}

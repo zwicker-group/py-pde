@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -20,8 +19,12 @@ from .base import (
 )
 from .cartesian import CartesianGrid
 from .coordinates import CylindricalCoordinates
+from .spherical import parse_radii
 
 if TYPE_CHECKING:
+    from collections.abc import Generator, Sequence
+
+    from ..tools.typing import FloatingArray, NumericArray, Real
     from .spherical import PolarSymGrid
 
 
@@ -29,7 +32,7 @@ class CylindricalSymGrid(GridBase):
     r"""3-dimensional cylindrical grid assuming polar symmetry.
 
     The polar symmetry implies that states only depend on the radial and axial
-    coordinates :math:`r` and :math:`z`, respectively. These are discretized uniformly as
+    coordinates :math:`r` and :math:`z`, respectively. These are discretized uniformly,
 
     .. math::
         :nowrap:
@@ -72,8 +75,8 @@ class CylindricalSymGrid(GridBase):
 
     def __init__(
         self,
-        radius: float | tuple[float, float],
-        bounds_z: tuple[float, float],
+        radius: Real | tuple[Real, Real],
+        bounds_z: tuple[Real, Real],
         shape: int | Sequence[int],
         periodic_z: bool = False,
     ):
@@ -86,8 +89,8 @@ class CylindricalSymGrid(GridBase):
             bounds_z (tuple):
                 The lower and upper bound of the z-axis
             shape (tuple):
-                The number of support points in r and z direction, respectively. The same
-                number is used for both if a single value is given.
+                The number of support points in r and z direction, respectively. The
+                same number is used for both if a single value is given.
             periodic_z (bool):
                 Determines whether the z-axis has periodic boundary conditions.
         """
@@ -98,26 +101,16 @@ class CylindricalSymGrid(GridBase):
         elif len(shape_list) == 2:
             self._shape = tuple(shape_list)  # type: ignore
         else:
-            raise DimensionError("`shape` must be two integers")
+            msg = "`shape` must be two integers"
+            raise DimensionError(msg)
         if len(bounds_z) != 2:
-            raise ValueError(
-                "Lower and upper value of the axial coordinate must be specified"
-            )
+            msg = "Lower and upper value of the axial coordinate must be specified"
+            raise ValueError(msg)
         self._periodic_z: bool = bool(periodic_z)  # might cast from np.bool_
         self._periodic = [False, self._periodic_z]
 
         # radial discretization
-        try:
-            r_inner, r_outer = radius  # type: ignore
-        except TypeError:
-            r_inner, r_outer = 0, float(radius)  # type: ignore
-
-        if r_inner < 0:
-            raise ValueError("Inner radius must be positive")
-        if r_inner >= r_outer:
-            raise ValueError("Outer radius must be larger than inner radius")
-
-        # radial discretization
+        r_inner, r_outer = parse_radii(radius)
         rs, dr = discretize_interval(r_inner, r_outer, self.shape[0])
 
         # axial discretization
@@ -155,7 +148,8 @@ class CylindricalSymGrid(GridBase):
             periodic_z=state_copy.pop("periodic_z"),
         )
         if state_copy:
-            raise ValueError(f"State items {state_copy.keys()} were not used")
+            msg = f"State items {list(state_copy)} were not used"
+            raise ValueError(msg)
         return obj
 
     @classmethod
@@ -183,7 +177,8 @@ class CylindricalSymGrid(GridBase):
         """
         radii, bounds_z = bounds
         if radii[0] != 0:
-            raise NotImplementedError("Cylinders with hollow core are not implemented.")
+            msg = "Cylinders with hollow core are not implemented."
+            raise NotImplementedError(msg)
         return cls(radii[1], bounds_z, shape, periodic_z=periodic[1])
 
     @property
@@ -197,8 +192,7 @@ class CylindricalSymGrid(GridBase):
         r_inner, r_outer = self.axes_bounds[0]
         if r_inner == 0:
             return r_outer
-        else:
-            return r_inner, r_outer
+        return r_inner, r_outer
 
     @property
     def length(self) -> float:
@@ -218,7 +212,7 @@ class CylindricalSymGrid(GridBase):
         avoid_center: bool = False,
         coords: CoordsType = "cartesian",
         rng: np.random.Generator | None = None,
-    ) -> np.ndarray:
+    ) -> FloatingArray:
         """Return a random point within the grid.
 
         Args:
@@ -246,7 +240,8 @@ class CylindricalSymGrid(GridBase):
         z_min = self.axes_bounds[1][0] + boundary_distance
         z_max = self.axes_bounds[1][1] - boundary_distance
         if r_max <= r_min or z_max <= z_min:
-            raise RuntimeError("Random points would be too close to boundary")
+            msg = "Random points would be too close to boundary"
+            raise RuntimeError(msg)
 
         # create random point
         r = np.sqrt(rng.uniform(r_min**2, r_max**2))
@@ -255,23 +250,25 @@ class CylindricalSymGrid(GridBase):
             φ = rng.uniform(0, 2 * np.pi)  # additional random angle
             return self.c._pos_to_cart(np.array([r, φ, z]))
 
-        elif coords == "cell":
+        if coords == "cell":
             return self.transform(np.array([r, z]), "grid", "cell")
 
-        elif coords == "grid":
+        if coords == "grid":
             return np.array([r, z])
 
-        else:
-            raise ValueError(f"Unknown coordinate system `{coords}`")
+        msg = f"Unknown coordinate system `{coords}`"
+        raise ValueError(msg)
 
     def difference_vector(
-        self, p1: np.ndarray, p2: np.ndarray, *, coords: CoordsType = "grid"
-    ) -> np.ndarray:
+        self, p1: FloatingArray, p2: FloatingArray, *, coords: CoordsType = "grid"
+    ) -> FloatingArray:
         return self._difference_vector(
             p1, p2, coords=coords, periodic=self.periodic, axes_bounds=self.axes_bounds
         )
 
-    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
+    def get_line_data(
+        self, data: NumericArray, extract: str = "auto"
+    ) -> dict[str, Any]:
         """Return a line cut for the cylindrical grid.
 
         Args:
@@ -298,7 +295,7 @@ class CylindricalSymGrid(GridBase):
         if extract == "cut_z" or extract == "cut_axial":
             # do a cut along the z axis for r=0
             axis = 1
-            data_y: np.ndarray | tuple[np.ndarray] = data[..., 0, :]
+            data_y: NumericArray | tuple[NumericArray] = data[..., 0, :]
             label_y = "Cut along z"
 
         elif extract == "project_z" or extract == "project_axial":
@@ -314,7 +311,8 @@ class CylindricalSymGrid(GridBase):
             label_y = "Projection onto r"
 
         else:
-            raise ValueError(f"Unknown extraction method {extract}")
+            msg = f"Unknown extraction method {extract}"
+            raise ValueError(msg)
 
         return {
             "data_x": self.axes_coords[axis],
@@ -322,9 +320,10 @@ class CylindricalSymGrid(GridBase):
             "extent_x": self.axes_bounds[axis],
             "label_x": self.axes[axis],
             "label_y": label_y,
+            "periodic_x": self.periodic[axis],
         }
 
-    def get_image_data(self, data: np.ndarray) -> dict[str, Any]:
+    def get_image_data(self, data: NumericArray) -> dict[str, Any]:
         """Return a 2d-image of the data.
 
         Args:
@@ -351,10 +350,12 @@ class CylindricalSymGrid(GridBase):
             "extent": extent,
             "label_x": self.axes[0],
             "label_y": self.axes[1],
+            "periodic_x": self.periodic[0],
+            "periodic_y": self.periodic[1],
         }
 
     def iter_mirror_points(
-        self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
+        self, point: NumericArray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
         """Generates all mirror points corresponding to `point`
 
@@ -379,7 +380,7 @@ class CylindricalSymGrid(GridBase):
             yield point + np.array([self.length, 0, 0])
 
     @cached_property()
-    def cell_volume_data(self) -> tuple[np.ndarray, float]:
+    def cell_volume_data(self) -> tuple[NumericArray, float]:
         """:class:`~numpy.ndarray`: the volumes of all cells."""
         dr, dz = self.discretization
         rs = self.axes_coords[0]
@@ -409,7 +410,8 @@ class CylindricalSymGrid(GridBase):
         elif mode == "full":
             bounds = radius_outer
         else:
-            raise ValueError(f"Unsupported mode `{mode}`")
+            msg = f"Unsupported mode `{mode}`"
+            raise ValueError(msg)
 
         # determine the Cartesian grid
         num = round(bounds / self.discretization[0])
@@ -429,7 +431,8 @@ class CylindricalSymGrid(GridBase):
             :class:`~pde.grids.spherical.PolarSymGrid`: The subgrid
         """
         if len(indices) != 1:
-            raise ValueError("Can only get sub-grid for one axis.")
+            msg = "Can only get sub-grid for one axis."
+            raise ValueError(msg)
 
         if indices[0] == 0:
             # return a radial grid
@@ -437,7 +440,7 @@ class CylindricalSymGrid(GridBase):
 
             return PolarSymGrid(self.radius, self.shape[0])
 
-        elif indices[0] == 1:
+        if indices[0] == 1:
             # return a Cartesian grid along the z-axis
             subgrid = CartesianGrid(
                 bounds=[self.axes_bounds[1]],
@@ -447,5 +450,5 @@ class CylindricalSymGrid(GridBase):
             subgrid.axes = [self.axes[1]]
             return subgrid
 
-        else:
-            raise ValueError(f"Cannot get sub-grid for index {indices[0]}")
+        msg = f"Cannot get sub-grid for index {indices[0]}"
+        raise ValueError(msg)

@@ -10,12 +10,14 @@ from pde.fields.base import FieldBase
 from pde.grids import CylindricalSymGrid, PolarSymGrid, SphericalSymGrid
 from pde.tools.misc import module_available
 
+ALL_BACKENDS = ["numba", "jax-cpu", "jax-cuda", "torch-cpu", "torch-mps", "torch-cuda"]
+
 
 def test_vectors_basic():
     """Test some vector fields."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
-    v1 = VectorField(grid, np.full((2,) + grid.shape, 1))
-    v2 = VectorField(grid, np.full((2,) + grid.shape, 2))
+    v1 = VectorField(grid, np.full((2, *grid.shape), 1))
+    v2 = VectorField(grid, np.full((2, *grid.shape), 2))
     np.testing.assert_allclose(v1.average, (1, 1))
     assert np.allclose(v1.magnitude, np.sqrt(2))
 
@@ -69,9 +71,15 @@ def test_vectors_basic():
             assert s.grid is grid
             np.testing.assert_allclose(s.data, np.full(grid.shape, 4))
 
+    if module_available("jax"):
+        dot_op = v1.make_dot_operator("jax")
+        np.testing.assert_allclose(
+            np.array(dot_op(v1.data, v2.data)), np.full(grid.shape, 4)
+        )
+
     # test options for plotting images
-    if module_available("matplotlib"):
-        v1.plot(method="streamplot", transpose=True)
+    v1.plot(method="streamplot", transpose=True)
+    v1.plot_components()
 
 
 def test_divergence():
@@ -166,6 +174,11 @@ def test_outer_product():
         outer(vf.data, vf.data, out=tf.data)
         np.testing.assert_equal(tf.data, res)
 
+    if module_available("jax"):
+        outer = vf.make_outer_prod_operator("jax")
+        res = np.array([1, 2, 2, 4]).reshape(2, 2, 1, 1)
+        np.testing.assert_equal(np.array(outer(vf.data, vf.data)), res)
+
 
 def test_from_expressions():
     """Test initializing vector fields with expressions."""
@@ -238,6 +251,12 @@ def test_vector_plotting_2d(transpose, rng):
         ref = field.plot(method=method, transpose=transpose)
         field._update_plot(ref)
 
+    # updating a quiver plot with the same data must not change the arrows
+    ref = field.plot(method="quiver", transpose=transpose, max_points=None)
+    arrows = np.array([ref.element.U, ref.element.V])
+    field._update_plot(ref)
+    np.testing.assert_allclose([ref.element.U, ref.element.V], arrows)
+
     # test sub-sampling
     grid = UnitGrid([32, 15])
     field = VectorField.random_uniform(grid, 0.1, 0.9, rng=rng)
@@ -256,7 +275,7 @@ def test_interactive_vector_plotting(rng):
 def test_complex_vectors(rng):
     """Test some complex vector fields."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
-    shape = (2, 2) + grid.shape
+    shape = (2, 2, *grid.shape)
     numbers = rng.random(shape) + rng.random(shape) * 1j
     v1 = VectorField(grid, numbers[0])
     v2 = VectorField(grid, numbers[1])
@@ -284,16 +303,23 @@ def test_complex_vectors(rng):
         np.testing.assert_allclose(dot_op(v1.data, v2.data), res.data)
 
 
-def test_vector_bcs():
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_vector_bcs(backend):
     """Test boundary conditions on vector fields."""
     grid = UnitGrid([3, 3], periodic=False)
     v = VectorField.from_expression(grid, ["x", "cos(y)"])
 
+    # try setting vector boundary condition
     bcs = {"x": {"value": [0, 1]}, "y": {"value": [2, 3]}}
     s1 = v.divergence(bcs, backend="scipy").data
-    div = grid.make_operator("divergence", bcs)
-    s2 = div(v.data)
+    div = grid.make_operator("divergence", bcs, backend=backend)
+    s2 = div(backend.numpy_to_native(v.data))
 
+    # check correct broadcasting of boundary condition
+    bc1 = {"x": {"value": 1}, "y": {"derivative": 0}}
+    s1 = v.laplace(bc1, backend=backend).data
+    bc2 = {"x": {"value": [1, 1]}, "y": {"derivative": [0, 0]}}
+    s2 = v.laplace(bc2, backend=backend).data
     np.testing.assert_allclose(s1, s2)
 
 

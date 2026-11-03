@@ -1,41 +1,53 @@
 """Defines the base class for all grids.
 
+.. autosummary::
+   :nosignatures:
+
+   GridBase
+   DomainError
+   PeriodicityError
+   discretize_interval
+   registered_grids
+   registered_operators
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
 
 import functools
-import inspect
 import itertools
 import json
 import logging
 import math
 import warnings
 from abc import ABCMeta, abstractmethod
-from collections.abc import Generator, Iterator, Sequence
-from typing import TYPE_CHECKING, Any, Callable, Literal, NamedTuple, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
-import numba as nb
 import numpy as np
-from numba.extending import is_jitted, register_jitable
-from numba.extending import overload as nb_overload
-from numpy.typing import ArrayLike
 
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import Number, hybridmethod
-from ..tools.numba import jit
-from ..tools.typing import (
-    CellVolume,
-    FloatNumerical,
-    NumberOrArray,
-    OperatorFactory,
-    OperatorType,
-)
+from ..tools.misc import hybridmethod
 from .coordinates import CoordinatesBase, DimensionError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator, Sequence
+
+    from numpy.typing import ArrayLike, DTypeLike, NDArray
+
+    from ..backends.base import BackendBase, OperatorInfo
+    from ..tools.typing import (
+        CellVolume,
+        DataSetter,
+        FloatingArray,
+        FloatOrArray,
+        Number,
+        NumberOrArray,
+        NumericArray,
+        OperatorType,
+        TNativeArray,
+    )
     from ._mesh import GridMesh
     from .boundaries.axes import BoundariesBase, BoundariesData
 
@@ -47,24 +59,20 @@ PI_43 = 4 / 3 * np.pi
 CoordsType = Literal["cartesian", "grid", "cell"]
 
 
-class OperatorInfo(NamedTuple):
-    """Stores information about an operator."""
-
-    factory: OperatorFactory
-    rank_in: int
-    rank_out: int
-    name: str = ""  # attach a unique name to help caching
-
-
 def _check_shape(shape: int | Sequence[int]) -> tuple[int, ...]:
-    """Checks the consistency of shape tuples."""
+    """Checks the consistency of shape tuples.
+
+    Args:
+        shape (int or list): The shape to check
+    """
     if hasattr(shape, "__iter__"):
         shape_list: Sequence[int] = shape  # type: ignore
     else:
         shape_list = [shape]
 
     if len(shape_list) == 0:
-        raise ValueError("Require at least one dimension")
+        msg = "Require at least one dimension"
+        raise ValueError(msg)
 
     # convert the shape to a tuple of integers
     result = []
@@ -72,13 +80,14 @@ def _check_shape(shape: int | Sequence[int]) -> tuple[int, ...]:
         if dim == int(dim) and dim >= 1:
             result.append(int(dim))
         else:
-            raise ValueError(f"{repr(dim)} is not a valid number of support points")
+            msg = f"{dim!r} is not a valid number of support points"
+            raise ValueError(msg)
     return tuple(result)
 
 
 def discretize_interval(
     x_min: float, x_max: float, num: int
-) -> tuple[np.ndarray, float]:
+) -> tuple[FloatingArray, float]:
     r"""Construct a list of equidistantly placed intervals.
 
     The discretization is defined as
@@ -117,7 +126,6 @@ class GridBase(metaclass=ABCMeta):
 
     # class properties
     _subclasses: dict[str, type[GridBase]] = {}  # all classes inheriting from this
-    _operators: dict[str, OperatorInfo] = {}  # all operators defined for the grid
     _logger: logging.Logger  # logger instance to output information
 
     # properties that are defined in subclasses
@@ -131,7 +139,7 @@ class GridBase(metaclass=ABCMeta):
 
     boundary_names: dict[str, tuple[int, bool]] = {}
     """dict: Names of boundaries to select them conveniently"""
-    cell_volume_data: Sequence[FloatNumerical] | None
+    cell_volume_data: Sequence[FloatOrArray] | None
     """list: Information about the size of discretization cells"""
     coordinate_constraints: list[int] = []
     """list: axes that not described explicitly"""
@@ -142,8 +150,8 @@ class GridBase(metaclass=ABCMeta):
     _axes_symmetric: tuple[int, ...] = ()
     _axes_described: tuple[int, ...]
     _axes_bounds: tuple[tuple[float, float], ...]
-    _axes_coords: tuple[np.ndarray, ...]
-    _discretization: np.ndarray
+    _axes_coords: tuple[FloatingArray, ...]
+    _discretization: FloatingArray
     _periodic: list[bool]
     _shape: tuple[int, ...]
 
@@ -163,7 +171,11 @@ class GridBase(metaclass=ABCMeta):
         self.axes_symmetric = [self.c.axes[i] for i in self._axes_symmetric]
 
     def __init_subclass__(cls, **kwargs) -> None:
-        """Initialize class-level attributes of subclasses."""
+        """Initialize class-level attributes of subclasses.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent class
+        """
         super().__init_subclass__(**kwargs)
 
         # create logger for this specific field class
@@ -172,9 +184,8 @@ class GridBase(metaclass=ABCMeta):
         # register all subclasses to reconstruct them later
         if cls is not GridBase:
             if cls.__name__ in cls._subclasses:
-                warnings.warn(f"Redefining class {cls.__name__}")
+                warnings.warn(f"Redefining class {cls.__name__}", stacklevel=2)
             cls._subclasses[cls.__name__] = cls
-        cls._operators = {}
 
     def __getstate__(self) -> dict[str, Any]:
         state = self.__dict__.copy()
@@ -200,7 +211,8 @@ class GridBase(metaclass=ABCMeta):
         # create the instance of the correct class
         class_name = state.pop("class")
         if class_name == cls.__name__:
-            raise RuntimeError(f"Cannot reconstruct abstract class `{class_name}`")
+            msg = f"Cannot reconstruct abstract class `{class_name}`"
+            raise RuntimeError(msg)
         grid_cls = cls._subclasses[class_name]
         return grid_cls.from_state(state)
 
@@ -229,36 +241,71 @@ class GridBase(metaclass=ABCMeta):
         return self._axes_bounds
 
     @property
-    def axes_coords(self) -> tuple[np.ndarray, ...]:
+    def axes_coords(self) -> tuple[FloatingArray, ...]:
         """tuple: coordinates of the cells for each axis"""
         return self._axes_coords
 
-    def get_axis_index(self, key: int | str, allow_symmetric: bool = True) -> int:
+    def get_axis_index(
+        self, axis_id: int | str, *, allow_symmetric: bool = False
+    ) -> int:
         """Return the index belonging to an axis.
 
         Args:
-            key (int or str):
+            axis_id (int or str):
                 The index or name of an axis
             allow_symmetric (bool):
-                Whether axes with assumed symmetry are included
+                Whether axes with assumed symmetry are included. This particular affects
+                negative `axis_id`
 
         Returns:
-            int: The index of the axis
+            The non-negative index of the axis.
+
+        Raises:
+            ValueError: If `axis_id` is a name that is not present on this grid.
+            IndexError: If `axis_id` is an out-of-range integer index.
         """
-        if isinstance(key, str):
-            # determine key index from name of the axis
-            if allow_symmetric:
-                axes = self.axes + self.axes_symmetric
-            else:
-                axes = self.axes
-            if key in axes:
-                return axes.index(key)
-            else:
-                raise IndexError(f"`{key}` is not in the axes {axes}")
-        elif isinstance(key, int):
-            # assume that it is already an index
-            return key
-        raise IndexError("Index must be an integer or the name of an axes")
+        # determine the list of allowed axes
+        if allow_symmetric:
+            axes = self.axes + self.axes_symmetric
+        else:
+            axes = self.axes
+
+        if isinstance(axis_id, str):
+            # determine index from name of the axis
+            if axis_id in axes:
+                return axes.index(axis_id)
+            msg = f"`{axis_id}` is not in the axes {axes}"
+            raise IndexError(msg)
+        if isinstance(axis_id, (int, np.integer)):
+            # normalize index (particularly when it is negative)
+            return np.lib.array_utils.normalize_axis_index(axis_id, len(axes))
+        msg = f"Index `{axis_id}` must be an integer or the name of an axes {axes}"
+        raise IndexError(msg)
+
+    def get_axis_tuple(
+        self, axes: int | str | Sequence[int | str], *, allow_symmetric: bool = False
+    ) -> tuple[int, ...]:
+        """Convert axis indices or names to normalized axis indices.
+
+        Args:
+            axes:
+                A single axis index or name, or a sequence of them.
+            allow_symmetric (bool):
+                Whether axes with assumed symmetry are included. This particular affects
+                negative `axis_id`
+
+        Returns:
+            The non-negative indices of the axes, in the order given.
+
+        Raises:
+            ValueError: If an axis name is not present on this grid.
+            IndexError: If an integer axis index is out of range.
+        """
+        if isinstance(axes, (int, str)):
+            return (self.get_axis_index(axes, allow_symmetric=allow_symmetric),)
+        return tuple(
+            self.get_axis_index(ax, allow_symmetric=allow_symmetric) for ax in axes
+        )
 
     def _get_boundary_index(self, index: str | tuple[int, bool]) -> tuple[int, bool]:
         """Return the index of a boundary belonging to an axis.
@@ -290,7 +337,8 @@ class GridBase(metaclass=ABCMeta):
                         upper = True
                         break
                 else:
-                    raise KeyError("Unknown boundary {index}")
+                    msg = "Unknown boundary {index}"
+                    raise KeyError(msg)
 
         else:
             # assume the index is directly given as a tuple of an axis and a boolean
@@ -298,7 +346,7 @@ class GridBase(metaclass=ABCMeta):
         return axis, upper
 
     @property
-    def discretization(self) -> np.ndarray:
+    def discretization(self) -> FloatingArray:
         """:class:`numpy.array`: the linear size of a cell along each axis."""
         return self._discretization
 
@@ -322,103 +370,70 @@ class GridBase(metaclass=ABCMeta):
         """tuple: slices to extract valid data from full data"""
         return tuple(slice(1, s + 1) for s in self.shape)
 
-    def _make_get_valid(self) -> Callable[[np.ndarray], np.ndarray]:
+    def _make_get_valid(self) -> Callable[[NumericArray], NumericArray]:
         """Create a function to extract the valid part of a full data array.
 
         Returns:
             callable: Mapping a numpy array containing the full data of the grid to a
                 numpy array of only the valid data
         """
-        num_axes = self.num_axes
+        # deprecated on 2025-12-06
+        from ..backends.numba.utils import make_get_valid
 
-        @jit
-        def get_valid(data_full: np.ndarray) -> np.ndarray:
-            """Return valid part of the data (without ghost cells)
-
-            Args:
-                data_full (:class:`~numpy.ndarray`):
-                    The array with ghost cells from which the valid data is extracted
-            """
-            if num_axes == 1:
-                return data_full[..., 1:-1]
-            elif num_axes == 2:
-                return data_full[..., 1:-1, 1:-1]
-            elif num_axes == 3:
-                return data_full[..., 1:-1, 1:-1, 1:-1]
-            else:
-                raise NotImplementedError
-
-        return get_valid  # type: ignore
-
-    @overload
-    def _make_set_valid(self) -> Callable[[np.ndarray, np.ndarray], None]: ...
+        warnings.warn(
+            "`_make_get_valid` is deprecated. Use "
+            "`pde.backends.numba.utils.make_get_valid` instead.",
+            stacklevel=2,
+        )
+        return make_get_valid(self)
 
     @overload
     def _make_set_valid(
-        self, bcs: BoundariesBase
-    ) -> Callable[[np.ndarray, np.ndarray, dict], None]: ...
+        self, *, rank: int = 0, backend: str | BackendBase = "default"
+    ) -> Callable[[NumericArray, NumericArray], None]: ...
 
-    def _make_set_valid(self, bcs: BoundariesBase | None = None) -> Callable:
+    @overload
+    def _make_set_valid(
+        self,
+        bcs: BoundariesBase,
+        *,
+        rank: int = 0,
+        backend: str | BackendBase = "default",
+    ) -> Callable[[NumericArray, NumericArray, dict], None]: ...
+
+    def _make_set_valid(
+        self,
+        bcs: BoundariesBase | None = None,
+        *,
+        rank: int = 0,
+        backend: str | BackendBase = "default",
+    ) -> DataSetter:
         """Create a function to set the valid part of a full data array.
 
         Args:
             bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 If supplied, the returned function also enforces boundary conditions by
                 setting the ghost cells to the correct values
+            rank (int):
+                Rank of the data represented on the grid.
+            backend (str):
+                The backend to use for making the operator
 
         Returns:
             callable:
-                Takes two numpy arrays, setting the valid data in the first one, using
-                the second array. The arrays need to be allocated already and they need
-                to have the correct dimensions, which are not checked. If `bcs` are
-                given, a third argument is allowed, which sets arguments for the BCs.
+                Function setting valid data in a full array and returning that full
+                array. The returned callable supports both legacy and functional styles:
+                `set_valid(data_full, data_valid, args=None)` and
+                `set_valid(data_valid, out=None, args=None)`. In both styles, `args`
+                are optional runtime values forwarded to backend setters and boundary
+                condition handling.
         """
-        num_axes = self.num_axes
+        from ..backends import get_backend
 
-        @jit
-        def set_valid(data_full: np.ndarray, data_valid: np.ndarray) -> None:
-            """Set valid part of the data (without ghost cells)
-
-            Args:
-                data_full (:class:`~numpy.ndarray`):
-                    The full array with ghost cells that the data is written to
-                data_valid (:class:`~numpy.ndarray`):
-                    The valid data that is written to `data_full`
-            """
-            if num_axes == 1:
-                data_full[..., 1:-1] = data_valid
-            elif num_axes == 2:
-                data_full[..., 1:-1, 1:-1] = data_valid
-            elif num_axes == 3:
-                data_full[..., 1:-1, 1:-1, 1:-1] = data_valid
-            else:
-                raise NotImplementedError
-
+        backend = get_backend(backend)
         if bcs is None:
-            # just set the valid elements and leave ghost cells with arbitrary data_valids
-            return set_valid  # type: ignore
-        else:
-            # set the valid elements and the ghost cells according to boundary condition
-            set_bcs = bcs.make_ghost_cell_setter()
-
-            @jit
-            def set_valid_bcs(
-                data_full: np.ndarray, data_valid: np.ndarray, args=None
-            ) -> None:
-                """Set valid part of the data and the ghost cells using BCs.
-
-                Args:
-                    data_full (:class:`~numpy.ndarray`):
-                        The full array with ghost cells that the data is written to
-                    data_valid (:class:`~numpy.ndarray`):
-                        The valid data that is written to `data_full`
-                    args (dict):
-                        Extra arguments affecting the boundary conditions
-                """
-                set_valid(data_full, data_valid)
-                set_bcs(data_full, args=args)
-
-            return set_valid_bcs  # type: ignore
+            return backend.make_valid_data_setter(self, rank=rank)
+        return backend.make_full_data_setter(bcs)
 
     @property
     @abstractmethod
@@ -443,6 +458,9 @@ class GridBase(metaclass=ABCMeta):
 
         This function is for instance called when
         a grid instance appears in another object that is copied using `copy.deepcopy`
+
+        Args:
+            memo (dict): Dictionary of already copied objects
         """
         # this implementation assumes that a simple call to copy is sufficient
         result = self.copy()
@@ -477,9 +495,9 @@ class GridBase(metaclass=ABCMeta):
     def compatible_with(self, other: GridBase) -> bool:
         """Tests whether this grid is compatible with other grids.
 
-        Grids are compatible when they cover the same area with the same
-        discretization. The difference to equality is that compatible grids do
-        not need to have the same periodicity in their boundaries.
+        Grids are compatible when they cover the same area with the same discretization.
+        The difference to equality is that compatible grids do not need to have the same
+        periodicity in their boundaries.
 
         Args:
             other (:class:`~pde.grids.base.GridBase`):
@@ -505,25 +523,35 @@ class GridBase(metaclass=ABCMeta):
             ValueError: if grids are not compatible
         """
         if not self.compatible_with(other):
-            raise ValueError(f"Grids {self} and {other} are incompatible")
+            msg = f"Grids {self} and {other} are incompatible"
+            raise ValueError(msg)
 
     @property
     def numba_type(self) -> str:
         """str: represents type of the grid data in numba signatures"""
-        return "f8[" + ", ".join([":"] * self.num_axes) + "]"
+        # deprecated since 2025-11-19
+        warnings.warn(
+            "`numba_type` property is deprecated. Use the method `get_grid_numba_type` "
+            "in the numba backend instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        from ..backends.numba.grids import get_grid_numba_type
+
+        return get_grid_numba_type(self)
 
     @cached_property()
-    def coordinate_arrays(self) -> tuple[np.ndarray, ...]:
+    def coordinate_arrays(self) -> tuple[FloatingArray, ...]:
         """tuple: for each axes: coordinate values for all cells"""
         return tuple(np.meshgrid(*self.axes_coords, indexing="ij"))
 
     @cached_property()
-    def cell_coords(self) -> np.ndarray:
+    def cell_coords(self) -> FloatingArray:
         """:class:`~numpy.ndarray`: coordinate values for all axes of each cell."""
         return np.moveaxis(self.coordinate_arrays, 0, -1)
 
     @cached_property()
-    def cell_volumes(self) -> np.ndarray:
+    def cell_volumes(self) -> FloatingArray:
         """:class:`~numpy.ndarray`: volume of each cell."""
         if self.cell_volume_data is None:
             # use the self.c to calculate cell volumes
@@ -532,28 +560,26 @@ class GridBase(metaclass=ABCMeta):
             x_high = self._coords_full(self.cell_coords + d2, value="max")
             return self.c.cell_volume(x_low, x_high)
 
-        else:
-            # use cell_volume_data
-            vols = functools.reduce(np.outer, self.cell_volume_data)
-            return np.broadcast_to(vols, self.shape)
+        # use cell_volume_data
+        vols = functools.reduce(np.outer, self.cell_volume_data)
+        return np.broadcast_to(vols, self.shape)
 
     @cached_property()
     def uniform_cell_volumes(self) -> bool:
         """bool: returns True if all cell volumes are the same"""
         if self.cell_volume_data is None:
             return False
-        else:
-            return all(np.asarray(vols).ndim == 0 for vols in self.cell_volume_data)
+        return all(np.asarray(vols).ndim == 0 for vols in self.cell_volume_data)
 
     def _difference_vector(
         self,
-        p1: np.ndarray,
-        p2: np.ndarray,
+        p1: FloatingArray,
+        p2: FloatingArray,
         *,
         coords: CoordsType,
         periodic: Sequence[bool],
         axes_bounds: tuple[tuple[float, float], ...] | None,
-    ) -> np.ndarray:
+    ) -> FloatingArray:
         """Return Cartesian vector(s) pointing from p1 to p2.
 
         In case of periodic boundary conditions, the shortest vector is returned.
@@ -586,11 +612,11 @@ class GridBase(metaclass=ABCMeta):
             if per:
                 size = axes_bounds[i][1] - axes_bounds[i][0]
                 diff[..., i] = (diff[..., i] + size / 2) % size - size / 2
-        return diff  # type: ignore
+        return diff
 
     def difference_vector(
-        self, p1: np.ndarray, p2: np.ndarray, *, coords: CoordsType = "grid"
-    ) -> np.ndarray:
+        self, p1: FloatingArray, p2: FloatingArray, *, coords: CoordsType = "grid"
+    ) -> FloatingArray:
         """Return Cartesian vector(s) pointing from p1 to p2.
 
         In case of periodic boundary conditions, the shortest vector is returned.
@@ -601,8 +627,9 @@ class GridBase(metaclass=ABCMeta):
             p2 (:class:`~numpy.ndarray`):
                 Second point(s)
             coords (str):
-                The coordinate system in which the points are specified. Valid values are
-                `cartesian`, `cell`, and `grid`; see :meth:`~pde.grids.base.GridBase.transform`.
+                Coordinate system in which points are specified. Valid values are
+                `cartesian`, `cell`, and `grid`;
+                see :meth:`~pde.grids.base.GridBase.transform`.
 
         Returns:
             :class:`~numpy.ndarray`: The difference vectors between the points with
@@ -613,7 +640,7 @@ class GridBase(metaclass=ABCMeta):
         )
 
     def distance(
-        self, p1: np.ndarray, p2: np.ndarray, *, coords: CoordsType = "grid"
+        self, p1: FloatingArray, p2: FloatingArray, *, coords: CoordsType = "grid"
     ) -> float:
         """Calculate the distance between two points given in real coordinates.
 
@@ -625,8 +652,9 @@ class GridBase(metaclass=ABCMeta):
             p2 (:class:`~numpy.ndarray`):
                 Second position
             coords (str):
-                The coordinate system in which the points are specified. Valid values are
-                `cartesian`, `cell`, and `grid`; see :meth:`~pde.grids.base.GridBase.transform`.
+                Coordinate system in which points are specified. Valid values are
+                `cartesian`, `cell`, and `grid`;
+                see :meth:`~pde.grids.base.GridBase.transform`.
 
         Returns:
             float: Distance between the two positions
@@ -646,7 +674,7 @@ class GridBase(metaclass=ABCMeta):
 
     def _boundary_coordinates(
         self, axis: int, upper: bool, *, offset: float = 0
-    ) -> np.ndarray:
+    ) -> FloatingArray:
         """Get coordinates of points on the boundary.
 
         Args:
@@ -676,8 +704,8 @@ class GridBase(metaclass=ABCMeta):
 
         # assemble into array
         shape_bndry = tuple(self.shape[i] for i in range(self.num_axes) if i != axis)
-        shape = shape_bndry + (self.num_axes,)
-        return np.stack(points, -1).reshape(shape)  # type: ignore
+        shape = (*shape_bndry, self.num_axes)
+        return np.stack(points, -1).reshape(shape)
 
     @property
     def volume(self) -> float:
@@ -685,7 +713,7 @@ class GridBase(metaclass=ABCMeta):
         # this property should be overwritten when the volume can be calculated directly
         return self.cell_volumes.sum()  # type: ignore
 
-    def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:
+    def point_to_cartesian(self, points: FloatingArray) -> FloatingArray:
         """Convert coordinates of a point in grid coordinates to Cartesian coordinates.
 
         Args:
@@ -697,7 +725,7 @@ class GridBase(metaclass=ABCMeta):
         """
         return self.c.pos_to_cart(self._coords_full(points))
 
-    def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
+    def point_from_cartesian(self, points: FloatingArray) -> FloatingArray:
         """Convert points given in Cartesian coordinates to grid coordinates.
 
         Args:
@@ -710,8 +738,8 @@ class GridBase(metaclass=ABCMeta):
         return self._coords_symmetric(self.c.pos_from_cart(points))
 
     def _vector_to_cartesian(
-        self, points: ArrayLike, components: ArrayLike
-    ) -> np.ndarray:
+        self, points: FloatingArray, components: ArrayLike
+    ) -> NumericArray:
         """Convert the vectors at given points into a Cartesian basis.
 
         Args:
@@ -729,23 +757,26 @@ class GridBase(metaclass=ABCMeta):
         components = np.asanyarray(components)
         # check input shapes
         if points.shape[-1] != self.dim:
-            raise DimensionError(f"`points` must have {self.dim} coordinates")
+            msg = f"`points` must have {self.dim} coordinates"
+            raise DimensionError(msg)
         shape = points.shape[:-1]  # shape of array describing the different points
-        vec_shape = (self.dim,) + shape
+        vec_shape = (self.dim, *shape)
         if components.shape != vec_shape:
-            raise DimensionError(f"`components` must have shape {vec_shape}")
+            msg = f"`components` must have shape {vec_shape}"
+            raise DimensionError(msg)
 
         # convert the basis of the vectors to Cartesian
         rot_mat = self.c.basis_rotation(points)
-        assert (
-            rot_mat.shape == (self.dim, self.dim)
-            or rot_mat.shape == (self.dim, self.dim) + shape
+        assert rot_mat.shape == (self.dim, self.dim) or rot_mat.shape == (
+            self.dim,
+            self.dim,
+            *shape,
         )
         return np.einsum("j...,ji...->i...", components, rot_mat)  # type: ignore
 
     def normalize_point(
-        self, point: np.ndarray, *, reflect: bool = False
-    ) -> np.ndarray:
+        self, point: FloatingArray, *, reflect: bool = False
+    ) -> FloatingArray:
         """Normalize grid coordinates by applying periodic boundary conditions.
 
         Here, points are assumed to be specified by the physical values along the
@@ -773,14 +804,14 @@ class GridBase(metaclass=ABCMeta):
 
         if point.ndim == 0:
             if self.num_axes > 1:
-                raise DimensionError(
-                    f"Point {point} is not of dimension {self.num_axes}"
-                )
+                msg = f"Point {point} is not of dimension {self.num_axes}"
+                raise DimensionError(msg)
         elif point.shape[-1] != self.num_axes:
-            raise DimensionError(
+            msg = (
                 f"Array of shape {point.shape} does not describe points of dimension "
                 f"{self.num_axes}"
             )
+            raise DimensionError(msg)
 
         # normalize the coordinates for the periodic dimensions
         bounds = np.array(self.axes_bounds)
@@ -807,7 +838,7 @@ class GridBase(metaclass=ABCMeta):
 
         return point
 
-    def _coords_symmetric(self, points: np.ndarray) -> np.ndarray:
+    def _coords_symmetric(self, points: FloatingArray) -> FloatingArray:
         """Return only non-symmetric point coordinates.
 
         Args:
@@ -819,18 +850,19 @@ class GridBase(metaclass=ABCMeta):
             are not along symmetry axes of the grid.
         """
         if points.shape[-1] != self.dim:
-            raise DimensionError(f"Points need to be specified as {self.c.axes}")
+            msg = f"Points need to be specified as {self.c.axes}"
+            raise DimensionError(msg)
         return points[..., self._axes_described]
 
     def _coords_full(
-        self, points: np.ndarray, *, value: Literal["min", "max"] | float = 0.0
-    ) -> np.ndarray:
+        self, points: FloatingArray, *, value: Literal["min", "max"] | float = 0.0
+    ) -> FloatingArray:
         """Specify point coordinates along symmetric axes on grids.
 
         Args:
             points (:class:`~numpy.ndarray`):
                 The points specified with `num_axes` coordinates, not specifying
-                cooridnates along symmetry axes of the grid.
+                coordinates along symmetry axes of the grid.
             value (str or float):
                 Value of the points along symmetry axes. The special values `min` and
                 `max` denote the minimal and maximal values along the respective
@@ -841,27 +873,26 @@ class GridBase(metaclass=ABCMeta):
         """
         if self.num_axes == self.dim:
             return points
-        else:
-            if points.shape[-1] != self.num_axes:
-                raise DimensionError(f"Points need to be specified as {self.axes}")
-            res = np.empty(points.shape[:-1] + (self.dim,), dtype=points.dtype)
-            j = 0
-            for i in range(self.dim):
-                if i in self._axes_described:
-                    res[..., i] = points[..., j]
-                    j += 1
-                else:
-                    if value == "min":
-                        res[..., i] = self.c.coordinate_limits[i][0]
-                    elif value == "max":
-                        res[..., i] = self.c.coordinate_limits[i][1]
-                    else:
-                        res[..., i] = value
-            return res
+        if points.shape[-1] != self.num_axes:
+            msg = f"Points need to be specified as {self.axes}"
+            raise DimensionError(msg)
+        res = np.empty((*points.shape[:-1], self.dim), dtype=points.dtype)
+        j = 0
+        for i in range(self.dim):
+            if i in self._axes_described:
+                res[..., i] = points[..., j]
+                j += 1
+            elif value == "min":
+                res[..., i] = self.c.coordinate_limits[i][0]
+            elif value == "max":
+                res[..., i] = self.c.coordinate_limits[i][1]
+            else:
+                res[..., i] = value
+        return res
 
     def transform(
-        self, coordinates: np.ndarray, source: CoordsType, target: CoordsType
-    ) -> np.ndarray:
+        self, coordinates: FloatingArray, source: CoordsType, target: CoordsType
+    ) -> FloatingArray:
         """Converts coordinates from one coordinate system to another.
 
         Supported coordinate systems include the following:
@@ -903,7 +934,8 @@ class GridBase(metaclass=ABCMeta):
             # Cartesian coordinates given
             cartesian = np.atleast_1d(coordinates)
             if cartesian.shape[-1] != self.dim:
-                raise DimensionError(f"Require {self.dim} cartesian coordinates")
+                msg = f"Require {self.dim} cartesian coordinates"
+                raise DimensionError(msg)
 
             if target == "cartesian":
                 return coordinates
@@ -921,7 +953,8 @@ class GridBase(metaclass=ABCMeta):
             # Cell coordinates given
             cells = np.atleast_1d(coordinates)
             if cells.shape[-1] != self.num_axes:
-                raise DimensionError(f"Require {self.num_axes} cell coordinates")
+                msg = f"Require {self.num_axes} cell coordinates"
+                raise DimensionError(msg)
 
             if target == "cell":
                 return coordinates
@@ -932,38 +965,41 @@ class GridBase(metaclass=ABCMeta):
 
             if target == "grid":
                 return grid_coords
-            elif target == "cartesian":
+            if target == "cartesian":
                 return self.point_to_cartesian(grid_coords)
 
         elif source == "grid":
             # Grid coordinates given
             grid_coords = np.atleast_1d(coordinates)
             if grid_coords.shape[-1] != self.num_axes:
-                raise DimensionError(f"Require {self.num_axes} grid coordinates")
+                msg = f"Require {self.num_axes} grid coordinates"
+                raise DimensionError(msg)
 
             if target == "cartesian":
                 return self.point_to_cartesian(grid_coords)
-            elif target == "cell":
+            if target == "cell":
                 c_min = np.array(self.axes_bounds)[:, 0]
                 return (grid_coords - c_min) / self.discretization  # type: ignore
-            elif target == "grid":
+            if target == "grid":
                 return grid_coords
 
         else:
-            raise ValueError(f"Unknown source coordinates `{source}`")
-        raise ValueError(f"Unknown target coordinates `{target}`")
+            msg = f"Unknown source coordinates `{source}`"
+            raise ValueError(msg)
+        msg = f"Unknown target coordinates `{target}`"
+        raise ValueError(msg)
 
     def contains_point(
         self,
-        points: np.ndarray,
+        points: FloatingArray,
         *,
         coords: Literal["cartesian", "cell", "grid"] = "cartesian",
-    ) -> np.ndarray:
+    ) -> NDArray[np.bool]:
         """Check whether the point is contained in the grid.
 
         Args:
-            point (:class:`~numpy.ndarray`):
-                Coordinates of the point
+            points (:class:`~numpy.ndarray`):
+                Coordinates of the point(s)
             coords (str):
                 The coordinate system in which the points are given
 
@@ -972,11 +1008,11 @@ class GridBase(metaclass=ABCMeta):
             the grid
         """
         cell_coords = self.transform(points, source=coords, target="cell")
-        return np.all((cell_coords >= 0) & (cell_coords <= self.shape), axis=-1)  # type: ignore
+        return np.all((cell_coords >= 0) & (cell_coords <= self.shape), axis=-1)
 
     def iter_mirror_points(
-        self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
-    ) -> Generator:
+        self, point: FloatingArray, with_self: bool = False, only_periodic: bool = True
+    ) -> Iterator[FloatingArray]:
         """Generates all mirror points corresponding to `point`
 
         Args:
@@ -1013,7 +1049,8 @@ class GridBase(metaclass=ABCMeta):
 
         Raises:
             ValueError:
-                If the data given in `bc` cannot be read
+                If the data given in `bc` cannot be read. Boundary-condition parsing
+                errors are raised as :class:`BCDataError`.
             PeriodicityError:
                 If the boundaries are not compatible with the periodic axes of the grid.
         """
@@ -1032,7 +1069,9 @@ class GridBase(metaclass=ABCMeta):
 
         return bcs
 
-    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
+    def get_line_data(
+        self, data: NumericArray, extract: str = "auto"
+    ) -> dict[str, Any]:
         """Return a line cut through the grid.
 
         Args:
@@ -1048,7 +1087,7 @@ class GridBase(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def get_image_data(self, data: np.ndarray) -> dict[str, Any]:
+    def get_image_data(self, data: NumericArray) -> dict[str, Any]:
         """Return a 2d-image of the data.
 
         Args:
@@ -1060,7 +1099,7 @@ class GridBase(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def get_vector_data(self, data: np.ndarray, **kwargs) -> dict[str, Any]:
+    def get_vector_data(self, data: NumericArray, **kwargs) -> dict[str, Any]:
         r"""Return data to visualize vector field.
 
         Args:
@@ -1074,12 +1113,14 @@ class GridBase(metaclass=ABCMeta):
             dict: A dictionary with information about the data convenient for plotting.
         """
         if self.dim != 2:
-            raise DimensionError("Can only plot generic vector fields for dim=2")
-        if data.shape != (self.dim,) + self.shape:
-            raise ValueError(
+            msg = "Can only plot generic vector fields for dim=2"
+            raise DimensionError(msg)
+        if data.shape != (self.dim, *self.shape):
+            msg = (
                 f"Shape {data.shape} of the data array is not compatible with grid "
                 f"shape {self.shape}"
             )
+            raise ValueError(msg)
 
         # obtain the correctly interpolated components of the vector in grid coordinates
         img_coord0 = self.get_image_data(data[0], **kwargs)
@@ -1102,7 +1143,7 @@ class GridBase(metaclass=ABCMeta):
         boundary_distance: float = 0,
         coords: CoordsType = "cartesian",
         rng: np.random.Generator | None = None,
-    ) -> np.ndarray:
+    ) -> FloatingArray:
         """Return a random point within the grid.
 
         Args:
@@ -1120,159 +1161,43 @@ class GridBase(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    @classmethod
-    def register_operator(
-        cls,
-        name: str,
-        factory_func: OperatorFactory | None = None,
-        rank_in: int = 0,
-        rank_out: int = 0,
-    ):
-        """Register an operator for this grid.
-
-        Example:
-            The method can either be used directly:
-
-            .. code-block:: python
-
-                GridClass.register_operator("operator", make_operator)
-
-            or as a decorator for the factory function:
-
-            .. code-block:: python
-
-                @GridClass.register_operator("operator")
-                def make_operator(grid: GridBase): ...
-
-        Args:
-            name (str):
-                The name of the operator to register
-            factory_func (callable):
-                A function with signature ``(grid: GridBase, **kwargs)``, which takes
-                a grid object and optional keyword arguments and returns an
-                implementation of the given operator. This implementation is a function
-                that takes a :class:`~numpy.ndarray` of discretized values as arguments
-                and returns the resulting discretized data in a :class:`~numpy.ndarray`
-                after applying the operator.
-            rank_in (int):
-                The rank of the input field for the operator
-            rank_out (int):
-                The rank of the field that is returned by the operator
-        """
-
-        def register_operator(factor_func_arg: OperatorFactory):
-            """Helper function to register the operator."""
-            cls._operators[name] = OperatorInfo(
-                factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out, name=name
-            )
-            return factor_func_arg
-
-        if factory_func is None:
-            # method is used as a decorator, so return the helper function
-            return register_operator
-        else:
-            # method is used directly
-            register_operator(factory_func)
-            return None
-
     @hybridmethod  # type: ignore
     @property
     def operators(cls) -> set[str]:
         """set: all operators defined for this class"""
-        result = set()
-        # add all customly defined operators
-        classes = inspect.getmro(cls)[:-1]  # type: ignore
-        for anycls in classes:
-            result |= set(anycls._operators.keys())  # type: ignore
-        if hasattr(cls, "axes"):
-            for ax in cls.axes:
-                result |= {
-                    f"d_d{ax}",
-                    f"d_d{ax}_forward",
-                    f"d_d{ax}_backward",
-                    f"d2_d{ax}2",
-                }
-        return result
+        from ..backends import backend_registry
 
-    @operators.instancemethod
+        # get all operators registered on the class
+        operators = set()
+        for backend in backend_registry.values():
+            operators |= backend.get_registered_operators(cls)
+        return operators
+
+    @operators.instancemethod  # type: ignore
     @property
     def operators(self) -> set[str]:
         """set: all operators defined for this instance"""
+        from ..backends import backend_registry
+
         # get all operators registered on the class
-        result = self.__class__.operators
-        if not hasattr(self.__class__, "axes"):
-            # add operators calculating derivate along a coordinate for the case where
-            # the axes argument is only defined on instances
-            for ax in self.axes:
-                result |= {f"d_d{ax}", f"d2_d{ax}2"}
-        return result
-
-    def _get_operator_info(self, operator: str | OperatorInfo) -> OperatorInfo:
-        """Return the operator defined on this grid.
-
-        Args:
-            operator (str):
-                Identifier for the operator. Some examples are 'laplace', 'gradient', or
-                'divergence'. The registered operators for this grid can be obtained
-                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
-
-        Returns:
-            :class:`~pde.grids.base.OperatorInfo`: information for the operator
-        """
-        if isinstance(operator, OperatorInfo):
-            return operator
-        assert isinstance(operator, str)
-
-        # look for defined operators on all parent classes (except `object`)
-        classes = inspect.getmro(self.__class__)[:-1]
-        for cls in classes:
-            if operator in cls._operators:  # type: ignore
-                return cls._operators[operator]  # type: ignore
-
-        # deal with some special patterns that are often used
-        if operator.startswith("d_d"):
-            # create a special operator that takes a first derivative along one axis
-            from .operators.common import make_derivative
-
-            # determine axis to which operator is applied (and the method to use)
-            axis_name = operator[len("d_d") :]
-            for direction in ["central", "forward", "backward"]:
-                if axis_name.endswith("_" + direction):
-                    method = direction
-                    axis_name = axis_name[: -len("_" + direction)]
-                    break
-            else:
-                method = "central"
-
-            axis_id = self.axes.index(axis_name)
-            factory = functools.partial(make_derivative, axis=axis_id, method=method)  # type: ignore
-            return OperatorInfo(factory, rank_in=0, rank_out=0, name=operator)
-
-        elif operator.startswith("d2_d") and operator.endswith("2"):
-            # create a special operator that takes a second derivative along one axis
-            from .operators.common import make_derivative2
-
-            axis_id = self.axes.index(operator[len("d2_d") : -1])
-            factory = functools.partial(make_derivative2, axis=axis_id)
-            return OperatorInfo(factory, rank_in=0, rank_out=0, name=operator)
-
-        # throw an informative error since operator was not found
-        op_list = ", ".join(sorted(self.operators))
-        raise ValueError(
-            f"'{operator}' is not one of the defined operators ({op_list}). Custom "
-            "operators can be added using the `register_operator` method."
-        )
+        operators = set()
+        for backend in backend_registry.values():
+            operators |= backend.get_registered_operators(self)
+        return operators
 
     @cached_method()
     def make_operator_no_bc(
         self,
         operator: str | OperatorInfo,
+        *,
+        backend: str | BackendBase = "default",
+        dtype: DTypeLike | None = None,
         **kwargs,
     ) -> OperatorType:
         """Return a compiled function applying an operator without boundary conditions.
 
-        A function that takes the discretized full data as an input and an array of
-        valid data points to which the result of applying the operator is written.
+        The returned function takes the discretized full data as an input and returns
+        an array of valid data points.
 
         Note:
             The resulting function does not check whether the ghost cells of the input
@@ -1286,21 +1211,34 @@ class GridBase(metaclass=ABCMeta):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            backend (str):
+                The backend to use for making the operator
+            dtype (numpy dtype):
+                The data type of the field.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: np.ndarray, out: np.ndarray), so they `out` array need to be
-            supplied explicitly.
+            signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
-        return self._get_operator_info(operator).factory(self, **kwargs)
+        from ..backends import get_backend
 
-    @cached_method()
+        # determine the operator for the chosen backend
+        return get_backend(backend).make_operator_no_bc(
+            self, operator=operator, dtype=dtype, **kwargs
+        )
+
     @fill_in_docstring
     def make_operator(
-        self, operator: str | OperatorInfo, bc: BoundariesData, **kwargs
-    ) -> Callable[..., np.ndarray]:
+        self,
+        operator: str | OperatorInfo,
+        bc: BoundariesData,
+        *,
+        backend: str | BackendBase[TNativeArray] = "default",
+        dtype: DTypeLike | None = None,
+        **kwargs,
+    ) -> OperatorType:
         """Return a compiled function applying an operator with boundary conditions.
 
         Args:
@@ -1311,6 +1249,10 @@ class GridBase(metaclass=ABCMeta):
             bc (str or list or tuple or dict):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
+            backend (str):
+                The backend to use for making the operator
+            dtype (numpy dtype):
+                The data type of the field.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -1324,136 +1266,34 @@ class GridBase(metaclass=ABCMeta):
 
         The function also accepts an optional parameter `args`, which is forwarded to
         `set_ghost_cells`. This allows setting boundary conditions based on external
-        parameters, like time. Note that since the returned operator will always be
-        compiled by Numba, the arguments need to be compatible with Numba. The
-        following example shows how to pass the current time `t`:
+        parameters, like time. Note that the `numba` backend requires a special calling
+        convention to make it compatible with Numba. The following example shows how to
+        pass the current time `t`:
 
         .. code-block:: python
 
-            from pde.tools.numba import numba_dict
+            from pde.backends.numba.utils import numba_dict
 
-            operator = grid.make_operator("laplace", bc={"value_expression": "t"})
+            operator = grid.make_operator(
+                "laplace", bc={"value_expression": "t"}, backend="numba"
+            )
             operator(field.data, args=numba_dict(t=t))
 
         Returns:
             callable: the function that applies the operator. This function has the
-            signature (arr: np.ndarray, out: np.ndarray = None, args=None).
+            signature (arr: NumericArray, out: NumericArray = None, args=None).
         """
-        backend = kwargs.get("backend", "numba")  # numba is the default backend
+        from ..backends import get_backend
 
-        # instantiate the operator
-        operator = self._get_operator_info(operator)
-        operator_raw = operator.factory(self, **kwargs)
+        # determine the operator for the chosen backend
+        backend_impl = get_backend(backend)
+        operator_info = backend_impl.get_operator_info(self, operator)
 
         # set the boundary conditions before applying this operator
-        bcs = self.get_boundary_conditions(bc, rank=operator.rank_in)
-
-        # calculate shapes of the full data
-        shape_in_valid = (self.dim,) * operator.rank_in + self.shape
-        shape_in_full = (self.dim,) * operator.rank_in + self._shape_full
-        shape_out = (self.dim,) * operator.rank_out + self.shape
-
-        # define numpy version of the operator
-        def apply_op(
-            arr: np.ndarray, out: np.ndarray | None = None, args=None
-        ) -> np.ndarray:
-            """Set boundary conditions and apply operator."""
-            # check input array
-            if arr.shape != shape_in_valid:
-                raise ValueError(f"Incompatible shapes {arr.shape} != {shape_in_valid}")
-
-            # ensure `out` array is allocated and has the right shape
-            if out is None:
-                out = np.empty(shape_out, dtype=arr.dtype)
-            elif out.shape != shape_out:
-                raise ValueError(f"Incompatible shapes {out.shape} != {shape_out}")
-
-            # prepare input with boundary conditions
-            arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-            arr_full[(...,) + self._idx_valid] = arr
-            bcs.set_ghost_cells(arr_full, args=args)
-
-            # apply operator
-            operator_raw(arr_full, out)
-
-            # return valid part of the output
-            return out
-
-        if backend in {"numpy", "scipy"}:
-            # return the bare operator without the numba-overloaded version
-            return apply_op
-
-        elif backend.startswith("numba"):
-            # overload `apply_op` with numba-compiled version
-            # set_ghost_cells = bcs.make_ghost_cell_setter()
-            set_valid_w_bc = self._make_set_valid(bcs=bcs)
-
-            if not is_jitted(operator_raw):
-                operator_raw = jit(operator_raw)
-
-            @nb_overload(apply_op, inline="always")
-            def apply_op_ol(
-                arr: np.ndarray, out: np.ndarray | None = None, args=None
-            ) -> np.ndarray:
-                """Make numba implementation of the operator."""
-                if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                    # need to allocate memory for `out`
-
-                    def apply_op_impl(
-                        arr: np.ndarray, out: np.ndarray | None = None, args=None
-                    ) -> np.ndarray:
-                        """Allocates `out` and applies operator to the data."""
-                        if arr.shape != shape_in_valid:
-                            raise ValueError(f"Incompatible shapes of input array")
-
-                        out = np.empty(shape_out, dtype=arr.dtype)
-                        # prepare input with boundary conditions
-                        arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                        set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
-
-                        # apply operator
-                        operator_raw(arr_full, out)
-
-                        # return valid part of the output
-                        return out
-
-                else:
-                    # reuse provided `out` array
-
-                    def apply_op_impl(
-                        arr: np.ndarray, out: np.ndarray | None = None, args=None
-                    ) -> np.ndarray:
-                        """Applies operator to the data wihtout allocating out."""
-                        if arr.shape != shape_in_valid:
-                            raise ValueError(f"Incompatible shapes of input array")
-                        if out.shape != shape_out:  # type: ignore
-                            raise ValueError(f"Incompatible shapes of output array")
-
-                        # prepare input with boundary conditions
-                        arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                        set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
-
-                        # apply operator
-                        operator_raw(arr_full, out)  # type: ignore
-
-                        # return valid part of the output
-                        return out  # type: ignore
-
-                return apply_op_impl  # type: ignore
-
-            @jit
-            def apply_op_compiled(
-                arr: np.ndarray, out: np.ndarray | None = None, args=None
-            ) -> np.ndarray:
-                """Set boundary conditions and apply operator."""
-                return apply_op(arr, out, args)
-
-            # return the compiled versions of the operator
-            return apply_op_compiled  # type: ignore
-
-        else:
-            # simply return the operator if the backend was `numba` or `scipy`
-            raise NotImplementedError(f"Undefined backend '{backend}'")
+        bcs = self.get_boundary_conditions(bc, rank=operator_info.rank_in)
+        return backend_impl.make_operator(
+            self, operator_info, bcs=bcs, dtype=dtype, **kwargs
+        )
 
     def slice(self, indices: Sequence[int]) -> GridBase:
         """Return a subgrid of only the specified axes.
@@ -1465,15 +1305,13 @@ class GridBase(metaclass=ABCMeta):
         Returns:
             :class:`GridBase`: The subgrid
         """
-        raise NotImplementedError(
-            f"Slicing is not implemented for class {self.__class__.__name__}"
-        )
+        msg = f"Slicing is not implemented for class {self.__class__.__name__}"
+        raise NotImplementedError(msg)
 
     def plot(self) -> None:
         """Visualize the grid."""
-        raise NotImplementedError(
-            f"Plotting is not implemented for class {self.__class__.__name__}"
-        )
+        msg = f"Plotting is not implemented for class {self.__class__.__name__}"
+        raise NotImplementedError(msg)
 
     @property
     def typical_discretization(self) -> float:
@@ -1481,7 +1319,7 @@ class GridBase(metaclass=ABCMeta):
         return np.mean(self.discretization)  # type: ignore
 
     def integrate(
-        self, data: NumberOrArray, axes: int | Sequence[int] | None = None
+        self, data: NumberOrArray, axes: int | str | Sequence[int | str] | None = None
     ) -> NumberOrArray:
         """Integrates the discretized data over the grid.
 
@@ -1489,35 +1327,37 @@ class GridBase(metaclass=ABCMeta):
             data (:class:`~numpy.ndarray`):
                 The values at the support points of the grid that need to be
                 integrated.
-            axes (list of int, optional):
+            axes (list of int or str, optional):
                 The axes along which the integral is performed. If omitted, all
                 axes are integrated over.
 
         Returns:
             :class:`~numpy.ndarray`: The values integrated over the entire grid
         """
-        # determine the volumes of the individual cells
-        if self.cell_volume_data is None:
-            if axes is None:
-                cell_volumes = self.cell_volumes
-            else:
-                raise NotImplementedError
+        # determine the axes to integrate over
+        if axes is None:
+            axes = tuple(range(self.num_axes))  # default is all axes
         else:
-            if axes is None:
-                volume_list = self.cell_volume_data
-            else:
-                # use stored value for the default case of integrating over all axes
-                if isinstance(axes, int):
-                    axes = (axes,)
-                else:
-                    axes = tuple(axes)  # required for numpy.sum
-                volume_list = [
-                    cell_vol if ax in axes else 1
-                    for ax, cell_vol in enumerate(self.cell_volume_data)
-                ]
+            axes = self.get_axis_tuple(axes, allow_symmetric=False)
+
+        # determine the volumes of the individual cells
+        if axes == tuple(range(self.num_axes)):
+            cell_volumes = self.cell_volumes  # use cached values
+        elif self.cell_volume_data is None:
+            # some grids cannot decompose the volume of cells into orthogonal
+            # contributions. In this case, we just support integration over the entire
+            # domain.
+            msg = "Grid does not support orthogonal decomposition of cell volumes."
+            raise NotImplementedError(msg)
+        else:
+            # otherwise, the cell volumes are just the outer product
+            volume_list = [
+                cell_vol if ax in axes else 1
+                for ax, cell_vol in enumerate(self.cell_volume_data)
+            ]
             cell_volumes = functools.reduce(np.outer, volume_list)
 
-        # determine the axes over which we will integrate
+        # determine the axes over which we will integrate the data
         if not isinstance(data, np.ndarray) or data.ndim < self.num_axes:
             # deal with the case where data is not supplied for each support
             # point, e.g., when a single scalar is integrated over the grid
@@ -1527,12 +1367,8 @@ class GridBase(metaclass=ABCMeta):
             # deal with the case where more than a single value is provided per
             # support point, e.g., when a tensorial field is integrated
             offset = data.ndim - self.num_axes
-            if axes is None:
-                # integrate over all axes of the grid
-                axes = tuple(range(offset, data.ndim))
-            else:
-                # shift the indices to account for the data shape
-                axes = tuple(offset + i for i in axes)
+            # shift the indices to account for the data shape
+            axes = tuple(offset + i for i in axes)
 
         # calculate integral using a weighted sum along the chosen axes
         integral = (data * cell_volumes).sum(axis=axes)
@@ -1541,18 +1377,16 @@ class GridBase(metaclass=ABCMeta):
             # standard case of a single integral
             return integral  # type: ignore
 
-        else:
-            # we are in a parallel run, so we need to gather the sub-integrals from all
-            from mpi4py.MPI import COMM_WORLD
+        # we are in a parallel run, so we need to gather the sub-integrals from all
+        from mpi4py.MPI import COMM_WORLD
 
-            integral_full = np.empty_like(integral)
-            COMM_WORLD.Allreduce(integral, integral_full)
-            return integral_full  # type: ignore
+        integral_full = np.empty_like(integral)
+        COMM_WORLD.Allreduce(integral, integral_full)
+        return integral_full  # type: ignore
 
-    @cached_method()
     def make_normalize_point_compiled(
         self, reflect: bool = True
-    ) -> Callable[[np.ndarray], None]:
+    ) -> Callable[[FloatingArray], None]:
         """Return a compiled function that normalizes a point.
 
         Here, the point is assumed to be specified by the physical values along
@@ -1571,26 +1405,9 @@ class GridBase(metaclass=ABCMeta):
             which describes the coordinates of the points. This array is modified
             in-place!
         """
-        num_axes = self.num_axes
-        periodic = np.array(self.periodic)  # using a tuple instead led to a numba error
-        bounds = np.array(self.axes_bounds)
-        xmin = bounds[:, 0]
-        xmax = bounds[:, 1]
-        size = bounds[:, 1] - bounds[:, 0]
-
-        @jit
-        def normalize_point(point: np.ndarray) -> None:
-            """Helper function normalizing a single point."""
-            assert point.ndim == 1  # only support single points
-            for i in range(num_axes):
-                if periodic[i]:
-                    point[i] = (point[i] - xmin[i]) % size[i] + xmin[i]
-                elif reflect:
-                    arg = (point[i] - xmax[i]) % (2 * size[i]) - size[i]
-                    point[i] = xmin[i] + abs(arg)
-                # else: do nothing
-
-        return normalize_point  # type: ignore
+        # Removed on 2025-12-06
+        msg = "This method is no longer supported"
+        raise NotImplementedError(msg)
 
     @cached_method()
     def make_cell_volume_compiled(self, flat_index: bool = False) -> CellVolume:
@@ -1604,121 +1421,17 @@ class GridBase(metaclass=ABCMeta):
         Returns:
             function: returning the volume of the chosen cell
         """
-        if self.cell_volume_data is not None and all(
-            np.isscalar(d) for d in self.cell_volume_data
-        ):
-            # all cells have the same volume
-            cell_volume = np.prod(self.cell_volume_data)  # type: ignore
+        from ..backends.numba.grids import make_cell_volume_getter
 
-            @jit
-            def get_cell_volume(*args) -> float:
-                return cell_volume  # type: ignore
+        # deprecated since 2025-11-19
+        warnings.warn(
+            "`make_cell_volume_compiled` is deprecated. Use "
+            "`pde.backends.numba.grids.make_cell_volume_getter` instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-        else:
-            # some cells have a different volume
-            cell_volumes = self.cell_volumes
-
-            if flat_index:
-
-                @jit
-                def get_cell_volume(idx: int) -> float:
-                    return cell_volumes.flat[idx]  # type: ignore
-
-            else:
-
-                @jit
-                def get_cell_volume(*args) -> float:
-                    return cell_volumes[args]  # type: ignore
-
-        return get_cell_volume  # type: ignore
-
-    def _make_interpolation_axis_data(
-        self,
-        axis: int,
-        *,
-        with_ghost_cells: bool = False,
-        cell_coords: bool = False,
-    ) -> Callable[[float], tuple[int, int, float, float]]:
-        """Factory for obtaining interpolation information.
-
-        Args:
-            axis (int):
-                The axis along which interpolation is performed
-            with_ghost_cells (bool):
-                Flag indicating that the interpolator should work on the full data array
-                that includes values for the ghost points. If this is the case, the
-                boundaries are not checked and the coordinates are used as is.
-            cell_coords (bool):
-                Flag indicating whether points are given in cell coordinates or actual
-                point coordinates.
-
-        Returns:
-            callable: A function that is called with a coordinate value for the axis.
-            The function returns the indices of the neighboring support points as well
-            as the associated weights.
-        """
-        # obtain information on how this axis is discretized
-        size = self.shape[axis]
-        periodic = self.periodic[axis]
-        lo = self.axes_bounds[axis][0]
-        dx = self.discretization[axis]
-
-        @register_jitable
-        def get_axis_data(coord: float) -> tuple[int, int, float, float]:
-            """Determines data for interpolating along one axis."""
-            # determine the index of the left cell and the fraction toward the right
-            if cell_coords:
-                c_l, d_l = divmod(coord, 1.0)
-            else:
-                c_l, d_l = divmod((coord - lo) / dx - 0.5, 1.0)
-
-            # determine the indices of the two cells whose value affect interpolation
-            if periodic:
-                # deal with periodic domains, which is easy
-                c_li = int(c_l) % size  # left support point
-                c_hi = (c_li + 1) % size  # right support point
-
-            elif with_ghost_cells:
-                # deal with edge cases using the values of ghost cells
-                if -0.5 <= c_l + d_l <= size - 0.5:  # in bulk part of domain
-                    c_li = int(c_l)  # left support point
-                    c_hi = c_li + 1  # right support point
-                else:
-                    return -42, -42, 0.0, 0.0  # indicates out of bounds
-
-            else:
-                # deal with edge cases using nearest-neighbor interpolation at boundary
-                if 0 <= c_l + d_l < size - 1:  # in bulk part of domain
-                    c_li = int(c_l)  # left support point
-                    c_hi = c_li + 1  # right support point
-                elif size - 1 <= c_l + d_l <= size - 0.5:  # close to upper boundary
-                    c_li = c_hi = int(c_l)  # both support points close to boundary
-                    # This branch also covers the special case, where size == 1 and data
-                    # is evaluated at the only support point (c_l == d_l == 0.)
-                elif -0.5 <= c_l + d_l <= 0:  # close to lower boundary
-                    c_li = c_hi = int(c_l) + 1  # both support points close to boundary
-                else:
-                    return -42, -42, 0.0, 0.0  # indicates out of bounds
-
-            # determine the weights of the two cells
-            w_l, w_h = 1 - d_l, d_l
-            # set small weights to zero. If this is not done, invalid data at the corner
-            # of the grid (where two rows of ghost cells intersect) could be accessed.
-            # If this random data is very large, e.g., 1e100, it contributes
-            # significantly, even if the weight is low, e.g., 1e-16.
-            if w_l < 1e-15:
-                w_l = 0
-            if w_h < 1e-15:
-                w_h = 0
-
-            # shift points to allow accessing data with ghost points
-            if with_ghost_cells:
-                c_li += 1
-                c_hi += 1
-
-            return c_li, c_hi, w_l, w_h
-
-        return get_axis_data  # type: ignore
+        return make_cell_volume_getter(grid=self, flat_index=flat_index)
 
     @cached_method()
     def _make_interpolator_compiled(
@@ -1727,7 +1440,7 @@ class GridBase(metaclass=ABCMeta):
         fill: Number | None = None,
         with_ghost_cells: bool = False,
         cell_coords: bool = False,
-    ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+    ) -> Callable[[NumericArray, FloatingArray], NumericArray]:
         """Return a compiled function for linear interpolation on the grid.
 
         Args:
@@ -1749,133 +1462,24 @@ class GridBase(metaclass=ABCMeta):
             function is (data, point), where `data` is the numpy array containing the
             field data and position denotes the position in grid coordinates.
         """
-        args = {"with_ghost_cells": with_ghost_cells, "cell_coords": cell_coords}
+        # deprecated on 2025-12-06
+        from ..backends.numba.grids import make_single_interpolator
 
-        if self.num_axes == 1:
-            # specialize for 1-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0, **args)
-
-            @jit
-            def interpolate_single(
-                data: np.ndarray, point: np.ndarray
-            ) -> NumberOrArray:
-                """Obtain interpolated value of data at a point.
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        A 1d array of valid values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate system
-
-                Returns:
-                    :class:`~numpy.ndarray`: The interpolated value at the point
-                """
-                c_li, c_hi, w_l, w_h = data_x(point[0])
-
-                if c_li == -42:  # out of bounds
-                    if fill is None:  # outside the domain
-                        print("POINT", point)
-                        raise DomainError("Point lies outside the grid domain")
-                    else:
-                        return fill
-
-                # do the linear interpolation
-                return w_l * data[..., c_li] + w_h * data[..., c_hi]
-
-        elif self.num_axes == 2:
-            # specialize for 2-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0, **args)
-            data_y = self._make_interpolation_axis_data(1, **args)
-
-            @jit
-            def interpolate_single(
-                data: np.ndarray, point: np.ndarray
-            ) -> NumberOrArray:
-                """Obtain interpolated value of data at a point.
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        A 2d array of valid values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate system
-
-                Returns:
-                    :class:`~numpy.ndarray`: The interpolated value at the point
-                """
-                # determine surrounding points and their weights
-                c_xli, c_xhi, w_xl, w_xh = data_x(point[0])
-                c_yli, c_yhi, w_yl, w_yh = data_y(point[1])
-
-                if c_xli == -42 or c_yli == -42:  # out of bounds
-                    if fill is None:  # outside the domain
-                        print("POINT", point)
-                        raise DomainError("Point lies outside the grid domain")
-                    else:
-                        return fill
-
-                # do the linear interpolation
-                return (  # type: ignore
-                    w_xl * w_yl * data[..., c_xli, c_yli]
-                    + w_xl * w_yh * data[..., c_xli, c_yhi]
-                    + w_xh * w_yl * data[..., c_xhi, c_yli]
-                    + w_xh * w_yh * data[..., c_xhi, c_yhi]
-                )
-
-        elif self.num_axes == 3:
-            # specialize for 3-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0, **args)
-            data_y = self._make_interpolation_axis_data(1, **args)
-            data_z = self._make_interpolation_axis_data(2, **args)
-
-            @jit
-            def interpolate_single(
-                data: np.ndarray, point: np.ndarray
-            ) -> NumberOrArray:
-                """Obtain interpolated value of data at a point.
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        A 2d array of valid values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate system
-
-                Returns:
-                    :class:`~numpy.ndarray`: The interpolated value at the point
-                """
-                # determine surrounding points and their weights
-                c_xli, c_xhi, w_xl, w_xh = data_x(point[0])
-                c_yli, c_yhi, w_yl, w_yh = data_y(point[1])
-                c_zli, c_zhi, w_zl, w_zh = data_z(point[2])
-
-                if c_xli == -42 or c_yli == -42 or c_zli == -42:  # out of bounds
-                    if fill is None:  # outside the domain
-                        print("POINT", point)
-                        raise DomainError("Point lies outside the grid domain")
-                    else:
-                        return fill
-
-                # do the linear interpolation
-                return (  # type: ignore
-                    w_xl * w_yl * w_zl * data[..., c_xli, c_yli, c_zli]
-                    + w_xl * w_yl * w_zh * data[..., c_xli, c_yli, c_zhi]
-                    + w_xl * w_yh * w_zl * data[..., c_xli, c_yhi, c_zli]
-                    + w_xl * w_yh * w_zh * data[..., c_xli, c_yhi, c_zhi]
-                    + w_xh * w_yl * w_zl * data[..., c_xhi, c_yli, c_zli]
-                    + w_xh * w_yl * w_zh * data[..., c_xhi, c_yli, c_zhi]
-                    + w_xh * w_yh * w_zl * data[..., c_xhi, c_yhi, c_zli]
-                    + w_xh * w_yh * w_zh * data[..., c_xhi, c_yhi, c_zhi]
-                )
-
-        else:
-            raise NotImplementedError(
-                f"Compiled interpolation not implemented for dimension {self.num_axes}"
-            )
-
-        return interpolate_single  # type: ignore
+        warnings.warn(
+            "`_make_interpolator_compiled` is deprecated. Use "
+            "`pde.backends.numba_backend.make_single_interpolator` instead.",
+            stacklevel=2,
+        )
+        return make_single_interpolator(
+            grid=self,
+            fill=fill,
+            with_ghost_cells=with_ghost_cells,
+            cell_coords=cell_coords,
+        )
 
     def make_inserter_compiled(
         self, *, with_ghost_cells: bool = False
-    ) -> Callable[[np.ndarray, np.ndarray, NumberOrArray], None]:
+    ) -> Callable[[NumericArray, FloatingArray, NumberOrArray], None]:
         """Return a compiled function to insert values at interpolated positions.
 
         Args:
@@ -1890,150 +1494,21 @@ class GridBase(metaclass=ABCMeta):
             position in grid coordinates, and `amount` is the  that is to be added to
             the field.
         """
-        cell_volume = self.make_cell_volume_compiled()
+        from ..backends.numba import numba_backend
 
-        if self.num_axes == 1:
-            # specialize for 1-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(
-                0, with_ghost_cells=with_ghost_cells
-            )
+        # deprecated since 2025-11-19
+        warnings.warn(
+            "`make_inserter_compiled` is deprecated. Use "
+            "`pde.backends.numba_backend.make_inserter` instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-            @jit
-            def insert(
-                data: np.ndarray, point: np.ndarray, amount: NumberOrArray
-            ) -> None:
-                """Add an amount to a field at an interpolated position.
+        return numba_backend.make_inserter(grid=self, with_ghost_cells=with_ghost_cells)  # type: ignore
 
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        The values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate system
-                    amount (Number or :class:`~numpy.ndarray`):
-                        The amount that will be added to the data. This value describes
-                        an integrated quantity (given by the field value times the
-                        discretization volume). This is important for consistency with
-                        different discretizations and in particular grids with
-                        non-uniform discretizations
-                """
-                c_li, c_hi, w_l, w_h = data_x(point[0])
-
-                if c_li == -42:  # out of bounds
-                    raise DomainError("Point lies outside the grid domain")
-
-                data[..., c_li] += w_l * amount / cell_volume(c_li)
-                data[..., c_hi] += w_h * amount / cell_volume(c_hi)
-
-        elif self.num_axes == 2:
-            # specialize for 2-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(
-                0, with_ghost_cells=with_ghost_cells
-            )
-            data_y = self._make_interpolation_axis_data(
-                1, with_ghost_cells=with_ghost_cells
-            )
-
-            @jit
-            def insert(
-                data: np.ndarray, point: np.ndarray, amount: NumberOrArray
-            ) -> None:
-                """Add an amount to a field at an interpolated position.
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        The values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate system
-                    amount (Number or :class:`~numpy.ndarray`):
-                        The amount that will be added to the data. This value describes
-                        an integrated quantity (given by the field value times the
-                        discretization volume). This is important for consistency with
-                        different discretizations and in particular grids with
-                        non-uniform discretizations
-                """
-                # determine surrounding points and their weights
-                c_xli, c_xhi, w_xl, w_xh = data_x(point[0])
-                c_yli, c_yhi, w_yl, w_yh = data_y(point[1])
-
-                if c_xli == -42 or c_yli == -42:  # out of bounds
-                    raise DomainError("Point lies outside the grid domain")
-
-                cell_vol = cell_volume(c_xli, c_yli)
-                data[..., c_xli, c_yli] += w_xl * w_yl * amount / cell_vol
-                cell_vol = cell_volume(c_xli, c_yhi)
-                data[..., c_xli, c_yhi] += w_xl * w_yh * amount / cell_vol
-
-                cell_vol = cell_volume(c_xhi, c_yli)
-                data[..., c_xhi, c_yli] += w_xh * w_yl * amount / cell_vol
-                cell_vol = cell_volume(c_xhi, c_yhi)
-                data[..., c_xhi, c_yhi] += w_xh * w_yh * amount / cell_vol
-
-        elif self.num_axes == 3:
-            # specialize for 3-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(
-                0, with_ghost_cells=with_ghost_cells
-            )
-            data_y = self._make_interpolation_axis_data(
-                1, with_ghost_cells=with_ghost_cells
-            )
-            data_z = self._make_interpolation_axis_data(
-                2, with_ghost_cells=with_ghost_cells
-            )
-
-            @jit
-            def insert(
-                data: np.ndarray, point: np.ndarray, amount: NumberOrArray
-            ) -> None:
-                """Add an amount to a field at an interpolated position.
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        The values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate system
-                    amount (Number or :class:`~numpy.ndarray`):
-                        The amount that will be added to the data. This value describes
-                        an integrated quantity (given by the field value times the
-                        discretization volume). This is important for consistency with
-                        different discretizations and in particular grids with
-                        non-uniform discretizations
-                """
-                # determine surrounding points and their weights
-                c_xli, c_xhi, w_xl, w_xh = data_x(point[0])
-                c_yli, c_yhi, w_yl, w_yh = data_y(point[1])
-                c_zli, c_zhi, w_zl, w_zh = data_z(point[2])
-
-                if c_xli == -42 or c_yli == -42 or c_zli == -42:  # out of bounds
-                    raise DomainError("Point lies outside the grid domain")
-
-                cell_vol = cell_volume(c_xli, c_yli, c_zli)
-                data[..., c_xli, c_yli, c_zli] += w_xl * w_yl * w_zl * amount / cell_vol
-                cell_vol = cell_volume(c_xli, c_yli, c_zhi)
-                data[..., c_xli, c_yli, c_zhi] += w_xl * w_yl * w_zh * amount / cell_vol
-
-                cell_vol = cell_volume(c_xli, c_yhi, c_zli)
-                data[..., c_xli, c_yhi, c_zli] += w_xl * w_yh * w_zl * amount / cell_vol
-                cell_vol = cell_volume(c_xli, c_yhi, c_zhi)
-                data[..., c_xli, c_yhi, c_zhi] += w_xl * w_yh * w_zh * amount / cell_vol
-
-                cell_vol = cell_volume(c_xhi, c_yli, c_zli)
-                data[..., c_xhi, c_yli, c_zli] += w_xh * w_yl * w_zl * amount / cell_vol
-                cell_vol = cell_volume(c_xhi, c_yli, c_zhi)
-                data[..., c_xhi, c_yli, c_zhi] += w_xh * w_yl * w_zh * amount / cell_vol
-
-                cell_vol = cell_volume(c_xhi, c_yhi, c_zli)
-                data[..., c_xhi, c_yhi, c_zli] += w_xh * w_yh * w_zl * amount / cell_vol
-                cell_vol = cell_volume(c_xhi, c_yhi, c_zhi)
-                data[..., c_xhi, c_yhi, c_zhi] += w_xh * w_yh * w_zh * amount / cell_vol
-
-        else:
-            raise NotImplementedError(
-                f"Compiled interpolation not implemented for dimension {self.num_axes}"
-            )
-
-        return insert  # type: ignore
-
-    def make_integrator(self) -> Callable[[np.ndarray], NumberOrArray]:
+    def make_integrator(
+        self, backend: str | BackendBase = "numpy"
+    ) -> Callable[[NumericArray], NumberOrArray]:
         """Return function that can be used to integrates discretized data over the
         grid.
 
@@ -2041,81 +1516,32 @@ class GridBase(metaclass=ABCMeta):
         performed on all subgrids and then accumulated. Each process then receives the
         same value representing the global integral.
 
+        Args:
+            backend (str):
+                The backend to use for making the operator
+
         Returns:
             callable: A function that takes a numpy array and returns the integral with
             the correct weights given by the cell volumes.
         """
-        num_axes = self.num_axes
-        # cell volume varies with position
-        get_cell_volume = self.make_cell_volume_compiled(flat_index=True)
+        from ..backends import get_backend
 
-        def integrate_local(arr: np.ndarray) -> NumberOrArray:
-            """Integrates data over a grid using numpy."""
-            amounts = arr * self.cell_volumes
-            return amounts.sum(axis=tuple(range(-num_axes, 0, 1)))  # type: ignore
+        return get_backend(backend).make_integrator(self)
 
-        @nb_overload(integrate_local)
-        def ol_integrate_local(
-            arr: np.ndarray,
-        ) -> Callable[[np.ndarray], NumberOrArray]:
-            """Integrates data over a grid using numba."""
-            if arr.ndim == num_axes:
-                # `arr` is a scalar field
-                grid_shape = self.shape
 
-                def impl(arr: np.ndarray) -> Number:
-                    """Integrate a scalar field."""
-                    assert arr.shape == grid_shape
-                    total = 0
-                    for i in range(arr.size):
-                        total += get_cell_volume(i) * arr.flat[i]
-                    return total
+def registered_grids() -> dict[str, type[GridBase]]:
+    """Returns all grids available in the package.
 
-            else:
-                # `arr` is a tensorial field with rank >= 1
-                tensor_shape = (self.dim,) * (arr.ndim - num_axes)
-                data_shape = tensor_shape + self.shape
-
-                def impl(arr: np.ndarray) -> np.ndarray:  # type: ignore
-                    """Integrate a tensorial field."""
-                    assert arr.shape == data_shape
-                    total = np.zeros(tensor_shape)
-                    for idx in np.ndindex(*tensor_shape):
-                        arr_comp = arr[idx]
-                        for i in range(arr_comp.size):
-                            total[idx] += get_cell_volume(i) * arr_comp.flat[i]
-                    return total
-
-            return impl
-
-        # deal with MPI multiprocessing
-        if self._mesh is None or len(self._mesh) == 1:
-            # standard case of a single integral
-            @jit
-            def integrate_global(arr: np.ndarray) -> NumberOrArray:
-                """Integrate data.
-
-                Args:
-                    arr (:class:`~numpy.ndarray`): discretized data on grid
-                """
-                return integrate_local(arr)
-
-        else:
-            # we are in a parallel run, so we need to gather the sub-integrals from all
-            # subgrids in the grid mesh
-            from ..tools.mpi import mpi_allreduce
-
-            @jit
-            def integrate_global(arr: np.ndarray) -> NumberOrArray:
-                """Integrate data over MPI parallelized grid.
-
-                Args:
-                    arr (:class:`~numpy.ndarray`): discretized data on grid
-                """
-                integral = integrate_local(arr)
-                return mpi_allreduce(integral, operator="SUM")  # type: ignore
-
-        return integrate_global  # type: ignore
+    Returns:
+        dict: a dictionary with the names of the grids and the associated class
+    """
+    return {
+        name: cls
+        for name, cls in GridBase._subclasses.items()
+        if not (
+            name.endswith("Base") or (hasattr(cls, "deprecated") and cls.deprecated)
+        )
+    }
 
 
 def registered_operators() -> dict[str, list[str]]:
@@ -2124,8 +1550,14 @@ def registered_operators() -> dict[str, list[str]]:
     Returns:
         dict: a dictionary with the names of the operators defined for each grid class
     """
-    return {
-        name: sorted(cls.operators)
-        for name, cls in GridBase._subclasses.items()
-        if not (name.endswith("Base") or hasattr(cls, "deprecated") and cls.deprecated)
-    }
+    return {name: sorted(cls.operators) for name, cls in registered_grids().items()}
+
+
+__all__ = [
+    "DimensionError",
+    "DomainError",
+    "GridBase",
+    "PeriodicityError",
+    "registered_grids",
+    "registered_operators",
+]

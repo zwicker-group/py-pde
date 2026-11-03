@@ -9,24 +9,33 @@ import functools
 import json
 from abc import ABCMeta, abstractmethod
 from inspect import isabstract
-from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, Self, TypeVar
 
-import numba as nb
 import numpy as np
-from numba.extending import overload, register_jitable
-from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import Number, number_array
-from ..tools.numba import get_common_numba_dtype, jit, make_array_constructor
-from ..tools.plotting import PlotReference, plot_on_axes
-from ..tools.typing import ArrayLike, NumberOrArray
+from ..tools.misc import number_array
+from ..tools.plotting import PlotReference, indicate_axes_periodicity, plot_on_axes
+from ..tools.spectral import CorrelationType, make_correlated_noise
 from .base import FieldBase, RankError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from numpy.typing import DTypeLike
+
+    from ..backends.base import BackendBase
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import (
+        ArrayLike,
+        FloatingArray,
+        Number,
+        NumberOrArray,
+        NumericArray,
+        _BinaryOperatorImplType,
+    )
     from .scalar import ScalarField
 
 
@@ -41,7 +50,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def __init__(
         self,
         grid: GridBase,
-        data: ArrayLike | str | None = "zeros",
+        data: ArrayLike | Literal["empty", "zeros", "ones"] | None = "zeros",
         *,
         label: str | None = None,
         dtype: DTypeLike | None = None,
@@ -74,7 +83,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif with_ghost_cells:
             # use full data without copying (unless necessary)
             if data is None or isinstance(data, str):
-                raise ValueError("`data` must be supplied if with_ghost_cells==True")
+                msg = "`data` must be supplied if with_ghost_cells==True"
+                raise ValueError(msg)
             data_arr = number_array(data, dtype=dtype, copy=None)
             super().__init__(grid, data=data_arr, label=label)
 
@@ -96,7 +106,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 elif data == "ones":
                     data_arr = np.ones(full_shape, dtype=dtype)
                 else:
-                    raise ValueError(f"Unknown data '{data}'")
+                    msg = f"Unknown data '{data}'"
+                    raise ValueError(msg)
                 super().__init__(grid, data=data_arr, label=label)
 
             elif isinstance(data, DataFieldBase):
@@ -135,7 +146,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_uniform(
-        cls: type[TDataField],
+        cls,
         grid: GridBase,
         vmin: float = 0,
         vmax: float = 1,
@@ -143,10 +154,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: str | None = None,
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
-    ) -> TDataField:
-        """Create field with uniform distributed random values.
+    ) -> Self:
+        """Create field with uncorrelated uniform distributed random values.
 
-        These values are uncorrelated in space.
+        A complex field is returned when `vmin` or `vmax` is a complex number. In this
+        case, the real and imaginary parts of these arguments are used to determine
+        the distribution of the real and imaginary parts of the resulting field.
+        Consequently, ``ScalarField.random_uniform(grid, 0, 1 + 1j)`` creates a
+        complex field where the real and imaginary parts are chosen from a standard
+        uniform distribution.
+
+        Real and imaginary parts of fields, all components of vector and tensor fields,
+        as well as all spatial positions are always uncorrelated.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
@@ -172,7 +191,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # create complex random numbers for the field
             real_part = rng.uniform(np.real(vmin), np.real(vmax), size=shape)
             imag_part = rng.uniform(np.imag(vmin), np.imag(vmax), size=shape)
-            data: np.ndarray = real_part + 1j * imag_part
+            data: NumericArray = real_part + 1j * imag_part
         else:
             # create real random numbers for the field
             data = rng.uniform(vmin, vmax, size=shape)
@@ -181,24 +200,38 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_normal(
-        cls: type[TDataField],
+        cls,
         grid: GridBase,
         mean: float = 0,
         std: float = 1,
         *,
         scaling: Literal["none", "physical"] = "none",
+        correlation: CorrelationType = "none",
         label: str | None = None,
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
-    ) -> TDataField:
-        """Create field with normal distributed random values.
+        **kwargs,
+    ) -> Self:
+        r"""Creates Gaussian random field with normal distributed random values.
 
-        These values are uncorrelated in space. A complex field is returned when either
-        `mean` or `std` is a complex number. In this case, the real and imaginary parts
-        of these arguments are used to determine the distribution of the real and
-        imaginary parts of the resulting field. Consequently,
-        :code:`ScalarField.random_normal(grid, 0, 1 + 1j)` creates a complex field where
-        the real and imaginary parts are chosen from a standard normal distribution.
+        A complex field is returned when either `mean` or `std` is a complex number. In
+        this case, the real and imaginary parts of these arguments are used to determine
+        the distribution of the real and imaginary parts of the resulting field.
+        Consequently, ``ScalarField.random_normal(grid, 0, 1 + 1j)`` creates a
+        complex field where the real and imaginary parts are chosen from a standard
+        normal distribution.
+
+        Real and imaginary parts of fields, as well as all components of vector and
+        tensor fields, are always uncorrelated. Correlations in spatial positions are
+        supported through the `correlation` argument. If set, the returned field
+        :math:`f` obeys the selected correlation function :math:`C(k)` (see table below
+        for details). In Fourier space, we thus have
+
+        .. math::
+            \langle f(\boldsymbol k) f(\boldsymbol k’) \rangle =
+                C(|\boldsymbol k|) \delta(\boldsymbol k-\boldsymbol k’)
+
+        For simplicity, the correlations respect periodic boundary conditions.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
@@ -206,47 +239,129 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             mean (float):
                 Mean of the Gaussian distribution
             std (float):
-                Standard deviation of the Gaussian distribution.
+                Standard deviation of the Gaussian distribution
             scaling (str):
                 Determines how the values are scaled. Possible choices are 'none'
                 (values are drawn from a normal distribution with given mean and
                 standard deviation) or 'physical' (the variance of the random number is
                 scaled by the inverse volume of the grid cell; this is for instance
-                useful for concentration fields, which vary less in larger volumes).
+                useful for concentration fields, which vary less in larger cells).
+            correlation (str):
+                Selects the autocorrelation function to create spatially correlated
+                noise. Many of the options (described below) support additional
+                parameters that can be supplied as keyword arguments.
             label (str, optional):
                 Name of the returned field
             dtype (numpy dtype):
-                The data type of the field. If omitted, it defaults to `double` if both
-                `mean` and `std` are real, otherwise it is `complex`.
+                The data type of the field. If omitted, it defaults to `float` if both
+                `mean` and `std` are real, otherwise it is `complex`. Note that if a
+                complex dtype is supplied, the mean and std are also assumed to be
+                complex, so that specifying them as real will lead to a vanishing
+                imaginary part of the returned field.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
+            **kwargs:
+                Additional parameters can affect details of the correlation function.
+                Examples include ``length_scale``, ``exponent``, and ``sharpness``,
+                which are described in the table below.
+
+        .. table:: Supported correlation functions
+            :widths: 20 80
+
+            ============= ==============================================================
+            Identifier        Correlation function
+            ============= ==============================================================
+            ``none``      No correlation, :math:`C(k) = \delta(k)`
+
+            ``gaussian``  :math:`C(k) = \exp(-\frac12 k^2 \lambda^2)` with the length
+                          scale :math:`\lambda` set by argument ``length_scale``
+
+            ``power law`` :math:`C(k) = k^{\nu/2}` with exponent :math:`\nu` set by
+                          argument ``exponent``.
+
+            ``cosine``    :math:`C(k) = \exp\bigl(-s^2(\lambda k - 1)^2\bigr)` with
+                          the length scale :math:`\lambda` set by argument
+                          ``length_scale``, whereas the sharpness parameter :math:`s` is
+                          set by ``sharpness`` and defaults to 10.
+            ============= ==============================================================
+
+        Note:
+            The returned field only has the correct standard deviation (set by `std`)
+            for correlation functions that decrease monotonously. In other cases (i.e.,
+            for ``cosine`` correlation), the variance depends on details, like the
+            resolution of the grid.
         """
         rng = np.random.default_rng(rng)
 
+        # check whether we need to create a complex field
+        ret_complex = np.iscomplexobj(mean) or np.iscomplexobj(std)
+        if ret_complex:
+            # distribution parameters are complex
+            if dtype is None:
+                dtype = complex
+            dtype = np.dtype(dtype)
+            if not issubclass(dtype.type, np.complexfloating):
+                msg = "Complex `mean` or `std`, but `dtype` is not complex"
+                raise TypeError(msg)
+
+        else:
+            # distribution parameters are both real
+            if dtype is None:
+                dtype = float
+            dtype = np.dtype(dtype)
+            if issubclass(dtype.type, np.complexfloating):
+                cls._logger.warning(
+                    "Requested complex `dtype` but both `mean` and `std` are real."
+                )
+
+        # create a function for creating a single noise field
+        make_scalar_field = make_correlated_noise(
+            grid.shape,
+            correlation=correlation,
+            discretization=grid.discretization,
+            dtype=dtype,
+            rng=rng,
+            **kwargs,
+        )
+
+        if cls.rank == 0:
+            make_random_field = make_scalar_field
+        else:
+            tensor_shape = (grid.dim,) * cls.rank
+
+            def make_random_field() -> NumericArray:
+                """Helper function that creates a single tensor field."""
+                out = np.empty(tensor_shape + grid.shape, dtype=dtype)
+                for idx in np.ndindex(tensor_shape):
+                    out[idx] = make_scalar_field()
+                return out
+
+        # create random fields with correct mean and standard deviation
         if scaling == "none":
             scale = 1
         elif scaling == "physical":
             scale = 1 / np.sqrt(grid.cell_volumes)
         else:
-            raise ValueError(f"Unknown noise scaling {scaling}")
+            msg = f"Unknown noise scaling {scaling}"
+            raise ValueError(msg)
 
-        # determine the shape of the data array
-        shape = (grid.dim,) * cls.rank + grid.shape
-
-        if np.iscomplexobj(mean) or np.iscomplexobj(std):
+        if ret_complex:
             # create complex random numbers for the field
-            real_part = np.real(mean) + np.real(std) * scale * rng.normal(size=shape)
-            imag_part = np.imag(mean) + np.imag(std) * scale * rng.normal(size=shape)
-            data: np.ndarray = real_part + 1j * imag_part
+            assert issubclass(dtype.type, np.complexfloating)  # assert complex dtype
+            data: NumericArray = scale * make_random_field()
+            # scale the result according to the mean and standard deviation
+            real_part = np.real(mean) + np.real(std) * data.real
+            imag_part = np.imag(mean) + np.imag(std) * data.imag
+            data = real_part + 1j * imag_part
         else:
             # create real random numbers for the field
-            data = mean + std * scale * rng.normal(size=shape)
+            data = mean + std * scale * make_random_field()
 
         return cls(grid, data=data, label=label, dtype=dtype)
 
     @classmethod
     def random_harmonic(
-        cls: type[TDataField],
+        cls,
         grid: GridBase,
         modes: int = 3,
         harmonic=np.cos,
@@ -255,7 +370,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: str | None = None,
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
-    ) -> TDataField:
+    ) -> Self:
         r"""Create a random field build from harmonics.
 
         The resulting fields will be highly correlated in space and can thus
@@ -302,75 +417,24 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         tensor_shape = (grid.dim,) * cls.rank
 
-        data = np.empty(tensor_shape + grid.shape)
+        data = np.empty(tensor_shape + grid.shape, dtype=dtype)
+        is_complex = np.iscomplexobj(data)
         # determine random field for each component
         for index in np.ndindex(*tensor_shape):
             data_axis = []
             # random harmonic function along each axis
             for i in range(len(grid.axes)):
-                # choose wave vectors
-                ampl = rng.random(size=modes)  # amplitudes
+                # choose amplitudes and wave vectors
+                if is_complex:
+                    ampl = rng.random(size=modes) + 1j * rng.random(size=modes)
+                else:
+                    ampl = rng.random(size=modes)
                 x = discretize_interval(0, 2 * np.pi, grid.shape[i])[0]
                 data_axis.append(
                     sum(a * harmonic(n * x) for n, a in enumerate(ampl, 1))
                 )
             # full dataset is product of values along axes
             data[index] = functools.reduce(axis_combination.outer, data_axis)
-
-        return cls(grid, data=data, label=label, dtype=dtype)
-
-    @classmethod
-    def random_colored(
-        cls: type[TDataField],
-        grid: GridBase,
-        exponent: float = 0,
-        scale: float = 1,
-        *,
-        label: str | None = None,
-        dtype: DTypeLike | None = None,
-        rng: np.random.Generator | None = None,
-    ) -> TDataField:
-        r"""Create a field of random values with colored noise.
-
-        The spatially correlated values obey
-
-        .. math::
-            \langle c_i(\boldsymbol k) c_j(\boldsymbol k’) \rangle =
-                \Gamma^2 |\boldsymbol k|^\nu \delta_{ij}
-                \delta(\boldsymbol k - \boldsymbol k’)
-
-        in spectral space, where :math:`\boldsymbol k` is the wave vector. The special
-        case :math:`\nu = 0` corresponds to white noise. Note that the spatial
-        correlations always assume periodic boundary conditions (even if the underlying
-        grid does not) and that the components of tensor fields are uncorrelated.
-
-        Args:
-            grid (:class:`~pde.grids.base.GridBase`):
-                Grid defining the space on which this field is defined
-            exponent (float):
-                Exponent :math:`\nu` of the power spectrum
-            scale (float):
-                Scaling factor :math:`\Gamma` determining noise strength
-            label (str, optional):
-                Name of the returned field
-            dtype (numpy dtype):
-                The data type of the field. If omitted, it defaults to `double`.
-            rng (:class:`~numpy.random.Generator`):
-                Random number generator (default: :func:`~numpy.random.default_rng()`)
-        """
-        # get function making colored noise
-        from ..tools.spectral import make_colored_noise
-
-        make_noise = make_colored_noise(
-            grid.shape, dx=grid.discretization, exponent=exponent, scale=scale, rng=rng
-        )
-
-        # create random fields for each tensor component
-        tensor_shape = (grid.dim,) * cls.rank
-        data = np.empty(tensor_shape + grid.shape)
-        # determine random field for each component
-        for index in np.ndindex(*tensor_shape):
-            data[index] = make_noise()
 
         return cls(grid, data=data, label=label, dtype=dtype)
 
@@ -392,14 +456,15 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 and field_cls.rank == rank
             ):
                 return field_cls
-        raise RuntimeError(f"Could not find field class for rank {rank}")
+        msg = f"Could not find field class for rank {rank}"
+        raise RuntimeError(msg)
 
     @classmethod
     def from_state(
-        cls: type[TDataField],
+        cls,
         attributes: dict[str, Any],
-        data: np.ndarray | None = None,
-    ) -> TDataField:
+        data: NumericArray | Literal["empty", "zeros", "ones"] | None = None,
+    ) -> Self:
         """Create a field from given state.
 
         Args:
@@ -419,11 +484,27 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return cls(attributes.pop("grid"), data=data, **attributes)
 
     def copy(
-        self: TDataField,
+        self,
         *,
         label: str | None = None,
         dtype: DTypeLike | None = None,
-    ) -> TDataField:
+    ) -> Self:
+        """Return a copy of the field.
+
+        This method creates a new instance of the field with the same grid and data.
+        Optionally, a new label and/or data type can be specified for the copy.
+
+        Args:
+            label (str, optional):
+                Name of the copied field. If omitted, the label of the original field is
+                used.
+            dtype (numpy dtype, optional):
+                Data type of the copied field. If omitted, the data type of the original
+                field is used.
+
+        Returns:
+            :class:`DataFieldBase`: A copy of the current field instance.
+        """
         if label is None:
             label = self.label
         if dtype is None:
@@ -438,7 +519,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         )
 
     @property
-    def data_shape(self) -> tuple[int, ...]:
+    def data_shape(self) -> tuple[int, ...]:  # type: ignore
         """tuple: the shape of the data at each grid point"""
         return (self.grid.dim,) * self.rank
 
@@ -467,7 +548,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Args:
             filename (str):
                 The path to the image that will be created
-            \**kwargs:
+            **kwargs:
                 Additional keyword arguments that affect the image. For
                 instance, some fields support a `scalar` argument that
                 determines how they are converted to a scalar. Non-Cartesian
@@ -494,7 +575,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         *,
         fill: Number | None = None,
         with_ghost_cells: bool = False,
-    ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
+        backend: str | BackendBase = "default",
+    ) -> Callable[[FloatingArray, NumericArray], NumberOrArray]:
         r"""Returns a function that can be used to interpolate values.
 
         Args:
@@ -506,86 +588,27 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Flag indicating that the interpolator should work on the full data array
                 that includes values for the ghost points. If this is the case, the
                 boundaries are not checked and the coordinates are used as is.
+            backend (str):
+                The name of the backend to use to implement this operator.
 
         Returns:
             A function which returns interpolated values when called with arbitrary
             positions within the space of the grid.
         """
-        grid = self.grid
-        num_axes = self.grid.num_axes
-        data_shape = self.data_shape
+        from ..backends import get_backend
 
-        # convert `fill` to dtype of data
-        if fill is not None:
-            if self.rank == 0:
-                fill = self.data.dtype.type(fill)
-            else:
-                fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)  # type: ignore
-
-        # create the method to interpolate data at a single point
-        interpolate_single = grid._make_interpolator_compiled(
-            fill=fill, with_ghost_cells=with_ghost_cells
+        return get_backend(backend).make_interpolator(
+            self, fill=fill, with_ghost_cells=with_ghost_cells
         )
-
-        # provide a method to access the current data of the field
-        if with_ghost_cells:
-            get_data_array = make_array_constructor(self._data_full)
-        else:
-            get_data_array = make_array_constructor(self.data)
-
-        dim_error_msg = f"Dimension of point does not match axes count {num_axes}"
-
-        @jit
-        def interpolator(
-            point: np.ndarray, data: np.ndarray | None = None
-        ) -> np.ndarray:
-            """Return the interpolated value at the position `point`
-
-            Args:
-                point (:class:`~numpy.ndarray`):
-                    The list of points. This point coordinates should be given along the
-                    last axis, i.e., the shape should be `(..., num_axes)`.
-                data (:class:`~numpy.ndarray`, optional):
-                    The discretized field values. If omitted, the data of the current
-                    field is used, which should be the default. However, this option can
-                    be useful to interpolate other fields defined on the same grid
-                    without recreating the interpolator. If a data array is supplied, it
-                    needs to be the full data if `with_ghost_cells == True`, and
-                    otherwise only the valid data.
-
-            Returns:
-                :class:`~numpy.ndarray`: The interpolated values at the points
-            """
-            # check input
-            point = np.atleast_1d(point)
-            if point.shape[-1] != num_axes:
-                raise DimensionError(dim_error_msg)
-            point_shape = point.shape[:-1]
-
-            if data is None:
-                # reconstruct data field from memory address
-                data = get_data_array()
-
-            # interpolate at every valid point
-            out = np.empty(data_shape + point_shape, dtype=data.dtype)
-            for idx in np.ndindex(*point_shape):
-                out[(...,) + idx] = interpolate_single(data, point[idx])
-
-            return out
-
-        # store a reference to the data so it is not garbage collected too early
-        interpolator._data = self.data
-
-        return interpolator  # type: ignore
 
     @fill_in_docstring
     def interpolate(
         self,
-        point: np.ndarray,
+        point: FloatingArray,
         *,
         bc: BoundariesData | None = None,
         fill: Number | None = None,
-    ) -> np.ndarray:
+    ) -> NumericArray:
         r"""Interpolate the field to points between support points.
 
         Args:
@@ -611,7 +634,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             interpolator = self.make_interpolator(fill=fill, with_ghost_cells=True)
 
         else:
-            # create an interpolator without imposing bounary conditions
+            # create an interpolator without imposing boundary conditions
             interpolator = self.make_interpolator(fill=fill, with_ghost_cells=False)
 
         # do the actual interpolation
@@ -619,13 +642,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @fill_in_docstring
     def interpolate_to_grid(
-        self: TDataField,
+        self,
         grid: GridBase,
         *,
         bc: BoundariesData | None = None,
         fill: Number | None = None,
         label: str | None = None,
-    ) -> TDataField:
+    ) -> Self:
         """Interpolate the data of this field to another grid.
 
         Args:
@@ -647,9 +670,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             Field of the same rank as the current one.
         """
-        raise NotImplementedError(f"Cannot interpolate {self.__class__.__name__}")
+        msg = f"Cannot interpolate {self.__class__.__name__}"
+        raise NotImplementedError(msg)
 
-    def insert(self, point: np.ndarray, amount: ArrayLike) -> None:
+    def insert(self, point: FloatingArray, amount: ArrayLike) -> None:
         """Adds an (integrated) value to the field at an interpolated position.
 
         Args:
@@ -669,7 +693,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         grid_dim = len(grid.axes)
 
         if point.size != grid_dim or point.ndim != 1:
-            raise DimensionError(f"Dimension mismatch for point {point}")
+            msg = f"Dimension mismatch for point {point}"
+            raise DimensionError(msg)
 
         # determine the grid coordinates next to the chosen points
         low = np.array(grid.axes_bounds)[:, 0]
@@ -685,7 +710,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             c_h[..., ax] %= grid.shape[ax]
 
         # determine the valid points and the total weight in first iteration
-        total_weight = 0
+        total_weight = 0.0
         cells = []
         for i in np.ndindex(*((2,) * grid_dim)):
             coords = np.choose(i, [c_l, c_h])
@@ -695,31 +720,35 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 cells.append((tuple(coords), weight))
 
         if total_weight == 0:
-            raise DomainError("Point lies outside grid")
+            msg = "Point lies outside grid"
+            raise DomainError(msg)
 
         # alter each point in second iteration
-        for coords, weight in cells:
+        for coords, weight in cells:  # type: ignore
             chng = weight * amount / (total_weight * grid.cell_volumes[coords])
-            self.data[(Ellipsis,) + coords] += chng
+            self.data[(Ellipsis, *coords)] += chng
 
     @fill_in_docstring
     def get_boundary_values(
-        self, axis: int, upper: bool, bc: BoundariesData | None = None
+        self, axis: int | str, upper: bool, bc: BoundariesData | None
     ) -> NumberOrArray:
         """Get the field values directly on the specified boundary.
 
         Args:
-            axis (int):
+            axis (int or str):
                 The axis perpendicular to the boundary
             upper (bool):
                 Whether the boundary is at the upper side of the axis
             bc:
-                The boundary conditions applied to the field.
+                The boundary conditions applied to the field. If this is `None`, it is
+                assumed that boundary conditions have been set beforehand, e.g., using
+                :meth:`set_ghost_cells`.
                 {ARG_BOUNDARIES_OPTIONAL}
 
         Returns:
             :class:`~numpy.ndarray`: The discretized values on the boundary
         """
+        axis = self.grid.get_axis_index(axis, allow_symmetric=False)
         if bc is not None:
             self.set_ghost_cells(bc=bc)
 
@@ -731,10 +760,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             l_wall[axis] = 1
             l_ghost[axis] = 0
-        i_wall = (...,) + tuple(l_wall)
-        i_ghost = (...,) + tuple(l_ghost)
+        i_wall = (..., *tuple(l_wall))
+        i_ghost = (..., *tuple(l_ghost))
 
-        return (self._data_full[i_wall] + self._data_full[i_ghost]) / 2  # type: ignore
+        return (self._data_full[i_wall] + self._data_full[i_ghost]) / 2
 
     @fill_in_docstring
     def set_ghost_cells(self, bc: BoundariesData, *, args=None, **kwargs) -> None:
@@ -756,9 +785,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         bcs.set_ghost_cells(self._data_full, args=args, **kwargs)
 
     @property
-    @abstractmethod
-    def integral(self) -> NumberOrArray:
-        """Integral of the scalar field over space."""
+    def integral(self) -> NumericArray:
+        """:class:`~numpy.ndarray`: integral of each component over space."""
+        return self.grid.integrate(self.data)  # type: ignore
 
     @abstractmethod
     def to_scalar(
@@ -792,7 +821,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         scaled_data = self.data * np.sqrt(self.grid.cell_volumes)
         axes = tuple(range(self.rank, self.data.ndim))
-        return np.std(scaled_data, axis=axes)  # type: ignore
+        return np.std(scaled_data, axis=axes)
 
     @property
     def magnitude(self) -> float:
@@ -804,10 +833,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         if self.rank == 0:
             return abs(self.average)  # type: ignore
-        elif self.rank > 0:
+        if self.rank > 0:
             return abs(self.to_scalar().average)  # type: ignore
-        else:
-            raise AssertionError("Rank must be non-negative")
+        msg = "Rank must be non-negative"
+        raise AssertionError(msg)
 
     @fill_in_docstring
     def apply_operator(
@@ -817,6 +846,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         out: DataFieldBase | None = None,
         *,
         label: str | None = None,
+        backend: str | BackendBase = "default",
         args: dict[str, Any] | None = None,
         **kwargs,
     ) -> DataFieldBase:
@@ -833,6 +863,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Optional field to which the  result is written.
             label (str, optional):
                 Name of the returned field
+            backend (str):
+                Backend (e.g., `numba` or `numpy`) for constructing the operator
             args (dict):
                 Additional arguments for the boundary conditions
             **kwargs:
@@ -842,31 +874,39 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             :class:`DataFieldBase`: Field data after applying the operator. This field
             is identical to `out` if this argument was specified.
         """
+        from ..backends import get_backend
+
         # get information about the operator
-        operator_info = self.grid._get_operator_info(operator)
+        backend_impl = get_backend(backend)
+        operator_info = backend_impl.get_operator_info(self.grid, operator)
         out_cls = self.get_class_by_rank(operator_info.rank_out)
+
+        # impose boundary conditions on the input
+        if bc is not None:
+            self.set_ghost_cells(bc, args=args)
 
         # prepare the output field
         if out is None:
             out = out_cls(self.grid, data="empty", label=label, dtype=self.dtype)
         elif not isinstance(out, out_cls):
-            raise RankError(f"`out` must be a {out_cls.__name__}")
+            msg = f"`out` must be a {out_cls.__name__}"
+            raise RankError(msg)
         else:
             self.grid.assert_grid_compatible(out.grid)
             if label is not None:
                 out.label = label
 
-        op_raw = self.grid.make_operator_no_bc(operator_info, **kwargs)
-        if bc is not None:
-            self.set_ghost_cells(bc, args=args)  # impose boundary conditions
-        # apply the operator without imposing boundary conditions
-        op_raw(self._data_full, out.data)
+        # apply the operator, assuming that boundary conditions were set
+        op = self.grid.make_operator_no_bc(
+            operator_info, backend=backend_impl, **kwargs
+        )
+        backend_impl._apply_operator(op, self._data_full, out=out.data)
 
         return out
 
     def make_dot_operator(
-        self, backend: Literal["numpy", "numba"] = "numba", *, conjugate: bool = True
-    ) -> Callable[[np.ndarray, np.ndarray, np.ndarray | None], np.ndarray]:
+        self, backend: str | BackendBase = "default", *, conjugate: bool = True
+    ) -> _BinaryOperatorImplType:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -874,7 +914,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         Args:
             backend (str):
-                Can be `numba` or `numpy`, deciding how the function is constructed
+                Backend (e.g., `numba` or `numpy`) for constructing the operator
             conjugate (bool):
                 Whether to use the complex conjugate for the second operand
 
@@ -883,162 +923,17 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written.
         """
-        dim = self.grid.dim
-        num_axes = self.grid.num_axes
+        from ..backends import get_backend
 
-        @register_jitable
-        def maybe_conj(arr: np.ndarray) -> np.ndarray:
-            """Helper function implementing optional conjugation."""
-            return arr.conjugate() if conjugate else arr
-
-        def dot(
-            a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-        ) -> np.ndarray:
-            """Numpy implementation to calculate dot product between two fields."""
-            rank_a = a.ndim - num_axes
-            rank_b = b.ndim - num_axes
-            if rank_a < 1 or rank_b < 1:
-                raise TypeError("Fields in dot product must have rank >= 1")
-            if a.shape[rank_a:] != b.shape[rank_b:]:
-                raise ValueError("Shapes of fields are not compatible for dot product")
-
-            if rank_a == 1 and rank_b == 1:  # result is scalar field
-                return np.einsum("i...,i...->...", a, maybe_conj(b), out=out)
-
-            elif rank_a == 2 and rank_b == 1:  # result is vector field
-                return np.einsum("ij...,j...->i...", a, maybe_conj(b), out=out)
-
-            elif rank_a == 1 and rank_b == 2:  # result is vector field
-                return np.einsum("i...,ij...->j...", a, maybe_conj(b), out=out)
-
-            elif rank_a == 2 and rank_b == 2:  # result is tensor-2 field
-                return np.einsum("ij...,jk...->ik...", a, maybe_conj(b), out=out)
-
-            else:
-                raise TypeError(f"Unsupported shapes ({a.shape}, {b.shape})")
-
-        if backend == "numpy":
-            # return the bare dot operator without the numba-overloaded version
-            return dot
-
-        elif backend == "numba":
-            # overload `dot` and return a compiled version
-
-            def get_rank(arr: nb.types.Type | nb.types.Optional) -> int:
-                """Determine rank of field with type `arr`"""
-                arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
-                if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
-                    raise nb.errors.TypingError(
-                        f"Dot argument must be array, not  {arr_typ.__class__}"
-                    )
-                rank = arr_typ.ndim - num_axes
-                if rank < 1:
-                    raise nb.NumbaTypeError(
-                        f"Rank={rank} too small for dot product. Use a normal product "
-                        "instead."
-                    )
-                return rank  # type: ignore
-
-            @overload(dot, inline="always")
-            def dot_ol(
-                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-            ) -> np.ndarray:
-                """Numba implementation to calculate dot product between two fields."""
-                # get (and check) rank of the input arrays
-                rank_a = get_rank(a)
-                rank_b = get_rank(b)
-
-                if rank_a == 1 and rank_b == 1:  # result is scalar field
-
-                    @register_jitable
-                    def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> None:
-                        out[:] = a[0] * maybe_conj(b[0])
-                        for j in range(1, dim):
-                            out[:] += a[j] * maybe_conj(b[j])
-
-                elif rank_a == 2 and rank_b == 1:  # result is vector field
-
-                    @register_jitable
-                    def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> None:
-                        for i in range(dim):
-                            out[i] = a[i, 0] * maybe_conj(b[0])
-                            for j in range(1, dim):
-                                out[i] += a[i, j] * maybe_conj(b[j])
-
-                elif rank_a == 1 and rank_b == 2:  # result is vector field
-
-                    @register_jitable
-                    def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> None:
-                        for i in range(dim):
-                            out[i] = a[0] * maybe_conj(b[0, i])
-                            for j in range(1, dim):
-                                out[i] += a[j] * maybe_conj(b[j, i])
-
-                elif rank_a == 2 and rank_b == 2:  # result is tensor-2 field
-
-                    @register_jitable
-                    def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> None:
-                        for i in range(dim):
-                            for j in range(dim):
-                                out[i, j] = a[i, 0] * maybe_conj(b[0, j])
-                                for k in range(1, dim):
-                                    out[i, j] += a[i, k] * maybe_conj(b[k, j])
-
-                else:
-                    raise NotImplementedError("Inner product for these ranks")
-
-                if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                    # function is called without `out` -> allocate memory
-                    rank_out = rank_a + rank_b - 2
-                    a_shape = (dim,) * rank_a + self.grid.shape
-                    b_shape = (dim,) * rank_b + self.grid.shape
-                    out_shape = (dim,) * rank_out + self.grid.shape
-                    dtype = get_common_numba_dtype(a, b)
-
-                    def dot_impl(
-                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-                    ) -> np.ndarray:
-                        """Helper function allocating output array."""
-                        assert a.shape == a_shape
-                        assert b.shape == b_shape
-                        out = np.empty(out_shape, dtype=dtype)
-                        calc(a, b, out)
-                        return out
-
-                else:
-                    # function is called with `out` argument -> reuse `out` array
-
-                    def dot_impl(
-                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-                    ) -> np.ndarray:
-                        """Helper function without allocating output array."""
-                        assert a.shape == a_shape
-                        assert b.shape == b_shape
-                        assert out.shape == out_shape  # type: ignore
-                        calc(a, b, out)
-                        return out  # type: ignore
-
-                return dot_impl  # type: ignore
-
-            @jit
-            def dot_compiled(
-                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-            ) -> np.ndarray:
-                """Numba implementation to calculate dot product between two fields."""
-                return dot(a, b, out)
-
-            return dot_compiled  # type: ignore
-
-        else:
-            raise ValueError(f"Unsupported backend `{backend}")
+        return get_backend(backend).make_inner_prod_operator(self, conjugate=conjugate)
 
     def smooth(
-        self: TDataField,
+        self,
         sigma: float = 1,
         *,
-        out: TDataField | None = None,
+        out: Self | None = None,
         label: str | None = None,
-    ) -> TDataField:
+    ) -> Self:
         """Applies Gaussian smoothing with the given standard deviation.
 
         This function respects periodic boundary conditions of the underlying grid,
@@ -1061,7 +956,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         # allocate memory for storing output
         if out is None:
-            out = self.__class__(self.grid, label=self.label)
+            out = self.__class__(
+                self.grid,
+                label=self.label,
+                dtype=self.dtype if self.is_complex else None,
+            )
         else:
             self.assert_field_compatible(out)
 
@@ -1071,7 +970,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         for axis in range(-len(self.grid.axes), 0):
             sigma_dx = sigma / self.grid.discretization[axis]
             mode = "wrap" if self.grid.periodic[axis] else "reflect"
-            ndimage.gaussian_filter1d(
+            ndimage.gaussian_filter1d(  # type: ignore
                 data_in, sigma=sigma_dx, axis=axis, output=data_out, mode=mode
             )
             data_in = data_out  # use this smoothed data as input for next axis
@@ -1084,12 +983,24 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def get_line_data(
         self, scalar: str = "auto", extract: str = "auto"
     ) -> dict[str, Any]:
+        """Return data for visualizing the field in a line plot.
+
+        Args:
+            scalar (str):
+                Method used for extracting a scalar representation; see
+                :meth:`DataFieldBase.to_scalar`.
+            extract (str):
+                Method used for extracting one-dimensional line data from the grid.
+
+        Returns:
+            dict: Information useful for plotting a line representation of the field.
+        """
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
 
         # extract the line data
         data = self.grid.get_line_data(scalar_data, extract=extract)
-        if "label_y" in data and data["label_y"]:
+        if data.get("label_y"):
             if self.label:
                 data["label_y"] = f"{self.label} ({data['label_y']})"
         else:
@@ -1099,6 +1010,21 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def get_image_data(
         self, scalar: str = "auto", transpose: bool = False, **kwargs
     ) -> dict[str, Any]:
+        """Return data for visualizing the field as an image.
+
+        Args:
+            scalar (str):
+                Method used for extracting a scalar representation; see
+                :meth:`DataFieldBase.to_scalar`.
+            transpose (bool):
+                Determines whether the transpose of the data should be returned.
+            **kwargs:
+                Additional keyword arguments are forwarded to
+                :meth:`~pde.grids.base.GridBase.get_image_data`.
+
+        Returns:
+            dict: Information useful for plotting an image representation of the field.
+        """
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
 
@@ -1113,10 +1039,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         if transpose:
             # adjust image data such that the transpose is plotted
-            data["x"], data["y"] = data["y"], data["x"]
-            data["data"] = data["data"].T
-            data["label_x"], data["label_y"] = data["label_y"], data["label_x"]
-            data["extent"] = data["extent"][2:] + data["extent"][:2]
+            data.update(
+                {
+                    "x": data["y"],
+                    "y": data["x"],
+                    "data": data["data"].T,
+                    "label_x": data["label_y"],
+                    "label_y": data["label_x"],
+                    "periodic_x": data.get("periodic_y", False),
+                    "periodic_y": data.get("periodic_x", False),
+                    "extent": data["extent"][2:] + data["extent"][:2],
+                }
+            )
 
         return data
 
@@ -1124,11 +1058,27 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         r"""Return data for a vector plot of the field.
 
         Args:
-            \**kwargs: Additional parameters are forwarded to
+            transpose (bool):
+                Determines whether the transpose of the data should be plotted.
+            **kwargs: Additional parameters are forwarded to
                 `grid.get_image_data`
 
         Returns:
             dict: Information useful for plotting an vector field
+        """
+        raise NotImplementedError
+
+    def get_nematic_data(self, transpose: bool = False, **kwargs) -> dict[str, Any]:
+        r"""Return data for a nematic plot of the field.
+
+        Args:
+            transpose (bool):
+                Determines whether the transpose of the data should be plotted.
+            **kwargs: Additional parameters are forwarded to
+                `grid.get_image_data`
+
+        Returns:
+            dict: Information useful for plotting a nematic field
         """
         raise NotImplementedError
 
@@ -1156,7 +1106,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 the data field.
             ylim (tuple of float):
                 Limits of the y-axis. If omitted, the data range is used
-            \**kwargs:
+            **kwargs:
                 Additional arguments are passed to :func:`matplotlib.pyplot.plot`
 
         Returns:
@@ -1174,7 +1124,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         (line2d,) = ax.plot(line_data["data_x"], line_data["data_y"].real, **kwargs)
 
         # set some default properties
+        indicate_axes_periodicity(ax, line_data)
         ax.set_xlabel(line_data["label_x"])
+        ax.set_xlim(*line_data["extent_x"])
         if ylabel is None:
             ylabel = line_data.get("label_y", self.label)
         if ylabel:
@@ -1209,7 +1161,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             line2d.set_ydata(line_data["data_y"].real)
 
         else:
-            raise ValueError(f"Unsupported plot reference {reference}")
+            msg = f"Unsupported plot reference {reference}"
+            raise TypeError(msg)
 
     def _plot_image(
         self,
@@ -1231,16 +1184,20 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 :meth:`DataFieldBase.to_scalar`.
             transpose (bool):
                 Determines whether the transpose of the data is plotted
-            \**kwargs:
+            **kwargs:
                 Additional keyword arguments that affect the image. Non-Cartesian grids
                 might support `performance_goal` to influence how an image is created
-                from raw data. Finally, remaining arguments are passed to
-                :func:`matplotlib.pyplot.imshow` to affect the appearance.
+                from raw data. `vmin` and `vmax` support the special option `symmetric`
+                to enforce a symmetric color scale. A similar result can also be
+                achieved by passing `norm = "centered"`. Finally, remaining arguments
+                are passed to :func:`matplotlib.pyplot.imshow` to affect the appearance.
 
         Returns:
             :class:`PlotReference`: Instance that contains information to update
             the plot with new data later.
         """
+        from matplotlib.colors import CenteredNorm
+
         # obtain image data with appropriate parameters
         data_kws = {}
         for arg in ["performance_goal", "scalar", "transpose"]:
@@ -1248,12 +1205,29 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 data_kws[arg] = kwargs.pop(arg)
         data = self.get_image_data(scalar, transpose, **data_kws)
 
-        # plot the image
+        # determine general plot parameters
         kwargs.setdefault("origin", "lower")
         kwargs.setdefault("interpolation", "none")
-        axes_image = ax.imshow(data["data"].T, extent=data["extent"], **kwargs)
+        # deal with symmetric color limits
+        args = kwargs.copy()  # allow modifications in vmin and vmax
+        args["vmin"], args["vmax"] = _symmetrize_vmin_vmax(
+            args.get("vmin"), args.get("vmax"), data["data"]
+        )
+        if args.get("norm") in {"centered", "symmetric"}:
+            args["norm"] = CenteredNorm()
+        # set a diverging colormap if color limits are symmetric
+        if (
+            kwargs.get("vmin") == "symmetric"
+            or kwargs.get("vmax") == "symmetric"
+            or isinstance(args.get("norm"), CenteredNorm)
+        ):
+            args.setdefault("cmap", "PiYG")
+
+        # plot the image
+        axes_image = ax.imshow(data["data"].T, extent=data["extent"], **args)
 
         # set some default properties
+        indicate_axes_periodicity(ax, data)
         ax.set_xlabel(data["label_x"])
         ax.set_ylabel(data["label_y"])
         ax.set_title(data.get("title", self.label))
@@ -1288,15 +1262,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         reference.element.set_data(data["data"].T)
 
         # adjust the colorbar limits
-        vmin = p["vmin"] if "vmin" in p else data["data"].min()
-        vmax = p["vmax"] if "vmax" in p else data["data"].max()
+        vmin, vmax = _symmetrize_vmin_vmax(p.get("vmin"), p.get("vmax"), data["data"])
+        if vmin is None:
+            vmin = data["data"].min()
+        if vmax is None:
+            vmax = data["data"].max()
         reference.element.set_clim(vmin, vmax)
 
     def _plot_vector(
         self,
         ax,
         *,
-        method: Literal["quiver", "streamplot"] = "quiver",
+        method: Literal["quiver", "streamplot", "nematic"] = "quiver",
         max_points: int | None = 16,
         **kwargs,
     ) -> PlotReference:
@@ -1306,11 +1283,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ax (:class:`matplotlib.axes.Axes`):
                 Figure axes to be used for plotting.
             method (str):
-                Plot type that is used. This can be either `quiver` or `streamplot`.
+                Plot type that is used. This can be `quiver`, `streamplot`, or
+                `nematic`. The latter draws headless arrows along the nematic director
+                and is only supported by :class:`~pde.fields.tensorial.Tensor2Field`.
             max_points (int):
                 The maximal number of points that is used along each axis. This argument
-                is only used for quiver plots. `None` indicates all points are used.
-            \**kwargs:
+                is not used for stream plots. `None` indicates all points are used.
+            **kwargs:
                 Additional keyword arguments are passed to
                 :meth:`~pde.field.base.DataFieldBase.get_vector_data` and
                 :func:`matplotlib.pyplot.quiver` or
@@ -1337,6 +1316,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
             )
 
+        elif method == "nematic":
+            # plot the nematic director using a quiver plot without arrow heads
+            data_kws["max_points"] = max_points
+            data = self.get_nematic_data(**data_kws)
+            kwargs.setdefault("pivot", "mid")
+            kwargs.setdefault("headwidth", 0)
+            kwargs.setdefault("headlength", 0)
+            kwargs.setdefault("headaxislength", 0)
+            element = ax.quiver(
+                data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
+            )
+
         elif method == "streamplot":
             # plot vector field using a streamplot
             data = self.get_vector_data(**data_kws)
@@ -1345,10 +1336,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             )
 
         else:
-            raise ValueError(f"Vector plot `{method}` is not supported.")
+            msg = f"Vector plot `{method}` is not supported."
+            raise ValueError(msg)
         parameters["data_kws"] = data_kws  # save data parameters
 
         # set some default properties of the plot
+        indicate_axes_periodicity(ax, data)
         ax.set_aspect("equal")
         ax.set_xlabel(data["label_x"])
         ax.set_ylabel(data["label_y"])
@@ -1370,7 +1363,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if method == "quiver":
             # update the data of a quiver plot
             data = self.get_vector_data(**data_kws)
-            reference.element.set_UVC(data["data_x"], data["data_y"])
+            reference.element.set_UVC(data["data_x"].T, data["data_y"].T)
+
+        elif method == "nematic":
+            # update the data of a quiver plot showing the nematic director
+            data = self.get_nematic_data(**data_kws)
+            reference.element.set_UVC(data["data_x"].T, data["data_y"].T)
 
         elif method == "streamplot":
             # update a streamplot by redrawing it completely
@@ -1385,7 +1383,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             )
 
         else:
-            raise ValueError(f"Vector plot `{method}` is not supported.")
+            msg = f"Vector plot `{method}` is not supported."
+            raise ValueError(msg)
 
     def _update_plot(self, reference: PlotReference) -> None:
         """Update a plot with the current field values.
@@ -1405,7 +1404,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif isinstance(el, (mpl.quiver.Quiver, mpl.streamplot.StreamplotSet)):
             self._update_vector_plot(reference)
         else:
-            raise ValueError(f"Unknown plot element {el.__class__.__name__}")
+            msg = f"Unknown plot element {el.__class__.__name__}"
+            raise TypeError(msg)
 
     @plot_on_axes(update_method="_update_plot")
     def plot(self, kind: str = "auto", **kwargs) -> PlotReference:
@@ -1414,10 +1414,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Args:
             kind (str):
                 Determines the visualizations. Supported values are `image`,
-                `line`, `vector`, or `interactive`. Alternatively, `auto`
+                `line`, `vector`, `nematic`, or `interactive`. Alternatively, `auto`
                 determines the best visualization based on the field itself.
             {PLOT_ARGS}
-            \**kwargs:
+            **kwargs:
                 All additional keyword arguments are forwarded to the actual
                 plotting function determined by `kind`.
 
@@ -1428,7 +1428,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Tip:
             Typical additional arguments for the various plot kinds include
 
-            * :code:`kind == "line"`:
+            * ``kind == "line"``:
 
               - `scalar`: Sets method for extracting scalars as described in
                 :meth:`DataFieldBase.to_scalar`.
@@ -1437,7 +1437,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
               - `ylim`: Data limits of the y-axis.
               - Additional arguments are passed to :func:`matplotlib.pyplot.plot`
 
-            * :code:`kind == "image"`:
+            * ``kind == "image"``:
 
               - `colorbar`: Determines whether a colorbar is shown
               - `scalar`: Sets method for extracting scalars as described in
@@ -1445,13 +1445,19 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
               - `transpose` Determines whether the transpose of the data is plotted
               - Most remaining arguments are passed to :func:`matplotlib.pyplot.imshow`
 
-            * :code:`kind == `"vector"`:
+            * ``kind == "vector"``:
 
               - `method` Can be either `quiver` or `streamplot`
               - `transpose` Determines whether the transpose of the data is plotted
               - `max_points` Sets max. number of points along each axis in quiver plots
               - Additional arguments are passed to :func:`matplotlib.pyplot.quiver` or
                 :func:`matplotlib.pyplot.streamplot`.
+
+            * ``kind == "nematic"``:
+
+              - `transpose` Determines whether the transpose of the data is plotted
+              - `max_points` Sets max. number of points along each axis
+              - Additional arguments are passed to :func:`matplotlib.pyplot.quiver`
         """
         # determine the correct kind of plotting
         if kind == "auto":
@@ -1475,6 +1481,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             kind = "vector"
             kwargs["method"] = "streamplot"
 
+        elif kind == "nematic":
+            kind = "vector"
+            kwargs["method"] = "nematic"
+
         # do the actual plotting
         if kind == "image":
             reference = self._plot_image(**kwargs)
@@ -1483,10 +1493,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif kind == "vector":
             reference = self._plot_vector(**kwargs)
         else:
-            raise ValueError(
+            msg = (
                 f"Unsupported plot `{kind}`. Possible choices are `image`, `line`, "
-                "`vector`, or `auto`."
+                "`vector`, `nematic`, or `auto`."
             )
+            raise ValueError(msg)
 
         return reference
 
@@ -1517,10 +1528,108 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         r"""Returns data for plotting this field using :mod:`napari`
 
         Args:
-            \**kwargs: all arguments are forwarded to `_get_napari_layer_data`
+            **kwargs: all arguments are forwarded to `_get_napari_layer_data`
 
         Returns:
             dict: all the information necessary to plot this field
         """
         name = "Field" if self.label is None else self.label
         return {name: self._get_napari_layer_data(**kwargs)}
+
+
+def _symmetrize_vmin_vmax(
+    vmin: float | Literal["symmetric"] | None,
+    vmax: float | Literal["symmetric"] | None,
+    data: ArrayLike | None = None,
+) -> tuple[float | None, float | None]:
+    """Symmetrize the limits of a colormap around zero.
+
+    This function adjusts the minimum and maximum values used for a colormap to ensure
+    they are symmetric around zero when requested. This is useful for visualizing data
+    where positive and negative values should be represented with equal visual weight.
+
+    The special value "symmetric" for either `vmin` or `vmax` triggers symmetrization:
+    - If `vmin == "symmetric"`, it is set to the negative of `vmax` (or the negative
+      of the maximum absolute value in the data if `vmax` is not specified).
+    - If `vmax == "symmetric"`, it is set to the negative of `vmin` (or the maximum
+      absolute value in the data if `vmin` is not specified).
+
+    Args:
+        vmin (float, None, or "symmetric"):
+            The minimum value for the colormap. If "symmetric", it is set to mirror
+            `vmax` around zero. If `None`, no lower limit is enforced.
+        vmax (float, None, or "symmetric"):
+            The maximum value for the colormap. If "symmetric", it is set to mirror
+            `vmin` around zero. If `None`, no upper limit is enforced.
+        data (:class:`~numpy.ndarray`):
+            The data array whose values are used to determine symmetric limits when
+            needed.
+
+    Returns:
+        tuple of float or None: The adjusted `(vmin, vmax)` values for the colormap.
+    """
+    if vmin == "symmetric":
+        # the lower boundary should mirror the upper boundary
+        if vmax == "symmetric" or vmax is None:
+            vmax = np.abs(data).max()  # type: ignore
+        vmin = -vmax if vmax >= 0 else None  # type: ignore
+
+    elif vmax == "symmetric":
+        # the upper boundary should mirror the lower boundary
+        if vmin is None:
+            vmin = -np.abs(data).max()  # type: ignore
+        vmax = -vmin if vmin <= 0 else None  # type: ignore
+
+    # set the values if they are numeric
+    return vmin, vmax  # type: ignore
+
+
+def _prepare_vector_data(
+    data: dict[str, Any],
+    *,
+    transpose: bool = False,
+    max_points: int | None = None,
+) -> dict[str, Any]:
+    """Adjust data of a 2d vector plot and add information about its shape.
+
+    Args:
+        data (dict):
+            Information about the vector field, which needs to contain the items `x`,
+            `y`, `data_x`, `data_y`, `label_x`, `label_y`, and `extent`. Note that this
+            dictionary is modified in place.
+        transpose (bool):
+            Determines whether the transpose of the data should be plotted.
+        max_points (int):
+            The maximal number of points that is used along each axis. This option can
+            be used to sub-sample the data. `None` indicates that all points are used.
+
+    Returns:
+        dict: The modified data
+    """
+    if transpose:
+        data["x"], data["y"] = data["y"], data["x"]
+        data["data_x"], data["data_y"] = data["data_y"].T, data["data_x"].T
+        data["label_x"], data["label_y"] = data["label_y"], data["label_x"]
+        data["extent"] = data["extent"][2:] + data["extent"][:2]
+
+    if max_points is not None:
+        # reduce the sampling of the vector points
+        for axis, size in enumerate(data["data_x"].shape):
+            if size > max_points:
+                # sub-sample the data
+                idx_f = np.linspace(0, size - 1, max_points)
+                idx_i = np.round(idx_f).astype(int)
+
+                data["data_x"] = np.take(data["data_x"], idx_i, axis=axis)
+                data["data_y"] = np.take(data["data_y"], idx_i, axis=axis)
+                if axis == 0:
+                    data["x"] = data["x"][idx_i]
+                elif axis == 1:
+                    data["y"] = data["y"][idx_i]
+                else:
+                    msg = "Only supports 2d grids"
+                    raise RuntimeError(msg)
+
+    data["shape"] = data["data_x"].shape
+    data["size"] = data["data_x"].size
+    return data

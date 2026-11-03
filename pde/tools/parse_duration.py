@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from __future__ import annotations
 
-import datetime
+import datetime  # noqa: ICN001
 import re
 
 standard_duration_re = re.compile(
@@ -86,6 +86,9 @@ def parse_duration(value: str) -> datetime.timedelta:
 
     Returns:
         datetime.timedelta: An instance representing the duration.
+
+    Raises:
+        ValueError: If `value` cannot be parsed as a supported duration.
     """
     match = (
         standard_duration_re.match(value)
@@ -106,8 +109,8 @@ def parse_duration(value: str) -> datetime.timedelta:
             kw["microseconds"] = "-" + kw["microseconds"]
         kw = {k: float(v) for k, v in kw.items() if v is not None}
         return days + sign * datetime.timedelta(**kw)  # type: ignore
-    else:
-        raise ValueError(f"The time duration {value} cannot be parsed.")
+    msg = f"The time duration {value} cannot be parsed."
+    raise ValueError(msg)
 
 
 __all__ = ["parse_duration"]

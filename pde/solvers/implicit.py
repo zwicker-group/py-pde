@@ -5,15 +5,18 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING
 
-import numba as nb
-import numpy as np
-
-from ..fields.base import FieldBase
-from ..pdes.base import PDEBase
-from ..tools.typing import BackendType
+from ..tools.misc import get_array_namespace
 from .base import ConvergenceError, SolverBase
+from .euler import _DUMMY_FUNCTION, _DUMMY_FUNCTION_2ARGS
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from ..backends.base import BackendBase
+    from ..pdes.base import PDEBase
+    from ..tools.typing import NumericArray, TField
 
 
 class ImplicitSolver(SolverBase):
@@ -27,28 +30,26 @@ class ImplicitSolver(SolverBase):
         *,
         maxiter: int = 100,
         maxerror: float = 1e-4,
-        backend: BackendType = "auto",
+        backend: str | BackendBase = "auto",
     ):
         """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
             maxiter (int):
-                The maximal number of iterations per step
+                Maximum number of iterations for the implicit solver
             maxerror (float):
-                The maximal error that is permitted in each step
+                Maximum error tolerance for the implicit solver
             backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
+                The backend used for numerical operations
         """
         super().__init__(pde, backend=backend)
         self.maxiter = maxiter
         self.maxerror = maxerror
 
     def _make_single_step_fixed_dt_deterministic(
-        self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float], None]:
+        self, state: TField, dt: float
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function doing a deterministic step with an implicit Euler scheme.
 
         Args:
@@ -59,20 +60,22 @@ class ImplicitSolver(SolverBase):
                 Time step of the implicit step
         """
         if self.pde.is_sde:
-            raise RuntimeError("Cannot use implicit stepper with stochastic equation")
+            msg = "Deterministic implicit Euler does not support stochastic equations"
+            raise RuntimeError(msg)
 
         self.info["function_evaluations"] = 0
-        self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
-        self.info["dt_adaptive"] = False
 
-        rhs = self._make_pde_rhs(state, backend=self.backend)
+        rhs = self.backend.make_pde_rhs(self.pde, state)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
 
         # handle deterministic version of the pde
-        def implicit_step(state_data: np.ndarray, t: float) -> None:
+        def implicit_step(state_data: NumericArray, t: float) -> NumericArray:
             """Compiled inner loop for speed."""
+            # support any backend following Python Array API
+            nx = get_array_namespace(state_data)
+
             nfev = 0  # count function evaluations
 
             # save state at current time point t for stepping
@@ -80,42 +83,36 @@ class ImplicitSolver(SolverBase):
 
             # estimate state at next time point
             state_data[:] = state_t + dt * rhs(state_data, t)
-            state_prev = np.empty_like(state_data)
+            state_prev = nx.empty_like(state_data)
 
             # fixed point iteration for improving state after dt
             for n in range(maxiter):
                 state_prev[:] = state_data  # keep previous state to judge convergence
-                # another interation to improve estimate
+                # another iteration to improve estimate
                 state_data[:] = state_t + dt * rhs(state_data, t + dt)
 
                 # calculate mean squared error to judge convergence
                 err = 0.0
                 for j in range(state_data.size):
-                    diff = state_data.flat[j] - state_prev.flat[j]
-                    err += (diff.conjugate() * diff).real
+                    diff: NumericArray = state_data.flat[j] - state_prev.flat[j]
+                    err += (nx.conj(diff) * diff).real
                 err /= state_data.size
 
                 if err < maxerror2:
                     # fix point iteration converged
                     break
             else:
-                with nb.objmode:
-                    self._logger.warning(
-                        "Implicit Euler step did not converge after %d iterations "
-                        "at t=%g (error=%g)",
-                        maxiter,
-                        t,
-                        err,
-                    )
-                raise ConvergenceError("Implicit Euler step did not converge.")
+                msg = "Implicit Euler step did not converge."
+                raise ConvergenceError(msg)
             nfev += n + 1
+            return state_data
 
-        self._logger.info("Init implicit Euler stepper with dt=%g", dt)
+        self._logger.info("Initialize implicit Euler single-step update with dt=%g", dt)
         return implicit_step
 
     def _make_single_step_fixed_dt_stochastic(
-        self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float], None]:
+        self, state: TField, dt: float
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function doing a step for a SDE with an implicit Euler scheme.
 
         Args:
@@ -125,69 +122,81 @@ class ImplicitSolver(SolverBase):
             dt (float):
                 Time step of the implicit step
         """
-        self.info["function_evaluations"] = 0
-        self.info["scheme"] = "implicit-euler-maruyama"
-        self.info["stochastic"] = True
-        self.info["dt_adaptive"] = False
+        if self.pde.use_noise_realization:
+            msg = "Implicit stepper cannot handle `make_noise_realization` interface"
+            raise NotImplementedError(msg)
 
-        rhs = self.pde.make_pde_rhs(state, backend=self.backend)  # type: ignore
-        rhs_sde = self._make_sde_rhs(state, backend=self.backend)
+        self.info["function_evaluations"] = 0
+        self.info["stochastic"] = True
+
+        # get the function that calculates the noise
+        rhs = self.backend.make_pde_rhs(self.pde, state)
+        if use_noise_variance := self.pde.use_noise_variance:
+            noise_var = self.pde.make_noise_variance(  # type: ignore
+                state, backend=self.backend, ret_diff=False
+            )
+            gaussian_noise = self.backend.make_gaussian_noise(state, rng=self.pde.rng)
+        else:
+            noise_var = _DUMMY_FUNCTION_2ARGS
+            gaussian_noise = self.backend.compile_function(_DUMMY_FUNCTION)
+        noise_var = self.backend.compile_function(noise_var)
+        # noise variance scales with inverse cell volumes
+        inv_cell = 1 / state.grid.cell_volumes
+
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
 
         # handle deterministic version of the pde
-        def implicit_step(state_data: np.ndarray, t: float) -> None:
+        def implicit_step(state_data: NumericArray, t: float) -> NumericArray:
             """Compiled inner loop for speed."""
+            nx = get_array_namespace(state_data)
             nfev = 0  # count function evaluations
 
             # save state at current time point t for stepping
             state_t = state_data.copy()
-            state_prev = np.empty_like(state_data)
+            state_prev = nx.empty_like(state_data)
 
-            # estimate state at next time point
-            evolution_rate, noise_realization = rhs_sde(state_data, t)
-            if noise_realization is not None:
-                # add the noise to the reference state at the current time point and
-                # adept the state at the next time point iteratively below
-                state_t += np.sqrt(dt) * noise_realization
+            # evaluate deterministic part and variance without modifying field, yet
+            evolution_rate = rhs(state_data, t)
+
+            # add the noise to the reference state at the current time point and
+            # adept the state at the next time point iteratively below
+            if use_noise_variance:
+                noise_var_field = noise_var(state_data, t)
+                state_t += nx.sqrt(dt * noise_var_field * inv_cell) * gaussian_noise()
             state_data[:] = state_t + dt * evolution_rate  # estimated new state
 
             # fixed point iteration for improving state after dt
             for n in range(maxiter):
                 state_prev[:] = state_data  # keep previous state to judge convergence
-                # another interation to improve estimate
+                # another iteration to improve estimate
                 state_data[:] = state_t + dt * rhs(state_data, t + dt)
 
                 # calculate mean squared error to judge convergence
                 err = 0.0
                 for j in range(state_data.size):
-                    diff = state_data.flat[j] - state_prev.flat[j]
-                    err += (diff.conjugate() * diff).real
+                    diff: NumericArray = state_data.flat[j] - state_prev.flat[j]
+                    err += (nx.conj(diff) * diff).real
                 err /= state_data.size
 
                 if err < maxerror2:
                     # fix point iteration converged
                     break
             else:
-                with nb.objmode:
-                    self._logger.warning(
-                        "Semi-implicit Euler-Maruyama step did not converge after %d "
-                        "iterations at t=%g (error=%g)",
-                        maxiter,
-                        t,
-                        err,
-                    )
-                raise ConvergenceError(
-                    "Semi-implicit Euler-Maruyama step did not converge."
-                )
+                msg = "Semi-implicit Euler-Maruyama step did not converge."
+                raise ConvergenceError(msg)
             nfev += n + 1
+            return state_data
 
-        self._logger.info("Init semi-implicit Euler-Maruyama stepper with dt=%g", dt)
+        self._logger.info(
+            "Initialize semi-implicit Euler-Maruyama single-step update with dt=%g",
+            dt,
+        )
         return implicit_step
 
     def _make_single_step_fixed_dt(
-        self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float], None]:
+        self, state: TField, dt: float
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function doing a single step with an implicit Euler scheme.
 
         Args:
@@ -199,5 +208,4 @@ class ImplicitSolver(SolverBase):
         """
         if self.pde.is_sde:
             return self._make_single_step_fixed_dt_stochastic(state, dt)
-        else:
-            return self._make_single_step_fixed_dt_deterministic(state, dt)
+        return self._make_single_step_fixed_dt_deterministic(state, dt)

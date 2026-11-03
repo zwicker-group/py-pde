@@ -4,19 +4,21 @@ Contributing code
 
 Structure of the package
 """"""""""""""""""""""""
-The functionality of the :mod:`pde` package is split into multiple sub-package.
+The functionality of the :mod:`pde` package is split into multiple subpackages.
 The domain, together with its symmetries, periodicities, and discretizations, is
 described by classes defined in :mod:`~pde.grids`.
 Discretized fields are represented by classes in :mod:`~pde.fields`, which have
 methods for differential operators with various boundary conditions collected
 in :mod:`~pde.grids.boundaries`.
-The actual pdes are collected in :mod:`~pde.pdes` and the respective solvers
+The actual PDEs are collected in :mod:`~pde.pdes` and the respective solvers
 are defined in :mod:`~pde.solvers`.
+The actual numerical computations are done in backends, which are implemented in
+:mod:`~pde.backends`.
 
 
 Extending functionality
 """""""""""""""""""""""
-All code is build on a modular basis, making it easy to introduce new classes
+All code is built on a modular basis, making it easy to introduce new classes
 that integrate with the rest of the package. For instance, it is simple to
 define a new partial differential equation by subclassing
 :class:`~pde.pdes.base.PDEBase`.
@@ -25,11 +27,15 @@ mathematical expressions by creating instances of the class
 :class:`~pde.pdes.pde.PDE`.
 Moreover, new grids can be introduced by subclassing
 :class:`~pde.grids.base.GridBase`.
-It is also possible to only use parts of the package, e.g., the discretized
-differential operators from :mod:`~pde.grids.operators`.
 
-New operators can be associated with grids by registering them using
-:meth:`~pde.grids.base.GridBase.register_operator`.
+The actual calculations are done by backends, which provide an interface for carrying
+out the computations. These backends are defined in :mod:`~pde.backends` and allow
+accessing their details independently. For instance, the numba-accelerated operators
+can be used without any other part of the package by calling 
+the method :meth:`~pde.backends.numba.backend.NumbaBackend.make_operator` on the
+:meth:`~pde.backends.numba.numba_backend` object.
+Moreover, new operators can be associated with grids by registering them using
+:meth:`numba_backend.register_operator`.
 For instance, to create a new operator for the cylindrical grid one needs to 
 define a factory function that creates the operator. This factory function takes
 an instance of :class:`~pde.grids.boundaries.axes.BoundariesList` as an argument and
@@ -37,26 +43,62 @@ returns a function that takes as an argument the actual data array for the grid.
 Note that the grid itself is an attribute of
 :class:`~pde.grids.boundaries.axes.BoundariesList`.
 This operator would be registered with the grid by calling
-:code:`CylindricalSymGrid.register_operator("operator", make_operator)`, where the
-first argument is the name of the operator and the second argument is the
-factory function.
+:code:`numba_backend.register_operator(CylindricalSymGrid, "operator", make_operator)`,
+where the arguments denote the grid class, the name of the operator, and the factory
+function, respectively.
+Similar options exist for the `jax` and `torch` backends, but there can sometimes be
+subtle differences to comply with their specific requirements.
 
 
-Design choices
-""""""""""""""
-The data layout of field classes (subclasses of
-:class:`~pde.fields.base.FieldBase`) was chosen to allow for a simple
-decomposition of different fields and tensor components. Consequently, the data
-is laid out in memory such that spatial indices are last. For instance, the data
-of a vector field ``field`` defined on a 2d Cartesian grid will have three
-dimensions and can be accessed as ``field.data[vector_component, x, y]``,
+Data layout
+"""""""""""
+
+..  figure:: /_images/data_layout.*
+    :figwidth: 50%
+    :align: right
+    :alt: Schematic of the data flow during a simulation.
+
+    Schematic of the data flow during a simulation.
+
+Since the package supports several different backends, data can reside in various
+places (e.g., CPU or GPU).
+To avoid confusion, we adhere to the following principles: Data that the user
+manipulates directly should always be stored in numpy arrays on the CPU.
+In contrast, inner loops for solving PDEs can move memory to GPU or any other device.
+Consequently, operators typically assume that data is stored in the native version of
+the respective backend.
+
+The data layout of field classes (subclasses of :class:`~pde.fields.base.FieldBase`) was
+chosen to allow for a simple decomposition of different fields and tensor components.
+Consequently, data is laid out in memory such that spatial indices are last.
+For instance, the data of a vector field ``field`` defined on a 2d Cartesian grid will
+have three dimensions and can be accessed as ``field.data[vector_component, x, y]``,
 where ``vector_component`` is either 0 or 1.
+Note that :class:`~pde.fields.collection.FieldCollection` linearizes all vector- and
+tensor-components, to force all data in a unified array format.
+How this works is shown in the following example:
+
+.. code-block:: python
+
+    grid = pde.UnitGrid([7, 9])
+    scalar = pde.ScalarField.random_uniform(grid)
+    assert scalar.data.shape == (7, 9)
+    tensor = pde.Tensor2Field.random_uniform(grid)
+    assert tensor.data.shape == (2, 2, 7, 9)
+    collection = pde.FieldCollection([scalar, tensor])
+    assert collection.data.shape == (5, 7, 9)
+
+    assert np.all(collection.data[0] == scalar.data)
+    assert np.all(collection.data[1] == tensor.data[0, 0])
+    assert np.all(collection.data[2] == tensor.data[0, 1])
+    assert np.all(collection.data[3] == tensor.data[1, 0])
+    assert np.all(collection.data[4] == tensor.data[1, 1])
 
 
 Coding style
 """"""""""""
 The coding style is enforced using `ruff <https://docs.astral.sh/ruff/>`_, based on the
-styles suggest by `isort <https://timothycrosley.github.io/isort/>`_ and
+styles suggested by `isort <https://timothycrosley.github.io/isort/>`_ and
 `black <https://black.readthedocs.io/>`_. Moreover, we use `Google Style docstrings
 <https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings>`_,
 which might be best `learned by example
@@ -67,9 +109,9 @@ following `cheatsheet
 <https://github.com/ralsina/rst-cheatsheet/blob/master/rst-cheatsheet.rst>`_.
 To ensure the integrity of the code, we also try to provide many test functions,
 contained in the separate sub-folder :file:`tests`.
-These tests can be ran using scripts in the :file:`scripts` subfolder in the root
+These tests can be run using scripts in the :file:`scripts` subfolder in the root
 folder.
-This folder also contain a script :file:`tests_types.sh`, which uses :mod:`mypy`
+This folder also contains a script :file:`tests_types.sh`, which uses :mod:`mypy`
 to check the consistency of the python type annotations.
 We use these type annotations for additional documentation and they have also
 already been useful for finding some bugs.
@@ -78,27 +120,52 @@ Finally, we have pre-commit hooks, which you should install using `pre-commit in
 We also have some conventions that should make the package more consistent and
 thus easier to use. For instance, we try to use ``properties`` instead of getter
 and setter methods as often as possible.
-Because we use a lot of :mod:`numba` just-in-time compilation to speed up computations,
-we need to pass around (compiled) functions regularly. The names of the methods
-and functions that make such functions, i.e. that return callables, should start
-with 'make_*' where the wildcard should describe the purpose of the function
-being created. 
+Because we use :mod:`numba` or :mod:`torch` to speed up computations, we need to pass
+around (compiled) functions regularly. The names of the methods and functions that make
+such functions, i.e. that return callables, should start with 'make_*' where the
+wildcard should describe the purpose of the function being created. 
 
 
 Running unit tests
 """"""""""""""""""
-The :mod:`pde` package contains several unit tests, collection in the :file:`tests`
+The :mod:`pde` package contains several unit tests, collected in the :file:`tests`
 folder in the project root. These tests ensure that basic functions work as expected,
 in particular when code is changed in future versions. To run all tests, there are a
 few convenience scripts in the root directory :file:`scripts`. The most basic script is
-:file:`tests_run.sh`, which uses :mod:`pytest` to run the tests. Clearly, the python
+:file:`tests_run.sh`, which uses :mod:`pytest` to run the tests. Clearly, the Python
 package :mod:`pytest` needs to be installed. There are also additional scripts that for
-instance run tests in parallel (needs the python package :mod:`pytest-xdist` installed),
+instance run tests in parallel (needs the Python package :mod:`pytest-xdist` installed),
 measure test coverage (needs package :mod:`pytest-cov` installed), and make simple
-performance measurements. Moreover, there is a script :file:`test_types.sh`, which uses
+performance measurements. Moreover, there is a script :file:`tests_types.sh`, which uses
 :mod:`mypy` to check the consistency of the python type annotations and there is a
 script :file:`format_code.sh`, which formats the code automatically to adhere to our style.
 
 Before committing a change to the code repository, it is good practice to run the tests,
 check the type annotations, and the coding style with the scripts described above.
 
+
+
+
+Backward compatibility of stored data
+"""""""""""""""""""""""""""""""""""""
+Files written by :class:`~pde.storage.file.FileStorage` and
+:class:`~pde.storage.movie.MovieStorage` are meant to be readable by future versions of
+the package. The test suite :file:`tests/storage/test_backward_compatibility.py` checks
+this using files stored in :file:`tests/resources/FileStorage` and
+:file:`tests/resources/MovieStorage`. The expected content of all files is defined
+analytically in :file:`tests/storage/_compat_cases.py`.
+
+To add files of a new version, run the scripts
+:file:`scripts/create_file_storage_test_resources.py` and
+:file:`scripts/create_movie_storage_test_resources.py`. They write files into the
+subfolders :file:`current`, which is ignored by git and never tested. Copy the files that
+should be tested (including :file:`.times` files) to a subfolder named after the package
+version, e.g., :file:`v0.60`, and commit them. Files in these version folders must never
+be regenerated or modified. See the :file:`README.md` in the resource folders for more
+details.
+
+Both storage classes store the version of their file format (attribute
+``_format_version``) in the files. Files without version information are read as
+version 1 and files with unknown versions are rejected. If the format needs to change in
+an incompatible way, increase ``_format_version``, keep support for reading older
+versions, and add the files of the new version as a new folder to the test resources.

@@ -1,6 +1,14 @@
 name: "Tests with minimal requirements"
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'README.md'
+  pull_request:
+    paths-ignore:
+      - 'README.md'
 
 jobs:
   test_minversion:
@@ -11,11 +19,11 @@ jobs:
     timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
-        python-version: '3.9'
+        python-version: '3.12'
 
     - name: Install dependencies
       # install packages in the exact version given in requirements.txt
@@ -30,4 +38,4 @@ jobs:
         MPLBACKEND: agg
       run: |
         cd scripts
-        python run_tests.py --unit --runslow --num_cores auto --showconfig
+        python run_tests.py --unit --runslow --num_cores auto --showconfig -- -rP -o log_cli=true

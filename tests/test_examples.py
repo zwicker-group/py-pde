@@ -3,6 +3,7 @@
 """
 
 import os
+import platform
 import subprocess as sp
 import sys
 from pathlib import Path
@@ -13,25 +14,29 @@ from pde.tools.misc import module_available
 from pde.visualization.movies import Movie
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
-EXAMPLES = (PACKAGE_PATH / "examples").glob("*/*.py")
-NOTEBOOKS = (PACKAGE_PATH / "examples").glob("*/*.ipynb")
+EXAMPLES = list((PACKAGE_PATH / "examples").glob("*/*.py"))
+NOTEBOOKS = list((PACKAGE_PATH / "examples").glob("*/*.ipynb"))
 
-SKIP_EXAMPLES: list[str] = []
+SKIP_EXAMPLES: set[str] = set()
 if not Movie.is_available():
-    SKIP_EXAMPLES.extend(["make_movie_live.py", "make_movie_storage.py", "storages.py"])
+    SKIP_EXAMPLES.update(["make_movie_live.py", "make_movie_storage.py", "storages.py"])
 if not module_available("mpi4py"):
-    SKIP_EXAMPLES.extend(["mpi_parallel_run"])
+    SKIP_EXAMPLES.update(["mpi_parallel_run"])
 if not module_available("napari"):
-    SKIP_EXAMPLES.extend(["tracker_interactive", "show_3d_field_interactively"])
+    SKIP_EXAMPLES.update(["tracker_interactive", "show_3d_field_interactively"])
 if not module_available("h5py"):
-    SKIP_EXAMPLES.extend(["trajectory_io"])
-if not all(module_available(m) for m in ["modelrunner", "h5py"]):
-    SKIP_EXAMPLES.extend(["py_modelrunner"])
+    SKIP_EXAMPLES.update(["trajectory_io", "storages"])
+if True:  # not all(module_available(m) for m in ["modelrunner", "h5py", "zarr"]):
+    SKIP_EXAMPLES.update(["py_modelrunner"])
+if not module_available("utilitiez"):
+    SKIP_EXAMPLES.update(["logarithmic_kymograph"])
+if not module_available("av"):
+    SKIP_EXAMPLES.update(["storages"])
 
 
 @pytest.mark.slow
 @pytest.mark.no_cover
-@pytest.mark.skipif(sys.platform == "win32", reason="Assumes unix setup")
+@pytest.mark.skipif(platform.system() == "Windows", reason="Assumes unix setup")
 @pytest.mark.parametrize("path", EXAMPLES)
 def test_example_scripts(path):
     """Runs an example script given by path."""
@@ -44,12 +49,24 @@ def test_example_scripts(path):
     # run the actual test in a separate python process
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + env.get("PYTHONPATH", "")
-    proc = sp.Popen([sys.executable, path], env=env, stdout=sp.PIPE, stderr=sp.PIPE)
+    env["MPLBACKEND"] = "agg"  # select a backend without a GUI
     try:
-        outs, errs = proc.communicate(timeout=30)
-    except sp.TimeoutExpired:
-        proc.kill()
-        outs, errs = proc.communicate()
+        proc = sp.run(
+            [sys.executable, path], env=env, capture_output=True, timeout=120, text=True
+        )
+    except sp.TimeoutExpired as err:
+        pytest.fail(
+            f"Example `{path}` exceeded the 120 second timeout.\n"
+            f"STDOUT:\n{err.stdout}\nSTDERR:\n{err.stderr}"
+        )
+
+    # prepare output
+    if proc.returncode != 0:
+        pytest.fail(
+            f"Script `{path}` failed with exit code {proc.returncode}.\n"
+            f"STDOUT:\n{proc.stdout}\n"
+            f"STDERR:\n{proc.stderr}"
+        )
 
     # delete files that might be created by the test
     try:
@@ -59,28 +76,20 @@ def test_example_scripts(path):
     except OSError:
         pass
 
-    # prepare output
-    msg = f"Script `{path}` failed with following output:"
-    if outs:
-        msg = f"{msg}\nSTDOUT:\n{outs}"
-    if errs:
-        msg = f"{msg}\nSTDERR:\n{errs}"
-    assert proc.returncode <= 0, msg
-
 
 @pytest.mark.slow
 @pytest.mark.no_cover
 @pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py`")
 @pytest.mark.skipif(not module_available("jupyter"), reason="requires `jupyter`")
 @pytest.mark.skipif(not module_available("notebook"), reason="requires `notebook`")
-@pytest.mark.skipif(not module_available("nbconvert"), reason="requires `nbconvert`")
 @pytest.mark.parametrize("path", NOTEBOOKS)
-def test_jupyter_notebooks(path, tmp_path):
+def test_jupyter_notebooks(path):
     """Run the jupyter notebooks."""
     import notebook as jupyter_notebook
 
     if int(jupyter_notebook.__version__.split(".")[0]) < 7:
-        raise RuntimeError("Jupyter notebooks must be at least version 7")
+        msg = "Jupyter notebooks must be at least version 7"
+        raise RuntimeError(msg)
 
     if path.name.startswith("_"):
         pytest.skip("Skip examples starting with an underscore")

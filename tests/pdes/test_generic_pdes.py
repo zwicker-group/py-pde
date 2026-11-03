@@ -2,10 +2,15 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import logging
+import platform
+
 import numpy as np
 import pytest
 
-from pde import ScalarField, UnitGrid, pdes
+from pde import ScalarField, SDEBase, UnitGrid, get_backend, pdes
+from pde.solvers import EulerSolver
+from pde.tools.misc import module_available
 
 
 @pytest.mark.parametrize("dim", [1, 2])
@@ -26,14 +31,32 @@ def test_pde_consistency(pde_class, dim, rng):
     assert isinstance(str(eq), str)
     assert isinstance(repr(eq), str)
 
-    # compare numba to numpy implementation
+    # get ground truth from numpy implementation
     grid = UnitGrid([4] * dim)
     state = ScalarField.random_uniform(grid, rng=rng)
     field = eq.evolution_rate(state)
     assert field.grid == grid
-    rhs = eq._make_pde_rhs_numba(state)
-    res = rhs(state.data, 0)
-    np.testing.assert_allclose(field.data, res)
+
+    # compare numba to numpy implementation
+    if module_available("numba"):
+        rhs = eq.make_pde_rhs(state, backend="numba")
+        res = rhs(state.data, 0)
+        # use reduced tolerance to support potential float32 devices
+        np.testing.assert_allclose(field.data, res, rtol=5e-6)
+
+    # compare torch to numpy implementation
+    if module_available("torch") and platform.system() != "Windows":
+        rhs = eq.make_pde_rhs(state, backend="torch")
+        res = get_backend("torch")._apply_function(rhs, state.data, 0)
+        # use reduced tolerance to support potential float32 devices
+        np.testing.assert_allclose(field.data, res, rtol=5e-6)
+
+    # compare jax to numpy implementation
+    if module_available("jax"):
+        rhs = eq.make_pde_rhs(state, backend="jax")
+        res = get_backend("jax")._apply_function(rhs, state.data, 0)
+        # use reduced tolerance to support potential float32 devices
+        np.testing.assert_allclose(field.data, res, rtol=5e-6)
 
     # compare to generic implementation
     assert isinstance(eq.expression, str)
@@ -41,20 +64,34 @@ def test_pde_consistency(pde_class, dim, rng):
     np.testing.assert_allclose(field.data, eq2.evolution_rate(state).data)
 
 
-def test_pde_consistency_test(rng):
-    """Test whether the consistency of a pde implementation is checked."""
+def test_pde_automatic_adaptive_solver():
+    """Test whether adaptive solver is enabled as expected."""
+    eq = pdes.DiffusionPDE()
+    state = ScalarField(UnitGrid([2]))
+    args = {"state": state, "t_range": 0.01, "backend": "numpy", "tracker": None}
 
-    class TestPDE(pdes.PDEBase):
-        def evolution_rate(self, field, t=0):
-            return 2 * field
+    eq.solve(**args)
+    assert eq.diagnostics["solver"]["dt_adaptive"]
 
-        def _make_pde_rhs_numba(self, state):
-            def impl(state_data, t):
-                return 3 * state_data
+    eq.solve(dt=0.01, **args)
+    assert not eq.diagnostics["solver"]["dt_adaptive"]
 
-            return impl
+    eq.solve(solver=EulerSolver, **args)
+    assert not eq.diagnostics["solver"]["dt_adaptive"]
 
-    eq = TestPDE()
-    state = ScalarField.random_uniform(UnitGrid([4]), rng=rng)
-    with pytest.raises(AssertionError):
-        eq.solve(state, t_range=5, tracker=None)
+    eq.solve(solver="implicit", **args)
+    assert not eq.diagnostics["solver"]["dt_adaptive"]
+
+
+def test_unavailable_noise_drift(caplog):
+    """Test whether we detect problematic noise interpretations."""
+
+    class MySDE(SDEBase):
+        use_noise_realization = True
+
+        def evolution_rate(state, t):
+            return state
+
+    with caplog.at_level(logging.WARNING):
+        MySDE(noise_interpretation="stratonovich")
+    assert "drift term" in caplog.text

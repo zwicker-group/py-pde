@@ -11,10 +11,10 @@
    ffmpeg
    math
    misc
+   modelrunner
    mpi
-   numba
+   nested_dict
    output
-   parameters
    parse_duration
    plotting
    spectral

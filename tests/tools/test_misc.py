@@ -3,13 +3,28 @@
 """
 
 import json
-import os
 from pathlib import Path
 
 import numpy as np
 import pytest
 
 from pde.tools import misc
+
+
+@pytest.mark.parametrize("cache", [True, False])
+def test_module_available(cache):
+    """Test the module_available function."""
+    # clear cache to provide a defined environment
+    misc._MODULE_AVAILABILITY_CACHE = {}
+
+    # run each test twice to check the cache
+    assert misc.module_available("numpy", cache=cache)
+    assert misc.module_available("numpy", cache=cache)
+    assert cache == ("numpy" in misc._MODULE_AVAILABILITY_CACHE)
+
+    assert not misc.module_available("not available", cache=cache)
+    assert not misc.module_available("not available", cache=cache)
+    assert cache == ("not available" in misc._MODULE_AVAILABILITY_CACHE)
 
 
 def test_ensure_directory_exists(tmp_path):
@@ -26,20 +41,6 @@ def test_ensure_directory_exists(tmp_path):
     # remove the folder again
     Path.rmdir(path)
     assert not path.exists()
-
-
-def test_preserve_scalars():
-    """Test the preserve_scalars decorator."""
-
-    class Test:
-        @misc.preserve_scalars
-        def meth(self, arr):
-            return arr + 1
-
-    t = Test()
-
-    assert t.meth(1) == 2
-    np.testing.assert_equal(t.meth(np.ones(2)), np.full(2, 2))
 
 
 def test_hybridmethod():
@@ -110,3 +111,20 @@ def test_hdf_write_attributes(tmp_path):
         misc.hdf_write_attributes(
             hdf_file, {"a": object()}, raise_serialization_error=True
         )
+
+
+def test_number():
+    """Test the conversion to a number."""
+    assert misc.number(1) == 1
+    assert misc.number(1.5) == 1.5
+    assert misc.number(-2 + 4.5j) == -2 + 4.5j
+    assert misc.number(1e2) == 1e2
+
+    assert misc.number("1") == 1
+    assert misc.number("1.5") == 1.5
+    assert misc.number("-2 + 4.5j") == -2 + 4.5j
+    assert misc.number("-2+4.5j") == -2 + 4.5j
+    assert misc.number("1e2") == 100
+
+    with pytest.raises(ValueError):
+        misc.number("invalid")

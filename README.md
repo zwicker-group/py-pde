@@ -1,6 +1,6 @@
 # py-pde
 
-<img src="docs/source/_images/logo.png" width="200em" align="right" />
+<img src="docs/source/_images/logo.png" width="200em" align="right" alt="py-pde Logo"/>
 
 
 [![PyPI version](https://badge.fury.io/py/py-pde.svg)](https://badge.fury.io/py/py-pde)
@@ -14,18 +14,17 @@
 
 `py-pde` is a Python package for solving partial differential equations (PDEs). 
 The package provides classes for grids on which scalar and tensor fields can be
-defined. The associated differential operators are computed using a
-numba-compiled implementation of finite differences. This allows defining,
-inspecting, and solving typical PDEs that appear for instance in the study of
-dynamical systems in physics. The focus of the package lies on easy usage to
-explore the behavior of PDEs. However, core computations can be compiled
-transparently using numba for speed.
+defined. The associated differential operators are computed using finite differences,
+which allows defining, inspecting, and solving typical PDEs that appear for instance in
+the study of dynamical systems in physics. The focus of the package lies on easy usage
+to explore the behavior of PDEs. However, core computations can be compiled
+transparently using `numba`, `jax`, or `torch` for speed.
 
 [Try it online!](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
 
+## Installation
 
-Installation
-------------
+### PyPI / pip
 
 `py-pde` is available on `pypi`, so you should be able to install it through `pip`:
 
@@ -34,13 +33,24 @@ pip install py-pde
 ```
 
 In order to have all features of the package available, you might want to 
-install the following optional packages:
+install the following optional packages manually (all or a subset of these):
 
 ```bash
-pip install h5py pandas mpi4py numba-mpi
+pip install h5py pandas mpi4py numba-mpi py-modelrunner napari ffmpeg-python
+```
+
+or using the `py-pde` package variants `mpi`, `io` and/or `interactive` (any combination):
+
+```bash
+pip install py-pde[mpi]
+pip install py-pde[io]
+pip install py-pde[interactive]
+pip install py-pde[mpi,io,interactive]
 ```
 
 Moreover, `ffmpeg` needs to be installed for creating movies.
+
+### conda
 
 As an alternative, you can install `py-pde` through [conda](https://docs.conda.io/en/latest/)
 using the [conda-forge](https://conda-forge.org/) channel:
@@ -49,36 +59,40 @@ using the [conda-forge](https://conda-forge.org/) channel:
 conda install -c conda-forge py-pde
 ```
 
-Installation with `conda` includes all dependencies of `py-pde`.
+Installation with `conda` includes the optional dependencies of `py-pde`.
 
-Usage
------
+### Arch Linux package
+
+`py-pde` is also available as an [Arch package](https://aur.archlinux.org/packages/python-py-pde).
+
+## Usage
 
 A simple example showing the evolution of the diffusion equation in 2d:
 
 ```python
 import pde
 
-grid = pde.UnitGrid([64, 64])                 # generate grid
+grid = pde.UnitGrid([64, 64])  # generate grid
 state = pde.ScalarField.random_uniform(grid)  # generate initial condition
 
-eq = pde.DiffusionPDE(diffusivity=0.1)        # define the pde
-result = eq.solve(state, t_range=10)          # solve the pde
-result.plot()                                 # plot the resulting field
+eq = pde.DiffusionPDE(diffusivity=0.1)  # define the pde
+result = eq.solve(state, t_range=10)  # solve the pde
+result.plot()  # plot the resulting field
 ```
 
 PDEs can also be specified by simply writing expressions of the evolution rate.
 For instance, the
 [Cahn-Hilliard equation](https://en.wikipedia.org/wiki/Cahn–Hilliard_equation)
 can be implemented as
+
 ```python
-eq = pde.PDE({'c': 'laplace(c**3 - c - laplace(c))'})
+eq = pde.PDE({"c": "laplace(c**3 - c - laplace(c))"})
 ```
+
 which can be used in place of the `DiffusionPDE` in the example above.
 
+## More information
 
-More information
-----------------
 * Tutorial notebooks in the [tutorials folder](https://github.com/zwicker-group/py-pde/tree/master/examples/jupyter)
 * [Examples gallery](https://py-pde.readthedocs.io/en/latest/gallery.html)
   with an overview of the capabilities of the package
@@ -87,5 +101,3 @@ More information
   or as [a single PDF file](https://py-pde.readthedocs.io/_/downloads/en/latest/pdf/).
 * The [paper published in the Journal of Open Source Software](https://doi.org/10.21105/joss.02158)
 * [Practical tutorial on pattern formation in biological cells](https://github.com/zwicker-group/tutorial-pattern-formation-in-cells)
-
- 

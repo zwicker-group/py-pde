@@ -1,14 +1,27 @@
 """Solvers for Poisson's and Laplace's equation.
 
+.. autosummary::
+   :nosignatures:
+
+   solve_poisson_equation
+   solve_laplace_equation
+   helmholtz_decomposition
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
 
-from ..fields import ScalarField
-from ..grids.base import GridBase
-from ..grids.boundaries.axes import BoundariesData
+from typing import TYPE_CHECKING
+
+from ..backends import get_backend
+from ..fields import ScalarField, VectorField
 from ..tools.docstrings import fill_in_docstring
+
+if TYPE_CHECKING:
+    from ..backends.base import BackendBase
+    from ..grids.base import GridBase
+    from ..grids.boundaries.axes import BoundariesData
 
 
 @fill_in_docstring
@@ -16,10 +29,11 @@ def solve_poisson_equation(
     rhs: ScalarField,
     bc: BoundariesData,
     *,
+    backend: str | BackendBase = "scipy",
     label: str = "Solution to Poisson's equation",
     **kwargs,
 ) -> ScalarField:
-    r"""Solve Laplace's equation on a given grid.
+    r"""Solve Poisson's equation on a given grid.
 
     Denoting the current field by :math:`u`, we thus solve for :math:`f`, defined by the
     equation
@@ -36,11 +50,10 @@ def solve_poisson_equation(
         .. math::
             \int f \, \mathrm{d}V = \oint g \, \mathrm{d}S \;,
 
-        where :math:`g` denotes the function specifying the outwards
-        derivative for Neumann conditions. Note that for periodic boundaries
-        :math:`g` vanishes, so that this condition implies that the integral
-        over
-        :math:`f` must vanish for neutral Neumann or periodic conditions.
+        where :math:`g` denotes the function specifying the outwards derivative for
+        Neumann conditions. Note that for periodic boundaries :math:`g` vanishes, so
+        that this condition implies that the integral over :math:`f` must vanish for
+        neutral Neumann or periodic conditions.
 
     Args:
         rhs (:class:`~pde.fields.scalar.ScalarField`):
@@ -48,46 +61,51 @@ def solve_poisson_equation(
         bc:
             The boundary conditions applied to the field.
             {ARG_BOUNDARIES}
+        backend (str or :class:`~pde.backends.base.BackendBase`):
+            Retained for API compatibility but currently ignored. The Poisson
+            solver always uses the SciPy backend.
         label (str):
             The label of the returned field.
+        **kwargs:
+            Additional parameters influence how the Laplace operator is constructed.
 
     Returns:
-        :class:`~pde.fields.scalar.ScalarField`: The field :math:`u` that solves
-        the equation. This field will be defined on the same grid as `rhs`.
+        :class:`~pde.fields.scalar.ScalarField`: Field :math:`u` solving the equation.
     """
     # get the operator information
-    operator = rhs.grid._get_operator_info("poisson_solver")
+    operator = get_backend("scipy").get_operator_info(rhs.grid, "poisson_solver")
     # get the boundary conditions
     bcs = rhs.grid.get_boundary_conditions(bc)
-    # get the actual solver
+    # get the executable linear solve routine
     solver = operator.factory(bcs=bcs, **kwargs)
 
     # solve the poisson problem
     result = ScalarField(rhs.grid, label=label)
     try:
-        solver(rhs.data, result.data)
+        solver(rhs.data, result.data)  # type: ignore
     except RuntimeError as err:
         magnitude = rhs.magnitude
         if magnitude > 1e-10:
-            raise RuntimeError(
+            msg = (
                 "Could not solve the Poisson problem. One possible reason for this is "
                 "that only periodic or Neumann conditions are applied although the "
                 f"magnitude of the field is {magnitude} and thus non-zero."
-            ) from err
-        else:
-            raise  # another error occurred
+            )
+            raise RuntimeError(msg) from err
+        raise  # another error occurred
 
     return result
 
 
 @fill_in_docstring
 def solve_laplace_equation(
-    grid: GridBase, bc: BoundariesData, *, label: str = "Solution to Laplace's equation"
+    grid: GridBase,
+    bc: BoundariesData,
+    *,
+    backend: str | BackendBase = "scipy",
+    label: str = "Solution to Laplace's equation",
 ) -> ScalarField:
     """Solve Laplace's equation on a given grid.
-
-    This is implemented by calling :func:`solve_poisson_equation` with a
-    vanishing right hand side.
 
     Args:
         grid (:class:`~pde.grids.base.GridBase`):
@@ -95,12 +113,47 @@ def solve_laplace_equation(
         bc:
             The boundary conditions applied to the field.
             {ARG_BOUNDARIES}
+        backend (str or :class:`~pde.backends.base.BackendBase`):
+            Retained for API compatibility but currently ignored. The Laplace
+            solver uses the SciPy Poisson solver internally.
         label (str):
             The label of the returned field.
 
     Returns:
-        :class:`~pde.fields.scalar.ScalarField`: The field that solves the
-        equation. This field will be defined on the given `grid`.
+        :class:`~pde.fields.scalar.ScalarField`: The field that solves the equation.
     """
     rhs = ScalarField(grid, data=0)
     return solve_poisson_equation(rhs, bc=bc, label=label)
+
+
+@fill_in_docstring
+def helmholtz_decomposition(
+    field: VectorField, bc: BoundariesData
+) -> tuple[ScalarField, VectorField]:
+    r"""Return Helmholtz decomposition of a vector field.
+
+    For a vector field :math:`\boldsymbol u`, we return a scalar potential :math:`\phi`
+    and a solenoidal (divergence-free) vector field :math:`\boldsymbol v`, which obey
+
+    .. math::
+        \boldsymbol u = \nabla \phi + \boldsymbol v
+
+
+    Args:
+        field (:class:`~pde.fields.vectorial.VectorField`):
+            The vector field :math:`u` that needs to be decomposed.
+        bc:
+            The boundary conditions applied to the field. Note that the same boundary
+            conditions are also applied to when solving the Poisson equation to
+            determine the potential.
+            {ARG_BOUNDARIES}
+
+    Returns:
+        :class:`~pde.fields.ScalarField`, :class:`~pde.fields.VectorField`:
+            The two fields of the Helmholtz decomposition
+    """
+    bcs = field.grid.get_boundary_conditions(bc)
+    source = field.divergence(bcs)
+    potential = solve_poisson_equation(source, bcs)
+    solenoidal: VectorField = field - potential.gradient(bcs)  # type: ignore
+    return potential, solenoidal

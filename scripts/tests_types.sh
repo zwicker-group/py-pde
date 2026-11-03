@@ -1,3 +1,6 @@
 #!/usr/bin/env bash
 
-./run_tests.py --types 
+# the MYPY cache is currently broken and we thus clear it every time
+rm -rf ../.mypy_cache
+
+./run_tests.py --types

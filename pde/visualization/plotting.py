@@ -18,27 +18,33 @@ import logging
 import math
 import time
 import warnings
-from typing import Any, Callable, Literal, Union
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
 from ..fields import FieldCollection
 from ..fields.base import FieldBase
-from ..fields.datafield_base import DataFieldBase
-from ..storage.base import StorageBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..tools.output import display_progress
 from ..tools.plotting import (
     PlotReference,
+    indicate_axes_periodicity,
     napari_add_layers,
     napari_viewer,
     plot_on_axes,
     plot_on_figure,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from ..fields.datafield_base import DataFieldBase
+    from ..storage.base import StorageBase
+    from ..tools.typing import NumericArray
+
 _logger = logging.getLogger(__name__)
-ScaleData = Union[str, float, tuple[float, float]]
+ScaleData = str | float | tuple[float, float]
 
 
 def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
@@ -63,7 +69,7 @@ def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
 
 def extract_field(
     fields: FieldBase,
-    source: None | int | Callable = None,
+    source: int | Callable | None = None,
     check_rank: int | None = None,
 ) -> DataFieldBase:
     """Extracts a single field from a possible collection.
@@ -71,7 +77,7 @@ def extract_field(
     Args:
         fields (:class:`~pde.fields.FieldBase`):
             The field from which data is extracted
-        source (int or callable, optional):
+        source (int, callable, or None, optional):
             Determines how a field is extracted from `fields`. If `None`,
             `fields` is passed as is, assuming it is already a scalar field.
             This works for the simple, standard case where only a single
@@ -92,21 +98,23 @@ def extract_field(
         field = fields
     elif callable(source):
         field = source(fields)
+    elif isinstance(fields, FieldCollection):
+        field = fields[source]
     else:
-        if isinstance(fields, FieldCollection):
-            field = fields[source]
-        else:
-            raise TypeError(
-                f"Cannot extract component {source} from instance of "
-                f"{fields.__class__.__name__}"
-            )
+        msg = (
+            f"Cannot extract component {source} from instance of "
+            f"{fields.__class__.__name__}"
+        )
+        raise TypeError(msg)
 
     if isinstance(field, FieldCollection):
-        raise RuntimeError("Extract field is a collection")
+        msg = "Extract field is a collection"
+        raise TypeError(msg)
 
     # test whether the rank is as expected
     if check_rank is not None and field.rank != check_rank:  # type: ignore
-        raise RuntimeError(f"Rank of extracted field is not {check_rank}")
+        msg = f"Rank of extracted field is not {check_rank}"
+        raise RuntimeError(msg)
 
     return field  # type: ignore
 
@@ -124,6 +132,8 @@ class ScalarFieldPlot:
         title: str | None = None,
         tight: bool = False,
         show: bool = True,
+        *,
+        skip_deprecation: bool = False,
     ):
         """
         Args:
@@ -136,7 +146,7 @@ class ScalarFieldPlot:
             fig (:class:`matplotlib.figure.Figure):
                 Figure to be used for plotting. If `None`, a new figure is
                 created.
-            title (str):
+            title (str, optional):
                 Title of the plot.
             tight (bool):
                 Whether to call :func:`matplotlib.pyplot.tight_layout`. This
@@ -145,7 +155,17 @@ class ScalarFieldPlot:
                 Flag determining whether to show a plot. If `False`, the plot is
                 kept in the background, which can be useful if it only needs to
                 be written to a file.
+            skip_deprecation (bool):
+                Internal compatibility flag that suppresses the deprecation warning.
         """
+        if not skip_deprecation:
+            # Deprecated since 2026-07-10
+            warnings.warn(
+                "`ScalarFieldPlot` is deprecated and will be removed soon.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         self.grid = fields.grid
         self.quantities = self._prepare_quantities(fields, quantities, scale=scale)
         self.show = show
@@ -184,6 +204,8 @@ class ScalarFieldPlot:
         scale: ScaleData = "automatic",
         tight: bool = False,
         show: bool = True,
+        *,
+        skip_deprecation: bool = False,
     ) -> ScalarFieldPlot:
         """Create ScalarFieldPlot from storage.
 
@@ -200,13 +222,16 @@ class ScalarFieldPlot:
             show (bool):
                 Flag determining whether to show a plot. If `False`, the plot is
                 kept in the background.
+            skip_deprecation (bool):
+                Internal compatibility flag that suppresses the deprecation warning.
 
         Returns:
             :class:`~pde.visualization.plotting.ScalarFieldPlot`
         """
         fields = storage[0]
         if not isinstance(fields, FieldBase):
-            raise RuntimeError("Storage must contain fields")
+            msg = "Storage must contain fields"
+            raise TypeError(msg)
 
         # prepare the data that needs to be plotted
         quantities = cls._prepare_quantities(fields, quantities=quantities, scale=scale)
@@ -223,8 +248,14 @@ class ScalarFieldPlot:
                         vmax = np.nanmax([np.nanmax(img["data"]), vmax])
                     quantity["scale"] = (vmin, vmax)
 
-        # actually setup
-        return cls(fields, quantities, tight=tight, show=show)
+        # actual creation of object
+        return cls(
+            fields,
+            quantities,
+            tight=tight,
+            show=show,
+            skip_deprecation=skip_deprecation,
+        )
 
     @staticmethod
     @fill_in_docstring
@@ -250,7 +281,7 @@ class ScalarFieldPlot:
             if isinstance(fields, FieldCollection):
                 quantities = []
                 for i, field in enumerate(fields):
-                    title = field.label if field.label else f"Field {i + 1}"
+                    title = field.label or f"Field {i + 1}"
                     quantity = {"title": title, "source": i, "scale": scale}
                     quantities.append(quantity)
             else:
@@ -297,14 +328,14 @@ class ScalarFieldPlot:
             fig (:class:`matplotlib.figure.Figure):
                 Figure to be used for plotting. If `None`, a new figure is
                 created.
-            title (str):
+            title (str, optional):
                 Title of the plot.
             tight (bool):
                 Whether to call :func:`matplotlib.pyplot.tight_layout`. This
                 affects the layout of all plot elements.
         """
-        import matplotlib.cm as cm
         import matplotlib.pyplot as plt
+        from matplotlib import cm
 
         num_rows = len(self.quantities)
         num_cols = max(len(p) for p in self.quantities)
@@ -350,13 +381,13 @@ class ScalarFieldPlot:
                 cmap = panel.get("cmap")
                 if cmap is None:
                     if vmin is None or vmax is None:
-                        cmap = cm.viridis  # type: ignore
+                        cmap = cm.viridis
                     elif np.isclose(-vmin, vmax):
-                        cmap = cm.coolwarm  # type: ignore
+                        cmap = cm.coolwarm
                     elif np.isclose(vmin, 0):
-                        cmap = cm.gray  # type: ignore
+                        cmap = cm.gray
                     else:
-                        cmap = cm.viridis  # type: ignore
+                        cmap = cm.viridis
 
                 # initialize image
                 ax = self.axes[i, j]
@@ -395,7 +426,8 @@ class ScalarFieldPlot:
                 changed.
         """
         if not isinstance(fields, FieldBase):
-            raise TypeError("`fields` must be of type FieldBase")
+            msg = "`fields` must be of type FieldBase"
+            raise TypeError(msg)
 
         if title:
             self.sup_title.set_text(title)
@@ -500,7 +532,10 @@ class ScalarFieldPlot:
 @plot_on_axes()
 @fill_in_docstring
 def plot_magnitudes(
-    storage: StorageBase, quantities=None, ax=None, **kwargs
+    storage: StorageBase,
+    quantities: list[dict[str, Any]] | None = None,
+    ax=None,
+    **kwargs,
 ) -> PlotReference:
     r"""Plot spatially averaged quantities as a function of time.
 
@@ -514,7 +549,7 @@ def plot_magnitudes(
         quantities:
             {ARG_PLOT_QUANTITIES}
         {PLOT_ARGS}
-        \**kwargs:
+        **kwargs:
             All remaining parameters are forwarded to the `ax.plot` method
 
     Returns:
@@ -523,7 +558,8 @@ def plot_magnitudes(
     if quantities is None:
         fields = storage[0]
         if not isinstance(fields, FieldBase):
-            raise TypeError("`fields` must be of type FieldBase")
+            msg = "`fields` must be of type FieldBase"
+            raise TypeError(msg)
         if fields.label:
             label_base = fields.label
         else:
@@ -539,6 +575,13 @@ def plot_magnitudes(
                 quantities.append({"label": label, "source": i})
         else:
             quantities = [{"label": label_base, "source": None}]
+    else:
+        # Deprecated since 2026-07-10
+        warnings.warn(
+            "Argument `quantities` is deprecated and will be removed soon.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     _logger.debug("Quantities: %s", quantities)
 
@@ -573,8 +616,8 @@ def plot_magnitudes(
             check_complex = False  # only warn once
 
         # actually plot the data
-        (l,) = ax.plot(times, np.real(d["values"]), **kwargs)
-        lines.append(l)
+        (line,) = ax.plot(times, np.real(d["values"]), **kwargs)
+        lines.append(line)
 
     ax.set_xlabel("Time")
     if len(data) == 1:
@@ -604,7 +647,7 @@ def _plot_kymograph(
             Whether to show a colorbar or not
         transpose (bool):
             Determines whether the transpose of the data should is plotted
-        \**kwargs:
+        **kwargs:
             Additional keyword arguments are passed to
             :func:`matplotlib.pyplot.imshow`.
 
@@ -619,6 +662,8 @@ def _plot_kymograph(
             "data": img_data["data"].T,
             "label_x": img_data["label_y"],
             "label_y": img_data["label_x"],
+            "periodic_x": img_data.get("periodic_y", False),
+            "periodic_y": img_data.get("periodic_x", False),
         }
     else:
         extent = np.r_[img_data["extent_x"], img_data["extent_y"]]
@@ -633,6 +678,7 @@ def _plot_kymograph(
     )
 
     # adjust some settings
+    indicate_axes_periodicity(ax, img_data)
     ax.set_xlabel(img_data["label_x"])
     ax.set_ylabel(img_data["label_y"])
     ax.set_aspect("auto")
@@ -661,17 +707,16 @@ def plot_kymograph(
 ) -> PlotReference:
     r"""Plots a single kymograph from stored data.
 
-    The kymograph shows line data stacked along time. Consequently, the
-    resulting image shows space along the horizontal axis and time along the
-    vertical axis.
+    The kymograph shows line data stacked along time. Consequently, the resulting image
+    shows space along one axis and time along the other axis.
 
     Args:
         storage (:class:`~droplets.simulation.storage.StorageBase`):
             The storage instance that contains all the data
-        field_index (int):
-            An index to choose a single field out of many in a collection
-            stored in `storage`. This option should not be used if only a single
-            field is stored in a collection.
+        field_index (int, optional):
+            An index to choose a single field out of many in a collection stored in
+            `storage`. This option should not be used if only a single field is stored
+            in a collection.
         scalar (str):
             The method for extracting scalars as described in
             :meth:`DataFieldBase.to_scalar`.
@@ -683,7 +728,7 @@ def plot_kymograph(
         transpose (bool):
             Determines whether the transpose of the data should is plotted
         {PLOT_ARGS}
-        \**kwargs:
+        **kwargs:
             Additional keyword arguments are passed to
             :func:`matplotlib.pyplot.imshow`.
 
@@ -691,7 +736,8 @@ def plot_kymograph(
         :class:`~pde.tools.plotting.PlotReference`: The reference to the plot
     """
     if len(storage) == 0:
-        raise RuntimeError("Storage is empty")
+        msg = "Storage is empty"
+        raise RuntimeError(msg)
     line_data_args: dict[str, Any] = {"scalar": scalar, "extract": extract}
 
     if storage.has_collection:
@@ -710,7 +756,7 @@ def plot_kymograph(
 
     # prepare the image data for one kymograph
     image = []
-    for _, field in storage.items():
+    for _, field in storage.items():  # noqa: PERF102
         img_data = field.get_line_data(**line_data_args)
         image.append(img_data["data_y"])
 
@@ -736,9 +782,8 @@ def plot_kymographs(
 ) -> list[PlotReference]:
     r"""Plots kymographs for all fields stored in `storage`
 
-    The kymograph shows line data stacked along time. Consequently, the
-    resulting image shows space along the horizontal axis and time along the
-    vertical axis.
+    Kymographs line data stacked along time. Consequently, the resulting image shows
+    space along one axis and time along the other axis.
 
     Args:
         storage (:class:`~droplets.simulation.storage.StorageBase`):
@@ -756,7 +801,7 @@ def plot_kymographs(
         resize_fig (bool):
             Whether to resize the figure to adjust to the number of panels
         {PLOT_ARGS}
-        \**kwargs:
+        **kwargs:
             Additional keyword arguments are passed to the calls to
             :func:`matplotlib.pyplot.imshow`.
 
@@ -765,7 +810,8 @@ def plot_kymographs(
         all plots
     """
     if len(storage) == 0:
-        raise RuntimeError("Storage is empty")
+        msg = "Storage is empty"
+        raise RuntimeError(msg)
     line_data_args = {"scalar": scalar, "extract": extract}
     if storage.has_collection:
         num_fields = len(storage[0])  # type: ignore
@@ -774,7 +820,7 @@ def plot_kymographs(
 
     # prepare the image data for one kymograph
     images = []
-    for _, field in storage.items():
+    for _, field in storage.items():  # noqa: PERF102
         if storage.has_collection:
             image_lines = []
             for f_id in range(num_fields):
@@ -828,23 +874,26 @@ def plot_interactive(
             actual time points are used), or "scaled" (the axis is scaled so that it has
             similar dimension to the spatial axes). Note that the spatial axes will
             never be scaled.
-        viewer_args (dict):
+        viewer_args (dict, optional):
             Arguments passed to :class:`napari.viewer.Viewer` to affect the viewer.
         **kwargs:
             Extra arguments passed to the plotting function
     """
     if not module_available("napari"):
-        raise ImportError("Require the `napari` module for interactive plotting")
+        msg = "Require the `napari` module for interactive plotting"
+        raise ImportError(msg)
 
     if len(storage) < 1:
-        raise ValueError("Storage is empty")
+        msg = "Storage is empty"
+        raise ValueError(msg)
 
     grid = storage.grid
     if grid is None:
-        raise RuntimeError("Storage did not contain information about the grid")
+        msg = "Storage did not contain information about the grid"
+        raise RuntimeError(msg)
 
     # collect data from all time points
-    timecourse: dict[str, list[np.ndarray]] = {}
+    timecourse: dict[str, list[NumericArray]] = {}
     for field in storage:
         layer_data = field._get_napari_data(**kwargs)
 
@@ -865,12 +914,13 @@ def plot_interactive(
                 length_scale = grid.volume ** (1 / grid.dim)
                 dt = length_scale / len(storage)
             else:
-                raise ValueError(f"Unknown time scaling `{time_scaling}`")
+                msg = f"Unknown time scaling `{time_scaling}`"
+                raise ValueError(msg)
             field_data["scale"] = np.r_[dt, field_data["scale"]]
 
     if viewer_args is None:
         viewer_args = {}
-    viewer_args.setdefault("axis_labels", ["Time"] + grid.axes)
+    viewer_args.setdefault("axis_labels", ["Time", *grid.axes])
 
     # actually display the data using napari
     with napari_viewer(grid, **viewer_args) as viewer:

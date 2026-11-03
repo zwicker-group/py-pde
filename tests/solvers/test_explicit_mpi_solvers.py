@@ -11,16 +11,15 @@ from pde.tools import mpi
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numba_mpi"])
 @pytest.mark.parametrize(
-    "scheme, adaptive, decomposition",
+    ("adaptive", "decomposition"),
     [
-        ("euler", False, "auto"),
-        ("euler", True, [1, -1]),
-        ("runge-kutta", True, [-1, 1]),
+        (False, "auto"),
+        (True, [1, -1]),
     ],
 )
-def test_simple_pde_mpi(backend, scheme, adaptive, decomposition, rng):
+def test_simple_pde_mpi(backend, adaptive, decomposition, rng):
     """Test setting boundary conditions using numba."""
     grid = UnitGrid([8, 8], periodic=[True, False])
 
@@ -32,7 +31,6 @@ def test_simple_pde_mpi(backend, scheme, adaptive, decomposition, rng):
         "t_range": 1.01,
         "dt": 0.1,
         "adaptive": adaptive,
-        "scheme": scheme,
         "tracker": None,
         "ret_info": True,
     }
@@ -42,7 +40,7 @@ def test_simple_pde_mpi(backend, scheme, adaptive, decomposition, rng):
 
     if mpi.is_main:
         # check results in the main process
-        expect, info2 = eq.solve(backend="numpy", solver="explicit", **args)
+        expect, info2 = eq.solve(backend="numpy", solver="euler", **args)
         np.testing.assert_allclose(res_mpi.data, expect.data)
 
         assert info_mpi["solver"]["steps"] == info2["solver"]["steps"]
@@ -56,7 +54,7 @@ def test_simple_pde_mpi(backend, scheme, adaptive, decomposition, rng):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numba", "numpy"])
+@pytest.mark.parametrize("backend", ["numba_mpi"])
 def test_stochastic_mpi_solvers(backend, rng):
     """Test simple version of the stochastic solver."""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
@@ -80,8 +78,9 @@ def test_stochastic_mpi_solvers(backend, rng):
         assert not solver2.info["dt_adaptive"]
 
 
+@pytest.mark.slow
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ["numba_mpi"])
 def test_multiple_pdes_mpi(backend, rng):
     """Test setting boundary conditions using numba."""
     grid = UnitGrid([8, 8], periodic=[True, False])
@@ -94,7 +93,6 @@ def test_multiple_pdes_mpi(backend, rng):
         "t_range": 1.01,
         "dt": 0.1,
         "adaptive": True,
-        "scheme": "euler",
         "tracker": None,
         "ret_info": True,
     }
@@ -102,7 +100,7 @@ def test_multiple_pdes_mpi(backend, rng):
 
     if mpi.is_main:
         # check results in the main process
-        expect, info2 = eq.solve(backend="numpy", solver="explicit", **args)
+        expect, info2 = eq.solve(backend="numpy", solver="euler", **args)
         np.testing.assert_allclose(res_mpi.data, expect.data)
 
         assert info_mpi["solver"]["steps"] == info2["solver"]["steps"]

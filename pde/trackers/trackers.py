@@ -6,15 +6,16 @@ The trackers defined in this module are:
    :nosignatures:
 
    CallbackTracker
-   ProgressTracker
-   PrintTracker
-   PlotTracker
-   LivePlotTracker
-   DataTracker
-   SteadyStateTracker
-   RuntimeTracker
    ConsistencyTracker
+   DataTracker
+   LivePlotTracker
    MaterialConservationTracker
+   MaxRuntimeTracker
+   PlotTracker
+   PrintTracker
+   ProgressTracker
+   SteadyStateTracker
+   WalltimeTracker
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -23,28 +24,37 @@ from __future__ import annotations
 
 import inspect
 import math
-import os.path
 import sys
 import time
+import warnings
 from datetime import timedelta
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any, Callable
+from typing import IO, TYPE_CHECKING, Any
 
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..tools.output import get_progress_bar_class
 from ..tools.parse_duration import parse_duration
-from ..tools.typing import Real
-from ..visualization.movies import Movie
-from .base import FinishedSimulation, InfoDict, TrackerBase
+from .base import (
+    FinishedSimulation,
+    InfoDict,
+    TrackerBase,
+    TransformationType,
+    TransformedTrackerBase,
+)
 from .interrupts import InterruptData, RealtimeInterrupts
 
 if TYPE_CHECKING:
-    import pandas  # noqa: ICN001
+    from collections.abc import Callable
+
+    import pandas as pd
+
+    from ..fields.base import FieldBase
+    from ..tools.typing import NumericArray, Real
+    from ..visualization.movies import Movie
 
 
 class CallbackTracker(TrackerBase):
@@ -87,10 +97,11 @@ class CallbackTracker(TrackerBase):
         self._callback = func
         self._num_args = len(inspect.signature(func).parameters)
         if not 0 < self._num_args < 3:
-            raise ValueError(
+            msg = (
                 "`func` must be a function accepting one or two arguments, not "
                 f"{self._num_args}"
             )
+            raise ValueError(msg)
 
     def handle(self, field: FieldBase, t: float) -> None:
         """Handle data supplied to this tracker.
@@ -111,6 +122,7 @@ class ProgressTracker(TrackerBase):
     """Tracker showing the progress of the simulation."""
 
     name = "progress"
+    atol: float = 1e-6  # tolerance for determining whether we reached the final time
 
     @fill_in_docstring
     def __init__(
@@ -203,7 +215,7 @@ class ProgressTracker(TrackerBase):
         controller_info = {} if info is None else info.get("controller", {})
         t_final = controller_info.get("t_final", -math.inf)
         t_end = controller_info.get("t_end", -math.inf)
-        if t_final >= t_end and self.progress_bar.total:
+        if t_final >= t_end - self.atol and self.progress_bar.total:
             self.progress_bar.n = self.progress_bar.total
             self.progress_bar.refresh()
 
@@ -263,7 +275,7 @@ class PrintTracker(TrackerBase):
         self.stream.flush()
 
 
-class PlotTracker(TrackerBase):
+class PlotTracker(TransformedTrackerBase):
     """Tracker plotting data on screen, to files, or writes a movie.
 
     This tracker can be used to create movies from simulations or to simply update a
@@ -294,6 +306,7 @@ class PlotTracker(TrackerBase):
         tight_layout: bool = False,
         max_fps: float = math.inf,
         plot_args: dict[str, Any] | None = None,
+        transformation: TransformationType = None,
     ):
         """
         Args:
@@ -303,8 +316,8 @@ class PlotTracker(TrackerBase):
                 Title text of the figure. If this is a string, it is shown with a
                 potential placeholder named `time` being replaced by the current
                 simulation time. Conversely, if `title` is a function, it is called with
-                the current state and the time as arguments. This function is expected
-                to return a string.
+                the current (potentially transformed) state and the time as arguments.
+                This function is expected to return a string.
             output_file (str, optional):
                 Specifies a single image file, which is updated periodically, so that
                 the progress can be monitored (e.g. on a compute cluster)
@@ -331,6 +344,13 @@ class PlotTracker(TrackerBase):
                 to specify axes ranges when a single panel is shown. For instance, the
                 value :code:`{'ax_style': {'ylim': (0, 1)}}` enforces the y-axis to lie
                 between 0 and 1.
+            transformation (callable, optional):
+                A function that transforms the current state into a new field or field
+                collection, which is then plotted. This allows to show derived
+                quantities of the field during calculations. The argument needs
+                to be a callable function taking 1 or 2 arguments. The first argument
+                always is the current field, while the optional second argument is the
+                associated time.
 
         Note:
             If an instance of :class:`~pde.visualization.movies.Movie` is given as the
@@ -352,7 +372,7 @@ class PlotTracker(TrackerBase):
         from ..visualization.movies import Movie
 
         # initialize the tracker
-        super().__init__(interrupts=interrupts)
+        super().__init__(interrupts=interrupts, transformation=transformation)
         self.title = title
         self.output_file = output_file
         self.tight_layout = tight_layout
@@ -377,7 +397,8 @@ class PlotTracker(TrackerBase):
             self._save_movie = True
 
         else:
-            raise TypeError(f"Unknown type of `movie`: {movie.__class__.__name__}")
+            msg = f"Unknown type of `movie`: {movie.__class__.__name__}"
+            raise TypeError(msg)
 
         # determine whether to show the images interactively
         self._write_images = self._save_movie or self.output_file
@@ -405,34 +426,38 @@ class PlotTracker(TrackerBase):
 
         self._context = get_plotting_context(title="Initializing...", show=self.show)
 
+        # obtain the potentially transformed data
+        t_first = super().initialize(state, info)
+        plot_data = self._transform(state, t_first)
+
         # do the actual plotting
         with self._context:
-            self._plot_reference = state.plot(**self.plot_args)
+            self._plot_reference = plot_data.plot(**self.plot_args)
             if self.tight_layout:
                 plt.gcf().tight_layout()
 
         if self._context.supports_update:
             # the context supports reusing figures
-            if hasattr(state.plot, "update_method"):
+            if hasattr(plot_data.plot, "update_method"):
                 # the plotting method supports updating the plot
-                if state.plot.update_method is None:
-                    if state.plot.mpl_class == "axes":  # type: ignore
+                if plot_data.plot.update_method is None:
+                    if plot_data.plot.mpl_class == "axes":  # type: ignore
                         self._update_method = "update_ax"
-                    elif state.plot.mpl_class == "figure":  # type: ignore
+                    elif plot_data.plot.mpl_class == "figure":  # type: ignore
                         self._update_method = "update_fig"
                     else:
-                        mpl_class = state.plot.mpl_class  # type: ignore
-                        raise RuntimeError(
-                            f"Unknown mpl_class on plot method: {mpl_class}"
-                        )
+                        mpl_class = plot_data.plot.mpl_class  # type: ignore
+                        msg = f"Unknown mpl_class on plot method: {mpl_class}"
+                        raise RuntimeError(msg)
                 else:
                     self._update_method = "update_data"
             else:
-                raise RuntimeError(
+                msg = (
                     "PlotTracker does not  work since the state of type "
-                    f"{state.__class__.__name__} does not use the plot protocol of "
+                    f"{plot_data.__class__.__name__} does not use the plot protocol of "
                     "`pde.tools.plotting`."
                 )
+                raise RuntimeError(msg)
         else:
             self._update_method = "replot"
 
@@ -457,38 +482,42 @@ class PlotTracker(TrackerBase):
             if time_passed < 1 / self.max_fps:
                 return  # we just recently updated the image
 
+        # obtain the potentially transformed data
+        plot_data = self._transform(state, t)
+
         if callable(self.title):
-            self._context.title = str(self.title(state, t))
+            self._context.title = str(self.title(plot_data, t))
         else:
             self._context.title = self.title.format(time=t)
 
         # update the plot in the correct plotting context
         with self._context:
             if self._update_method == "update_data":
-                # the state supports updating the plot data
-                update_func = getattr(state, state.plot.update_method)  # type: ignore
+                # the plot_data supports updating the plot data
+                update_func = getattr(plot_data, plot_data.plot.update_method)  # type: ignore
                 update_func(self._plot_reference)
 
             elif self._update_method == "update_ax":
                 fig = self._context.fig
                 fig.clf()  # type: ignore
                 ax = fig.add_subplot(1, 1, 1)  # type: ignore
-                state.plot(ax=ax, **self.plot_args)
+                plot_data.plot(ax=ax, **self.plot_args)
 
             elif self._update_method == "update_fig":
                 fig = self._context.fig
                 fig.clf()  # type: ignore
-                state.plot(fig=fig, **self.plot_args)
+                plot_data.plot(fig=fig, **self.plot_args)
                 if self.tight_layout:
                     plt.gcf().tight_layout()
 
             elif self._update_method == "replot":
-                state.plot(**self.plot_args)
+                plot_data.plot(**self.plot_args)
                 if self.tight_layout:
                     plt.gcf().tight_layout()
 
             else:
-                raise RuntimeError(f"Unknown update method `{self._update_method}`")
+                msg = f"Unknown update method `{self._update_method}`"
+                raise RuntimeError(msg)
 
         if self.output_file and self._context.fig is not None:
             self._context.fig.savefig(self.output_file)
@@ -539,9 +568,12 @@ class LivePlotTracker(PlotTracker):
         Args:
             interrupts:
                 {ARG_TRACKER_INTERRUPT}
-            title (str):
-                Text to show in the title. The current time point will be
-                appended to this text, so include a space for optimal results.
+            title (str or callable):
+                Title text of the figure. If this is a string, it is shown with a
+                potential placeholder named `time` being replaced by the current
+                simulation time. Conversely, if `title` is a function, it is called with
+                the current (potentially transformed) state and the time as arguments.
+                This function is expected to return a string.
             output_file (str, optional):
                 Specifies a single image file, which is updated periodically, so
                 that the progress can be monitored (e.g. on a compute cluster)
@@ -565,6 +597,16 @@ class LivePlotTracker(PlotTracker):
                 be used to specify axes ranges when a single panel is shown. For
                 instance, the value `{'ax_style': {'ylim': (0, 1)}}` enforces
                 the y-axis to lie between 0 and 1.
+            transformation (callable, optional):
+                A function that transforms the current state into a new field or field
+                collection, which is then plotted. This allows to show derived
+                quantities of the field during calculations. The argument needs
+                to be a callable function taking 1 or 2 arguments. The first argument
+                always is the current field, while the optional second argument is the
+                associated time.
+            **kwargs:
+                Additional arguments forwarded to :class:`PlotTracker`, such as
+                `title`, `plot_args`, `output_file`, `output_folder`, and `movie_file`.
         """
         super().__init__(interrupts=interrupts, show=show, max_fps=max_fps, **kwargs)
 
@@ -585,15 +627,8 @@ class DataTracker(CallbackTracker):
 
         Adding :code:`data_tracker` to the simulation will gather the statistics every
         10 time units. After the simulation, the final result will be accessible via the
-        :attr:`data` attribute or conveniently as a pandas from the :attr:`dataframe`
-        attribute.
-
-    Attributes:
-        times (list):
-            The time points at which the data is stored
-        data (list):
-            The actually stored data, which is a list of the objects returned by
-            the callback function.
+        :attr:`data` attribute or conveniently as a pandas dataframe via the
+        :attr:`dataframe` attribute.
     """
 
     @fill_in_docstring
@@ -658,13 +693,12 @@ class DataTracker(CallbackTracker):
             self.to_file(self.filename)
 
     @property
-    def dataframe(self) -> pandas.DataFrame:
+    def dataframe(self) -> pd.DataFrame:
         """:class:`pandas.DataFrame`: the data in a dataframe.
 
-        If `func` returns a dictionary, the keys are used as column names.
-        Otherwise, the returned data is enumerated starting with '0'. In any
-        case the time point at which the data was recorded is stored in the
-        column 'time'.
+        If `func` returns a dictionary, the keys are used as column names. Otherwise,
+        the returned data is enumerated starting with '0'. In any case the time point at
+        which the data was recorded is stored in the column 'time'.
         """
         import pandas as pd
 
@@ -684,7 +718,7 @@ class DataTracker(CallbackTracker):
         Args:
             filename (str):
                 Path where the data is stored
-            \**kwargs:
+            **kwargs:
                 Additional parameters may be supported for some formats
         """
         from pathlib import Path
@@ -703,7 +737,8 @@ class DataTracker(CallbackTracker):
         elif extension in {".xls", ".xlsx"}:
             self.dataframe.to_excel(filename, **kwargs)
         else:
-            raise ValueError(f"Unsupported file extension `{extension}`")
+            msg = f"Unsupported file extension `{extension}`"
+            raise ValueError(msg)
 
 
 class SteadyStateTracker(TrackerBase):
@@ -712,7 +747,7 @@ class SteadyStateTracker(TrackerBase):
     Steady state is obtained when the state does not change anymore, i.e., when the
     evolution rate is close to zero. If the argument `evolution_rate` is specified, it
     is used to calculate the evolution rate directly. If it is omitted, the evolution
-    rate is estaimted by comparing the current state `cur` to the state `prev` at the
+    rate is estimated by comparing the current state `cur` to the state `prev` at the
     previous time step. In both cases, convergence is assumed when the absolute value of
     the evolution rate falls below :code:`atol + rtol * cur` for all points. Here,
     `atol` and `rtol` denote absolute and relative tolerances, respectively.
@@ -733,7 +768,7 @@ class SteadyStateTracker(TrackerBase):
         rtol: float = 1e-5,
         *,
         progress: bool = False,
-        evolution_rate: Callable[[np.ndarray, float], np.ndarray] | None = None,
+        evolution_rate: Callable[[NumericArray, float], NumericArray] | None = None,
     ):
         """
         Args:
@@ -752,7 +787,7 @@ class SteadyStateTracker(TrackerBase):
                 Function to evaluate the current evolution rate. If omitted, the
                 evolution rate is estimate from the change in the state variable, which
                 can be less accurate. A suitable form of the function is returned by
-                `eq.make_pde_rhs(state)` when `eq` is the PDE class.
+                `eq.make_pde_rhs(state, backend="numpy")` when `eq` is the PDE class.
         """
         if interrupts is None:
             interrupts = RealtimeInterrupts(duration=1)
@@ -764,9 +799,9 @@ class SteadyStateTracker(TrackerBase):
 
         self._progress_bar: Any = None
         self._pbar_offset: float = 0  # required for calculating progress
-        self._last_data: np.ndarray | None = None
+        self._last_data: NumericArray | None = None
         self._last_time: float | None = None
-        self._best_rate_max: np.ndarray | None = None
+        self._best_rate_max: float | None = None
 
     def handle(self, field: FieldBase, t: float) -> None:
         """Handle data supplied to this tracker.
@@ -802,7 +837,7 @@ class SteadyStateTracker(TrackerBase):
         # calculate the maximal deviation of the evolution rate from zero, subtracting
         # the relative tolerance with respect to the field values
         rate_abs = np.abs(evolution_rate) - self.rtol * np.abs(field.data[finite])
-        rate_abs_max = np.max(rate_abs)
+        rate_abs_max: float = np.max(rate_abs)
 
         # check wether the simulation has converged
         if rate_abs_max <= self.atol:
@@ -813,7 +848,8 @@ class SteadyStateTracker(TrackerBase):
                     self._progress_bar.disp(bar_style="success", check_delay=False)
                 except (TypeError, AttributeError):
                     self._progress_bar.close()
-            raise FinishedSimulation("Reached stationary state")
+            msg = "Reached stationary state"
+            raise FinishedSimulation(msg)
 
         if self.progress:
             # show progress of the convergence
@@ -834,7 +870,40 @@ class SteadyStateTracker(TrackerBase):
                 self._best_rate_max = rate_abs_max
 
 
-class RuntimeTracker(TrackerBase):
+class WalltimeTracker(TrackerBase):
+    """Special tracker that records runtime of the simulation at regular intervals.
+
+    The tracker stores tuples of ``(simulation_time, wall_time)`` in its :attr:`data`
+    attribute as the simulation advances.
+    """
+
+    @fill_in_docstring
+    def __init__(self, interrupts: InterruptData = 1):
+        """
+        Args:
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
+        """
+        super().__init__(interrupts=interrupts)
+        self.start_time = time.monotonic()
+        self.data: list[tuple[float, float]] = []
+
+    def initialize(self, field, info):
+        return super().initialize(field, info)
+
+    def handle(self, field, t) -> None:
+        """Handle data supplied to this tracker.
+
+        Args:
+            field (:class:`~pde.fields.FieldBase`):
+                The current state of the simulation
+            t (float):
+                The associated time
+        """
+        self.data.append((t, time.monotonic() - self.start_time))
+
+
+class MaxRuntimeTracker(TrackerBase):
     """Tracker interrupting the simulation once a duration has passed."""
 
     @fill_in_docstring
@@ -882,7 +951,19 @@ class RuntimeTracker(TrackerBase):
         """
         if time.monotonic() > self.max_time:
             dt = timedelta(seconds=self.max_runtime)
-            raise FinishedSimulation(f"Reached maximal runtime of {str(dt)}")
+            msg = f"Reached maximal runtime of {dt!s}"
+            raise FinishedSimulation(msg)
+
+
+class RuntimeTracker(MaxRuntimeTracker):
+    def __init__(self, *args, **kwargs):
+        # deprecated since 2026-05-04
+        warnings.warn(
+            "'RuntimeTracker' class was renamed to MaxRuntimeTracker",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
 
 
 class ConsistencyTracker(TrackerBase):
@@ -913,7 +994,8 @@ class ConsistencyTracker(TrackerBase):
                 The associated time
         """
         if not np.all(np.isfinite(field.data)):
-            raise StopIteration("Field was not finite")
+            msg = "Field was not finite"
+            raise StopIteration(msg)
 
 
 class MaterialConservationTracker(TrackerBase):
@@ -981,13 +1063,14 @@ class MaterialConservationTracker(TrackerBase):
 
 __all__ = [
     "CallbackTracker",
-    "ProgressTracker",
-    "PrintTracker",
-    "PlotTracker",
-    "LivePlotTracker",
-    "DataTracker",
-    "SteadyStateTracker",
-    "RuntimeTracker",
     "ConsistencyTracker",
+    "DataTracker",
+    "LivePlotTracker",
     "MaterialConservationTracker",
+    "MaxRuntimeTracker",
+    "PlotTracker",
+    "PrintTracker",
+    "ProgressTracker",
+    "SteadyStateTracker",
+    "WalltimeTracker",
 ]

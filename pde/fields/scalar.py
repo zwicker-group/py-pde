@@ -6,22 +6,23 @@
 from __future__ import annotations
 
 import numbers
-from collections.abc import Sequence
-from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
-from numpy.typing import DTypeLike
 
 from ..grids import CartesianGrid, UnitGrid
 from ..grids.base import DimensionError, DomainError, GridBase
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import Number
-from ..tools.typing import NumberOrArray
 from .datafield_base import DataFieldBase
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+    from pathlib import Path
+
+    from numpy.typing import DTypeLike
+
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import Number, NumberOrArray
     from .vectorial import VectorField
 
 
@@ -97,7 +98,7 @@ class ScalarField(DataFieldBase):
             data = expr(*points)
         except ValueError:
             # if this fails, evaluate expression point-wise
-            data = np.empty(grid.shape)
+            data = np.empty(grid.shape, dtype=dtype)
             for cells in np.ndindex(*grid.shape):
                 data[cells] = expr(*grid.cell_coords[cells])
 
@@ -107,8 +108,8 @@ class ScalarField(DataFieldBase):
     def from_image(
         cls,
         path: Path | str,
-        bounds=None,
-        periodic=False,
+        bounds: Sequence[tuple[float, float]] | None = None,
+        periodic: bool | Sequence[bool] = False,
         *,
         label: str | None = None,
     ) -> ScalarField:
@@ -138,7 +139,8 @@ class ScalarField(DataFieldBase):
             weights = np.array([0.299, 0.587, 0.114])
             data = data[..., :3] @ weights
         else:
-            raise RuntimeError(f"Image data has wrong shape: {data.shape}")
+            msg = f"Image data has wrong shape: {data.shape}"
+            raise RuntimeError(msg)
 
         # transpose data to use mathematical conventions for axes
         data = data.T[:, ::-1]
@@ -168,9 +170,11 @@ class ScalarField(DataFieldBase):
                     arrs.append(arg)
                 elif isinstance(arg, np.ndarray):
                     if arg.shape != self.data.shape:
-                        raise RuntimeError(
-                            f"Data shapes incompatible ({arg.shape} != {self.data.shape}"
+                        msg = (
+                            "Data shapes incompatible"
+                            f" ({arg.shape} != {self.data.shape}"
                         )
+                        raise RuntimeError(msg)
                     arrs.append(arg)
                 elif isinstance(arg, self.__class__):
                     self.assert_field_compatible(arg)
@@ -186,11 +190,9 @@ class ScalarField(DataFieldBase):
                 kwargs["out"] = (out.data,)
                 ufunc(*arrs, **kwargs)
                 return out
-            else:
-                # return new field
-                return self.__class__(self.grid, data=ufunc(*arrs, **kwargs))
-        else:
-            return NotImplemented
+            # return new field
+            return self.__class__(self.grid, data=ufunc(*arrs, **kwargs))
+        return NotImplemented
 
     @fill_in_docstring
     def laplace(
@@ -207,10 +209,8 @@ class ScalarField(DataFieldBase):
                 {ARG_BOUNDARIES_OPTIONAL}
             out (ScalarField, optional):
                 Optional scalar field to which the  result is written.
-            label (str, optional):
-                Name of the returned field
-            backend (str):
-                The backend (e.g., 'numba' or 'scipy') used for this operator.
+            **kwargs:
+                Additional keyword arguments (e.g., label)
 
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the Laplacian of the field
@@ -233,11 +233,10 @@ class ScalarField(DataFieldBase):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES_OPTIONAL}
             out (ScalarField, optional):
-                Optional vector field to which the result is written.
-            label (str, optional):
-                Name of the returned field
-            \**kwargs:
-                Forward to :meth:`~pde.fields.datafield_base.DataFieldBase.apply_operator`
+                Optional scalar field to which the result is written.
+            **kwargs:
+                Extra arguments are forwarded to
+                :meth:`~pde.fields.datafield_base.DataFieldBase.apply_operator`
 
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the squared gradient of the field
@@ -259,53 +258,47 @@ class ScalarField(DataFieldBase):
                 {ARG_BOUNDARIES_OPTIONAL}
             out (VectorField, optional):
                 Optional vector field to which the result is written.
-            label (str, optional):
-                Name of the returned field
+            **kwargs:
+                Additional keyword arguments (e.g., label)
 
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
         return self.apply_operator("gradient", bc=bc, out=out, **kwargs)  # type: ignore
 
-    @property
-    def integral(self) -> Number:
-        """Number: integral of the scalar field over space"""
-        return self.grid.integrate(self.data)  # type: ignore
-
     def project(
         self,
-        axes: str | Sequence[str],
-        method: Literal["integral", "average", "mean"] = "integral",
+        axes: int | str | Sequence[int | str],
+        *,
+        method: Literal[
+            "integral", "average", "mean", "maximum", "max", "minimum", "min"
+        ] = "integral",
         label: str | None = None,
     ) -> ScalarField:
         """Project scalar field along given axes.
 
         Args:
-            axes (list of str):
-                The names of the axes that are removed by the projection operation. The
-                valid names for a given grid are the ones in the :attr:`GridBase.axes`
-                attribute.
+            axes (list of int or str):
+                The indices or names of the axes that are removed by the projection
+                operation. The valid names for a given grid are the ones in the
+                :attr:`GridBase.axes` attribute.
             method (str):
-                The projection method. This can be either 'integral' to integrate over
-                the removed axes or 'average' to perform an average instead.
+                The projection method. Supported values are:
+
+                * ``"integral"``: Integrate over the removed axes.
+                * ``"average"`` or ``"mean"``: Return the average over the removed axes.
+                * ``"maximum"`` or ``"max"``: Return the maximum over the removed axes.
+                * ``"minimum"`` or ``"min"``: Return the minimum over the removed axes.
             label (str, optional):
                 The label of the returned field
 
         Returns:
-            :class:`~pde.fields.scalar.ScalarField`: The projected data in a scalar
-            field with a subgrid of the original grid.
+            :class:`~pde.fields.scalar.ScalarField`: The projected data is a scalar
+            field defined on a subgrid of the original grid.
         """
-        if isinstance(axes, str):
-            axes = [axes]
-        if any(ax not in self.grid.axes for ax in axes):
-            raise ValueError(
-                f"The axes {axes} are not all contained in {self.grid} with axes "
-                f"{self.grid.axes}"
-            )
-
         # determine the axes after projection
         ax_all = range(self.grid.num_axes)
-        ax_remove = tuple(self.grid.axes.index(ax) for ax in axes)
+        ax_remove = self.grid.get_axis_tuple(axes, allow_symmetric=False)
         ax_retain = tuple(sorted(set(ax_all) - set(ax_remove)))
 
         # determine the new grid
@@ -315,20 +308,27 @@ class ScalarField(DataFieldBase):
         if method == "integral":
             subdata = self.grid.integrate(self.data, axes=ax_remove)
 
-        elif method == "average" or method == "mean":
+        elif method in {"average", "mean"}:
             integrals = self.grid.integrate(self.data, axes=ax_remove)
             volumes = self.grid.integrate(1, axes=ax_remove)
             subdata = integrals / volumes
 
+        elif method in {"maximum", "max"}:
+            subdata = np.max(self.data, axis=ax_remove)
+
+        elif method in {"minimum", "min"}:
+            subdata = np.min(self.data, axis=ax_remove)
+
         else:
-            raise ValueError(f"Unknown projection method `{method}`")
+            msg = f"Unknown projection method `{method}`"
+            raise ValueError(msg)
 
         # create the new field instance
         return self.__class__(grid=sliced_grid, data=subdata, label=label)
 
     def slice(
         self,
-        position: dict[str, float],
+        position: dict[int | str, float],
         *,
         method: Literal["nearest"] = "nearest",
         label: str | None = None,
@@ -356,8 +356,8 @@ class ScalarField(DataFieldBase):
                 The label of the returned field
 
         Returns:
-            :class:`~pde.fields.scalar.ScalarField`: The sliced data in a scalar field
-            with a subgrid of the original grid.
+            :class:`~pde.fields.scalar.ScalarField`: The sliced data is a scalar field
+            defined on a subgrid of the original grid.
         """
         grid = self.grid
 
@@ -365,13 +365,7 @@ class ScalarField(DataFieldBase):
         ax_remove, pos_values = [], np.zeros(grid.num_axes)
         for ax, pos in position.items():
             # check the axis
-            try:
-                i = grid.axes.index(ax)
-            except ValueError:
-                raise ValueError(
-                    f"The axes {ax} is not contained in "
-                    f"{self.grid} with axes {self.grid.axes}"
-                ) from None
+            i = self.grid.get_axis_index(ax, allow_symmetric=False)
             ax_remove.append(i)
 
             # check the position
@@ -383,7 +377,8 @@ class ScalarField(DataFieldBase):
                 elif pos in {"mid", "middle", "center"}:
                     pos_values[i] = np.mean(grid.axes_bounds[i])
                 else:
-                    raise ValueError(f"Unknown position `{pos}`")
+                    msg = f"Unknown position `{pos}`"
+                    raise ValueError(msg)
             else:
                 pos_values[i] = float(pos)
 
@@ -400,9 +395,8 @@ class ScalarField(DataFieldBase):
                     pos = pos_values[i]
                     axis_bounds = grid.axes_bounds[i]
                     if pos < axis_bounds[0] or pos > axis_bounds[1]:
-                        raise DomainError(
-                            f"Position {grid.axes[i]} = {pos} is outside the domain"
-                        )
+                        msg = f"Position {grid.axes[i]} = {pos} is outside the domain"
+                        raise DomainError(msg)
                     # add slice that is closest to pos
                     idx.append(int(np.argmin((grid.axes_coords[i] - pos) ** 2)))
                 else:
@@ -410,7 +404,8 @@ class ScalarField(DataFieldBase):
             subdata = self.data[tuple(idx)]
 
         else:
-            raise ValueError(f"Unknown slicing method `{method}`")
+            msg = f"Unknown slicing method `{method}`"
+            raise ValueError(msg)
 
         # create the new field instance
         return self.__class__(grid=sliced_grid, data=subdata, label=label)
@@ -446,9 +441,10 @@ class ScalarField(DataFieldBase):
         elif scalar == "abs" or scalar == "norm":
             data = np.abs(self.data)
         elif scalar == "norm_squared":
-            data = self.data * self.data.conjugate()
+            data = self.data * self.data.conj()
         else:
-            raise ValueError(f"Unknown method `{scalar}` for `to_scalar`")
+            msg = f"Unknown method `{scalar}` for `to_scalar`"
+            raise ValueError(msg)
 
         return ScalarField(grid=self.grid, data=data, label=label)
 
@@ -482,9 +478,8 @@ class ScalarField(DataFieldBase):
             Field of the same rank as the current one.
         """
         if self.grid.dim != grid.dim:
-            raise DimensionError(
-                f"Incompatible grid dimensions ({self.grid.dim:d} != {grid.dim:d})"
-            )
+            msg = f"Incompatible grid dimensions ({self.grid.dim:d} != {grid.dim:d})"
+            raise DimensionError(msg)
 
         # determine the points at which data needs to be calculated
         if isinstance(grid, CartesianGrid):
@@ -502,7 +497,8 @@ class ScalarField(DataFieldBase):
             # this type of interpolation is not supported
             grid_in = self.grid.__class__.__name__
             grid_out = grid.__class__.__name__
-            raise NotImplementedError(f"Can't interpolate from {grid_in} to {grid_out}")
+            msg = f"Can't interpolate from {grid_in} to {grid_out}"
+            raise NotImplementedError(msg)
 
         # interpolate the data to the grid
         data = self.interpolate(points, bc=bc, fill=fill)

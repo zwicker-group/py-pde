@@ -1,34 +1,38 @@
-"""The Kardar–Parisi–Zhang (KPZ) equation describing the evolution of an interface.
+"""The Kuramoto-Sivashinsky equation.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
 
-from typing import Callable
-
-import numba as nb
-import numpy as np
+from typing import TYPE_CHECKING, Any
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
-from .base import PDEBase, expr_prod
+from .base import SDEBase, expr_prod
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    import numpy as np
+
+    from ..backends import BackendBase
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import TNativeArray
 
 
-class KuramotoSivashinskyPDE(PDEBase):
+class KuramotoSivashinskyPDE(SDEBase):
     r"""The Kuramoto-Sivashinsky equation.
 
     The mathematical definition is
 
     .. math::
         \partial_t u = -\nu \nabla^4 u  - \nabla^2 u -
-            \frac{1}{2} \left(\nabla h\right)^2  + \eta(\boldsymbol r, t)
+            \frac{1}{2} \left(\nabla u\right)^2  + \eta(\boldsymbol r, t)
 
     where :math:`u` is the height of the interface in Monge parameterization. The
-    dynamics are governed by the parameters :math:`\nu` , while :math:`\eta` is Gaussian
+    dynamics are governed by the parameter :math:`\nu`, while :math:`\eta` is Gaussian
     white noise, whose strength is controlled by the `noise` argument.
     """
 
@@ -62,7 +66,7 @@ class KuramotoSivashinskyPDE(PDEBase):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
                 used for stochastic simulations. Note that this random number generator
-                is only used for numpy function, while compiled numba code uses the
+                is only used for numpy functions, while compiled numba code uses the
                 random number generator of numba. Moreover, in simulations using
                 multiprocessing, setting the same generator in all processes might yield
                 unintended correlations in the simulation results.
@@ -97,7 +101,8 @@ class KuramotoSivashinskyPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         if not isinstance(state, ScalarField):
-            raise ValueError("`state` must be ScalarField")
+            msg = "`state` must be ScalarField"
+            raise TypeError(msg)
         state_lap = state.laplace(bc=self.bc, args={"t": t})
         result = (
             -self.nu * state_lap.laplace(bc=self.bc_lap, args={"t": t})
@@ -107,35 +112,34 @@ class KuramotoSivashinskyPDE(PDEBase):
         result.label = "evolution rate"
         return result  # type: ignore
 
-    def _make_pde_rhs_numba(  # type: ignore
-        self, state: ScalarField
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    def make_evolution_rate(
+        self, state: ScalarField, backend: BackendBase
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 An example for the state defining the grid and data types
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
 
         Returns:
-            A function with signature `(state_data, t)`, which can be called
-            with an instance of :class:`~numpy.ndarray` of the state data and
-            the time to obtained an instance of :class:`~numpy.ndarray` giving
-            the evolution rate.
+            A function with signature `(state_data, t)`, which can be called with an
+            instance of the state data and time to obtain the associated evolution rate.
         """
-        arr_type = nb.typeof(state.data)
-        signature = arr_type(arr_type, nb.double)
-
         nu_value = self.nu
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
-        laplace2 = state.grid.make_operator("laplace", bc=self.bc_lap)
-        gradient_sq = state.grid.make_operator("gradient_squared", bc=self.bc)
+        args: dict[str, Any] = {"backend": backend, "dtype": state.dtype}
+        laplace = state.grid.make_operator(operator="laplace", bc=self.bc, **args)
+        laplace2 = state.grid.make_operator(operator="laplace", bc=self.bc_lap, **args)
+        gradient_sq = state.grid.make_operator(
+            operator="gradient_squared", bc=self.bc, **args
+        )
 
-        @jit(signature)
-        def pde_rhs(state_data: np.ndarray, t: float):
-            """Compiled helper function evaluating right hand side."""
+        def pde_rhs(state_data, t=0):
+            """Evaluate right hand side of PDE."""
             result = -laplace(state_data, args={"t": t})
             result += nu_value * laplace2(result, args={"t": t})
             result -= 0.5 * gradient_sq(state_data, args={"t": t})
             return result
 
-        return pde_rhs  # type: ignore
+        return pde_rhs

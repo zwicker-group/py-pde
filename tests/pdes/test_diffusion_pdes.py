@@ -6,7 +6,25 @@ import numpy as np
 import pytest
 from scipy import stats
 
-from pde import CartesianGrid, DiffusionPDE, MemoryStorage, ScalarField, UnitGrid
+from pde import (
+    CartesianGrid,
+    DiffusionPDE,
+    MemoryStorage,
+    ScalarField,
+    UnitGrid,
+    get_backend,
+)
+from pde.tools.misc import module_available
+
+ALL_BACKENDS = [
+    "numpy",
+    "numba",
+    "jax-cpu",
+    "jax-cuda",
+    "torch-cpu",
+    "torch-mps",
+    "torch-cuda",
+]
 
 
 def test_diffusion_single(rng):
@@ -52,36 +70,7 @@ def test_simple_diffusion_flux_left(rng):
     np.testing.assert_allclose(sol.data, 2 - 2 * grid.axes_coords[0], rtol=5e-3)
 
 
-def test_diffusion_cached(rng):
-    """Test some caching of rhs of the simple diffusion model."""
-    grid = UnitGrid([8])
-    c0 = ScalarField.random_uniform(grid, rng=rng)
-
-    # first run without cache
-    eq1 = DiffusionPDE(diffusivity=1)
-    eq1.cache_rhs = False
-    c1a = eq1.solve(c0, t_range=1, dt=0.1, backend="numba", tracker=None)
-
-    eq1.diffusivity = 0.1
-    c1b = eq1.solve(c1a, t_range=1, dt=0.1, backend="numba", tracker=None)
-
-    # then run with cache
-    eq2 = DiffusionPDE(diffusivity=1)
-    eq2.cache_rhs = True
-    c2a = eq2.solve(c0, t_range=1, dt=0.1, backend="numba", tracker=None)
-
-    eq2.diffusivity = 0.1
-    c2b = eq2.solve(c2a, t_range=1, dt=0.1, backend="numba", tracker=None)
-
-    eq2._cache = {}  # clear cache
-    c2c = eq2.solve(c2a, t_range=1, dt=0.1, backend="numba", tracker=None)
-
-    np.testing.assert_allclose(c1a.data, c2a.data)
-    assert not np.allclose(c1b.data, c2b.data)
-    np.testing.assert_allclose(c1b.data, c2c.data)
-
-
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_diffusion_time_dependent_bcs(backend):
     """Test PDE with time-dependent BCs."""
     field = ScalarField(UnitGrid([3]))
@@ -102,7 +91,7 @@ def test_diffusion_time_dependent_bcs(backend):
     np.testing.assert_allclose(storage[-1].data, 1, rtol=1e-3)
 
 
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
 def test_diffusion_sde(backend, rng):
     """Test scaling of noise using a stochastic diffusion equation."""
     # we disable diffusivity to have a simple analytical solution
@@ -113,4 +102,37 @@ def test_diffusion_sde(backend, rng):
     sol = eq.solve(field, t_range=t_range, dt=1e-4, backend=backend, tracker=None)
     var_expected = var_local * t_range / grid.typical_discretization
     dist = stats.norm(scale=np.sqrt(var_expected)).cdf
-    assert stats.kstest(np.ravel(sol.data), dist).pvalue > 0.1
+    if backend.implementation == "torch":
+        # torch seems to have weak RNG, so random numbers are not very independent
+        assert stats.kstest(np.ravel(sol.data), dist).pvalue > 1e-4
+    else:
+        assert stats.kstest(np.ravel(sol.data), dist).pvalue > 0.1
+
+
+@pytest.mark.skipif(not module_available("rocket_fft"), reason="requires `rocket-fft`")
+@pytest.mark.parametrize("ndim", [1, 2])
+def test_diffusion_spectral(ndim, rng):
+    """Test spectral operators for simple diffusion model."""
+    eq = DiffusionPDE()
+    backend = get_backend("numba")
+    cur_value = backend.config["use_spectral"]
+
+    backend.config["use_spectral"] = False
+    grid1 = CartesianGrid([[0, 1]] * ndim, 128, periodic=True)
+    state1 = ScalarField.random_normal(grid1, correlation="gaussian", rng=rng)
+    field1 = eq.evolution_rate(state1)
+
+    backend.config["use_spectral"] = True
+    grid2 = CartesianGrid([[0, 1]] * ndim, 128, periodic=True)
+    state2 = ScalarField(grid2, state1.data)
+    field2 = eq.evolution_rate(state2)
+
+    backend.config["use_spectral"] = cur_value
+
+    # results should be close
+    thresh = 0.1 * ndim
+    np.testing.assert_allclose(
+        field1.data, field2.data, atol=thresh * field1.fluctuations, rtol=thresh
+    )
+    # but not identical!
+    assert not np.allclose(field1.data, field2.data)

@@ -5,17 +5,21 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import TYPE_CHECKING
 
-import numba as nb
 import numpy as np
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
 from .base import PDEBase, expr_prod
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from ..backends import BackendBase
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import TNativeArray
 
 
 class AllenCahnPDE(PDEBase):
@@ -47,7 +51,7 @@ class AllenCahnPDE(PDEBase):
         """
         Args:
             interface_width (float):
-                The diffusivity of the described species
+                The (squared) interfacial width γ of the Allen-Cahn equation
             mobility (float):
                 The rate at which the structures evolve
             bc:
@@ -66,8 +70,7 @@ class AllenCahnPDE(PDEBase):
         expr = f"{expr_prod(self.interface_width, '∇²c')} - c³ + c"
         if np.isclose(self.mobility, 1):
             return expr
-        else:
-            return expr_prod(self.mobility, f"({expr})")
+        return expr_prod(self.mobility, f"({expr})")
 
     def evolution_rate(  # type: ignore
         self,
@@ -87,40 +90,39 @@ class AllenCahnPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         if not isinstance(state, ScalarField):
-            raise ValueError("`state` must be ScalarField")
+            msg = "`state` must be ScalarField"
+            raise TypeError(msg)
         laplace = state.laplace(bc=self.bc, label="evolution rate", args={"t": t})
         rhs = self.interface_width * laplace - state**3 + state
         return self.mobility * rhs  # type: ignore
 
-    def _make_pde_rhs_numba(  # type: ignore
-        self, state: ScalarField
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    def make_evolution_rate(
+        self, state: ScalarField, backend: BackendBase
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 An example for the state defining the grid and data types
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
 
         Returns:
-            A function with signature `(state_data, t)`, which can be called
-            with an instance of :class:`~numpy.ndarray` of the state data and
-            the time to obtained an instance of :class:`~numpy.ndarray` giving
-            the evolution rate.
+            A function with signature `(state_data, t)`, which can be called with an
+            instance of the state data and time to obtain the associated evolution rate.
         """
-        arr_type = nb.typeof(state.data)
-        signature = arr_type(arr_type, nb.double)
-
         interface_width = self.interface_width
         mobility = self.mobility
-        laplace = state.grid.make_operator("laplace", bc=self.bc)
+        laplace = state.grid.make_operator(
+            operator="laplace", bc=self.bc, backend=backend, dtype=state.dtype
+        )
 
-        @jit(signature)
-        def pde_rhs(state_data: np.ndarray, t: float) -> np.ndarray:
-            """Compiled helper function evaluating right hand side."""
-            return mobility * (  # type: ignore
+        def pde_rhs(state_data, t=0):
+            """Evaluate right hand side of PDE."""
+            return mobility * (
                 interface_width * laplace(state_data, args={"t": t})
                 - state_data**3
                 + state_data
             )
 
-        return pde_rhs  # type: ignore
+        return pde_rhs

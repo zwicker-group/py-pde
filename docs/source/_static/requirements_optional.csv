@@ -1,11 +1,12 @@
 Package,Minimal version,Usage
-ffmpeg-python,0.2,Reading and writing videos
+av,12,Reading and writing videos
 h5py,2.10,Storing data in the hierarchical file format
 ipywidgets,8,Jupyter notebook support
+jax,0.7,Using `jax` as a backend
 mpi4py,3,Parallel processing using MPI
 napari,0.4.8,Displaying images interactively
 numba-mpi,0.22,Parallel processing using MPI+numba
 pandas,2,Handling tabular data
-py-modelrunner,0.19,Running simulations and handling I/O
-pyfftw,0.12,Faster Fourier transforms
+py-modelrunner,0.20.2,Running simulations and handling I/O
 rocket-fft,0.2.4,Numba-compiled fast Fourier transforms
+torch,2.9,Using `torch` as a backend

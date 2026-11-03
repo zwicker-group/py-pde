@@ -1,4 +1,4 @@
-'py-pde' python package
+'py-pde' Python package
 =======================
 
 ..  figure:: _images/logo.png
@@ -6,7 +6,7 @@
     :align: right
     :alt: Logo of the py-pde package
 
-The `py-pde` python package provides methods and classes useful for solving
+The `py-pde` Python package provides methods and classes useful for solving
 partial differential equations (PDEs) of the form
 
 .. math::
@@ -27,6 +27,8 @@ To support this, `py-pde` evaluates PDEs using the methods of lines with a
 finite-difference approximation of the differential operators.
 Consequently, the mathematical operator :math:`\mathcal D` can be naturally
 translated to a function evaluating the evolution rate of the PDE.
+Moreover, core computations can be compiled transparently using `numba`, `jax`, or
+`torch` for speed.
 
 
 **Contents**

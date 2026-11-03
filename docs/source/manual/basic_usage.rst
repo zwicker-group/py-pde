@@ -1,6 +1,6 @@
 Basic usage
 ^^^^^^^^^^^
-We here describe the typical workflow to solve a PDE using `py-pde`.
+We describe the typical workflow to solve a PDE using `py-pde`.
 Throughout this section, we assume that the package has been imported using
 :code:`import pde`.
 
@@ -10,11 +10,11 @@ Defining the geometry
 The state of the system is described in a discretized geometry, also known as a `grid`.
 The package focuses on simple geometries, which work well for the employed finite
 difference scheme.
-Grids are defined by instance of various classes that capture the symmetries of the 
+Grids are defined by instances of various classes that capture the symmetries of the 
 underlying space.
-In particular, the package offers Cartesian grids of `1` to `3` dimensions via
-:class:`~pde.grids.cartesian.CartesianGrid`, as well as curvilinear coordinate for
-spherically symmetric systems in two dimension (:class:`~pde.grids.spherical.PolarSymGrid`)
+In particular, the package offers Cartesian grids in `1` to `3` dimensions via
+:class:`~pde.grids.cartesian.CartesianGrid`, as well as curvilinear coordinates for
+spherically symmetric systems in two dimensions (:class:`~pde.grids.spherical.PolarSymGrid`)
 and three dimensions (:class:`~pde.grids.spherical.SphericalSymGrid`), as well as the
 special class :class:`~pde.grids.cylindrical.CylindricalSymGrid` for a cylindrical geometry
 which is symmetric in the angle. 
@@ -36,16 +36,16 @@ Note that the grid will only be periodic in the `x`-direction.
 
 Initializing a field
 """"""""""""""""""""
-Fields specifying the values at the discrete points of the grid defined in the previous
+Fields specify the values at the discrete points of the grid defined in the previous
 section.
-Most PDEs discussed in the package describe a scalar variable, which can be encoded th
-class :class:`~pde.fields.scalar.ScalarField`.
+Most PDEs in the package involve scalar variables, which are represented using
+the class :class:`~pde.fields.scalar.ScalarField`.
 However, tensors with rank 1 (vectors) and rank 2 are also supported using 
 :class:`~pde.fields.vectorial.VectorField` and
 :class:`~pde.fields.tensorial.Tensor2Field`, respectively.
 In any case, a field is initialized using a pre-defined grid, e.g.,
 :code:`field = pde.ScalarField(grid)`.
-Optional values allow to set the value of the grid, as well as a label that is later
+Optional arguments allow setting field values as well as a label that is later
 used in plotting, e.g., :code:`field1 = pde.ScalarField(grid, data=1, label="Ones")`.
 Moreover, fields can be initialized randomly
 (:code:`field2 = pde.ScalarField.random_normal(grid, mean=0.5)`) or from a mathematical
@@ -59,9 +59,9 @@ e.g., the result of applying the Laplacian to a scalar field is returned by
 calling the method :meth:`~pde.fields.scalar.ScalarField.laplace`, which
 returns another instance of :class:`~pde.fields.scalar.ScalarField`, whereas
 :meth:`~pde.fields.scalar.ScalarField.gradient` returns a
-:class:`~pde.fields.vector.VectorField`.
-Combining these functions with ordinary arithmetics on fields allows to
-represent the right hand side of many partial differential equations that appear
+:class:`~pde.fields.vectorial.VectorField`.
+Combining these functions with ordinary arithmetic on fields allows us to
+represent the right-hand side of many partial differential equations that appear
 in physics.
 Importantly, the differential operators work with flexible boundary conditions. 
 
@@ -91,9 +91,9 @@ and the operators defined by the package.
 Running the simulation
 """"""""""""""""""""""
 To solve the PDE, we use the generated initial condition, i.e., the initial
-field :code:`field`, which are evolved forward in time by the PDE.
-This field also defined the geometry on which the PDE is solved.
-In the simplest case, the solution is then obtain by running
+field :code:`field`, which is evolved forward in time by the PDE.
+This field also defines the geometry on which the PDE is solved.
+In the simplest case, the solution is then obtained by running
 
  .. code-block:: python
 
@@ -123,7 +123,7 @@ Another useful tracker is :code:`"plot"` which displays the state on the fly.
 
 Analyzing the results
 """""""""""""""""""""
-Sometimes is suffices to plot the final result, which can be done using
+Sometimes it suffices to plot the final result, which can be done using
 :code:`result.plot()`.
 The final result can of course also be analyzed quantitatively, e.g., using
 :attr:`result.average` to obtain its mean value.
@@ -138,3 +138,27 @@ subsequently:
 Moreover, a movie of the simulation can be created using :func:`~pde.visualization.movies.movie`, i.e., by calling
 :code:`pde.movie(storage, filename=FILE)`, where `FILE` determines where the movie is
 written.
+
+
+Storing data persistently
+"""""""""""""""""""""""""
+Trajectories can also be written to disk, either to HDF5 files using
+:class:`~pde.storage.file.FileStorage` (needs :mod:`h5py`) or to video files using
+:class:`~pde.storage.movie.MovieStorage` (needs :mod:`av`). Both classes provide a
+:code:`tracker` method, so they are used like
+:class:`~pde.storage.memory.MemoryStorage`:
+
+.. code-block:: python
+
+    storage = pde.MovieStorage("simulation.mkv", vmin=0, vmax=1, write_times=True)
+    eq.solve(field, t_range=10, dt=1e-3, tracker=storage.tracker(1))
+
+:class:`~pde.storage.movie.MovieStorage` encodes the data using the lossless FFV1 codec
+and the file extension determines the container format. The container formats
+:code:`.avi`, :code:`.mkv`, and :code:`.mov` are tested and supported, with
+:code:`.avi` being the default choice. Other formats supported by `ffmpeg` can be tried,
+but they are not tested and might not work. For instance, :code:`.webm` does not support
+the FFV1 codec and :code:`.nut` files cannot be read back. Movies store data with a
+limited precision and range, so :code:`vmin` and :code:`vmax` should be chosen to
+include all data. Use :code:`write_times=True` when the data is not written at constant
+time intervals.

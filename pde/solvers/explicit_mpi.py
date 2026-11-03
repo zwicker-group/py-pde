@@ -1,23 +1,28 @@
 """Defines an explicit solver using multiprocessing via MPI.
 
+TODO: Implement this not as a separate solver but as a separate numba_mpi backend
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
 
-from typing import Callable, Literal
+import copy
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
-from ..fields.base import FieldBase
-from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
-from ..tools.typing import BackendType
-from .explicit import ExplicitSolver
+from .euler import EulerSolver
+
+if TYPE_CHECKING:
+    from ..backends.base import BackendBase
+    from ..pdes.base import PDEBase
+    from ..tools.typing import StepperType, TField
 
 
-class ExplicitMPISolver(ExplicitSolver):
-    """Various explicit PDE solve using MPI.
+class ExplicitMPISolver(EulerSolver):
+    """Explicit Euler solver using MPI.
 
     Warning:
         This solver can only be used if MPI is properly installed. In particular, python
@@ -72,14 +77,15 @@ class ExplicitMPISolver(ExplicitSolver):
     """
 
     name = "explicit_mpi"
+    mpi_run = True
 
     def __init__(
         self,
         pde: PDEBase,
-        scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
+        # scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
         decomposition: Literal["auto"] | int | list[int] = "auto",
         *,
-        backend: BackendType = "auto",
+        backend: str | BackendBase = "auto",
         adaptive: bool = False,
         tolerance: float = 1e-4,
     ):
@@ -87,31 +93,22 @@ class ExplicitMPISolver(ExplicitSolver):
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
-            scheme (str):
-                Defines the explicit scheme to use. Supported values are 'euler' and
-                'runge-kutta' (or 'rk' for short).
-            decomposition (list of ints):
+            decomposition (str, int, or list of ints):
                 Number of subdivision in each direction. Should be a list of length
                 `grid.num_axes` specifying the number of nodes for this axis. If one
                 value is `-1`, its value will be determined from the number of available
-                nodes. The default value `auto` tries to determine an optimal
+                nodes. A single integer is interpreted as the number of subdivisions
+                along one axis. The default value `auto` tries to determine an optimal
                 decomposition by minimizing communication between nodes.
             backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
+                The backend used for numerical operations
             adaptive (bool):
-                When enabled, the time step is adjusted during the simulation using the
-                error tolerance set with `tolerance`.
+                Whether to use adaptive time stepping
             tolerance (float):
-                The error tolerance used in adaptive time stepping. This is used in
-                adaptive time stepping to choose a time step which is small enough so
-                the truncation error of a single step is below `tolerance`.
+                Error tolerance for adaptive time stepping
         """
         pde._mpi_synchronization = self._mpi_synchronization
-        super().__init__(
-            pde, scheme=scheme, backend=backend, adaptive=adaptive, tolerance=tolerance
-        )
+        super().__init__(pde, backend=backend, adaptive=adaptive, tolerance=tolerance)
         self.decomposition = decomposition
 
     @property
@@ -121,18 +118,28 @@ class ExplicitMPISolver(ExplicitSolver):
 
         return mpi.parallel_run
 
-    def make_stepper(
-        self, state: FieldBase, dt=None
-    ) -> Callable[[FieldBase, float, float], float]:
-        """Return a stepper function using an explicit scheme.
+    def _init_post_step_data(self) -> None:
+        """Initialize the post step data for all nodes."""
+        from ..tools import mpi
+
+        if mpi.is_main:
+            self.info["post_step_data_list"] = [
+                copy.deepcopy(self.info["post_step_data"])
+                for _ in range(len(self.mesh))
+            ]
+        else:
+            self.info["post_step_data_list"] = None
+
+    def make_stepper(self, state: TField, dt=None) -> StepperType:
+        """Create the executable stepping function produced by this solver.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
-                Time step of the explicit stepping. If `None`, this solver specifies
-                1e-3 as a default value.
+                Initial time step. If `None`, this solver specifies 1e-3 as a default
+                value.
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
@@ -145,7 +152,7 @@ class ExplicitMPISolver(ExplicitSolver):
         if not mpi.parallel_run:
             self._logger.warning(
                 "Using `ExplicitMPISolver` without a proper multiprocessing run. "
-                "Scripts need to be started with `mpiexec` to profit from multiple cores"
+                "Scripts need to be started with `mpiexec` to use multiple cores."
             )
 
         if dt is None:
@@ -154,108 +161,66 @@ class ExplicitMPISolver(ExplicitSolver):
             dt = 1e-3
             if not self.adaptive:
                 self._logger.warning(
-                    "Explicit stepper with a fixed time step did not receive any "
-                    "initial value for `dt`. Using dt=%g, but specifying a value or "
-                    "enabling adaptive stepping is advisable.",
+                    "Explicit solver configured for fixed time stepping did not "
+                    "receive any initial value for `dt`. Using dt=%g, but specifying "
+                    "a value or enabling adaptive stepping is advisable.",
                     dt,
                 )
 
-        self.info["dt"] = dt
+        # select the backend used to
+        self._select_backend(state, use_mpi=True)
+        if not self.backend.supports_mpi:
+            msg = f"The selected backend {self.backend} does not support MPI"
+            raise RuntimeError(msg)
+
+        self.info["dt"] = float(dt)
         self.info["dt_adaptive"] = self.adaptive
+        self.info["dt_statistics"] = OnlineStatistics()
         self.info["steps"] = 0
-        self.info["stochastic"] = self.pde.is_sde
+        self.info["stochastic"] = getattr(self.pde, "is_sde", False)
         self.info["use_mpi"] = True
-        self.info["scheme"] = self.scheme
 
         # decompose the state into multiple cells
-        self.mesh = GridMesh.from_grid(state.grid, self.decomposition)
+        self.mesh: GridMesh = GridMesh.from_grid(state.grid, self.decomposition)
         sub_state = self.mesh.extract_subfield(state)
         self.info["grid_decomposition"] = self.mesh.shape
 
-        if self.adaptive:
-            # create stepper with adaptive steps
-            self.info["dt_statistics"] = OnlineStatistics()
-            adaptive_stepper = self._make_adaptive_stepper(sub_state)
-            self.info["post_step_data"] = self._post_step_data_init
+        # create the inner stepping function
+        # TODO: Use backend compilation
+        inner_stepper = self._make_inner_stepper(sub_state)
+        self._init_post_step_data()
 
-            def wrapped_stepper(
-                state: FieldBase, t_start: float, t_end: float
-            ) -> float:
-                """Advance `state` from `t_start` to `t_end` using adaptive steps."""
-                nonlocal dt  # `dt` stores value for the next call
+        def wrapped_stepper(state: TField, t_start: float, t_end: float) -> float:
+            """Advance `state` from `t_start` to `t_end` using the stepping function."""
+            nonlocal dt  # `dt` stores value for the next call
 
-                # retrieve last post_step_data for this node and continue with this
-                post_step_data = self.info["post_step_data"]
+            # retrieve last post_step_data and continue with this
+            self.info["post_step_data"] = self.mesh.scatter(
+                self.info["post_step_data_list"]
+            )
 
-                # distribute the end time and the field to all nodes
-                t_end = self.mesh.broadcast(t_end)
-                substate_data = self.mesh.split_field_data_mpi(state.data)
+            # distribute the end time and the field to all nodes
+            t_end = self.mesh.broadcast(t_end)
+            substate_data = self.mesh.split_field_data_mpi(state.data)
 
-                # Evolve the sub-state on each individual node. The nodes synchronize
-                # field data via special boundary conditions and they synchronize the
-                # maximal error via the error synchronizer. Apart from that, all nodes
-                # work independently.
-                t_last, dt, steps = adaptive_stepper(
-                    substate_data,
-                    t_start,
-                    t_end,
-                    dt,
-                    self.info["dt_statistics"],
-                    post_step_data,
-                )
+            # Evolve the sub-state on each individual node. The nodes synchronize
+            # field data via special boundary conditions and they synchronize the
+            # maximal error via the error synchronizer. Apart from that, all nodes
+            # work independently.
+            t_last = inner_stepper(substate_data, t_start, t_end)
 
-                # check whether dt is the same for all processes
-                dt_list = self.mesh.allgather(dt)
-                if not np.isclose(min(dt_list), max(dt_list)):
-                    # abort simulations in all nodes when they went out of sync
-                    raise RuntimeError(f"Processes went out of sync: dt={dt_list}")
+            # check whether t_last is the same for all processes
+            t_list = self.mesh.gather(t_last)
+            if t_list is not None and not np.isclose(min(t_list), max(t_list)):
+                msg = f"Processes went out of sync: t_last={t_list}"
+                raise RuntimeError(msg)
 
-                # collect the data from all nodes
-                post_step_data_list = self.mesh.gather(post_step_data)
-                self.mesh.combine_field_data_mpi(substate_data, out=state.data)
+            # collect the data from all nodes
+            post_step_data_list = self.mesh.gather(self.info["post_step_data"])
+            self.mesh.combine_field_data_mpi(substate_data, out=state.data)
 
-                if mpi.is_main:
-                    self.info["steps"] += steps
-                    self.info["post_step_data_list"] = post_step_data_list
-                return t_last
+            if mpi.is_main:
+                self.info["post_step_data_list"] = post_step_data_list
+            return t_last
 
-        else:
-            # create stepper with fixed steps
-            fixed_stepper = self._make_fixed_stepper(sub_state, dt)
-            self.info["post_step_data"] = self._post_step_data_init
-
-            def wrapped_stepper(
-                state: FieldBase, t_start: float, t_end: float
-            ) -> float:
-                """Advance `state` from `t_start` to `t_end` using fixed steps."""
-                # retrieve last post_step_data and continue with this
-                post_step_data = self.info["post_step_data"]
-
-                # calculate number of steps (which is at least 1)
-                steps = max(1, int(np.ceil((t_end - t_start) / dt)))
-
-                # distribute the number of steps and the field to all nodes
-                steps = self.mesh.broadcast(steps)
-                substate_data = self.mesh.split_field_data_mpi(state.data)
-
-                # Evolve the sub-state on each individual node. The nodes synchronize
-                # field data via special boundary conditions. Apart from that, all nodes
-                # work independently.
-                t_last = fixed_stepper(substate_data, t_start, steps, post_step_data)
-
-                # check whether t_last is the same for all processes
-                t_list = self.mesh.gather(t_last)
-                if t_list is not None and not np.isclose(min(t_list), max(t_list)):
-                    raise RuntimeError(f"Processes went out of sync: t_last={t_list}")
-
-                # collect the data from all nodes
-                post_step_data_list = self.mesh.gather(post_step_data)
-                self.mesh.combine_field_data_mpi(substate_data, out=state.data)
-
-                # store information in the main node
-                if mpi.is_main:
-                    self.info["steps"] += steps
-                    self.info["post_step_data_list"] = post_step_data_list
-                return t_last
-
-        return wrapped_stepper
+        return wrapped_stepper  # type: ignore

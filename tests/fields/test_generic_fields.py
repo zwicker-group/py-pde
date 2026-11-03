@@ -7,10 +7,10 @@ import numpy as np
 import pytest
 from scipy import ndimage
 
-from fixtures.fields import iter_fields, iter_grids
+from fixtures.fields import FIELDS, GRIDS
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from pde.fields.base import FieldBase
-from pde.fields.datafield_base import DataFieldBase
+from pde.fields.datafield_base import DataFieldBase, _symmetrize_vmin_vmax
 from pde.grids import (
     CartesianGrid,
     CylindricalSymGrid,
@@ -39,7 +39,7 @@ def test_set_label(field_class):
         field_class(grid, label=1)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 @pytest.mark.parametrize("field_class", [ScalarField, Tensor2Field])
 def test_interpolation_natural(grid, field_class, rng):
     """Test some interpolation for auto_periodic_neumann boundary conditions."""
@@ -49,25 +49,24 @@ def test_interpolation_natural(grid, field_class, rng):
     def get_point():
         if isinstance(grid, CartesianGrid):
             return grid.get_random_point(boundary_distance=0.5, coords="grid", rng=rng)
-        else:
-            return grid.get_random_point(
-                boundary_distance=1, avoid_center=True, coords="grid", rng=rng
-            )
+        return grid.get_random_point(
+            boundary_distance=1, avoid_center=True, coords="grid", rng=rng
+        )
 
     # interpolate at cell center
     c = (1,) * len(grid.axes)
     p = f.grid.cell_coords[c]
     val = f.interpolate(p)
-    np.testing.assert_allclose(val, f.data[(Ellipsis,) + c], err_msg=msg)
+    np.testing.assert_allclose(val, f.data[(Ellipsis, *c)], err_msg=msg)
 
 
 @pytest.mark.parametrize("num", [1, 3])
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_shapes_nfields(num, grid, rng):
     """Test single component field."""
     fields = [ScalarField.random_uniform(grid, rng=rng) for _ in range(num)]
     field = FieldCollection(fields)
-    data_shape = (num,) + grid.shape
+    data_shape = (num, *grid.shape)
     np.testing.assert_equal(field.data.shape, data_shape)
     for pf_single in field:
         np.testing.assert_equal(pf_single.data.shape, grid.shape)
@@ -133,6 +132,108 @@ def test_arithmetics(field_class):
     np.testing.assert_allclose(f1_out.data, 8)
 
 
+@pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
+@pytest.mark.parametrize("dtype", [np.float32, np.float64, np.complex64])
+def test_apply_callable_complex_result_single_field(field_class, dtype):
+    """Default output must retain complex results and evaluate the callable once."""
+    grid = UnitGrid([3, 4])
+    field = field_class(grid, 0.5, dtype=dtype, label="input")
+    original = field.data.copy()
+    calls = []
+
+    def transform(data):
+        calls.append(data)
+        return np.exp(1j * data)
+
+    expected = np.exp(1j * original)
+    result = field.apply(transform, label="result")
+    assert len(calls) == 1
+    assert result.dtype == expected.dtype
+    assert result.label == "result"
+    np.testing.assert_allclose(result.data, expected)
+    np.testing.assert_array_equal(field.data, original)
+    assert not np.shares_memory(result.data, field.data)
+
+    out = field.copy(dtype=expected.dtype)
+    assert field.apply(transform, out=out) is out
+    assert len(calls) == 2
+    np.testing.assert_allclose(out.data, expected)
+
+
+@pytest.mark.parametrize("dtype", [np.float64, np.complex128])
+def test_apply_callable_complex_result_collection(dtype):
+    """Default output must retain complex results and evaluate the callable once."""
+    grid = UnitGrid([3, 4])
+    field = ScalarField(grid, 0.5, dtype=dtype, label="input")
+    field = FieldCollection([field, field.copy(label="other")], dtype=dtype)
+    original = field.data.copy()
+    calls = []
+
+    def transform(data):
+        calls.append(data)
+        return np.exp(1j * data)
+
+    expected = np.exp(1j * original)
+    result = field.apply(transform, label="result")
+    assert len(calls) == 1
+    assert result.dtype == expected.dtype
+    assert result.label == "result"
+    np.testing.assert_allclose(result.data, expected)
+    np.testing.assert_array_equal(field.data, original)
+    assert not np.shares_memory(result.data, field.data)
+
+    out = VectorField(grid, dtype=expected.dtype)
+    assert field.apply(transform, out=out) is out
+    assert len(calls) == 2
+    np.testing.assert_allclose(out.data, expected)
+
+
+@pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
+@pytest.mark.parametrize("dtype", [np.float32, np.float64, np.complex128])
+def test_apply_expression_single_field_complex_result(field_class, dtype):
+    """Default output must retain complex results and evaluate the callable once."""
+    grid = UnitGrid([3, 4])
+    field = field_class(grid, 0.5, dtype=dtype, label="input")
+    original = field.data.copy()
+
+    expected = np.exp(1j * original)
+    result = field.apply("exp(1j * c)", label="result")
+    if dtype == np.float32:
+        assert result.dtype == np.complex128
+    else:
+        assert result.dtype == expected.dtype
+    assert result.label == "result"
+    np.testing.assert_allclose(result.data, expected)
+    np.testing.assert_array_equal(field.data, original)
+    assert not np.shares_memory(result.data, field.data)
+
+    out = field.copy(dtype=expected.dtype)
+    assert field.apply("exp(1j * c)", out=out) is out
+    np.testing.assert_allclose(out.data, expected)
+
+
+@pytest.mark.parametrize("dtype", [np.float64, np.complex128])
+def test_apply_expression_collection_complex_result(dtype):
+    """Default output must retain complex results and evaluate the callable once."""
+    grid = UnitGrid([3, 4])
+    scalar = ScalarField(grid, 0.5, dtype=dtype, label="input")
+    field = FieldCollection({"a": scalar, "b": scalar.copy(label="other")}, dtype=dtype)
+    original = field.data.copy()
+
+    expected = np.exp(1j * scalar.data)
+    result = field.apply("exp(1j * a)", label="result")
+    assert isinstance(result, ScalarField)
+    assert result.dtype == expected.dtype
+    assert result.label == "result"
+    np.testing.assert_allclose(result.data, expected)
+    np.testing.assert_array_equal(field.data, original)
+    assert not np.shares_memory(result.data, field.data)
+
+    out = scalar.copy(dtype=expected.dtype)
+    assert field.apply("exp(1j * a)", out=out) is out
+    np.testing.assert_allclose(out.data, expected)
+
+
 def test_scalar_arithmetics(rng):
     """Test simple arithmetics involving scalar fields."""
     grid = UnitGrid([3, 4])
@@ -167,7 +268,7 @@ def test_scalar_arithmetics(rng):
 
 
 @pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
-def test_data_managment(field_class):
+def test_data_management(field_class):
     """Test how data is set."""
     grid = UnitGrid([2, 2])
     s1 = field_class(grid, data=1)
@@ -177,27 +278,29 @@ def test_data_managment(field_class):
     np.testing.assert_allclose(s2.data, 0)
 
     c = FieldCollection([s1, s2])
-    s1.data = 0
+    c[0] = 0
     np.testing.assert_allclose(c.data, 0)
 
     c.data = 2
-    np.testing.assert_allclose(s1.data, 2)
-    np.testing.assert_allclose(s2.data, 2)
-
     c.data += 1
-    np.testing.assert_allclose(s1.data, 3)
-    np.testing.assert_allclose(s2.data, 3)
+    np.testing.assert_allclose(c.data, 3)
 
     c[0].data += 2  # reference to s1
     c[1].data *= 2  # reference to s2
-    np.testing.assert_allclose(s1.data, 5)
-    np.testing.assert_allclose(s2.data, 6)
+    np.testing.assert_allclose(c[0].data, 5)
+    np.testing.assert_allclose(c[1].data, 6)
 
     c[0] = s2
-    np.testing.assert_allclose(c.data, 6)
+    np.testing.assert_allclose(c[0].data, 0)
+    np.testing.assert_allclose(c[1].data, 6)
+
+    s1.data = 16
+    c = FieldCollection([s1, s2])
+    s1.data = 17
+    np.testing.assert_allclose(c.data[0], 16)
 
     # nested collections
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TypeError):
         FieldCollection([c])
 
 
@@ -359,7 +462,7 @@ def test_get_cartesian_grid(grid):
     assert cart.volume > grid.volume
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_simple_plotting(grid, rng):
     """Test simple plotting of various fields on various grids."""
     vf = VectorField.random_uniform(grid, rng=rng)
@@ -450,22 +553,10 @@ def test_random_normal_types(rng):
     assert np.std(field.data.imag) == pytest.approx(s.imag, rel=0.1, abs=0.1)
 
 
-@pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
-def test_random_colored(field_cls, rng):
-    """Test whether random colored fields behave correctly."""
-    grid = UnitGrid([128, 128])
-    exponent = rng.uniform(-4, 4)
-    scale = 1 + rng.random()
-    f = field_cls.random_colored(grid, exponent=exponent, scale=scale, rng=rng)
-
-    assert np.allclose(f.average, 0)
-
-
 def test_random_rng():
     """Test whether the random number generator arguments are accepted."""
     grid = UnitGrid([2, 2])
     for create_random_field in [
-        ScalarField.random_colored,
         ScalarField.random_harmonic,
         ScalarField.random_normal,
         ScalarField.random_uniform,
@@ -510,7 +601,7 @@ def test_smoothing(rng):
         np.testing.assert_allclose(out.data, expected)
 
         out.data = 0  # reset data
-        print(f1.smooth(sigma, out=out).data)
+        f1.smooth(sigma, out=out)
         np.testing.assert_allclose(out.data, expected)
 
     # test one simple higher order smoothing
@@ -570,6 +661,10 @@ def test_dot_product(grid, rng):
         vf @ sf
     with pytest.raises(TypeError):
         tf @ sf
+    with pytest.raises(TypeError):
+        sf @ vf
+    with pytest.raises(TypeError):
+        sf @ tf
     with pytest.raises((TypeError, nb.errors.TypingError)):
         dot(vf.data, sf.data)
     with pytest.raises((TypeError, nb.errors.TypingError)):
@@ -580,7 +675,7 @@ def test_dot_product(grid, rng):
         dot(sf.data, tf.data)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
+@pytest.mark.parametrize("grid", GRIDS)
 def test_complex_operator(grid, rng):
     """Test using a complex operator on grid."""
     r = ScalarField.random_normal(grid, rng=rng)
@@ -604,9 +699,9 @@ def test_get_field_class_by_rank():
 
 
 @pytest.mark.skipif(
-    not module_available("modelrunner"), reason="requires `py-modelrunner`"
+    not module_available("modelrunner", strict=True), reason="requires `py-modelrunner`"
 )
-@pytest.mark.parametrize("field", iter_fields())
+@pytest.mark.parametrize("field", FIELDS)
 def test_field_modelrunner_storage(field, tmp_path):
     """Test storing fields in modelrunner storages."""
     from modelrunner import open_storage
@@ -618,3 +713,41 @@ def test_field_modelrunner_storage(field, tmp_path):
 
     with open_storage(path, mode="read") as storage:
         assert storage["field"] == field
+
+
+def test_symmetrize_vmin_vmax():
+    """Test the _symmetrize_vmin_vmax function."""
+    assert _symmetrize_vmin_vmax(-1, 2) == (-1, 2)
+    assert _symmetrize_vmin_vmax(-1, "symmetric") == (-1, 1)
+    assert _symmetrize_vmin_vmax("symmetric", 2) == (-2, 2)
+
+    assert _symmetrize_vmin_vmax("symmetric", None, [-3, 2]) == (-3, 3)
+    assert _symmetrize_vmin_vmax(None, "symmetric", [-3, 2]) == (-3, 3)
+    assert _symmetrize_vmin_vmax("symmetric", "symmetric", [-3, 2]) == (-3, 3)
+
+    assert _symmetrize_vmin_vmax(-1, None, [-3, 2]) == (-1, None)
+    assert _symmetrize_vmin_vmax(None, 2, [-3, 2]) == (None, 2)
+    assert _symmetrize_vmin_vmax(None, None, [-3, 2]) == (None, None)
+
+    with pytest.raises(TypeError):
+        _symmetrize_vmin_vmax("symmetric", "symmetric")
+
+
+@pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
+@pytest.mark.parametrize("correlation", ["none", "gaussian"])
+@pytest.mark.parametrize("dtype", [None, complex])
+def test_complex_random_fields(field_class, correlation, dtype, rng):
+    """Test generating complex random fields."""
+    grid = UnitGrid([30, 50])
+    field = field_class.random_normal(
+        grid, mean=1 + 2j, std=3 + 4j, correlation=correlation, dtype=dtype, rng=rng
+    )
+
+    # rough checks
+    assert 0.5 < field.data.real.mean() < 1.5
+    assert 1.5 < field.data.imag.mean() < 2.5
+    assert 2.5 < field.data.real.std() < 3.5
+    assert 3.5 < field.data.imag.std() < 4.5
+
+    with pytest.raises(TypeError):
+        field_class.random_normal(grid, mean=1 + 1j, dtype=float)

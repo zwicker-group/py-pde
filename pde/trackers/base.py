@@ -1,5 +1,13 @@
 """Base classes for trackers.
 
+.. autosummary::
+   :nosignatures:
+
+   TrackerBase
+   TrackerCollection
+   TransformedTrackerBase
+   FinishedSimulation
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -9,10 +17,8 @@ import logging
 import math
 import warnings
 from abc import ABCMeta, abstractmethod
-from collections.abc import Sequence
-from typing import Any, Optional, Union
-
-import numpy as np
+from collections.abc import Callable, Sequence
+from typing import Any, Union
 
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
@@ -22,7 +28,7 @@ from .interrupts import InterruptData, parse_interrupt
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for trackers."""
 
-InfoDict = Optional[dict[str, Any]]
+InfoDict = dict[str, Any] | None
 TrackerDataType = Union["TrackerBase", str]
 
 
@@ -63,21 +69,23 @@ class TrackerBase(metaclass=ABCMeta):
 
         Args:
             data (str or TrackerBase): Data describing the tracker
+            **kwargs: Additional keyword arguments passed to the tracker constructor
 
         Returns:
             :class:`TrackerBase`: An instance representing the tracker
         """
         if isinstance(data, TrackerBase):
             return data
-        elif isinstance(data, str):
+        if isinstance(data, str):
             try:
                 tracker_cls = cls._subclasses[data]
             except KeyError as err:
-                trackers = sorted(cls._subclasses.keys())
-                raise ValueError(f"Tracker `{data}` is not in {trackers}") from err
+                trackers = sorted(cls._subclasses)
+                msg = f"Tracker `{data}` is not in {trackers}"
+                raise ValueError(msg) from err
             return tracker_cls(**kwargs)
-        else:
-            raise ValueError(f"Unsupported tracker format: `{data}`.")
+        msg = f"Unsupported tracker format: `{data}`."
+        raise ValueError(msg)
 
     def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """Initialize the tracker with information about the simulation.
@@ -92,7 +100,7 @@ class TrackerBase(metaclass=ABCMeta):
             float: The first time the tracker needs to handle data
         """
         if info is not None:
-            t_start = info.get("solver", {}).get("t_start", 0)
+            t_start = info.get("controller", {}).get("t_start", 0)
         else:
             t_start = 0
         return self.interrupt.initialize(t_start)
@@ -117,7 +125,66 @@ class TrackerBase(metaclass=ABCMeta):
         """
 
 
-TrackerCollectionDataType = Union[Sequence[TrackerDataType], TrackerDataType, None]
+TransformationType = Callable[[FieldBase, float], FieldBase] | None
+
+
+class TransformedTrackerBase(TrackerBase):
+    """Tracker that allows modifying incoming data.
+
+    To support the transformations sub-classes need to call
+    :code:`self._transform(field, t)` to obtain the transformed field.
+    """
+
+    @fill_in_docstring
+    def __init__(
+        self,
+        interrupts: InterruptData = 1,
+        *,
+        transformation: TransformationType = None,
+    ):
+        """
+        Args:
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
+            transformation (callable, optional):
+                A function that transforms the current state into a new field or field
+                collection, which is then used in the tracker. This allows to process
+                derived quantities of the field during calculations. The argument needs
+                to be a callable function taking 1 or 2 arguments. The first argument
+                always is the current field, while the optional second argument is the
+                associated time.
+        """
+        super().__init__(interrupts=interrupts)
+        if transformation is not None and not callable(transformation):
+            msg = "`transformation` must be callable"
+            raise TypeError(msg)
+        self.transformation = transformation
+        self._emitted_type_warning = False
+
+    def _transform(self, field: FieldBase, t: float) -> FieldBase:
+        """Transforms the field according to the defined transformation."""
+        if self.transformation is None:
+            # no transformation specified -> just return field
+            return field
+
+        if self.transformation.__code__.co_argcount == 1:
+            # transformation does not take time argument
+            transformed_field = self.transformation(field)  # type: ignore
+
+        else:
+            # transformation takes field and time arguments
+            transformed_field = self.transformation(field, t)
+
+        # check whether transformed data is a proper field
+        if not (self._emitted_type_warning or isinstance(transformed_field, FieldBase)):
+            warnings.warn(
+                "Applied `transformation` did not return a field.", stacklevel=2
+            )
+            self._emitted_type_warning = True
+        return transformed_field
+
+
+TrackerCollectionDataType = Sequence[TrackerDataType] | TrackerDataType | None
 
 
 class TrackerCollection:
@@ -129,9 +196,9 @@ class TrackerCollection:
     """
 
     tracker_action_times: list[float]
-    """ list: Times at which the trackers need to be handled next """
+    """list: Times at which the trackers need to be handled next """
     time_next_action: float
-    """ float: The time of the next interrupt of the simulation """
+    """float: The time of the next interrupt of the simulation """
 
     def __init__(self, trackers: list[TrackerBase] | None = None):
         """
@@ -141,7 +208,8 @@ class TrackerCollection:
         if trackers is None:
             self.trackers: list[TrackerBase] = []
         elif not hasattr(trackers, "__iter__"):
-            raise ValueError(f"`trackers` must be a list of trackers, not {trackers}")
+            msg = f"`trackers` must be a list of trackers, not {trackers}"
+            raise ValueError(msg)
         else:
             self.trackers = trackers
 
@@ -159,6 +227,7 @@ class TrackerCollection:
 
         Args:
             data: Data describing the tracker collection
+            **kwargs: Additional keyword arguments passed to tracker constructors
 
         Returns:
             :class:`TrackerCollection`:
@@ -191,7 +260,8 @@ class TrackerCollection:
                     interrupt_ids.add(id(tracker_obj.interrupt))
                     trackers.append(tracker_obj)
         else:
-            raise TypeError(f"Cannot initialize trackers from class `{data.__class__}`")
+            msg = f"Cannot initialize trackers from class `{data.__class__}`"
+            raise TypeError(msg)
 
         return cls(trackers)
 
@@ -241,11 +311,12 @@ class TrackerCollection:
         # check each tracker to see whether we need to handle it
         stop_iteration_err = None
         for i, t_next in enumerate(self.tracker_action_times):
-            if t > t_next or np.isclose(t, t_next, atol=atol, rtol=0):
+            if t > t_next - atol:
                 try:
                     self.trackers[i].handle(state, t)
                 except StopIteration as err:
-                    # stop iteration after all trackers have been handled
+                    # This tracker requested to stop the iteration. We save this
+                    # information for later, so we can first handle all trackers.
                     stop_iteration_err = err
 
                 # calculate next event (may skip some if too close)
@@ -276,4 +347,32 @@ def get_named_trackers() -> dict[str, type[TrackerBase]]:
     Returns:
         dict: a mapping of names to the actual tracker classes.
     """
+    # Deprecated on 2025-12-23
+    warnings.warn(
+        "`get_named_trackers` is deprecated. Use `registered_trackers` instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return TrackerBase._subclasses.copy()
+
+
+def registered_trackers() -> dict[str, type[TrackerBase]]:
+    """Returns all trackers that are currently registered.
+
+    Returns:
+        dict: a dictionary with the names of the trackers and the associated class
+    """
+    return {
+        name: cls
+        for name, cls in TrackerBase._subclasses.items()
+        if not (name.endswith("Base"))
+    }
+
+
+__all__ = [
+    "FinishedSimulation",
+    "TrackerBase",
+    "TrackerCollection",
+    "TransformedTrackerBase",
+    "registered_trackers",
+]

@@ -1,5 +1,11 @@
 """Base classes for storing data.
 
+.. autosummary::
+   :nosignatures:
+
+   StorageBase
+   StorageTracker
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -7,23 +13,26 @@ from __future__ import annotations
 
 import logging
 from abc import ABCMeta, abstractmethod
-from collections.abc import Iterator, Sequence
 from inspect import signature
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-from numpy.typing import DTypeLike
 
 from ..fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from ..fields.base import FieldBase
-from ..fields.datafield_base import DataFieldBase
-from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress
-from ..trackers.base import InfoDict, TrackerBase
-from ..trackers.interrupts import InterruptData
+from ..trackers.base import InfoDict, TransformationType, TransformedTrackerBase
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator, Sequence
+
+    from numpy.typing import DTypeLike
+
+    from ..fields.datafield_base import DataFieldBase
+    from ..grids.base import GridBase
+    from ..tools.typing import NumericArray
+    from ..trackers.interrupts import InterruptData
     from .memory import MemoryStorage
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
@@ -52,6 +61,7 @@ class StorageBase(metaclass=ABCMeta):
 
     def __init__(
         self,
+        *,
         info: InfoDict | None = None,
         write_mode: WriteModeType = "truncate_once",
     ):
@@ -88,9 +98,10 @@ class StorageBase(metaclass=ABCMeta):
             RuntimeError: if data_shape was not set
         """
         if self._data_shape is None:
-            raise RuntimeError("data_shape was not set")
-        else:  # use the else clause to help typing
-            return self._data_shape
+            msg = "data_shape was not set; storage is likely not initialized"
+            raise RuntimeError(msg)
+        # use the else clause to help typing
+        return self._data_shape
 
     @property
     def dtype(self) -> DTypeLike:
@@ -100,17 +111,18 @@ class StorageBase(metaclass=ABCMeta):
             RuntimeError: if data_type was not set
         """
         if self._dtype is None:
-            raise RuntimeError("dtype was not set")
-        else:  # use the else clause to help typing
-            return self._dtype
+            msg = "dtype was not set"
+            raise RuntimeError(msg)
+        # use the else clause to help typing
+        return self._dtype
 
     @abstractmethod
-    def _append_data(self, data: np.ndarray, time: float) -> None:
+    def _append_data(self, data: NumericArray, time: float) -> None:
         """Append a new data set.
 
         Args:
             data (:class:`~numpy.ndarray`): The actual data
-            time (float, optional): The time point associated with the data
+            time (float): The time point associated with the data
         """
 
     def append(self, field: FieldBase, time: float | None = None) -> None:
@@ -125,10 +137,16 @@ class StorageBase(metaclass=ABCMeta):
         if time is None:
             time = 0 if len(self) == 0 else self.times[-1] + 1
 
+        if self._data_shape is None and self.write_mode != "readonly":
+            # silently initialize storage to allow simpler usage
+            self.start_writing(field)
+
         if self._grid is None:
             self._grid = field.grid
         elif self._grid != field.grid:
-            raise ValueError(f"Grids incompatible ({self._grid} != {field.grid})")
+            msg = f"Grids incompatible ({self._grid} != {field.grid})"
+            raise ValueError(msg)
+
         return self._append_data(field.data, time)
 
     def clear(self, clear_data_shape: bool = False) -> None:
@@ -150,19 +168,18 @@ class StorageBase(metaclass=ABCMeta):
     def shape(self) -> tuple[int, ...] | None:
         """The shape of the stored data."""
         if self._data_shape:
-            return (len(self),) + self._data_shape
-        else:
-            return None
+            return (len(self), *self._data_shape)
+        return None
 
     @property
     def has_collection(self) -> bool:
         """bool: whether the storage is storing a collection"""
         if self._field is not None:
             return isinstance(self._field, FieldCollection)
-        elif len(self) > 0:
+        if len(self) > 0:
             return isinstance(self._get_field(0), FieldCollection)
-        else:
-            raise RuntimeError("Storage is empty")
+        msg = "Storage is empty"
+        raise RuntimeError(msg)
 
     @property
     def grid(self) -> GridBase | None:
@@ -185,7 +202,7 @@ class StorageBase(metaclass=ABCMeta):
                 else:
                     self._logger.warning(
                         "`grid` attribute was not stored. Available attributes: %s",
-                        ", ".join(sorted(attrs.keys())),
+                        ", ".join(sorted(attrs)),
                     )
 
             else:
@@ -195,10 +212,11 @@ class StorageBase(metaclass=ABCMeta):
     def _init_field(self) -> None:
         """Initialize internal field variable."""
         if self.grid is None:
-            raise RuntimeError(
-                "Could not load grid from data. Please set the `_grid` attribute "
-                "to the grid that has been used for the stored data"
+            msg = (
+                "Could not load grid from data. Please set the `storage._grid` "
+                "attribute to the grid that has been used for the stored data."
             )
+            raise RuntimeError(msg)
 
         if "field_attributes" in self.info:
             # field type was stored in data
@@ -222,10 +240,13 @@ class StorageBase(metaclass=ABCMeta):
             elif local_shape == (dim, dim):  # rank 2
                 self._field = Tensor2Field(self.grid, dtype=self.data[0].dtype)
             else:
-                raise RuntimeError(
+                msg = (
                     "`field` attribute was not stored in file and the data shape "
-                    f"{local_shape} could not be interpreted automatically"
+                    f"{local_shape} could not be interpreted automatically. To be able "
+                    "to read the data automatically, please set the `storage._field` "
+                    "attribute to a field that then will define how data is interpreted"
                 )
+                raise RuntimeError(msg)
             self._logger.warning(
                 "`field` attribute was not stored. Assume data is of type %s.",
                 self._field.__class__.__name__,
@@ -248,7 +269,8 @@ class StorageBase(metaclass=ABCMeta):
             t_index += len(self)
 
         if not 0 <= t_index < len(self):
-            raise IndexError("Time index out of range")
+            msg = "Time index out of range"
+            raise IndexError(msg)
 
         if self._field is None:
             self._init_field()
@@ -263,10 +285,10 @@ class StorageBase(metaclass=ABCMeta):
         """Return field at given index or a list of fields for a slice."""
         if isinstance(key, int):
             return self._get_field(key)
-        elif isinstance(key, slice):
+        if isinstance(key, slice):
             return [self._get_field(i) for i in range(*key.indices(len(self)))]
-        else:
-            raise TypeError("Unknown key type")
+        msg = "Unknown key type"
+        raise TypeError(msg)
 
     def __iter__(self) -> Iterator[FieldBase]:
         """Iterate over all stored fields."""
@@ -334,12 +356,14 @@ class StorageBase(metaclass=ABCMeta):
                 Supplies extra information that is stored in the storage
         """
         if self.write_mode == "readonly":
-            raise RuntimeError("Cannot write data in readonly mode")
+            msg = "Cannot write data in readonly mode"
+            raise RuntimeError(msg)
 
         if self._data_shape is None:
             self._data_shape = field.data.shape
         elif self.data_shape != field.data.shape:
-            raise ValueError("Data shape incompatible with stored data")
+            msg = "Data shape incompatible with stored data"
+            raise ValueError(msg)
 
         if self._dtype is None:
             self._dtype = field.dtype
@@ -383,7 +407,8 @@ class StorageBase(metaclass=ABCMeta):
                 can also be supplied. If there are multiple fields with the same label,
                 only the first field is returned.
             label (str):
-                The label of the returned field. If omitted, the stored label is used.
+                The label of the returned field. If omitted or empty, the stored label
+                is used.
 
         Returns:
             :class:`MemoryStorage`: a storage instance that contains the data for the
@@ -396,10 +421,11 @@ class StorageBase(metaclass=ABCMeta):
 
         # get the field to check its type
         if not isinstance(self._field, FieldCollection):
-            raise TypeError(
+            msg = (
                 "Can only extract fields from `FieldCollection`. Current storage "
                 f"stores `{self._field.__class__.__name__}`."
             )
+            raise TypeError(msg)
 
         # determine the field index
         if isinstance(field_id, str):
@@ -413,13 +439,16 @@ class StorageBase(metaclass=ABCMeta):
             field_obj.label = label
         field_slice = self._field._slices[field_index]
         data = [
-            np.copy(data_timepoint[field_slice].reshape(field_obj.data.shape))
-            for data_timepoint in self.data
+            np.copy(self.data[i][field_slice].reshape(field_obj.data.shape))
+            for i in range(len(self))
         ]
 
         # create the corresponding MemoryStorage
         return MemoryStorage(
-            times=self.times, data=data, field_obj=field_obj, info=self.info
+            times=self.times[: len(self)],
+            data=data,
+            field_obj=field_obj,
+            info=self.info,
         )
 
     def extract_time_range(
@@ -441,23 +470,26 @@ class StorageBase(metaclass=ABCMeta):
         """
         from .memory import MemoryStorage
 
+        # Exclude unused capacity in preallocated storage.
+        times = self.times[: len(self)]
+
         # get the time bracket
         try:
             t_start, t_end = t_range  # type: ignore
         except TypeError:
             t_start, t_end = None, t_range
         if t_start is None:
-            t_start = self.times[0]
+            t_start = times[0]
         if t_end is None:
-            t_end = self.times[-1]
+            t_end = times[-1]
 
         # determine the associated indices
-        i_start = np.searchsorted(self.times, t_start, side="left")
-        i_end = np.searchsorted(self.times, t_end, side="right")
+        i_start: int = np.searchsorted(times, t_start, side="left")  # type: ignore
+        i_end: int = np.searchsorted(times, t_end, side="right")  # type: ignore
 
         # extract the actual memory
         return MemoryStorage(
-            times=self.times[i_start:i_end],
+            times=times[i_start:i_end],
             data=self.data[i_start:i_end],
             field_obj=self._field,
             info=self.info,
@@ -474,9 +506,9 @@ class StorageBase(metaclass=ABCMeta):
 
         Args:
             func (callable):
-                The function to apply to each stored field. The function must either
-                take as a single argument the field or as two arguments the field and
-                the associated time point. In both cases, it should return a field.
+                The function to apply to each stored field. It may take no arguments,
+                one argument containing the field, or two arguments containing the field
+                and associated time. In all cases, it should return a field.
             out (:class:`~pde.storage.base.StorageBase`):
                 Storage to which the output is written. If omitted, a new
                 :class:`~pde.storage.memory.MemoryStorage` is used and returned
@@ -503,7 +535,8 @@ class StorageBase(metaclass=ABCMeta):
                 transformed = func(field, t)
 
             if not isinstance(transformed, FieldBase):
-                raise TypeError("The user function must return a field")
+                msg = "The user function must return a field"
+                raise TypeError(msg)
 
             if out is None:
                 from .memory import MemoryStorage
@@ -547,7 +580,7 @@ class StorageBase(metaclass=ABCMeta):
         return self.apply(lambda x: x, out=out, progress=progress)
 
 
-class StorageTracker(TrackerBase):
+class StorageTracker(TransformedTrackerBase):
     """Tracker that stores data in special storage classes.
 
     Attributes:
@@ -561,7 +594,7 @@ class StorageTracker(TrackerBase):
         storage,
         interrupts: InterruptData = 1,
         *,
-        transformation: Callable[[FieldBase, float], FieldBase] | None = None,
+        transformation: TransformationType = None,
     ):
         """
         Args:
@@ -577,20 +610,8 @@ class StorageTracker(TrackerBase):
                 the current field, while the optional second argument is the associated
                 time.
         """
-        super().__init__(interrupts=interrupts)
+        super().__init__(interrupts=interrupts, transformation=transformation)
         self.storage = storage
-        if transformation is not None and not callable(transformation):
-            raise TypeError("`transformation` must be callable")
-        self.transformation = transformation
-
-    def _transform(self, field: FieldBase, t: float) -> FieldBase:
-        """Transforms the field according to the defined transformation."""
-        if self.transformation is None:
-            return field
-        elif self.transformation.__code__.co_argcount == 1:
-            return self.transformation(field)  # type: ignore
-        else:
-            return self.transformation(field, t)
 
     def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """
@@ -646,7 +667,8 @@ class StorageView:
         """
         self.storage = storage
         if not self.storage.has_collection:
-            raise RuntimeError("Can only create view into Storage of field collection")
+            msg = "Can only create view into Storage of field collection"
+            raise RuntimeError(msg)
 
         if isinstance(field, str):
             self.field_index = self.storage._field.labels.index(field)  # type: ignore

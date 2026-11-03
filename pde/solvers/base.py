@@ -1,7 +1,14 @@
 """Package that contains base classes for solvers.
 
-Beside the abstract base class defining the interfaces, we also provide
-:class:`AdaptiveSolverBase`, which contains methods for implementing adaptive solvers.
+Beside the abstract base class :class:`SolverBase` defining the interfaces, we also
+provide :class:`AdaptiveSolverBase`, which contains methods for adaptive solvers.
+
+.. autosummary::
+   :nosignatures:
+
+   SolverBase
+   AdaptiveSolverBase
+   ConvergenceError
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -10,20 +17,27 @@ from __future__ import annotations
 
 import logging
 import warnings
-from abc import ABCMeta
 from inspect import isabstract
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
-import numba as nb
 import numpy as np
-from numba.extending import register_jitable
 
-from ..fields.base import FieldBase
-from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
-from ..tools.misc import classproperty
-from ..tools.numba import is_jitted, jit
-from ..tools.typing import BackendType, StepperHook
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from ..backends.base import BackendBase
+    from ..pdes.base import PDEBase
+    from ..tools.typing import (
+        InnerStepperType,
+        NumericArray,
+        StepperHook,
+        StepperType,
+        TField,
+        TNativeArray,
+    )
+
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for solvers."""
@@ -34,10 +48,13 @@ class ConvergenceError(RuntimeError):
 
 
 class SolverBase:
-    """Base class for PDE solvers."""
+    """Base class for persistent PDE solver strategy objects."""
 
     dt_default: float = 1e-3
-    """float: default time step used if no time step was specified"""
+    """float: default time step used when no initial value was specified"""
+
+    mpi_run: bool = False
+    """bool: Whether this solver runs using MPI"""
 
     _use_post_step_hook: bool = True
     """bool: flag choosing whether the post-step hook of the PDE is called"""
@@ -51,22 +68,26 @@ class SolverBase:
     """dict: dictionary of all inheriting classes"""
 
     _logger: logging.Logger
+    _backend: str | BackendBase
 
-    def __init__(self, pde: PDEBase, *, backend: BackendType = "auto"):
+    def __init__(
+        self,
+        pde: PDEBase,
+        *,
+        backend: BackendBase | str = "auto",
+    ):
         """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
-            backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
         """
         self.pde = pde
-        self.backend = backend
         self.info: dict[str, Any] = {"class": self.__class__.__name__}
         if self.pde:
             self.info["pde_class"] = self.pde.__class__.__name__
+        self._backend = backend
 
     def __init_subclass__(cls, **kwargs):
         """Initialize class-level attributes of subclasses."""
@@ -78,7 +99,7 @@ class SolverBase:
         # register all subclasses to reconstruct them later
         if not isabstract(cls):
             if cls.__name__ in cls._subclasses:
-                warnings.warn(f"Redefining class {cls.__name__}")
+                warnings.warn(f"Redefining class {cls.__name__}", stacklevel=2)
             cls._subclasses[cls.__name__] = cls
         if hasattr(cls, "name") and cls.name:
             if cls.name in cls._subclasses:
@@ -87,7 +108,7 @@ class SolverBase:
 
     @classmethod
     def from_name(cls, name: str, pde: PDEBase, **kwargs) -> SolverBase:
-        r"""Create solver class based on its name.
+        r"""Create a solver object from its registered name.
 
         Solver classes are automatically registered when they inherit from
         :class:`SolverBase`. Note that this also requires that the respective python
@@ -98,7 +119,7 @@ class SolverBase:
                 The name of the solver to construct
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
-            \**kwargs:
+            **kwargs:
                 Additional arguments for the constructor of the solver
 
         Returns:
@@ -111,7 +132,7 @@ class SolverBase:
             # solver was not registered
             solvers = (
                 f"'{solver}'"
-                for solver in sorted(cls._subclasses.keys())
+                for solver in sorted(cls._subclasses)
                 if not solver.endswith("Solver")
             )
             raise ValueError(
@@ -121,47 +142,51 @@ class SolverBase:
 
         return solver_class(pde, **kwargs)
 
-    @classproperty
-    def registered_solvers(cls) -> list[str]:
-        """list of str: the names of the registered solvers"""
-        return sorted(cls._subclasses.keys())
+    @property
+    def backend_name(self) -> str:
+        """str: The name of the backend used for this solver."""
+        if isinstance(self._backend, str):
+            return self._backend
+        return self._backend.name
 
     @property
-    def _compiled(self) -> bool:
-        """bool: indicates whether functions need to be compiled"""
-        return self.backend == "numba" and not nb.config.DISABLE_JIT
+    def backend(self) -> BackendBase:
+        """:class:`~pde.backends.base.BackendBase`: The backend for this solver."""
+        if isinstance(self._backend, str):
+            if self._backend == "auto":
+                msg = "Automatic backend selection did not happen, yet."
+                raise RuntimeError(msg)
+
+            from ..backends import get_backend
+
+            self._backend = get_backend(self._backend)
+        return self._backend
 
     def _make_error_synchronizer(
-        self, operator: int | str = "MAX"
+        self, backend: str | BackendBase = "numpy", *, operator: int | str = "MAX"
     ) -> Callable[[float], float]:
         """Return function that synchronizes errors between multiple processes.
 
         Args:
+            backend (str):
+                The backend to use for making the synchronizer
             operator (str or int):
-                Flag determining how the value from multiple nodes is combined.
-                Possible values include "MAX", "MIN", and "SUM".
+                The MPI operator to use for synchronization (e.g., "MAX", "SUM")
 
         Returns:
             Function that can be used to synchronize errors across nodes
         """
-        if self._mpi_synchronization:  # mpi.parallel_run:
-            # in a parallel run, we need to synchronize values
-            from ..tools.mpi import mpi_allreduce
+        # deprecated on 2025-12-07
+        warnings.warn(
+            "`_make_error_synchronizer` is deprecated. Use `make_mpi_synchronizer` "
+            "from an appropriate backend instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-            @register_jitable
-            def synchronize_errors(error: float) -> float:
-                """Return error synchronized accross all cores."""
-                return mpi_allreduce(error, operator=operator)  # type: ignore
+        return self.backend.make_mpi_synchronizer(operator=operator)
 
-        else:
-
-            @register_jitable
-            def synchronize_errors(value: float) -> float:
-                return value
-
-        return synchronize_errors  # type: ignore
-
-    def _make_post_step_hook(self, state: FieldBase) -> StepperHook:
+    def _make_post_step_hook(self, state: TField) -> StepperHook:
         """Create a function that calls the post-step hook of the PDE.
 
         A no-op function is returned if :attr:`SolverBase._use_post_step_hook` is
@@ -173,42 +198,17 @@ class SolverBase:
                 be extracted.
 
         Returns:
-            callable: The jit-able function that calls the post-step hook
+            callable: The function that calls the post-step hook
         """
         post_step_hook: StepperHook | None = None
 
         if self._use_post_step_hook:
             try:
-                # look for the definition of a hook function
-                if hasattr(self.pde, "make_modify_after_step"):
-                    # Deprecated on 2024-08-02
-                    warnings.warn(
-                        "`make_modify_after_step` has been replaced by `make_post_step_hook`",
-                        DeprecationWarning,
-                    )
-                    modify_after_step = self.pde.make_modify_after_step(state)
-                    if self._compiled:
-                        sig_modify = (nb.typeof(state.data),)
-                        modify_after_step = jit(sig_modify)(modify_after_step)
-
-                    def post_step_hook(
-                        state_data: np.ndarray, t: float, post_step_data: np.ndarray
-                    ):
-                        """Wrap function to adjust signature."""
-                        post_step_data += modify_after_step(state_data)
-
-                    # create zero of correct type
-                    self._post_step_data_init = np.dtype(state.dtype).type(0)
-                    self._logger.info(
-                        "Created post-step hook from `make_modify_after_step`"
-                    )
-
-                else:
-                    # get hook function and initial data from PDE
-                    post_step_hook, self._post_step_data_init = (
-                        self.pde.make_post_step_hook(state)
-                    )
-                    self._logger.info("Created post-step hook from PDE")
+                # try to get hook function and initial data from PDE instance
+                post_step_hook, self.info["post_step_data"] = (
+                    self.pde.make_post_step_hook(state, backend=self.backend)
+                )
+                self._logger.info("Created post-step hook from PDE")
 
             except NotImplementedError:
                 pass  # no hook function defined on the PDE
@@ -217,210 +217,121 @@ class SolverBase:
             # hook function is not necessary or was not supplied -> provide no-op
 
             def post_step_hook(
-                state_data: np.ndarray, t: float, post_step_data: np.ndarray
-            ):
+                state_data: TNativeArray, t: float, post_step_data: Any
+            ) -> tuple[TNativeArray, Any]:
                 """Default hook function does nothing."""
+                return (state_data, post_step_data)
 
-            self._post_step_data_init = None
+            self.info["post_step_data"] = None  # no data for absent hook
             self._logger.debug("No post-step hook defined")
 
-        else:
-            # ensure that the initial values is a mutable array
-            self._post_step_data_init = np.array(self._post_step_data_init, copy=True)
-
-        self._post_step_data_type = nb.typeof(self._post_step_data_init)
-        if self._compiled:
-            sig_hook = (nb.typeof(state.data), nb.float64, self._post_step_data_type)
-            post_step_hook = jit(sig_hook)(post_step_hook)
-            self._logger.debug("Compiled post-step hook")
-
+        assert "post_step_data" in self.info
         return post_step_hook  # type: ignore
 
-    def _make_pde_rhs(
-        self, state: FieldBase, backend: BackendType = "auto"
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """Obtain a function for evaluating the right hand side.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted.
-            backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
-
-        Raises:
-            RuntimeError: when a stochastic partial differential equation is encountered
-            but `allow_stochastic == False`.
-
-        Returns:
-            A function that is called with data given by a :class:`~numpy.ndarray` and a
-            time. The function returns the deterministic evolution rate and (if
-            applicable) a realization of the associated noise.
-        """
-        if getattr(self.pde, "is_sde", False):
-            raise RuntimeError(
-                "Cannot create a deterministic stepper for a stochastic equation"
-            )
-
-        rhs = self.pde.make_pde_rhs(state, backend=backend)  # type: ignore
-
-        if hasattr(rhs, "_backend"):
-            self.info["backend"] = rhs._backend
-        elif is_jitted(rhs):
-            self.info["backend"] = "numba"
-        else:
-            self.info["backend"] = "undetermined"
-
-        return rhs
-
-    def _make_sde_rhs(
-        self, state: FieldBase, backend: str = "auto"
-    ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
-        """Obtain a function for evaluating the right hand side.
-
-        Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted.
-            backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
-
-        Raises:
-            RuntimeError: when a stochastic partial differential equation is encountered
-            but `allow_stochastic == False`.
-
-        Returns:
-            A function that is called with data given by a :class:`~numpy.ndarray` and a
-            time. The function returns the deterministic evolution rate and (if
-            applicable) a realization of the associated noise.
-        """
-        rhs = self.pde.make_sde_rhs(state, backend=backend)  # type: ignore
-
-        if hasattr(rhs, "_backend"):
-            self.info["backend"] = rhs._backend
-        elif is_jitted(rhs):
-            self.info["backend"] = "numba"
-        else:
-            self.info["backend"] = "undetermined"
-
-        return rhs
-
     def _make_single_step_fixed_dt(
-        self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float], None]:
-        """Return a function doing a single step with a fixed time step.
+        self, state: TField, dt: float
+    ) -> Callable[[NumericArray, float], NumericArray]:
+        """Return a callable performing one fixed-size update step.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
-                Time step of the explicit stepping.
+                Time step of the update.
         """
-        raise NotImplementedError("Fixed stepper has not been defined")
+        msg = "A fixed-step update rule has not been defined"
+        raise NotImplementedError(msg)
 
-    def _make_fixed_stepper(
-        self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float, int, Any], float]:
-        """Return a stepper function using an explicit scheme with fixed time steps.
+    def _make_inner_stepper(self, state: TField) -> InnerStepperType:
+        """Create the backend-level stepping function for fixed time stepping.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            dt (float):
-                Time step of the explicit stepping.
         """
+        dt = float(self.info["dt"])
         single_step = self._make_single_step_fixed_dt(state, dt)
         post_step_hook = self._make_post_step_hook(state)
 
-        if self._compiled:
-            sig_single_step = (nb.typeof(state.data), nb.double)
-            single_step = jit(sig_single_step)(single_step)
-
         def fixed_stepper(
-            state_data: np.ndarray, t_start: float, steps: int, post_step_data
+            state_data: NumericArray, t_start: float, t_end: float
         ) -> float:
             """Perform `steps` steps with fixed time steps."""
+            state = state_data
+            # calculate number of steps that lead to an end time closest to t_end
+            steps = max(1, round((t_end - t_start) / dt))
             for i in range(steps):
-                # calculate the right hand side
-                t = t_start + i * dt
-                single_step(state_data, t)
-                post_step_hook(state_data, t, post_step_data)
-
+                t = t_start + i * dt  # get current time
+                # perform single time step
+                state = single_step(state, t)
+                # do post step calculations
+                state, self.info["post_step_data"] = post_step_hook(
+                    state, t, self.info["post_step_data"]
+                )
+            self.info["steps"] += steps
+            state_data[:] = state  # need to copy since post_step_hook could change data
             return t + dt
-
-        if self._compiled:
-            sig_fixed = (
-                nb.typeof(state.data),
-                nb.double,
-                nb.int_,
-                self._post_step_data_type,
-            )
-            fixed_stepper = jit(sig_fixed)(fixed_stepper)
 
         return fixed_stepper
 
-    def make_stepper(
-        self, state: FieldBase, dt: float | None = None
-    ) -> Callable[[FieldBase, float, float], float]:
-        """Return a stepper function using an explicit scheme.
+    def _select_backend(self, state: TField, *, use_mpi: bool = False):
+        """Select backend automatically based on implemented PDE.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+            use_mpi (bool):
+                Request backend with MPI support for parallel simulation.
+
+        """
+        if isinstance(self._backend, str):
+            self._backend = self.pde.determine_backend(
+                state, self._backend, use_mpi=use_mpi
+            )
+        self.info["backend"] = self.backend.info
+
+    def make_stepper(self, state: TField, dt: float | None = None) -> StepperType:
+        """Create the executable stepping function produced by this solver.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
-                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
+                Initial time step used (Uses :attr:`SolverBase.dt_default` if `None`)
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
-        # support `None` as a default value, so the controller can signal that
-        # the solver should use a default time step
+        # Support `None` as a default value, so the controller can signal that the
+        # solver should use a default time step.
         if dt is None:
             dt = self.dt_default
             self._logger.warning(
-                "Explicit stepper with a fixed time step did not receive any "
-                "initial value for `dt`. Using dt=%g, but specifying a value or "
+                "Solver did not receive any initial value for `dt` when constructing "
+                "the stepping function. Using dt=%g, but specifying a value or "
                 "enabling adaptive stepping is advisable.",
                 dt,
             )
-        dt_float = float(dt)  # explicit casting to help type checking
 
-        # create stepper with fixed steps
-        fixed_stepper = self._make_fixed_stepper(state, dt_float)
-
-        self.info["dt"] = dt_float
+        # initialize data used by the solver and the stepping function it creates
+        self.info["dt"] = float(dt)  # explicit casting to help type checking
         self.info["steps"] = 0
-        self.info["post_step_data"] = self._post_step_data_init
+        self.info["dt_adaptive"] = False
         self.info["stochastic"] = getattr(self.pde, "is_sde", False)
-        # We don't access self.pde directly since we might want to reuse the solver
-        # infrastructure for more general cases where a PDE is not defined.
 
-        def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """Advance `state` from `t_start` to `t_end` using fixed steps."""
-            # retrieve last post_step_data and continue with this
-            post_step_data = self.info["post_step_data"]
-            # calculate number of steps (which is at least 1)
-            steps = max(1, int(np.ceil((t_end - t_start) / dt_float)))
-            # call the stepper with fixed time steps
-            t_last = fixed_stepper(state.data, t_start, steps, post_step_data)
-            # keep some stats and data
-            self.info["steps"] += steps
-            return t_last
-
-        return wrapped_stepper
+        # create the backend-specific stepping function
+        self._select_backend(state)
+        return self.backend.make_stepper(self, state)
 
 
 class AdaptiveSolverBase(SolverBase):
-    """Base class for adaptive time steppers."""
+    """Base class for solvers that can produce adaptive stepping functions."""
 
     dt_min: float = 1e-10
     """float: minimal time step that the adaptive solver will use"""
@@ -431,8 +342,8 @@ class AdaptiveSolverBase(SolverBase):
         self,
         pde: PDEBase,
         *,
-        backend: BackendType = "auto",
-        adaptive: bool = True,
+        backend: str | BackendBase = "auto",
+        adaptive: bool = False,
         tolerance: float = 1e-4,
     ):
         """
@@ -440,72 +351,19 @@ class AdaptiveSolverBase(SolverBase):
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
             backend (str):
-                Determines how the function is created. Accepted  values are 'numpy` and
-                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
-                backend.
+                The backend used for numerical operations
             adaptive (bool):
-                When enabled, the time step is adjusted during the simulation using the
-                error tolerance set with `tolerance`.
+                Whether to use adaptive time stepping
             tolerance (float):
-                The error tolerance used in adaptive time stepping. This is used in
-                adaptive time stepping to choose a time step which is small enough so
-                the truncation error of a single step is below `tolerance`.
+                Error tolerance for adaptive time stepping
         """
         super().__init__(pde, backend=backend)
         self.adaptive = adaptive
         self.tolerance = tolerance
 
-    def _make_dt_adjuster(self) -> Callable[[float, float], float]:
-        """Return a function that can be used to adjust time steps."""
-        dt_min = self.dt_min
-        dt_min_nan_err = f"Encountered NaN even though dt < {dt_min}"
-        dt_min_err = f"Time step below {dt_min}"
-        dt_max = self.dt_max
-
-        def adjust_dt(dt: float, error_rel: float) -> float:
-            """Helper function that adjust the time step.
-
-            The goal is to keep the relative error `error_rel` close to 1.
-
-            Args:
-                dt (float): Current time step
-                error_rel (float): Current (normalized) error estimate
-
-            Returns:
-                float: Time step of the next iteration
-            """
-            # adjust the time step
-            if error_rel < 0.00057665:
-                # error was very small => maximal increase in dt
-                # The constant on the right hand side of the comparison is chosen to
-                # agree with the equation for adjusting dt below
-                dt *= 4.0
-            elif np.isnan(error_rel):
-                # state contained NaN => decrease time step strongly
-                dt *= 0.25
-            else:
-                # otherwise, adjust time step according to error
-                dt *= max(0.9 * error_rel**-0.2, 0.1)
-
-            # limit time step to permissible bracket
-            if dt > dt_max:
-                dt = dt_max
-            elif dt < dt_min:
-                if np.isnan(error_rel):
-                    raise RuntimeError(dt_min_nan_err)
-                else:
-                    raise RuntimeError(dt_min_err)
-
-            return dt
-
-        if self._compiled:
-            adjust_dt = jit((nb.double, nb.double))(adjust_dt)
-
-        return adjust_dt
-
     def _make_single_step_variable_dt(
-        self, state: FieldBase
-    ) -> Callable[[np.ndarray, float, float], np.ndarray]:
+        self, state: TField
+    ) -> Callable[[NumericArray, float, float], NumericArray]:
         """Return a function doing a single step with a variable time step.
 
         Args:
@@ -518,18 +376,22 @@ class AdaptiveSolverBase(SolverBase):
             time `t_end`. The function call signature is
             `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
-        rhs_pde = self._make_pde_rhs(state, backend=self.backend)
+        if self.pde.is_sde:
+            msg = "Adaptive stepping does not support stochastic equations"
+            raise RuntimeError(msg)
 
-        def single_step(state_data: np.ndarray, t: float, dt: float) -> np.ndarray:
+        rhs_pde = self.backend.make_pde_rhs(self.pde, state)
+
+        def single_step(state_data: NumericArray, t: float, dt: float) -> NumericArray:
             """Basic implementation of Euler scheme."""
             return state_data + dt * rhs_pde(state_data, t)  # type: ignore
 
-        return single_step
+        return self.backend.compile_function(single_step)
 
     def _make_single_step_error_estimate(
-        self, state: FieldBase
-    ) -> Callable[[np.ndarray, float, float], tuple[np.ndarray, float]]:
-        """Make a stepper that also estimates the error.
+        self, state: TField
+    ) -> Callable[[NumericArray, float, float], tuple[NumericArray, float]]:
+        """Make a helper that advances the state and estimates the local error.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -537,17 +399,15 @@ class AdaptiveSolverBase(SolverBase):
                 be extracted
         """
         if getattr(self.pde, "is_sde", False):
-            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
+            msg = "Cannot use adaptive stepping with stochastic equation"
+            raise RuntimeError(msg)
 
         single_step = self._make_single_step_variable_dt(state)
-        if self._compiled:
-            sig_single_step = (nb.typeof(state.data), nb.double, nb.double)
-            single_step = jit(sig_single_step)(single_step)
 
         def single_step_error_estimate(
-            state_data: np.ndarray, t: float, dt: float
-        ) -> tuple[np.ndarray, float]:
-            """Basic stepper to estimate error."""
+            state_data: NumericArray, t: float, dt: float
+        ) -> tuple[NumericArray, float]:
+            """Basic helper used to estimate the local truncation error."""
             # single step with dt
             k1 = single_step(state_data, t, dt)
 
@@ -562,13 +422,11 @@ class AdaptiveSolverBase(SolverBase):
 
         return single_step_error_estimate
 
-    def _make_adaptive_stepper(
-        self, state: FieldBase
-    ) -> Callable[
-        [np.ndarray, float, float, float, OnlineStatistics | None, Any],
-        tuple[float, float, int],
-    ]:
-        """Make an adaptive Euler stepper.
+    def _make_inner_stepper(
+        self,
+        state: TField,  # , *, adjust_dt: Callable[[float, float], float] | None = None
+    ) -> InnerStepperType:
+        """Create the backend-level stepping function for adaptive time stepping.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -580,38 +438,40 @@ class AdaptiveSolverBase(SolverBase):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
+        if not self.adaptive:
+            # create a stepping function with fixed steps
+            return super()._make_inner_stepper(state)
+        if getattr(self.pde, "is_sde", False):
+            # adaptive stepping functions cannot deal with stochastic PDEs
+            msg = "Cannot use adaptive stepping with stochastic equation"
+            raise RuntimeError(msg)
+
         # obtain functions determining how the PDE is evolved
         single_step_error = self._make_single_step_error_estimate(state)
         post_step_hook = self._make_post_step_hook(state)
-        sync_errors = self._make_error_synchronizer()
+        sync_errors = self.backend.make_mpi_synchronizer(operator="MAX")
 
         # obtain auxiliary functions
-        adjust_dt = self._make_dt_adjuster()
+        adjust_dt = _make_dt_adjuster(self.dt_min, self.dt_max)
         tolerance = self.tolerance
         dt_min = self.dt_min
 
-        if self._compiled:
-            # compile paired stepper
-            sig_stepper = (nb.typeof(state.data), nb.double, nb.double)
-            single_step_error = jit(sig_stepper)(single_step_error)
+        # add extra information
+        self.info["dt_adaptive"] = self.adaptive
+        self.info["dt_statistics"] = OnlineStatistics()
 
         def adaptive_stepper(
-            state_data: np.ndarray,
-            t_start: float,
-            t_end: float,
-            dt_init: float,
-            dt_stats: OnlineStatistics | None = None,
-            post_step_data=None,
-        ) -> tuple[float, float, int]:
-            """Adaptive stepper that advances the state in time."""
-            dt_opt = dt_init
+            state_data: NumericArray, t_start: float, t_end: float
+        ) -> float:
+            """Adaptive stepping function that advances the state in time."""
+            dt_opt = self.info["dt"]  # time step from last step
             t = t_start
             steps = 0
             while True:
                 # use a smaller (but not too small) time step if close to t_end
                 dt_step = max(min(dt_opt, t_end - t), dt_min)
 
-                # two different steppings to estimate errors
+                # try two different step sizes to estimate errors
                 new_state, error = single_step_error(state_data, t, dt_step)
 
                 error_rel = error / tolerance  # normalize error to given tolerance
@@ -622,11 +482,13 @@ class AdaptiveSolverBase(SolverBase):
                 if error_rel <= 1:
                     steps += 1
                     t += dt_step
-                    state_data[...] = new_state
-                    post_step_hook(state_data, t, post_step_data)
+                    # copy new state into state_data to accept it
+                    state_data[...], self.info["post_step_data"] = post_step_hook(
+                        new_state, t, self.info["post_step_data"]
+                    )
 
-                    if dt_stats is not None:
-                        dt_stats.add(dt_step)
+                    if self.info.get("dt_statistics"):
+                        self.info["dt_statistics"].add(dt_step)
 
                 if t < t_end:
                     # adjust the time step and continue (happens in every MPI process)
@@ -634,27 +496,15 @@ class AdaptiveSolverBase(SolverBase):
                 else:
                     break  # return to the controller
 
-            return t, dt_opt, steps
+            self.info["dt"] = dt_opt  # save last optimal time step
+            self.info["steps"] += steps
+            return t
 
-        if self._compiled:
-            # compile inner stepper
-            sig_adaptive = (
-                nb.typeof(state.data),
-                nb.double,
-                nb.double,
-                nb.double,
-                nb.typeof(self.info["dt_statistics"]),
-                self._post_step_data_type,
-            )
-            adaptive_stepper = jit(sig_adaptive)(adaptive_stepper)
-
-        self._logger.info("Initialized adaptive stepper")
+        self._logger.info("Initialized adaptive stepping function")
         return adaptive_stepper
 
-    def make_stepper(
-        self, state: FieldBase, dt: float | None = None
-    ) -> Callable[[FieldBase, float, float], float]:
-        """Return a stepper function using an explicit scheme.
+    def make_stepper(self, state: TField, dt: float | None = None) -> StepperType:
+        """Create the executable stepping function produced by this solver.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -669,47 +519,87 @@ class AdaptiveSolverBase(SolverBase):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
-        if not self.adaptive:
-            # create stepper with fixed steps
-            return super().make_stepper(state, dt)
+        if dt is None and self.adaptive:
+            # always set a default initial step for adaptive stepping
+            dt = self.dt_default
+        return super().make_stepper(state, dt=dt)
 
-        if getattr(self.pde, "is_sde", False):
-            # adaptive steppers cannot deal with stochastic PDEs
-            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
 
-        # Support `None` as a default value, so the controller can signal that
-        # the solver should use a default time step.
-        if dt is None:
-            dt_float = self.dt_default
+def _make_dt_adjuster(dt_min: float, dt_max: float) -> Callable[[float, float], float]:
+    """Return a function that can be used to adjust time steps.
+
+    The returned function adjust_dt(dt, error_rel) adjusts the current time step
+    `dt` based on the normalized error estimate `error_rel` with the goal of
+    keeping `error_rel` close to 1.
+
+    Behavior:
+    - If the error is very small the time step is increased (up to a factor 4).
+    - If the error is NaN the time step is reduced strongly.
+    - Otherwise the time step is scaled according to error_rel**-0.2 with a
+      conservative lower bound for the scaling factor.
+    - The adjusted time step is clamped to the interval [dt_min, dt_max].
+    - If the adjusted time step falls below dt_min a RuntimeError is raised.
+
+    Args:
+        dt_min (float): Minimal allowed time step.
+        dt_max (float): Maximal allowed time step.
+
+    Returns:
+        Callable[[float, float], float]:
+            Function that takes (dt, error_rel) and returns the adjusted dt.
+    """
+    dt_min_nan_err = f"Encountered NaN even though dt < {dt_min}"
+    dt_min_err = f"Time step below {dt_min}"
+
+    def adjust_dt(dt: float, error_rel: float) -> float:
+        """Helper function that adjust the time step.
+
+        The goal is to keep the relative error `error_rel` close to 1.
+
+        Args:
+            dt (float): Current time step
+            error_rel (float): Current (normalized) error estimate
+
+        Returns:
+            float: Time step of the next iteration
+        """
+        # adjust the time step
+        if error_rel < 0.00057665:
+            # error was very small => maximal increase in dt
+            # The constant on the right hand side of the comparison is chosen to
+            # agree with the equation for adjusting dt below
+            dt *= 4.0
+        elif np.isnan(error_rel):
+            # state contained NaN => decrease time step strongly
+            dt *= 0.25
         else:
-            dt_float = float(dt)  # explicit casting to help type checking
+            # otherwise, adjust time step according to error
+            dt *= max(0.9 * error_rel**-0.2, 0.1)
 
-        # create stepper with adaptive steps
-        self.info["dt_statistics"] = OnlineStatistics()
-        adaptive_stepper = self._make_adaptive_stepper(state)
+        # limit time step to permissible bracket
+        if dt > dt_max:
+            dt = dt_max
+        elif dt < dt_min:
+            if np.isnan(error_rel):
+                raise RuntimeError(dt_min_nan_err)
+            raise RuntimeError(dt_min_err)
 
-        self.info["dt"] = dt_float
-        self.info["dt_adaptive"] = True
-        self.info["steps"] = 0
-        self.info["stochastic"] = getattr(self.pde, "is_sde", False)
-        self.info["post_step_data"] = self._post_step_data_init
+        return dt
 
-        def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """Advance `state` from `t_start` to `t_end` using adaptive steps."""
-            nonlocal dt_float  # `dt_float` stores value for the next call
-            # retrieve last post_step_data and continue with this
-            post_step_data = self.info["post_step_data"]
-            # call the adaptive stepper
-            t_last, dt_float, steps = adaptive_stepper(
-                state.data,
-                t_start,
-                t_end,
-                dt_float,
-                self.info["dt_statistics"],
-                post_step_data,
-            )
-            # keep some stats and data
-            self.info["steps"] += steps
-            return t_last
+    return adjust_dt
 
-        return wrapped_stepper
+
+def registered_solvers() -> dict[str, type[SolverBase]]:
+    """Returns all solvers that are currently registered.
+
+    Returns:
+        dict: a dictionary with the names of the solvers and the associated class
+    """
+    return {
+        name: cls
+        for name, cls in SolverBase._subclasses.items()
+        if not (name.endswith("Base"))
+    }
+
+
+__all__ = ["AdaptiveSolverBase", "ConvergenceError", "SolverBase", "registered_solvers"]

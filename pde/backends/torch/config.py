@@ -1,0 +1,34 @@
+"""Defines the configuration for the torch backend.
+
+This configuration file will be imported without importing the enclosed module (which
+will instead be loaded on demand). Consequently, the module should use absolute
+references to other modules and not import anything from the backend.
+
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
+"""
+
+from pde.tools.config import Parameter
+
+# define default parameter values
+DEFAULT_CONFIG: dict[str, Parameter] = {
+    "device": Parameter(
+        value="cpu",
+        cls=str,
+        description="Determines the device that is used for the torch backend. Common "
+        "options include `cpu`, `cuda`, and more specific choices, like `cuda:0`. The "
+        "special value `auto` chooses `cuda` if available, otherwise `cpu`.",
+    ),
+    "dtype_downcasting": Parameter(
+        value=True,
+        cls=bool,
+        description="Determines whether dtype downcasting is used automatically. A "
+        "typical example are torch devices that only support float32, so the numpy "
+        "arrays using float64 need to be converted. If enabled, this happens "
+        "automatically.",
+    ),
+    "compile": Parameter(
+        value=True,
+        cls=bool,
+        description="Enables compilation in the `torch` backend.",
+    ),
+}

@@ -5,17 +5,19 @@
 
 from __future__ import annotations
 
-from typing import Callable
-
-import numba as nb
-import numpy as np
+from typing import TYPE_CHECKING, Any
 
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
-from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
 from .base import PDEBase, expr_prod
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from ..backends import BackendBase
+    from ..grids.boundaries.axes import BoundariesData
+    from ..tools.typing import TNativeArray
 
 
 class CahnHilliardPDE(PDEBase):
@@ -60,8 +62,8 @@ class CahnHilliardPDE(PDEBase):
         super().__init__()
 
         self.interface_width = interface_width
-        self.bc_c = set_default_bc(bc_c, self.default_bc_c)
-        self.bc_mu = set_default_bc(bc_mu, self.default_bc_mu)
+        self.bc_c: BoundariesData = set_default_bc(bc_c, self.default_bc_c)
+        self.bc_mu: BoundariesData = set_default_bc(bc_mu, self.default_bc_mu)
 
     @property
     def expression(self) -> str:
@@ -90,30 +92,28 @@ class CahnHilliardPDE(PDEBase):
         result = state**3 - state - self.interface_width * c_laplace
         return result.laplace(bc=self.bc_mu, args={"t": t})  # type: ignore
 
-    def _make_pde_rhs_numba(  # type: ignore
-        self, state: ScalarField
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    def make_evolution_rate(
+        self, state: ScalarField, backend: BackendBase
+    ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 An example for the state defining the grid and data types
+            backend (str or :class:`~pde.backends.base.BackendBase`):
+                The backend used for numerical operations
 
         Returns:
             A function with signature `(state_data, t)`, which can be called with an
-            instance of :class:`~numpy.ndarray` of the state data and the time to
-            obtained an instance of :class:`~numpy.ndarray` giving the evolution rate.
+            instance of the state data and time to obtain the associated evolution rate.
         """
-        arr_type = nb.typeof(state.data)
-        signature = arr_type(arr_type, nb.double)
-
         interface_width = self.interface_width
-        laplace_c = state.grid.make_operator("laplace", bc=self.bc_c)
-        laplace_mu = state.grid.make_operator("laplace", bc=self.bc_mu)
+        args: dict[str, Any] = {"backend": backend, "dtype": state.dtype}
+        laplace_c = state.grid.make_operator(operator="laplace", bc=self.bc_c, **args)
+        laplace_mu = state.grid.make_operator(operator="laplace", bc=self.bc_mu, **args)
 
-        @jit(signature)
-        def pde_rhs(state_data: np.ndarray, t: float):
-            """Compiled helper function evaluating right hand side."""
+        def pde_rhs(state_data, t=0):
+            """Evaluate right hand side of PDE."""
             mu = (
                 state_data**3
                 - state_data
@@ -121,4 +121,4 @@ class CahnHilliardPDE(PDEBase):
             )
             return laplace_mu(mu, args={"t": t})
 
-        return pde_rhs  # type: ignore
+        return pde_rhs

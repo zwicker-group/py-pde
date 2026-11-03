@@ -18,11 +18,13 @@ def test_scalar_field_plot(tmp_path, rng):
     # create some data
     state = ScalarField.random_uniform(UnitGrid([16, 16]), rng=rng)
     for scale in [(0, 1), 1, "automatic", "symmetric", "unity"]:
-        sfp = plotting.ScalarFieldPlot(state, scale=scale)
+        sfp = plotting.ScalarFieldPlot(state, scale=scale, skip_deprecation=True)
         sfp.savefig(path)
         assert path.stat().st_size > 0
 
-    sfp = plotting.ScalarFieldPlot(state, quantities={"source": None})
+    sfp = plotting.ScalarFieldPlot(
+        state, quantities={"source": None}, skip_deprecation=True
+    )
     sfp.savefig(path)
     assert path.stat().st_size > 0
 
