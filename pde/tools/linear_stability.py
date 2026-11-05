@@ -3,131 +3,502 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import logging
+from collections.abc import Iterable, Sequence
+from typing import Any
 
-import sympy
+import sympy as sp
+from sympy.core.function import AppliedUndef
+
+from ..pdes.base import PDEBase
 
 
-def make_linear_operator(dependent_variables):
-    """Return a linear differential sympy operator.
+class LinearDifferentialOperator(sp.Function):
+    """Base class for abstract linear differential operators."""
+
+    nargs = 1
+
+    @classmethod
+    def eval(cls, arg: sp.Basic) -> sp.Basic | None:
+        """Simplify the operator when its argument is constant.
+
+        Args:
+            arg: Expression to which the operator is applied.
+
+        Returns:
+            Zero if ``arg`` is a constant, otherwise ``None`` to leave it unevaluated.
+        """
+        # Any linear differential operator applied to a constant is zero.
+        if arg.is_number:
+            return sp.S.Zero
+        return None
+
+    def _eval_derivative(self, symbol: sp.Symbol) -> sp.Basic:
+        """Differentiate the argument and apply the same operator.
+
+        Args:
+            symbol: Symbol with respect to which the expression is differentiated.
+
+        Returns:
+            The same operator applied to the differentiated argument.
+        """
+        return type(self)(sp.diff(self.args[0], symbol))
+
+
+class Laplace(LinearDifferentialOperator): ...
+
+
+class Gradient(LinearDifferentialOperator): ...
+
+
+class Divergence(LinearDifferentialOperator): ...
+
+
+class Dot(sp.Function):
+    """Abstract inner product of two vector expressions."""
+
+    nargs = 2
+
+    @classmethod
+    def eval(cls, left: sp.Basic, right: sp.Basic) -> sp.Basic | None:
+        """Simplify the inner product when either argument is zero.
+
+        Args:
+            left: First expression in the inner product.
+            right: Second expression in the inner product.
+
+        Returns:
+            Zero if either argument is zero, otherwise ``None`` to leave it unevaluated.
+        """
+        # 0 · v = v · 0 = 0
+        if left == 0 or right == 0:
+            return sp.S.Zero
+        return None
+
+    def _eval_derivative(self, symbol: sp.Symbol) -> sp.Basic:
+        """Differentiate the inner product using the product rule.
+
+        Args:
+            symbol: Symbol with respect to which the expression is differentiated.
+
+        Returns:
+            The derivative of the inner product.
+        """
+        left, right = self.args
+
+        return Dot(sp.diff(left, symbol), right) + Dot(left, sp.diff(right, symbol))
+
+
+class GradientSquared(sp.Function):
+    """Abstract squared gradient: |∇f|²."""
+
+    nargs = 1
+
+    @classmethod
+    def eval(cls, arg: sp.Basic) -> sp.Basic:
+        """Rewrite the squared gradient as an inner product.
+
+        Args:
+            arg: Expression whose gradient is squared.
+
+        Returns:
+            The inner product of the gradient with itself.
+        """
+        # |∇ const|² = 0
+        if arg.is_number:
+            return sp.S.Zero
+
+        # Use the canonical representation ∇f · ∇f.
+        return Dot(Gradient(arg), Gradient(arg))
+
+
+# differential operators that annihilate homogeneous expressions
+DIFF_OPERATORS: dict[str, type[LinearDifferentialOperator]] = {
+    "gradient": Gradient,
+    "divergence": Divergence,
+    "laplace": Laplace,
+    "inner": Dot,
+    "dot": Dot,
+    "gradient_squared": GradientSquared,
+}
+
+
+def replace_many(
+    expr: sp.Basic, search: Iterable[sp.Basic], replace: Iterable[sp.Basic | float]
+) -> sp.Basic:
+    """Replace multiple subexpressions simultaneously.
 
     Args:
-        dependent_variables (sequence):
-            All variables which the differential operator should be applied to. This can
-            be explicit spatial coordinates but also fields that depend on these
-            coordinates. All other symbols are assumed to be constants.
+        expr: Expression in which substitutions are made.
+        search: Subexpressions to replace.
+        replace: Replacement expressions or numeric values, paired with ``search``.
+
+    Returns:
+        The expression with the substitutions applied simultaneously.
     """
+    return expr.subs(dict(zip(search, replace, strict=True)), simultaneous=True)
 
-    class LinDiffOperator(sympy.Function):
-        """Represents a linear operators acting on variables listed in `dependent`"""
 
-        dependent = dependent_variables  # variables that the operator can affect
-        _logger = logging.getLogger("LinearOperator")
+def _simplify_homogeneous_state(
+    expr: sp.Basic, homogeneous_symbols: set[sp.Symbol]
+) -> sp.Basic:
+    """Simplify abstract differential operators around a homogeneous state.
 
-        # def _sympystr(self, printer):
-        #     return "D"
+    Args:
+        expr:
+            SymPy expression containing fields and abstract differential operators.
+        homogeneous_symbols:
+            Symbols known to be spatially homogeneous, including parameters and
+            reference-state values such as ``{c0, phi0, D, a, b}``.
 
-        # def _latex(self, printer):
-        #     return r"\mathcal{D}"
+    Returns:
+        The simplified expression.
 
-        @classmethod
-        def eval(cls, arg):
-            """Evaluate common cases of the differential operator."""
-            if isinstance(arg, sympy.Order):
-                if any(v in arg.args[0].free_symbols for v in cls.dependent):
-                    return arg  # pull Order out of operator
-                return sympy.Number(0)  # Order variable is a constant
+    Notes:
+        For each linear differential operator ``D``, this implements
+        ``D[A] = 0`` for homogeneous ``A``, ``D[f + g] = D[f] + D[g]``, and
+        ``D[A * f] = A * D[f]`` when ``A`` is homogeneous. Nonlinear operators
+        should not be included.
+    """
+    expr = sp.sympify(expr)
 
-            if not arg.free_symbols:
-                return sympy.Number(0)  # differential of a constant vanishes
-            return None
+    def is_homogeneous(value: sp.Basic) -> Any:
+        """Return whether a value is spatially constant in this analysis.
 
-        def doit(self, deep=True, **hints):
-            """Evaluates the differential operator for as many cases as we can."""
-            if len(self.args) != 1:
-                msg = "Operator expects exactly one argument"
-                raise ValueError(msg)
-            arg = self.args[0]  # extract singular argument
+        Args:
+            value: Expression to check for dependence on nonhomogeneous symbols.
 
-            if not any(v in arg.free_symbols for v in self.dependent):
-                self._logger.debug("Eliminate LinDiffOperator(%s)", arg)
-                return sympy.Number(0)
+        Returns:
+            Whether the expression contains only homogeneous symbols.
+        """
+        return value.free_symbols <= homogeneous_symbols
 
-            if isinstance(arg, sympy.Add):
-                # operator is linear
-                return sympy.Add(
-                    *[self.__class__(t).doit(deep=deep, **hints) for t in arg.args]
-                )
+    def simplify(value: sp.Basic) -> sp.Basic:
+        """Recursively simplify abstract differential operators.
 
-            if isinstance(arg, sympy.Mul):
-                # operator is linear
-                terms = []
-                for i in range(len(arg.args)):
-                    consts = [
-                        arg.args[j].doit(deep=deep, **hints)
-                        for j in range(len(arg.args))
-                        if j != i
-                    ]
-                    arg_i = arg.args[i]
-                    if isinstance(arg_i, sympy.Order):
-                        prod = sympy.Mul(arg_i.doit(deep=deep, **hints), *consts)
+        Args:
+            value: Expression to simplify.
+
+        Returns:
+            The recursively simplified expression.
+        """
+        # Recursively simplify ordinary SymPy expressions first.
+        if not value.args:
+            return value
+
+        args = tuple(simplify(arg) for arg in value.args)
+        value = value.func(*args)
+
+        # Apply special rules to the abstract differential operators.
+        if any(isinstance(value, op) for op in DIFF_OPERATORS.values()):
+            operator = value.func
+            arg = value.args[0]
+
+            # D[constant] = 0
+            if is_homogeneous(arg):
+                return sp.S.Zero
+
+            # D[f + g] = D[f] + D[g]
+            if arg.is_Add:
+                return sp.Add(*(simplify(operator(term)) for term in arg.args))
+
+            # D[A f] = A D[f] when A is homogeneous.
+            if arg.is_Mul:
+                homogeneous_factors = []
+                nonhomogeneous_factors = []
+
+                for factor in arg.args:
+                    if is_homogeneous(factor):
+                        homogeneous_factors.append(factor)
                     else:
-                        prod = sympy.Mul(
-                            self.__class__(arg_i).doit(deep=deep, **hints), *consts
-                        )
-                    terms.append(prod)
-                return sympy.Add(*terms)
+                        nonhomogeneous_factors.append(factor)
 
-            if isinstance(arg, sympy.Pow):
-                base, exp = arg.args
-                if exp.is_real and exp.is_positive:
-                    return exp * base ** (exp - 1) * self.__class__(base)
+                if homogeneous_factors:
+                    prefactor = sp.Mul(*homogeneous_factors)
+                    remainder = sp.Mul(*nonhomogeneous_factors)
 
-            return self.__class__(self.args[0].doit(deep=deep, **hints))
+                    # The all-homogeneous case was already handled above,
+                    # but retaining this guard makes the logic explicit.
+                    if remainder == 1:
+                        return sp.S.Zero
 
-        def _eval_rewrite(self, rule, args, **hints):
-            """Rewrite expressions using common replacements."""
-            if len(args) != 1:
-                msg = "Operator expects exactly one argument"
+                    return prefactor * simplify(operator(remainder))
+
+            return value
+
+        return value
+
+    return sp.simplify(simplify(expr))
+
+
+def _replace_operators(expr: sp.Basic) -> sp.Basic:
+    """Replace differential operators with abstract SymPy operators.
+
+    Args:
+        expr: Expression containing differential operators.
+
+    Returns:
+        The expression with recognized operators replaced.
+    """
+    undefined_operators = list(expr.atoms(AppliedUndef))
+    for func in undefined_operators:
+        if func.__class__.__name__ in DIFF_OPERATORS:
+            expr = expr.replace(func.__class__, DIFF_OPERATORS[func.__class__.__name__])
+    return expr
+
+
+def linearize_expression(
+    expression: sp.Basic, state_hom: dict[str, float], *, check: bool = True
+) -> sp.Basic:
+    """Linearize one expression around a homogeneous base state.
+
+    Note:
+        This function assumes that the base state
+
+    Args:
+        expression: Expression to linearize.
+        state_hom: Mapping from the dependent-variable name to its base value.
+        check: If True, verify that the expression vanishes at the base state.
+
+    Returns:
+        The expression linearized around the base state.
+    """
+    # parse base state
+    if len(state_hom) != 1:
+        msg = "Need exactly one dependent variable"
+        raise ValueError(msg)
+    ((variable, base_value),) = state_hom.items()
+    variable = sp.Symbol(variable)
+
+    # turn differential operators into their Sympy equivalents
+    expr = _replace_operators(expression)
+
+    if check:
+        # check whether the expression vanishes for the base state
+        base_rate = sp.N(expr.subs(variable, base_value), chop=True)
+        if not base_rate.is_zero:
+            msg = f"Expression {expression} does not vanish for base state {state_hom}"
+            raise ValueError(msg)
+
+    # linearize the expr wrt. the dependent variable
+    base_state = sp.Dummy("base")
+    eps = sp.Dummy("eps")
+    perturbation = sp.Dummy("pert")
+    expr_perturbed = expr.subs(variable, base_state + eps * perturbation)
+    linearized = sp.diff(expr_perturbed, eps).subs(eps, 0)
+
+    # simplify the linearized expression
+    linearized_simpl = _simplify_homogeneous_state(
+        linearized, homogeneous_symbols={base_state}
+    )
+
+    # replace expression linearized around base state
+    return linearized_simpl.subs({base_state: base_value, perturbation: variable})
+
+
+def linearize_expressions(
+    expressions: Sequence[sp.Basic], state_hom: dict[str, float], *, check: bool = True
+) -> list[sp.Basic]:
+    """Linearize several expressions around a homogeneous reference state.
+
+    Args:
+        expressions: Expressions to linearize, one for each dependent variable.
+        state_hom: Mapping from dependent-variable names to their reference values.
+        check: If True, verify that the expression vanishes at the base state.
+
+    Returns:
+        The linearized expressions in the same order as ``expressions``.
+    """
+    num = len(expressions)
+    # parse base state
+    if len(state_hom) != num:
+        raise ValueError
+    variables = []
+    base_values = []
+    for name, value in state_hom.items():
+        variables.append(sp.Symbol(name))
+        base_values.append(value)
+
+    # prepare the perturbed variables
+    base_state = sp.symbols(f"base_0:{num}", cls=sp.Dummy)
+    eps = sp.Dummy("eps")
+    perturbation = sp.symbols(f"pert_0:{num}", cls=sp.Dummy)
+    variables_pert = [
+        base + eps * pert for base, pert in zip(base_state, perturbation, strict=True)
+    ]
+
+    result = []
+    for expr in expressions:
+        # turn differential operators into their Sympy equivalents
+        expr_repl = _replace_operators(expr)
+
+        if check:
+            # check whether the expression vanishes for the base state
+            base_rate = sp.N(replace_many(expr_repl, variables, base_values), chop=True)
+            if not base_rate.is_zero:
+                msg = f"Expression {expr} does not vanish for base state {state_hom}"
                 raise ValueError(msg)
-            arg = args[0]  # extract singular argument
 
-            if rule == sympy.Add and isinstance(arg, sympy.Add):
-                # operator is linear
-                return sympy.Add(*[self.__class__(x) for x in arg.args])
+        # linearize the expr wrt. the dependent variables
+        expr_perturbed = replace_many(expr_repl, variables, variables_pert)
+        linearized = sp.diff(expr_perturbed, eps).subs(eps, 0)
 
-            if rule == sympy.Mul and isinstance(arg, sympy.Mul):
-                # operator is linear
-                terms = []
-                factors = arg.args
-                for i in range(len(factors)):
-                    consts = [factors[j] for j in range(len(factors)) if j != i]
-                    terms.append(sympy.Mul(self.__class__(factors[i]), *consts))
-                return sympy.Add(*terms)
+        # simplify the linearized expression
+        linearized_simpl = _simplify_homogeneous_state(
+            linearized, homogeneous_symbols=set(base_state)
+        )
 
-            if rule == sympy.Pow and isinstance(arg, sympy.Pow):
-                base, exp = arg.args
-                if exp.is_real and exp.is_positive:
-                    return exp * base ** (exp - 1) * self.__class__(base)
-            return None
+        # replace the base state and return to the original variables
+        res = replace_many(linearized_simpl, base_state, base_values)
+        result.append(replace_many(res, perturbation, variables))
 
-        def _eval_nseries(self, x, n, logx, cdir=0):
-            """Evaluate power series of the linear operator."""
-            if len(self.args) != 1:
-                msg = "Operator expects exactly one argument"
+    # replace base state
+    return result
+
+
+def _fourier_lower_scalar(
+    expr: sp.Basic,
+    amplitudes: dict[sp.Basic, sp.Basic],
+    *,
+    k_sq: sp.Basic | None = None,
+):
+    """Replace perturbation fields and Laplacians by Fourier expressions.
+
+    Parameters
+    ----------
+    expr:
+        A linearized and homogeneous-state-simplified SymPy expression.
+
+    amplitudes:
+        Mapping from real-space perturbation symbols to Fourier amplitudes.
+        For example, ``{u: u_hat, v: v_hat}``.
+
+    k_sq:
+        Symbol representing |k|**2. If omitted, a fresh symbol is created.
+
+    Returns
+    -------
+    tuple
+        ``(expr_fourier, k_sq)`` where `expr_fourier` is the Fourier-space
+        expression and `k_sq` represents the squared wave-number.
+    """
+    if k_sq is None:
+        k_sq = sp.Dummy("k_sq", real=True, nonnegative=True)
+
+    perturbations = set(amplitudes)
+
+    def lower(node):
+        """Recursively transform expression to Fourier space.
+
+        Args:
+            node: SymPy expression node to transform.
+
+        Returns:
+            The transformed node in Fourier space.
+        """
+        # Replace perturbation fields by their Fourier amplitudes.
+        if node in amplitudes:
+            return amplitudes[node]
+
+        # Fourier symbol of the Laplacian:
+        #
+        #     ∇² f  ->  -|k|² f_hat
+        #
+        if isinstance(node, Laplace):
+            arg = node.args[0]
+
+            # At this stage, Laplace must not act only on a homogeneous
+            # quantity. That should have been simplified to zero earlier.
+            if not arg.has(*perturbations):
+                msg = (
+                    f"Cannot Fourier-transform {node}: it does not depend on a "
+                    "perturbation. Simplify the homogeneous state first."
+                )
                 raise ValueError(msg)
-            inner = self.args[0]._eval_nseries(x, n, logx, cdir=cdir)
-            return self.__class__(inner)
 
-        def _eval_as_leading_term(self, x, logx, cdir):
-            """Return leading term of power series of the linear operator."""
-            if len(self.args) != 1:
-                msg = "Operator expects exactly one argument"
-                raise ValueError(msg)
-            if logx is not None:
-                msg = f"Don't know how to deal with {logx=}"
-                raise NotImplementedError(msg)
-            # Not sure if the following works for all cases
-            return sympy.diff(self.args[0], x)
+            return -k_sq * lower(arg)
 
-    return LinDiffOperator
+        # For now, reject vector operators in the scalar-only transformer.
+        if isinstance(node, (LinearDifferentialOperator, GradientSquared)):
+            msg = (
+                f"Fourier lowering of {type(node).__name__} requires a "
+                "vector/tensor Fourier representation."
+            )
+            raise NotImplementedError(msg)
+
+        # Recurse through ordinary SymPy expressions.
+        if not node.args:
+            return node
+
+        return node.func(*(lower(arg) for arg in node.args))
+
+    return sp.expand(lower(expr)), k_sq
+
+
+def dispersion_relation_scalar(
+    expression, state_hom: dict[str, float], *, check: bool = True
+):
+    """Calculate the dispersion relation for a scalar perturbation.
+
+    This function linearizes the expression around a homogeneous state,
+    performs a Fourier transform, and returns the dispersion relation
+    as a function of the squared wave-number.
+
+    Args:
+        expression: SymPy expression representing the scalar evolution equation.
+        state_hom: Mapping from the dependent-variable name to its base state value.
+        check: If True, verify that the expression vanishes at the base state.
+
+    Returns:
+        A SymPy Lambda function describing the perturbation growth rate as a function
+        of the squared wave-number.
+    """
+    # get the input variable
+    ((variable_name, _),) = state_hom.items()
+    variable = sp.Symbol(variable_name)
+
+    # linearize the expression around the homogeneous stationary state
+    expr_lin = linearize_expression(expression, state_hom=state_hom, check=check)
+
+    # do Fourier transform
+    variable_k = sp.Dummy(variable_name)
+    expr_rec, k_sq = _fourier_lower_scalar(expr_lin, {variable: variable_k})
+
+    # check whether the expression is affine in the variable
+    try:
+        # `EX` permits arbitrary SymPy expressions as coefficients.
+        poly = sp.Poly(expr_rec, variable_k, domain="EX")
+    except sp.PolynomialError as err:
+        msg = f"Linearized expression is not polynomial in {variable_k}: {expr_rec}"
+        raise ValueError(msg) from err
+
+    # some consistency checks
+    if poly.degree() > 1:
+        msg = f"Linearized expression is not linear in {variable_k}: {expr_rec}"
+        raise ValueError(msg)
+    # The linearization already assumed that the expression vanishes when evaluated at
+    # the base state.
+    assert sp.N(poly.nth(0), chop=True).is_zero
+
+    # return the perturbation growth rate
+    pert_rate = poly.nth(1)  # linear coefficient
+    return sp.Lambda(k_sq, pert_rate)
+
+
+def dispersion_matrix(expressions, dependent_variables, *, unsupported_symbols=None):
+    """Calculate the dispersion matrix for multiple coupled equations.
+
+    Args:
+        expressions: A sequence of SymPy expressions or a PDEBase instance.
+        dependent_variables: Names of the dependent variables in the system.
+        unsupported_symbols: Symbols that should be treated as unsupported.
+
+    Returns:
+        The dispersion matrix describing the coupling between variables.
+    """
+    if isinstance(expressions, PDEBase):
+        # TODO: define interface for getting sympy expressions
+        expressions = expressions.expressions
+    # do the linearization for many expressions
+    exprs = {_replace_operators}
+    for name, op in DIFF_OPERATORS.items():
+        exprs = exprs.repl(name, op)

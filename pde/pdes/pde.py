@@ -1251,9 +1251,11 @@ class PDE(SDEBase):
         """Calculate the Jacobian in spectral representation.
 
         Note:
-            This method currently only supports scalar fields, so that inner and outer
-            products are not permissible. Moreover, `user_funcs` are typically not
-            supported and `integral` does not work.
+            This method first tries to linearize all right hand sides with respect to
+            all variables and then performs a Fourier transform. This method currently
+            only supports scalar fields, so that inner and outer products are not
+            permissible. Moreover, `user_funcs` are typically not supported and
+            `integral` does not work. Finally, boundary conditions are not supported.
 
         Args:
             state_hom (number or list or dict):
@@ -1262,7 +1264,7 @@ class PDE(SDEBase):
                 fields. If omitted, general expressions containing the fields are
                 returned.
             t (float):
-                Time point (only necessary if equations are time-dependent explicitly)
+                Time point (only necessary if equations are explicitly time-dependent)
             wave_vector (str or :class:`~sympy.Symbol`):
                 Symbol denoting the wave vector.
             check_steady_state (bool):
@@ -1361,7 +1363,7 @@ class PDE(SDEBase):
             qs (:class:`~numpy.ndarray`):
                 Wave vectors at which the dispersion relation is evaluated.
             t (float):
-                Time point necessary for explicit time dependences
+                Time point (only necessary if equations are explicitly time-dependent)
 
         Returns:
             tuple of :class:`~numpy.ndarray`: Wave vectors and associated eigenvalues of
