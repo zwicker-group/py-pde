@@ -4,12 +4,11 @@
 """
 
 from collections.abc import Iterable, Sequence
-from typing import Any
+from typing import Any, Literal, overload
 
+import numpy as np
 import sympy as sp
 from sympy.core.function import AppliedUndef
-
-from ..pdes.base import PDEBase
 
 
 class LinearDifferentialOperator(sp.Function):
@@ -247,7 +246,7 @@ def _replace_operators(expr: sp.Basic) -> sp.Basic:
 
 
 def linearize_expression(
-    expression: sp.Basic, state_hom: dict[str, float], *, check: bool = True
+    expression: sp.Basic | str, state_hom: dict[str, float], *, check: bool = True
 ) -> sp.Basic:
     """Linearize one expression around a homogeneous base state.
 
@@ -270,6 +269,8 @@ def linearize_expression(
     variable = sp.Symbol(variable)
 
     # turn differential operators into their Sympy equivalents
+    if isinstance(expression, str):
+        expression = sp.parse_expr(expression)
     expr = _replace_operators(expression)
 
     if check:
@@ -295,8 +296,23 @@ def linearize_expression(
     return linearized_simpl.subs({base_state: base_value, perturbation: variable})
 
 
+def _parse_base_state(
+    state_hom: dict[str, float],
+) -> tuple[list[sp.Basic], list[float]]:
+    # parse base state
+    variables = []
+    base_values = []
+    for name, value in state_hom.items():
+        variables.append(sp.Symbol(name))
+        base_values.append(value)
+    return variables, base_values
+
+
 def linearize_expressions(
-    expressions: Sequence[sp.Basic], state_hom: dict[str, float], *, check: bool = True
+    expressions: Sequence[sp.Basic | str],
+    state_hom: dict[str, float],
+    *,
+    check: bool = True,
 ) -> list[sp.Basic]:
     """Linearize several expressions around a homogeneous reference state.
 
@@ -308,26 +324,22 @@ def linearize_expressions(
     Returns:
         The linearized expressions in the same order as ``expressions``.
     """
-    num = len(expressions)
-    # parse base state
-    if len(state_hom) != num:
-        raise ValueError
-    variables = []
-    base_values = []
-    for name, value in state_hom.items():
-        variables.append(sp.Symbol(name))
-        base_values.append(value)
+    # parse input
+    num_vars = len(state_hom)
+    variables, base_values = _parse_base_state(state_hom)
 
     # prepare the perturbed variables
-    base_state = sp.symbols(f"base_0:{num}", cls=sp.Dummy)
+    base_state = sp.symbols(f"base_0:{num_vars}", cls=sp.Dummy)
     eps = sp.Dummy("eps")
-    perturbation = sp.symbols(f"pert_0:{num}", cls=sp.Dummy)
+    perturbation = sp.symbols(f"pert_0:{num_vars}", cls=sp.Dummy)
     variables_pert = [
         base + eps * pert for base, pert in zip(base_state, perturbation, strict=True)
     ]
 
     result = []
     for expr in expressions:
+        if isinstance(expr, str):
+            expr = sp.parse_expr(expr)
         # turn differential operators into their Sympy equivalents
         expr_repl = _replace_operators(expr)
 
@@ -359,26 +371,21 @@ def _fourier_lower_scalar(
     expr: sp.Basic,
     amplitudes: dict[sp.Basic, sp.Basic],
     *,
-    k_sq: sp.Basic | None = None,
-):
+    k_sq: sp.Basic,
+) -> sp.Basic:
     """Replace perturbation fields and Laplacians by Fourier expressions.
 
-    Parameters
-    ----------
-    expr:
-        A linearized and homogeneous-state-simplified SymPy expression.
+    Args:
+        expr:
+            A linearized and homogeneous-state-simplified SymPy expression.
+        amplitudes:
+            Mapping from real-space perturbation symbols to Fourier amplitudes.
+            For example, ``{u: u_hat, v: v_hat}``.
+        k_sq:
+            Symbol representing |k|**2. If omitted, a fresh symbol is created.
 
-    amplitudes:
-        Mapping from real-space perturbation symbols to Fourier amplitudes.
-        For example, ``{u: u_hat, v: v_hat}``.
-
-    k_sq:
-        Symbol representing |k|**2. If omitted, a fresh symbol is created.
-
-    Returns
-    -------
-    tuple
-        ``(expr_fourier, k_sq)`` where `expr_fourier` is the Fourier-space
+    Returns:
+        tuple ``(expr_fourier, k_sq)`` where `expr_fourier` is the Fourier-space
         expression and `k_sq` represents the squared wave-number.
     """
     if k_sq is None:
@@ -431,26 +438,56 @@ def _fourier_lower_scalar(
 
         return node.func(*(lower(arg) for arg in node.args))
 
-    return sp.expand(lower(expr)), k_sq
+    return sp.expand(lower(expr))
+
+
+@overload
+def dispersion_relation_scalar(
+    expression: sp.Basic | str,
+    state_hom: dict[str, float],
+    *,
+    check: bool = True,
+    ret_type: Literal["sympy"] = "sympy",
+) -> sp.Lambda: ...
+
+
+@overload
+def dispersion_relation_scalar(
+    expression: sp.Basic | str,
+    state_hom: dict[str, float],
+    *,
+    check: bool = True,
+    ret_type: Literal["numpy"],
+) -> np.vectorize: ...
 
 
 def dispersion_relation_scalar(
-    expression, state_hom: dict[str, float], *, check: bool = True
-):
+    expression: sp.Basic | str,
+    state_hom: dict[str, float],
+    *,
+    check: bool = True,
+    ret_type: Literal["sympy", "numpy"] = "sympy",
+) -> sp.Lambda | np.vectorize:
     """Calculate the dispersion relation for a scalar perturbation.
 
-    This function linearizes the expression around a homogeneous state,
-    performs a Fourier transform, and returns the dispersion relation
-    as a function of the squared wave-number.
+    This function linearizes the expression around a homogeneous state, performs a
+    Fourier transform, and returns the dispersion relation as a function of the
+    squared wave-number.
 
     Args:
-        expression: SymPy expression representing the scalar evolution equation.
-        state_hom: Mapping from the dependent-variable name to its base state value.
-        check: If True, verify that the expression vanishes at the base state.
+        expression:
+            SymPy expression representing the scalar evolution equation.
+        state_hom:
+            Mapping from the dependent-variable name to its base state value.
+        check:
+            If True, verify that the expression vanishes at the base state.
+        ret_type:
+            Return a SymPy Lambda ("sympy") or a NumPy-vectorized callable ("numpy").
 
     Returns:
-        A SymPy Lambda function describing the perturbation growth rate as a function
-        of the squared wave-number.
+        A callable describing the perturbation growth rate as a function of the
+        squared wave-number. The callable is a SymPy Lambda or a NumPy-vectorized
+        function, depending on `ret_type`.
     """
     # get the input variable
     ((variable_name, _),) = state_hom.items()
@@ -461,7 +498,8 @@ def dispersion_relation_scalar(
 
     # do Fourier transform
     variable_k = sp.Dummy(variable_name)
-    expr_rec, k_sq = _fourier_lower_scalar(expr_lin, {variable: variable_k})
+    k_sq = sp.Dummy("k_sq")
+    expr_rec = _fourier_lower_scalar(expr_lin, {variable: variable_k}, k_sq=k_sq)
 
     # check whether the expression is affine in the variable
     try:
@@ -476,29 +514,109 @@ def dispersion_relation_scalar(
         msg = f"Linearized expression is not linear in {variable_k}: {expr_rec}"
         raise ValueError(msg)
     # The linearization already assumed that the expression vanishes when evaluated at
-    # the base state.
+    # the base state, so the following should always be true
     assert sp.N(poly.nth(0), chop=True).is_zero
 
     # return the perturbation growth rate
     pert_rate = poly.nth(1)  # linear coefficient
-    return sp.Lambda(k_sq, pert_rate)
+    if ret_type == "sympy":
+        return sp.Lambda(k_sq, pert_rate)
+    if ret_type == "numpy":
+        return np.vectorize(sp.lambdify(k_sq, pert_rate), signature="()->()")
+    msg = "Unknown `ret_type`. Use 'sympy' or 'numpy'."
+    raise ValueError(msg)
 
 
-def dispersion_matrix(expressions, dependent_variables, *, unsupported_symbols=None):
+@overload
+def dispersion_matrix(
+    expressions: list[sp.Basic | str],
+    state_hom: dict[str, float],
+    *,
+    check: bool = True,
+    ret_type: Literal["sympy"] = "sympy",
+) -> sp.Lambda: ...
+
+
+@overload
+def dispersion_matrix(
+    expressions: list[sp.Basic | str],
+    state_hom: dict[str, float],
+    *,
+    check: bool = True,
+    ret_type: Literal["numpy"],
+) -> np.vectorize: ...
+
+
+def dispersion_matrix(
+    expressions: list[sp.Basic | str],
+    state_hom: dict[str, float],
+    *,
+    check: bool = True,
+    ret_type: Literal["sympy", "numpy"] = "sympy",
+) -> sp.Lambda | np.vectorize:
     """Calculate the dispersion matrix for multiple coupled equations.
 
+    This function linearizes all expressions around the homogeneous state, performs a
+    Fourier transform, and returns the dispersion matrix as a function of the squared
+    wave-number.
+
     Args:
-        expressions: A sequence of SymPy expressions or a PDEBase instance.
-        dependent_variables: Names of the dependent variables in the system.
-        unsupported_symbols: Symbols that should be treated as unsupported.
+        expressions:
+            A sequence of SymPy expressions or a PDEBase instance.
+        state_hom:
+            Mapping from the dependent-variable name to its base state value.
+        check:
+            If True, verify that the expression vanishes at the base state.
+        ret_type:
+            Return a SymPy Lambda ("sympy") or a NumPy-vectorized callable ("numpy").
 
     Returns:
-        The dispersion matrix describing the coupling between variables.
+        A callable describing the dispersion matrix as a function of the squared
+        wave-number. The callable is a SymPy Lambda or a NumPy-vectorized function,
+        depending on `ret_type`.
     """
-    if isinstance(expressions, PDEBase):
-        # TODO: define interface for getting sympy expressions
-        expressions = expressions.expressions
-    # do the linearization for many expressions
-    exprs = {_replace_operators}
-    for name, op in DIFF_OPERATORS.items():
-        exprs = exprs.repl(name, op)
+    # parse input
+    variables, _ = _parse_base_state(state_hom)
+
+    # linearize the expression around the homogeneous stationary state
+    exprs_lin = linearize_expressions(expressions, state_hom=state_hom, check=check)
+
+    # do Fourier transform
+    variables_k = {v: sp.Dummy(v.name + "_k") for v in variables}
+    k_sq = sp.Dummy("k_sq")
+    exprs_rec = [
+        _fourier_lower_scalar(expr_lin, variables_k, k_sq=k_sq)
+        for expr_lin in exprs_lin
+    ]
+
+    # assemble the full Jacobian
+    jacobian = []
+    for expr_rec in exprs_rec:
+        jac_line = []
+        for var_k in variables_k.values():
+            # check whether the expression is affine in the variable
+            try:
+                # `EX` permits arbitrary SymPy expressions as coefficients.
+                poly = sp.Poly(expr_rec, var_k, domain="EX")
+            except sp.PolynomialError as err:
+                msg = f"Linearized expression is not polynomial in {var_k}: {expr_rec}"
+                raise ValueError(msg) from err
+
+            # some consistency checks
+            if poly.degree() > 1:
+                msg = f"Linearized expression is not linear in {var_k}: {expr_rec}"
+                raise ValueError(msg)
+
+            # return the perturbation growth rate
+            pert_rate = poly.nth(1)  # linear coefficient
+            jac_line.append(pert_rate)
+        jacobian.append(jac_line)
+
+    # return the dispersion matrix in the requested format
+    if ret_type == "sympy":
+        return sp.Lambda(k_sq, sp.Matrix(jacobian))
+    if ret_type == "numpy":
+        matrix_scalar = sp.lambdify(k_sq, sp.Matrix(jacobian))
+        return np.vectorize(matrix_scalar, signature="()->(n, m)")
+    msg = "Unknown `ret_type`. Use 'sympy' or 'numpy'."
+    raise ValueError(msg)

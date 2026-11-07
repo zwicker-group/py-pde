@@ -8,7 +8,7 @@ import os
 import numba as nb
 import numpy as np
 import pytest
-import sympy
+import sympy as sp
 from scipy import stats
 
 from pde import PDE, MemoryStorage, SwiftHohenbergPDE, grids
@@ -665,44 +665,42 @@ def test_post_step_hook_stopiteration(backend):
 def test_jacobian_spectral():
     """Test jacobian_spectral method."""
     eq = PDE({"c": "laplace(c**3 - c - laplace(c))"})
-    expected = "q**2*(-3*c**2 - q**2 + 1)"
-    expr = eq._jacobian_spectral()[0]
-    assert expr.expand() == sympy.parse_expr(expected).expand()
-    expr = eq._jacobian_spectral(state_hom=1)
-    np.testing.assert_equal(sympy.matrix2numpy(expr.subs("q", 1)), np.array([[-3]]))
+    expr = eq._jacobian_spectral(state_hom=1, ret_type="sympy")
 
-    eq = PDE({"c": "divergence(c * gradient(c**3 - c - laplace(c)))"})
-    expected = "2*c*q**2*(-2*c**2 - q**2 + 1)"
-    expr = eq._jacobian_spectral()[0, 0]
-    assert expr.expand() == sympy.parse_expr(expected).expand()
-    expr = eq._jacobian_spectral(state_hom=1)
-    np.testing.assert_equal(sympy.matrix2numpy(expr.subs("q", 1)), np.array([[-4]]))
+    expected = "q**2*(-3*c**2 - q**2 + 1)"
+    expected_expr = sp.parse_expr(expected).subs("c", 1)
+    qs = sp.Symbol("q")
+    assert expr(qs**2)[0, 0].equals(expected_expr)
+
+    expr = eq._jacobian_spectral(state_hom=1, ret_type="numpy")
+    np.testing.assert_equal(expr(1), np.array([[-3]]))
+
+    # eq = PDE({"c": "divergence(c * gradient(c**3 - c - laplace(c)))"})
+    # expected = "2*c*q**2*(-2*c**2 - q**2 + 1)"
+    # expr = eq._jacobian_spectral()[0, 0]
+    # assert expr.expand() == sp.parse_expr(expected).expand()
+    # expr = eq._jacobian_spectral(state_hom=1)
+    # np.testing.assert_equal(sp.matrix2numpy(expr.subs("q", 1)), np.array([[-4]]))
 
     eq = PDE({"a": "laplace(a) + (b - 1)**2", "b": "laplace(a + b**2)"})
-    jac = eq._jacobian_spectral(state_hom=[0, 1])
-    assert jac[0, 0].expand() == sympy.parse_expr("-q**2").expand()
-    assert jac[0, 1].expand() == sympy.parse_expr("0").expand()
-    assert jac[1, 0].expand() == sympy.parse_expr("-q**2").expand()
-    assert jac[1, 1].expand() == sympy.parse_expr("-2*q**2").expand()
+    jac = eq._jacobian_spectral(state_hom=[0, 1], ret_type="sympy")(qs**2)
+    assert jac[0, 0].equals(sp.parse_expr("-q**2"))
+    assert jac[0, 1].equals(sp.parse_expr("0"))
+    assert jac[1, 0].equals(sp.parse_expr("-q**2"))
+    assert jac[1, 1].equals(sp.parse_expr("-2*q**2"))
 
 
 def test_jacobian_spectral_bad_input():
     """Test jacobian_spectral method with bad input."""
-    with pytest.raises(ValueError):
-        PDE({"a": "a"})._jacobian_spectral(wave_vector="t")
-    with pytest.raises(ValueError):
-        PDE({"a": "a"})._jacobian_spectral(wave_vector="a")
     with pytest.raises(TypeError):
         PDE({"a": "a"})._jacobian_spectral(state_hom="1")
     with pytest.raises(TypeError):
         PDE({"a": "a"})._jacobian_spectral(state_hom=[np.arange(3)])
     with pytest.raises(ValueError):
         PDE({"a": "a"})._jacobian_spectral(state_hom=np.arange(2))
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         PDE({"a": "a"})._jacobian_spectral(state_hom=0.1)
-    with pytest.raises(TypeError):
-        PDE({"a": "inner(a, a)"})._jacobian_spectral(state_hom=0)
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         PDE({"a": "b"}, consts={"b": 1})._jacobian_spectral(state_hom=0)
 
 

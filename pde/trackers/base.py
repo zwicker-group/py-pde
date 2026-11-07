@@ -60,7 +60,9 @@ class TrackerBase(metaclass=ABCMeta):
 
         # register all subclasses to reconstruct them later
         if hasattr(cls, "name"):
-            assert cls.name != "auto"
+            if cls.name == "auto":
+                msg = "Tracker must not be named `auto`"
+                raise RuntimeError(msg)
             cls._subclasses[cls.name] = cls
 
     @classmethod
