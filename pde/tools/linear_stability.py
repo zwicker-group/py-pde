@@ -40,7 +40,7 @@ class LinearDifferentialOperator(sp.Function):
         Returns:
             The same operator applied to the differentiated argument.
         """
-        return type(self)(sp.diff(self.args[0], symbol))
+        return self.__class__(sp.diff(self.args[0], symbol))
 
 
 class Laplace(LinearDifferentialOperator): ...
@@ -83,7 +83,6 @@ class Dot(sp.Function):
             The derivative of the inner product.
         """
         left, right = self.args
-
         return Dot(sp.diff(left, symbol), right) + Dot(left, sp.diff(right, symbol))
 
 
@@ -111,7 +110,7 @@ class GradientSquared(sp.Function):
 
 
 # differential operators that annihilate homogeneous expressions
-DIFF_OPERATORS: dict[str, type[LinearDifferentialOperator]] = {
+_OPERATORS: dict[str, type[sp.Function]] = {
     "gradient": Gradient,
     "divergence": Divergence,
     "laplace": Laplace,
@@ -188,7 +187,7 @@ def _simplify_homogeneous_state(
         value = value.func(*args)
 
         # Apply special rules to the abstract differential operators.
-        if any(isinstance(value, op) for op in DIFF_OPERATORS.values()):
+        if any(isinstance(value, op) for op in _OPERATORS.values()):
             operator = value.func
             arg = value.args[0]
 
@@ -230,18 +229,18 @@ def _simplify_homogeneous_state(
 
 
 def _replace_operators(expr: sp.Basic) -> sp.Basic:
-    """Replace differential operators with abstract SymPy operators.
+    """Replace undefined operators with concrete implementations.
 
     Args:
-        expr: Expression containing differential operators.
+        expr: Expression containing operators.
 
     Returns:
         The expression with recognized operators replaced.
     """
     undefined_operators = list(expr.atoms(AppliedUndef))
     for func in undefined_operators:
-        if func.__class__.__name__ in DIFF_OPERATORS:
-            expr = expr.replace(func.__class__, DIFF_OPERATORS[func.__class__.__name__])
+        if func.__class__.__name__ in _OPERATORS:
+            expr = expr.replace(func.__class__, _OPERATORS[func.__class__.__name__])
     return expr
 
 
