@@ -670,14 +670,6 @@ with config.changed_mode(node="insert", leaf="insert"):
         description="Determines whether plots indicate periodic axes of grids via "
         "dotted axes spines.",
     )
-    config["boundaries.accept_lists"] = Parameter(
-        value=True,
-        cls=bool,
-        description="Indicate whether boundary conditions can be set using the "
-        "deprecated legacy format, where conditions for individual axes and sides "
-        "where set using lists. If disabled, only the new format using dicts is "
-        "supported.",
-    )
     config["default_backend"] = Parameter(
         value="numba",
         cls=str,

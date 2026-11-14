@@ -38,7 +38,6 @@ if TYPE_CHECKING:
 
     from ..backends.base import BackendBase, OperatorInfo
     from ..tools.typing import (
-        CellVolume,
         DataSetter,
         FloatingArray,
         FloatOrArray,
@@ -526,20 +525,6 @@ class GridBase(metaclass=ABCMeta):
         if not self.compatible_with(other):
             msg = f"Grids {self} and {other} are incompatible"
             raise ValueError(msg)
-
-    @property
-    def numba_type(self) -> str:
-        """str: represents type of the grid data in numba signatures"""
-        # deprecated since 2025-11-19
-        warnings.warn(
-            "`numba_type` property is deprecated. Use the method `get_grid_numba_type` "
-            "in the numba backend instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        from ..backends.numba.grids import get_grid_numba_type
-
-        return get_grid_numba_type(self)
 
     @cached_property()
     def coordinate_arrays(self) -> tuple[FloatingArray, ...]:
@@ -1411,30 +1396,6 @@ class GridBase(metaclass=ABCMeta):
         raise NotImplementedError(msg)
 
     @cached_method()
-    def make_cell_volume_compiled(self, flat_index: bool = False) -> CellVolume:
-        """Return a compiled function returning the volume of a grid cell.
-
-        Args:
-            flat_index (bool):
-                When True, cell_volumes are indexed by a single integer into the
-                flattened array.
-
-        Returns:
-            function: returning the volume of the chosen cell
-        """
-        from ..backends.numba.grids import make_cell_volume_getter
-
-        # deprecated since 2025-11-19
-        warnings.warn(
-            "`make_cell_volume_compiled` is deprecated. Use "
-            "`pde.backends.numba.grids.make_cell_volume_getter` instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        return make_cell_volume_getter(grid=self, flat_index=flat_index)
-
-    @cached_method()
     def _make_interpolator_compiled(
         self,
         *,
@@ -1477,35 +1438,6 @@ class GridBase(metaclass=ABCMeta):
             with_ghost_cells=with_ghost_cells,
             cell_coords=cell_coords,
         )
-
-    def make_inserter_compiled(
-        self, *, with_ghost_cells: bool = False
-    ) -> Callable[[NumericArray, FloatingArray, NumberOrArray], None]:
-        """Return a compiled function to insert values at interpolated positions.
-
-        Args:
-            with_ghost_cells (bool):
-                Flag indicating that the interpolator should work on the full data array
-                that includes values for the grid points. If this is the case, the
-                boundaries are not checked and the coordinates are used as is.
-
-        Returns:
-            callable: A function with signature (data, position, amount), where `data`
-            is the numpy array containing the field data, position is denotes the
-            position in grid coordinates, and `amount` is the  that is to be added to
-            the field.
-        """
-        from ..backends.numba import numba_backend
-
-        # deprecated since 2025-11-19
-        warnings.warn(
-            "`make_inserter_compiled` is deprecated. Use "
-            "`pde.backends.numba_backend.make_inserter` instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        return numba_backend.make_inserter(grid=self, with_ghost_cells=with_ghost_cells)  # type: ignore
 
     def make_integrator(
         self, backend: str | BackendBase = "numpy"
