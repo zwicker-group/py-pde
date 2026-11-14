@@ -333,7 +333,10 @@ def jit(
         kwargs.setdefault("fastmath", {"nsz", "arcp", "contract", "afn", "reassoc"})
     else:
         kwargs.setdefault("fastmath", backend._config_parameter("fastmath"))
-    kwargs.setdefault("debug", backend._config_parameter("debug", False))
+    debug = backend._config_parameter("debug", False)
+    kwargs.setdefault("debug", debug)
+    if debug:
+        kwargs.setdefault("boundscheck", True)
     # make sure parallel numba is only enabled in restricted cases
     kwargs["parallel"] = parallel and backend.use_multithreading()
 

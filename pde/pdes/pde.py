@@ -19,6 +19,7 @@ from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.local import BCDataError
 from ..pdes.base import SDEBase
 from ..tools.docstrings import fill_in_docstring
+from ..tools.typing import TimeArgs
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
@@ -534,12 +535,10 @@ class PDE(SDEBase):
             # Even in the `numpy` backend, we need to prepare the bc_args to be
             # compatible with numba, since the standard operators in the `numpy`
             # backend are still compiled with numba by default.
-            from numba.typed import Dict as NumbaDict
 
             def rhs_func(*args) -> NumericArray:
                 """Wrapper that inserts the extra arguments and initialized bc_args."""
-                bc_args = NumbaDict()  # args for differential operators
-                bc_args["t"] = args[-1]  # pass time to differential operators
+                bc_args = TimeArgs(t=args[-1])  # pass time to differential operators
                 # Here, the `None` is required by the signature we choose. It
                 # essentially indicates that we do not supply an output array,
                 # consistent with the definition of operators.
@@ -549,7 +548,7 @@ class PDE(SDEBase):
 
             def rhs_func(*args) -> jax.Array | torch.Tensor:  # type: ignore
                 """Wrapper that inserts the extra arguments and initialized bc_args."""
-                bc_args = {"t": args[-1]}
+                bc_args = TimeArgs(t=args[-1])  # pass time to differential operators
                 # Here, the `None` is required by the signature we choose. It
                 # essentially indicates that we do not supply an output array,
                 # consistent with the definition of operators.

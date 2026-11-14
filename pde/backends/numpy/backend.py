@@ -10,7 +10,7 @@ typically expected to follow ``op(arr_full, out[, args])`` and write results int
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 
@@ -131,12 +131,14 @@ class NumpyBackend(BackendBase[NumericArray]):
                 setter should be defined.
 
         Returns:
-            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-            sets the ghost cells of the full data, potentially using additional
-            information in `args` (e.g., the time `t` during solving a PDE)
+            callable: Function that sets ghost cells. Function signature:
+            ``(data_full: NumericArray, args: NamedTuple = None)``. Args can supply
+            additional information (e.g., the time `t` during solving a PDE).
         """
 
-        def set_ghost_cells(data_full: NumericArray, args=None) -> None:
+        def set_ghost_cells(
+            data_full: NumericArray, args: NamedTuple | None = None
+        ) -> None:
             """Default implementation that simply uses the python interface."""
             if args is None:
                 bcs.set_ghost_cells(data_full)
@@ -194,7 +196,7 @@ class NumpyBackend(BackendBase[NumericArray]):
         """Return a compiled function applying an operator without boundary conditions.
 
         The returned function has public signature
-        ``(arr, out=None, args=None) -> result``.
+        ``(arr, out=None, args: NamedTuple | None = None) -> result``.
 
         Note:
             The resulting function does not check whether the ghost cells of the input
@@ -204,9 +206,9 @@ class NumpyBackend(BackendBase[NumericArray]):
             :meth:`make_operator` is probably the better choice.
 
             Backends can choose whether their internal operator implementation uses a
-            functional style ``op(arr, *, args=None) -> result`` or an in-place style
-            ``op(arr, out, *, args=None)``. This wrapper normalizes both styles to the
-            public signature above.
+            functional style ``op(arr, *, args: NamedTuple | None = None) -> result`` or
+            an in-place style ``op(arr, out, *, args: NamedTuple = None)``. This wrapper
+            normalizes both styles to the public signature above.
 
         Args:
             grid (:class:`~pde.grid.base.GridBase`):
@@ -222,8 +224,8 @@ class NumpyBackend(BackendBase[NumericArray]):
                 factory when constructing the operator.
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray=None, args=None).
+            callable: the function that applies the operator. Function signature:
+            ``(arr: NumericArray, out: NumericArray = None, args: NamedTuple = None)``
 
         Internally, raw operator implementations are expected to use the functional
         signature ``operator_raw(arr_full, out[, args])``.
@@ -291,8 +293,8 @@ class NumpyBackend(BackendBase[NumericArray]):
         style ``operator_raw(arr_full, out[, args])``.
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            callable: the function that applies the operator. Function signature:
+            ``(arr: NumericArray, out: NumericArray = None, args: NamedTuple = None)``
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)

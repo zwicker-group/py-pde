@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
+from ..tools.typing import TimeArgs
 from .base import PDEBase, expr_prod
 
 if TYPE_CHECKING:
@@ -88,9 +89,11 @@ class CahnHilliardPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         assert isinstance(state, ScalarField), "`state` must be ScalarField"
-        c_laplace = state.laplace(bc=self.bc_c, label="evolution rate", args={"t": t})
+        c_laplace = state.laplace(
+            bc=self.bc_c, label="evolution rate", args=TimeArgs(t=t)
+        )
         result = state**3 - state - self.interface_width * c_laplace
-        return result.laplace(bc=self.bc_mu, args={"t": t})  # type: ignore
+        return result.laplace(bc=self.bc_mu, args=TimeArgs(t=t))  # type: ignore
 
     def make_evolution_rate(
         self, state: ScalarField, backend: BackendBase
@@ -117,8 +120,8 @@ class CahnHilliardPDE(PDEBase):
             mu = (
                 state_data**3
                 - state_data
-                - interface_width * laplace_c(state_data, args={"t": t})
+                - interface_width * laplace_c(state_data, args=TimeArgs(t=t))
             )
-            return laplace_mu(mu, args={"t": t})
+            return laplace_mu(mu, args=TimeArgs(t=t))
 
         return pde_rhs

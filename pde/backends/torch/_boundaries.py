@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 import torch
@@ -102,7 +102,7 @@ class TorchConstBC1stOrderBoundary(TorchOperatorBase):
             # make the data available in the kernel
             self.register_array(name, arr)
 
-    def forward(self, data_full: Tensor, args=None) -> Tensor:
+    def forward(self, data_full: Tensor, args: NamedTuple | None = None) -> Tensor:
         """Set the virtual points at the boundary."""
         num_axes = self.bc.grid.num_axes
         normal = self.bc.normal
@@ -212,7 +212,7 @@ class TorchConstBC2ndOrderBoundary(TorchOperatorBase):
         # make the data available in the kernel
         self.register_array("value", value)
 
-    def forward(self, data_full: Tensor, args=None) -> Tensor:
+    def forward(self, data_full: Tensor, args: NamedTuple | None = None) -> Tensor:
         """Set the virtual points at the boundary."""
         num_axes = self.bc.grid.num_axes
         normal = self.bc.normal
@@ -293,7 +293,7 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
                 backend="torch", single_arg=False
             )
 
-    def forward(self, data_full: Tensor, args=None) -> Tensor:
+    def forward(self, data_full: Tensor, args: NamedTuple | None = None) -> Tensor:
         """Set the virtual points at the boundary."""
         bc = self.bc
         num_axes = bc.grid.num_axes
@@ -301,15 +301,16 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
         i_read = self.i_read
 
         # extract time for handling time-dependent BCs
-        if args is None or "t" not in args:
+        if args is None:
             if self.warn_t_missing:
                 _logger.warning(
                     "Require value for `t` for time-dependent BC. The value must be "
-                    "passed explicitly via `args` when calling a differential operator."
+                    "passed explicitly as a NamedTuple via `args` when calling a "
+                    "differential operator."
                 )
             t: float | torch.Tensor = 0.0
         else:
-            t = torch.as_tensor(args["t"])
+            t = torch.as_tensor(args.t)  # type: ignore
 
         if num_axes == 1:
             val_field = data_full[..., i_read]
@@ -358,7 +359,7 @@ def make_local_ghost_cell_setter(bc: BCBase, *, dtype: np.dtype) -> torch.nn.Mod
     Returns:
         function: A function that takes the full data array
     """
-    # if isinstance(bc, UserBC):
+    # if isinstance(bc, UserBCBase):
     #     return _make_user_virtual_point_evaluator(bc)
     if isinstance(bc, ExpressionBC):
         return TorchExpressionBCBoundary(bc, dtype=dtype)
@@ -390,7 +391,7 @@ class TorchGhostCellSetter(torch.nn.Module):
             ]
         )
 
-    def forward(self, data_full: Tensor, args=None) -> Tensor:
+    def forward(self, data_full: Tensor, args: NamedTuple | None = None) -> Tensor:
         """Set the virtual points at all boundaries."""
         for set_ghost_cells in self.ghost_cell_setters:
             set_ghost_cells(data_full, args=args)
@@ -413,7 +414,7 @@ class TorchBoundariesSetter(torch.nn.Module):
         # User functions may not be compatible with torch.compile tracing
         self.set_ghost_cells = bcs._setter
 
-    def forward(self, data_full: Tensor, args=None) -> Tensor:
+    def forward(self, data_full: Tensor, args: NamedTuple | None = None) -> Tensor:
         """Set the virtual points at all boundaries."""
         self.set_ghost_cells(data_full, args=args)  # type: ignore
         return data_full

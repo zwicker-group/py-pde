@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import numbers
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, NamedTuple, Self
 
 import jax
 import jax.numpy as jnp
@@ -230,9 +230,9 @@ class JaxBackend(BackendBase[jax.Array]):
                 setter should be defined.
 
         Returns:
-            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-            sets the ghost cells of the full data, potentially using additional
-            information in `args` (e.g., the time `t` during solving a PDE)
+            callable: Function that sets ghost cells. Function signature:
+            ``(data_full: NumericArray, args: NamedTuple = None)``. Args can supply
+            additional information (e.g., the time `t` during solving a PDE).
         """
         from ._boundaries import make_virtual_point_evaluator
 
@@ -259,7 +259,9 @@ class JaxBackend(BackendBase[jax.Array]):
 
         if bc.grid.num_axes == 1:  # 1d grid
 
-            def ghost_cell_setter(data_full: jax.Array, args=None) -> jax.Array:
+            def ghost_cell_setter(
+                data_full: jax.Array, args: NamedTuple | None = None
+            ) -> jax.Array:
                 """Helper function setting the conditions on all axes."""
                 assert data_full.shape == data_full_shape
                 data_valid = data_full[..., 1:-1]
@@ -271,7 +273,9 @@ class JaxBackend(BackendBase[jax.Array]):
         elif bc.grid.num_axes == 2:  # 2d grid
             if axis == 0:
 
-                def ghost_cell_setter(data_full: jax.Array, args=None) -> jax.Array:
+                def ghost_cell_setter(
+                    data_full: jax.Array, args: NamedTuple | None = None
+                ) -> jax.Array:
                     """Helper function setting the conditions on all axes."""
                     assert data_full.shape == data_full_shape
                     data_valid = data_full[..., 1:-1, 1:-1]
@@ -283,7 +287,9 @@ class JaxBackend(BackendBase[jax.Array]):
 
             elif axis == 1:
 
-                def ghost_cell_setter(data_full: jax.Array, args=None) -> jax.Array:
+                def ghost_cell_setter(
+                    data_full: jax.Array, args: NamedTuple | None = None
+                ) -> jax.Array:
                     """Helper function setting the conditions on all axes."""
                     assert data_full.shape == data_full_shape
                     data_valid = data_full[..., 1:-1, 1:-1]
@@ -296,7 +302,9 @@ class JaxBackend(BackendBase[jax.Array]):
         elif bc.grid.num_axes == 3:  # 3d grid
             if axis == 0:
 
-                def ghost_cell_setter(data_full: jax.Array, args=None) -> jax.Array:
+                def ghost_cell_setter(
+                    data_full: jax.Array, args: NamedTuple | None = None
+                ) -> jax.Array:
                     """Helper function setting the conditions on all axes."""
                     assert data_full.shape == data_full_shape
                     data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
@@ -310,7 +318,9 @@ class JaxBackend(BackendBase[jax.Array]):
 
             elif axis == 1:
 
-                def ghost_cell_setter(data_full: jax.Array, args=None) -> jax.Array:
+                def ghost_cell_setter(
+                    data_full: jax.Array, args: NamedTuple | None = None
+                ) -> jax.Array:
                     """Helper function setting the conditions on all axes."""
                     assert data_full.shape == data_full_shape
                     data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
@@ -324,7 +334,9 @@ class JaxBackend(BackendBase[jax.Array]):
 
             elif axis == 2:
 
-                def ghost_cell_setter(data_full: jax.Array, args=None) -> jax.Array:
+                def ghost_cell_setter(
+                    data_full: jax.Array, args: NamedTuple | None = None
+                ) -> jax.Array:
                     """Helper function setting the conditions on all axes."""
                     assert data_full.shape == data_full_shape
                     data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
@@ -363,7 +375,9 @@ class JaxBackend(BackendBase[jax.Array]):
         shape_in_full = (grid.dim,) * rank + grid._shape_full
 
         @self.compile_function
-        def set_valid(data_valid: jax.Array, args=None) -> jax.Array:
+        def set_valid(
+            data_valid: jax.Array, args: NamedTuple | None = None
+        ) -> jax.Array:
             """Set valid part of the data (without ghost cells)
 
             Args:
@@ -394,9 +408,9 @@ class JaxBackend(BackendBase[jax.Array]):
                 setter should be defined.
 
         Returns:
-            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-            sets the ghost cells of the full data, potentially using additional
-            information in `args` (e.g., the time `t` during solving a PDE)
+            callable: Function that sets ghost cells. Function signature:
+            ``(data_full: NumericArray, args: NamedTuple = None)``. Args can supply
+            additional information (e.g., the time `t` during solving a PDE).
         """
         if isinstance(bcs, BoundariesList):
             grid = bcs.grid
@@ -409,7 +423,9 @@ class JaxBackend(BackendBase[jax.Array]):
                 for bc_local in bc_axis
             ]
 
-            def set_ghost_cells(data_full: jax.Array, args=None) -> jax.Array:
+            def set_ghost_cells(
+                data_full: jax.Array, args: NamedTuple | None = None
+            ) -> jax.Array:
                 """Set valid part of the data and the ghost cells using BCs.
 
                 Args:
@@ -451,7 +467,9 @@ class JaxBackend(BackendBase[jax.Array]):
         set_bcs = self.make_ghost_cell_setter(bcs)
 
         @self.compile_function
-        def set_valid_and_bcs(data_valid: jax.Array, args=None) -> jax.Array:
+        def set_valid_and_bcs(
+            data_valid: jax.Array, args: NamedTuple | None = None
+        ) -> jax.Array:
             """Set valid part of the data and the ghost cells using BCs.
 
             Args:
@@ -523,9 +541,9 @@ class JaxBackend(BackendBase[jax.Array]):
                 Specifies extra arguments influencing how the operator is created.
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None). Since
-            `jax` arrays are immutable, supplying `out` raises an error.
+            callable: the function that applies the operator. Function signature:
+            ``(arr: NumericArray, out: NumericArray = None, args: NamedTuple = None)``
+            Since `jax` arrays are immutable, supplying `out` raises an error.
 
         Internally, the raw implementation is expected to follow
         ``operator_raw(arr_full, *[, args]) -> result``.
@@ -541,7 +559,7 @@ class JaxBackend(BackendBase[jax.Array]):
         def apply_op_jax(
             arr: jax.Array,
             out: jax.Array | None = None,
-            args: dict[str, Any] | None = None,
+            args: NamedTuple | None = None,
         ) -> jax.Array:
             """Apply operator without boundary conditions."""
             if out is not None:
@@ -597,8 +615,8 @@ class JaxBackend(BackendBase[jax.Array]):
         ``operator_raw(arr_full[, args]) -> result``.
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            callable: the function that applies the operator. Function signature:
+            ``(arr: NumericArray, out: NumericArray = None, args: NamedTuple = None)``
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
@@ -611,7 +629,7 @@ class JaxBackend(BackendBase[jax.Array]):
         def apply_op_jax(
             arr: jax.Array,
             out: jax.Array | None = None,
-            args: dict[str, Any] | None = None,
+            args: NamedTuple | None = None,
         ) -> jax.Array:
             """Set boundary conditions and apply operator."""
             if out is not None:

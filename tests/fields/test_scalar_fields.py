@@ -14,6 +14,7 @@ from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
 from pde.grids._mesh import GridMesh
 from pde.tools import mpi
 from pde.tools.misc import module_available
+from pde.tools.typing import TimeArgs
 
 ALL_BACKENDS = ["numba", "jax-cpu", "jax-cuda", "torch-cpu", "torch-mps", "torch-cuda"]
 
@@ -551,9 +552,9 @@ def test_piecewise_expressions():
 def test_boundary_expressions_with_t():
     """Test special case of imposing time-dependent boundary conditions."""
     field = ScalarField(UnitGrid([3]), 0)
-    res = field.laplace({"value_expression": "t"}, args={"t": 0})
+    res = field.laplace({"value_expression": "t"}, args=TimeArgs(t=0))
     np.testing.assert_allclose(res.data, [0, 0, 0])
-    res = field.laplace({"value_expression": "t"}, args={"t": 1})
+    res = field.laplace({"value_expression": "t"}, args=TimeArgs(t=1))
     np.testing.assert_allclose(res.data, [2, 0, 2])
 
 

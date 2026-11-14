@@ -22,7 +22,7 @@ import logging
 import math
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, overload
 
 import numpy as np
 
@@ -399,7 +399,7 @@ class GridBase(metaclass=ABCMeta):
         *,
         rank: int = 0,
         backend: str | BackendBase = "default",
-    ) -> Callable[[NumericArray, NumericArray, dict], None]: ...
+    ) -> Callable[[NumericArray, NumericArray, NamedTuple | None], None]: ...
 
     def _make_set_valid(
         self,
@@ -423,8 +423,9 @@ class GridBase(metaclass=ABCMeta):
             callable:
                 Function setting valid data in a full array and returning that full
                 array. The returned callable supports both legacy and functional styles:
-                `set_valid(data_full, data_valid, args=None)` and
-                `set_valid(data_valid, out=None, args=None)`. In both styles, `args`
+                `set_valid(data_full, data_valid, args: NamedTuple = None)` and
+                `set_valid(data_valid, out=None, args: NamedTuple = None)`. In both
+                styles, `args`
                 are optional runtime values forwarded to backend setters and boundary
                 condition handling.
         """
@@ -1219,8 +1220,8 @@ class GridBase(metaclass=ABCMeta):
                 Specifies extra arguments influencing how the operator is created.
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            callable: Function that applies the operator; Function signature:
+            ``(arr: NumericArray, out: NumericArray = None, args: NamedTuple = None)``.
         """
         from ..backends import get_backend
 
@@ -1272,16 +1273,16 @@ class GridBase(metaclass=ABCMeta):
 
         .. code-block:: python
 
-            from pde.backends.numba.utils import numba_dict
+            from pde.tools.typing import TimeArgs
 
             operator = grid.make_operator(
                 "laplace", bc={"value_expression": "t"}, backend="numba"
             )
-            operator(field.data, args=numba_dict(t=t))
+            operator(field.data, args=TimeArgs(t=t))
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            callable: Function that applies the operator; Function signature:
+            ``(arr: NumericArray, out: NumericArray = None, args: NamedTuple = None)``.
         """
         from ..backends import get_backend
 

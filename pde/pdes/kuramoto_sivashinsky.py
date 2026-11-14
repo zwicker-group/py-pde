@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
+from ..tools.typing import TimeArgs
 from .base import SDEBase, expr_prod
 
 if TYPE_CHECKING:
@@ -103,11 +104,11 @@ class KuramotoSivashinskyPDE(SDEBase):
         if not isinstance(state, ScalarField):
             msg = "`state` must be ScalarField"
             raise TypeError(msg)
-        state_lap = state.laplace(bc=self.bc, args={"t": t})
+        state_lap = state.laplace(bc=self.bc, args=TimeArgs(t=t))
         result = (
-            -self.nu * state_lap.laplace(bc=self.bc_lap, args={"t": t})
+            -self.nu * state_lap.laplace(bc=self.bc_lap, args=TimeArgs(t=t))
             - state_lap
-            - 0.5 * state.gradient_squared(bc=self.bc, args={"t": t})
+            - 0.5 * state.gradient_squared(bc=self.bc, args=TimeArgs(t=t))
         )
         result.label = "evolution rate"
         return result  # type: ignore
@@ -137,9 +138,9 @@ class KuramotoSivashinskyPDE(SDEBase):
 
         def pde_rhs(state_data, t=0):
             """Evaluate right hand side of PDE."""
-            result = -laplace(state_data, args={"t": t})
-            result += nu_value * laplace2(result, args={"t": t})
-            result -= 0.5 * gradient_sq(state_data, args={"t": t})
+            result = -laplace(state_data, args=TimeArgs(t=t))
+            result += nu_value * laplace2(result, args=TimeArgs(t=t))
+            result -= 0.5 * gradient_sq(state_data, args=TimeArgs(t=t))
             return result
 
         return pde_rhs

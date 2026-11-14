@@ -17,7 +17,7 @@ import itertools
 import logging
 import warnings
 from collections.abc import Callable, Iterator, Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, NamedTuple, Union
 
 from ... import config
 from ..base import GridBase, PeriodicityError
@@ -54,7 +54,9 @@ class BoundariesBase:
     rank: int
     """int: The tensorial rank of the field for this boundary condition."""
 
-    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
+    def set_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
         """Set the ghost cells for all boundaries.
 
         Args:
@@ -517,7 +519,7 @@ class BoundariesSetter(BoundariesBase):
 
         .. code-block:: python
 
-            def setter(data, args=None):
+            def setter(data, args: NamedTuple = None):
                 data[0, :] = data[1, :]  # Vanishing derivative at left side
                 data[-1, :] = 2 - data[-2, :]  # Fixed value `1` at right side
                 data[:, 0] = data[:, -2]  # Periodic BC at top
@@ -559,7 +561,9 @@ class BoundariesSetter(BoundariesBase):
 
         return BoundariesSetter(data, grid, rank=rank)
 
-    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
+    def set_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
         """Set the ghost cells for all boundaries.
 
         Args:

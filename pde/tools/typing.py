@@ -53,6 +53,12 @@ TNativeArray = TypeVar("TNativeArray", NumericArray, "Tensor", "Array")
 TFunc = TypeVar("TFunc", bound=Callable)
 
 
+class TimeArgs(NamedTuple):
+    """Basic tuple to pass information to operators"""
+
+    t: float
+
+
 class _OperatorImplStreamBareType[TNativeArray](Protocol):
     """Operator implementation accepting directly calculating output."""
 
@@ -123,7 +129,7 @@ class OperatorType[TNativeArray](Protocol):
         self,
         arr: TNativeArray,
         out: TNativeArray | None = None,
-        args: dict[str, Any] | None = None,
+        args: NamedTuple | None = None,
     ) -> TNativeArray:
         """Evaluate the operator.
 
@@ -144,7 +150,9 @@ class CellVolume(Protocol):
 
 
 class VirtualPointEvaluator(Protocol):
-    def __call__(self, arr: NumericArray, idx: tuple[int, ...], args=None) -> float:
+    def __call__(
+        self, arr: NumericArray, idx: tuple[int, ...], args: NamedTuple | None = None
+    ) -> float:
         """Evaluate the virtual point at the given position.
 
         Args:
@@ -155,7 +163,7 @@ class VirtualPointEvaluator(Protocol):
 
 
 class GhostCellSetter(Protocol):
-    def __call__(self, data_full: NumericArray, args=None) -> None:
+    def __call__(self, data_full: NumericArray, args: NamedTuple | None = None) -> None:
         """Set the ghost cells.
 
         Args:
@@ -166,7 +174,10 @@ class GhostCellSetter(Protocol):
 
 class DataSetter(Protocol):
     def __call__(
-        self, data_full: NumericArray, data_valid: NumericArray, args=None
+        self,
+        data_full: NumericArray,
+        data_valid: NumericArray,
+        args: NamedTuple | None = None,
     ) -> None:
         """Set the valid data cells (and potentially BCs).
 

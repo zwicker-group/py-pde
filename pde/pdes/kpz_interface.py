@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
+from ..tools.typing import TimeArgs
 from .base import SDEBase, expr_prod
 
 if TYPE_CHECKING:
@@ -101,8 +102,8 @@ class KPZInterfacePDE(SDEBase):
         if not isinstance(state, ScalarField):
             msg = "`state` must be ScalarField"
             raise TypeError(msg)
-        result = self.nu * state.laplace(bc=self.bc, args={"t": t})
-        result += self.lmbda * state.gradient_squared(bc=self.bc, args={"t": t})
+        result = self.nu * state.laplace(bc=self.bc, args=TimeArgs(t=t))
+        result += self.lmbda * state.gradient_squared(bc=self.bc, args=TimeArgs(t=t))
         result.label = "evolution rate"
         return result  # type: ignore
 
@@ -130,8 +131,8 @@ class KPZInterfacePDE(SDEBase):
 
         def pde_rhs(state_data, t=0):
             """Evaluate right hand side of PDE."""
-            result = nu_value * laplace(state_data, args={"t": t})
-            result += lambda_value * gradient_squared(state_data, args={"t": t})
+            result = nu_value * laplace(state_data, args=TimeArgs(t=t))
+            result += lambda_value * gradient_squared(state_data, args=TimeArgs(t=t))
             return result
 
         return pde_rhs

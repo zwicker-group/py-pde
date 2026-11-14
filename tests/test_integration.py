@@ -387,7 +387,7 @@ def test_pde_with_bc_setter(backend):
 
         def setter(data, args=None):
             data = data.at[0, :].set(data[1, :])  # Neumann
-            data = data.at[-1, :].set(2 * args["t"] - data[-2, :])  # Dirichlet ~ t
+            data = data.at[-1, :].set(2 * args.t - data[-2, :])  # Dirichlet ~ t
             data = data.at[:, 0].set(data[:, -2])  # periodic
             data = data.at[:, -1].set(data[:, 1])  # periodic
             return data
@@ -396,7 +396,7 @@ def test_pde_with_bc_setter(backend):
 
         def setter(data, args=None):
             data[0, :] = data[1, :]  # Neumann
-            data[-1, :] = 2 * args["t"] - data[-2, :]  # Dirichlet ~ t
+            data[-1, :] = 2 * args.t - data[-2, :]  # Dirichlet ~ t
             data[:, 0] = data[:, -2]  # periodic
             data[:, -1] = data[:, 1]  # periodic
             return data

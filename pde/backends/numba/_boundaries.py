@@ -9,7 +9,7 @@ import logging
 import math
 import os
 from numbers import Number
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import numba as nb
 import numpy as np
@@ -25,11 +25,15 @@ from ...grids.boundaries.local import (
     ExpressionBC,
     MixedBC,
     NeumannBC,
-    UserBC,
+    UserBCBase,
+    UserDerivativeBC,
+    UserValueBC,
+    UserVirtualPointBC,
     _PeriodicBC,
 )
 from ...tools.misc import number
-from .utils import address_as_void_pointer, jit, make_get_arr_1d, numba_dict
+from ...tools.typing import TimeArgs
+from .utils import address_as_void_pointer, jit, make_get_arr_1d
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -58,7 +62,7 @@ def make_virtual_point_evaluator(bc: BCBase) -> VirtualPointEvaluator:
         point, which is assumed to be a virtual point. The result is the data value at
         this point, which is calculated using the boundary condition.
     """
-    if isinstance(bc, UserBC):
+    if isinstance(bc, UserBCBase):
         return _make_user_virtual_point_evaluator(bc)
     if isinstance(bc, ExpressionBC):
         return _make_expression_virtual_point_evaluator(bc)
@@ -74,11 +78,11 @@ def make_virtual_point_evaluator(bc: BCBase) -> VirtualPointEvaluator:
     raise NotImplementedError(msg)
 
 
-def _make_user_virtual_point_evaluator(bc: UserBC) -> VirtualPointEvaluator:
+def _make_user_virtual_point_evaluator(bc: UserBCBase) -> VirtualPointEvaluator:
     """Return function that evaluates the value of a virtual point.
 
     Args:
-        bc (:class:`~pde.grids.boundaries.local.UserBC`):
+        bc (:class:`~pde.grids.boundaries.local.UserBCBase`):
             Defines the boundary conditions for a particular side, for which the virtual
             point evaluator should be defined.
 
@@ -123,25 +127,47 @@ def _make_user_virtual_point_evaluator(bc: UserBC) -> VirtualPointEvaluator:
 
         return impl
 
-    @register_jitable
-    def virtual_point(arr: NumericArray, idx: tuple[int, ...], args):
-        """Evaluate the virtual point at `idx`"""
-        if "virtual_point" in args:
-            # set the virtual point directly
-            return extract_value(args["virtual_point"], arr, idx)
+    if isinstance(bc, UserVirtualPointBC):
 
-        if "value" in args:
-            # set the value at the boundary
-            value = extract_value(args["value"], arr, idx)
-            return 2 * value - arr[idx]
+        @register_jitable
+        def virtual_point(arr: NumericArray, idx: tuple[int, ...], args):
+            """Evaluate the virtual point at `idx`"""
+            if args is not None and hasattr(args, "virtual_point"):
+                # set the virtual point directly
+                return extract_value(args.virtual_point, arr, idx)
 
-        if "derivative" in args:
-            # set the outward derivative at the boundary
-            value = extract_value(args["derivative"], arr, idx)
-            return dx * value + arr[idx]
+            # no-op for the default case where BCs are not set by user
+            return math.nan
 
-        # no-op for the default case where BCs are not set by user
-        return math.nan
+    elif isinstance(bc, UserValueBC):
+
+        @register_jitable
+        def virtual_point(arr: NumericArray, idx: tuple[int, ...], args):
+            """Evaluate the virtual point at `idx`"""
+            if args is not None and hasattr(args, "value"):
+                # set the value at the boundary
+                value = extract_value(args.value, arr, idx)
+                return 2 * value - arr[idx]
+
+            # no-op for the default case where BCs are not set by user
+            return math.nan
+
+    elif isinstance(bc, UserDerivativeBC):
+
+        @register_jitable
+        def virtual_point(arr: NumericArray, idx: tuple[int, ...], args):
+            """Evaluate the virtual point at `idx`"""
+            if args is not None and hasattr(args, "derivative"):
+                # set the outward derivative at the boundary
+                value = extract_value(args.derivative, arr, idx)
+                return dx * value + arr[idx]
+
+            # no-op for the default case where BCs are not set by user
+            return math.nan
+
+    else:
+        msg = f"Unsupported UserBC class: {bc.__class__.__name__}"
+        raise NotImplementedError(msg)
 
     return virtual_point  # type: ignore
 
@@ -359,24 +385,26 @@ def _make_expression_virtual_point_evaluator(
         func = _make_expression_function_from_expression(bc, backend=backend)
 
     @jit(backend=backend)
-    def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None) -> float:
+    def virtual_point(
+        arr: NumericArray, idx: tuple[int, ...], args: NamedTuple | None = None
+    ) -> float:
         """Evaluate the virtual point at `idx`"""
         _, _, bc_idx = get_arr_1d(arr, idx)
         grid_value = arr[idx]
         coords = bc_coords[bc_idx]
 
         # extract time for handling time-dependent BCs
-        if args is None or "t" not in args:
+        if args is None:
             if warn_if_time_not_set:
                 msg = (
-                    "Require value for `t` for time-dependent BC. The value must "
-                    "be passed explicitly via `args` when calling a differential "
-                    "operator."
+                    "Require value for `t` for time-dependent BC. The value must be "
+                    "passed explicitly as a Namedtuple via `args` when calling a "
+                    "differential operator."
                 )
                 raise RuntimeError(msg)
             t = 0.0
         else:
-            t = float(args["t"])
+            t = float(args.t)  # type: ignore
 
         if num_axes == 1:
             return func(grid_value, dx, coords[0], t)  # type: ignore
@@ -388,7 +416,7 @@ def _make_expression_virtual_point_evaluator(
         return math.nan
 
     # evaluate the function to force compilation and catch errors early
-    virtual_point(np.zeros([3] * num_axes), (0,) * num_axes, numba_dict(t=0.0))
+    virtual_point(np.zeros([3] * num_axes), (0,) * num_axes, TimeArgs(t=0))
 
     return virtual_point
 
@@ -606,7 +634,9 @@ def _make_const1storder_virtual_point_evaluator(
     if bc.homogeneous:
 
         @jit(backend=backend)
-        def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None) -> float:
+        def virtual_point(
+            arr: NumericArray, idx: tuple[int, ...], args: NamedTuple | None = None
+        ) -> float:
             """Evaluate the virtual point at `idx`"""
             arr_1d, _, _ = get_arr_1d(arr, idx)
             if normal:
@@ -618,7 +648,9 @@ def _make_const1storder_virtual_point_evaluator(
     else:
 
         @jit(backend=backend)
-        def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None) -> float:
+        def virtual_point(
+            arr: NumericArray, idx: tuple[int, ...], args: NamedTuple | None = None
+        ) -> float:
             """Evaluate the virtual point at `idx`"""
             arr_1d, _, bc_idx = get_arr_1d(arr, idx)
             if normal:
@@ -692,7 +724,9 @@ def _make_const2ndorder_virtual_point_evaluator(
     if bc.homogeneous:
 
         @register_jitable
-        def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None):
+        def virtual_point(
+            arr: NumericArray, idx: tuple[int, ...], args: NamedTuple | None = None
+        ):
             """Evaluate the virtual point at `idx`"""
             arr_1d, _, _ = get_arr_1d(arr, idx)
             if normal:
@@ -706,7 +740,9 @@ def _make_const2ndorder_virtual_point_evaluator(
     else:
 
         @register_jitable
-        def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None):
+        def virtual_point(
+            arr: NumericArray, idx: tuple[int, ...], args: NamedTuple | None = None
+        ):
             """Evaluate the virtual point at `idx`"""
             arr_1d, _, bc_idx = get_arr_1d(arr, idx)
             if normal:
