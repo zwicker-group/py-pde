@@ -508,7 +508,7 @@ class BoundariesSetter(BoundariesBase):
 
     The function must have accept a :class:`~numpy.ndarray`, which contains the full
     field data including the ghost points, and a second, optional argument, which is a
-    dictionary containing additional parameters, like the current time point `t` in case
+    NamedTuple containing additional parameters, like the current time point `t` in case
     of a simulation.
 
     Example:

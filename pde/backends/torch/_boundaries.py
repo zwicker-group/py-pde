@@ -301,7 +301,7 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
         i_read = self.i_read
 
         # extract time for handling time-dependent BCs
-        if args is None:
+        if args is None or not hasattr(args, "t"):
             if self.warn_t_missing:
                 _logger.warning(
                     "Require value for `t` for time-dependent BC. The value must be "
@@ -310,7 +310,7 @@ class TorchExpressionBCBoundary(TorchOperatorBase):
                 )
             t: float | torch.Tensor = 0.0
         else:
-            t = torch.as_tensor(args.t)  # type: ignore
+            t = torch.as_tensor(args.t)
 
         if num_axes == 1:
             val_field = data_full[..., i_read]

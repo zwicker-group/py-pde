@@ -140,10 +140,7 @@ class NumpyBackend(BackendBase[NumericArray]):
             data_full: NumericArray, args: NamedTuple | None = None
         ) -> None:
             """Default implementation that simply uses the python interface."""
-            if args is None:
-                bcs.set_ghost_cells(data_full)
-            else:
-                bcs.set_ghost_cells(data_full, *args)
+            bcs.set_ghost_cells(data_full, args=args)
 
         return set_ghost_cells
 
@@ -237,7 +234,9 @@ class NumpyBackend(BackendBase[NumericArray]):
 
         @self.compile_function
         def apply_operator(
-            arr: NumericArray, out: NumericArray | None = None, args=None
+            arr: NumericArray,
+            out: NumericArray | None = None,
+            args: NamedTuple | None = None,
         ) -> NumericArray:
             """Apply operator to full data without setting boundary conditions."""
             if out is None:

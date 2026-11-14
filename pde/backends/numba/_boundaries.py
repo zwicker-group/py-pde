@@ -394,7 +394,7 @@ def _make_expression_virtual_point_evaluator(
         coords = bc_coords[bc_idx]
 
         # extract time for handling time-dependent BCs
-        if args is None:
+        if args is None or not hasattr(args, "t"):
             if warn_if_time_not_set:
                 msg = (
                     "Require value for `t` for time-dependent BC. The value must be "
@@ -404,7 +404,7 @@ def _make_expression_virtual_point_evaluator(
                 raise RuntimeError(msg)
             t = 0.0
         else:
-            t = float(args.t)  # type: ignore
+            t = float(args.t)
 
         if num_axes == 1:
             return func(grid_value, dx, coords[0], t)  # type: ignore

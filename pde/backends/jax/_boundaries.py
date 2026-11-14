@@ -169,7 +169,7 @@ def _make_expression_virtual_point_evaluator(
         )
 
         # extract time for handling time-dependent BCs
-        if args is None:
+        if args is None or not hasattr(args, "t"):
             if warn_if_time_not_set:
                 msg = (
                     "Require value for `t` for time-dependent BC. The value must be "
@@ -179,7 +179,7 @@ def _make_expression_virtual_point_evaluator(
                 raise RuntimeError(msg)
             t = 0.0
         else:
-            t = args.t  # type: ignore
+            t = args.t
 
         return func(val_field, dx, *bc_coords, t)  # type: ignore
 

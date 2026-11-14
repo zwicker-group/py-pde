@@ -1215,7 +1215,7 @@ class ExpressionBC(BCBase):
         coords = self.grid._boundary_coordinates(axis=self.axis, upper=self.upper)
         coords = np.moveaxis(coords, -1, 0)  # point coordinates to first axis
 
-        if args is None:
+        if args is None or not hasattr(args, "t"):
             if not self._is_func and self._func_expression.depends_on("t"):
                 msg = (
                     "Require value for `t` for time-dependent BC. The value must be "
@@ -1225,7 +1225,7 @@ class ExpressionBC(BCBase):
                 raise RuntimeError(msg)
             t = 0.0
         else:
-            t = float(args.t)  # type: ignore
+            t = float(args.t)
 
         # calculate the virtual points
         data_full[tuple(idx_write)] = self._make_function()(values, dx, *coords, t)
