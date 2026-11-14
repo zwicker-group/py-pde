@@ -69,7 +69,7 @@ class _OperatorImplStreamArgsType[TNativeArray](Protocol):
     """Operator implementation accepting directly calculating output."""
 
     def __call__(
-        self, arr: TNativeArray, *, args: Any | None = None
+        self, arr: TNativeArray, *, args: NamedTuple | None = None
     ) -> TNativeArray: ...
 
 
@@ -83,7 +83,7 @@ class _OperatorImplUpdateArgsType(Protocol):
     """Operator implementation writing output to given numpy array."""
 
     def __call__(
-        self, arr: NumericArray, out: NumericArray, *, args: Any | None = None
+        self, arr: NumericArray, out: NumericArray, *, args: NamedTuple | None = None
     ) -> None: ...
 
 
