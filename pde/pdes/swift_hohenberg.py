@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
+from ..tools.typing import TimeArgs
 from .base import PDEBase, expr_prod
 
 if TYPE_CHECKING:
@@ -101,8 +102,8 @@ class SwiftHohenbergPDE(PDEBase):
         if not isinstance(state, ScalarField):
             msg = "`state` must be ScalarField"
             raise TypeError(msg)
-        state_laplace = state.laplace(bc=self.bc, args={"t": t})
-        state_laplace2 = state_laplace.laplace(bc=self.bc_lap, args={"t": t})
+        state_laplace = state.laplace(bc=self.bc, args=TimeArgs(t=t))
+        state_laplace2 = state_laplace.laplace(bc=self.bc_lap, args=TimeArgs(t=t))
 
         result = (
             (self.rate - self.kc2**2) * state
@@ -139,8 +140,8 @@ class SwiftHohenbergPDE(PDEBase):
 
         def pde_rhs(state_data, t=0):
             """Evaluate right hand side of PDE."""
-            state_laplace = laplace(state_data, args={"t": t})
-            state_laplace2 = laplace2(state_laplace, args={"t": t})
+            state_laplace = laplace(state_data, args=TimeArgs(t=t))
+            state_laplace2 = laplace2(state_laplace, args=TimeArgs(t=t))
 
             return (
                 (rate - kc2**2) * state_data

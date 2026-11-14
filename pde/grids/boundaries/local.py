@@ -33,15 +33,20 @@ also require a slightly deeper understanding for proper use:
 * :class:`~pde.grids.boundaries.local.ExpressionMixedBC`:
   Imposing a mixed (Robin) boundary condition using mathematical expressions or python
   functions.
-* :class:`~pde.grids.boundaries.local.UserBC`:
-  Allows full control for setting virtual points, values, or derivatives. The boundary
-  conditions are never enforced automatically. It is thus the user's responsibility to
-  ensure virtual points are set correctly before operators are applied. To set boundary
-  conditions a dictionary :code:`{TARGET: value}` must be supplied as argument `args` to
-  :meth:`set_ghost_cells` or the numba equivalent. Here, `TARGET` determines how the
-  `value` is interpreted and what boundary condition is actually enforced: the value of
-  the virtual points directly (`virtual_point`), the value of the field at the boundary
-  (`value`) or the outward derivative of the field at the boundary (`derivative`).
+* :class:`~pde.grids.boundaries.local.UserVirtualPointBC`:
+  Allows full control for setting virtual points. The boundary conditions are never
+  enforced automatically. It is thus the user's responsibility to ensure virtual points
+  are set correctly before operators are applied. To set boundary conditions a supply
+  :code:`NamedTuple(virtual_point=value)` as argument `args` to :meth:`set_ghost_cells`
+  or the numba equivalent.
+* :class:`~pde.grids.boundaries.local.UserValueBC`:
+  Allows full control for setting the value at the boundary by supplying
+  :code:`NamedTuple(value=value)` as argument `args` to :meth:`set_ghost_cells` or the
+  numba equivalent.
+* :class:`~pde.grids.boundaries.local.UserDerivativeBC`:
+  Allows full control for setting the derivative at the boundary by supplying
+  :code:`NamedTuple(derivative=value)` as argument `args` to :meth:`set_ghost_cells` or
+  the numba equivalent.
 
 Note that derivatives are generally given in the direction of the outward normal vector,
 such that positive derivatives correspond to a function that increases across the
@@ -61,13 +66,14 @@ from __future__ import annotations
 import logging
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Literal, Self, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Self, TypeVar, Union
 
 import numpy as np
 
 from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring
 from ...tools.misc import number
+from ...tools.typing import TimeArgs
 from ..base import GridBase, PeriodicityError
 
 if TYPE_CHECKING:
@@ -525,7 +531,9 @@ class BCBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
+    def set_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
         """Set the ghost cell values for this boundary.
 
         Args:
@@ -641,7 +649,9 @@ class _MPIBC(BCBase):
         axis_name = self.grid.axes[self.axis]
         return f"MPI @ {axis_name}={self.axis_coord}"
 
-    def send_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
+    def send_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
         """Send the ghost cell values for this boundary.
 
         Args:
@@ -655,18 +665,20 @@ class _MPIBC(BCBase):
 
         mpi_send(data_full[self._idx_read], self._neighbor_id, self._mpi_flag)
 
-    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
+    def set_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
         from ...tools.mpi import mpi_recv
 
         mpi_recv(data_full[self._idx_write], self._neighbor_id, self._mpi_flag)
 
 
-class UserBC(BCBase):
+class UserBCBase(BCBase):
     """Represents a boundary whose virtual points are set by the user.
 
-    Boundary conditions will only be set when a dictionary :code:`{TARGET: value}` is
+    Boundary conditions will only be set when a :code:`NamedTuple(TARGET=value)` is
     supplied as argument `args` to :meth:`set_ghost_cells` or the numba equivalent.
-    Here, `TARGET` determines how the `value` is interpreted and what boundary condition
+    Here, `TARGET` depends on the subclass, i.e., it determines what boundary condition
     is actually enforced: the value of the virtual points directly (`virtual_point`),
     the value of the field at the boundary (`value`) or the outward derivative of the
     field at the boundary (`derivative`).
@@ -676,8 +688,6 @@ class UserBC(BCBase):
         e.g., when evaluating an operator. It is thus the user's responsibility to
         ensure virtual points are set correctly before operators are applied.
     """
-
-    names = ["user"]
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition.
@@ -719,44 +729,112 @@ class UserBC(BCBase):
             grid=subgrid, axis=self.axis, upper=self.upper, rank=self.rank
         )
 
-    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
-        if args is None:
+    def _get_indices(
+        self, data_full: NumericArray
+    ) -> tuple[tuple[slice | int, ...], tuple[slice | int, ...]]:
+        """Helper function that calculates the indices for accessing data"""
+        # prepare the array of slices to index bcs
+        offset = data_full.ndim - self.grid.num_axes  # additional data axes
+        idx_offset = [slice(None)] * offset
+        idx_valid = [slice(1, -1)] * self.grid.num_axes
+        idx_write: list[slice | int] = idx_offset + idx_valid  # type: ignore
+        idx_write[offset + self.axis] = -1 if self.upper else 0
+        idx_read = idx_write[:]
+        idx_read[offset + self.axis] = -2 if self.upper else 1
+
+        if self.normal:
+            assert offset > 0
+            idx_write[offset - 1] = self.axis
+            idx_read[offset - 1] = self.axis
+
+        return tuple(idx_write), tuple(idx_read)
+
+
+class UserVirtualPointBC(UserBCBase):
+    """Represents a boundary whose virtual points are set by the user.
+
+    Boundary conditions will only be set when a ``NamedTuple(virtual_point=value)`` is
+    supplied as argument `args` to :meth:`set_ghost_cells` or the numba equivalent.
+
+    Warning:
+        This implies that the boundary conditions are never enforced automatically,
+        e.g., when evaluating an operator. It is thus the user's responsibility to
+        ensure virtual points are set correctly before operators are applied.
+    """
+
+    names = ["user_virtual_point"]
+
+    def set_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
+        if args is None or isinstance(args, TimeArgs):
             # usual case where set_ghost_cells is called automatically. In our case,
             # won't do anything since we expect the user to call the function manually
             # with the user data provided as the argument.
             return
 
-        if any(t in args for t in ["virtual_point", "value", "derivative"]):
-            # ghost cells will only be set if any of the above keys were supplied
+        # ghost cells will only be set if arguments are supplied
+        idx_write, _ = self._get_indices(data_full)
+        data_full[tuple(idx_write)] = args.virtual_point  # type: ignore
 
-            # prepare the array of slices to index bcs
-            offset = data_full.ndim - self.grid.num_axes  # additional data axes
-            idx_offset = [slice(None)] * offset
-            idx_valid = [slice(1, -1)] * self.grid.num_axes
-            idx_write: list[slice | int] = idx_offset + idx_valid  # type: ignore
-            idx_write[offset + self.axis] = -1 if self.upper else 0
-            idx_read = idx_write[:]
-            idx_read[offset + self.axis] = -2 if self.upper else 1
 
-            if self.normal:
-                assert offset > 0
-                idx_write[offset - 1] = self.axis
-                idx_read[offset - 1] = self.axis
+class UserValueBC(UserBCBase):
+    """Represents a boundary whose virtual points are set by the user.
 
-            # get values right next to the boundary
-            bndry_values = data_full[tuple(idx_read)]
+    Boundary conditions will only be set when a ``NamedTuple(value=value)`` is
+    supplied as argument `args` to :meth:`set_ghost_cells` or the numba equivalent.
 
-            # calculate the virtual points
-            if "virtual_point" in args:
-                data_full[tuple(idx_write)] = args["virtual_point"]
-            elif "value" in args:
-                data_full[tuple(idx_write)] = 2 * args["value"] - bndry_values
-            elif "derivative" in args:
-                dx = self.grid.discretization[self.axis]
-                data_full[tuple(idx_write)] = dx * args["derivative"] + bndry_values
-            else:
-                raise RuntimeError
-        # else: no-op for the default case where BCs are not set by user
+    Warning:
+        This implies that the boundary conditions are never enforced automatically,
+        e.g., when evaluating an operator. It is thus the user's responsibility to
+        ensure virtual points are set correctly before operators are applied.
+    """
+
+    names = ["user_value"]
+
+    def set_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
+        if args is None or isinstance(args, TimeArgs):
+            # usual case where set_ghost_cells is called automatically. In our case,
+            # won't do anything since we expect the user to call the function manually
+            # with the user data provided as the argument.
+            return
+
+        # ghost cells will only be set if arguments are supplied
+        idx_write, idx_read = self._get_indices(data_full)
+        bndry_values = data_full[idx_read]
+        data_full[idx_write] = 2 * args.value - bndry_values  # type: ignore
+
+
+class UserDerivativeBC(UserBCBase):
+    """Represents a boundary whose virtual points are set by the user.
+
+    Boundary conditions will only be set when a ``NamedTuple(derivative=value)`` is
+    supplied as argument `args` to :meth:`set_ghost_cells` or the numba equivalent.
+
+    Warning:
+        This implies that the boundary conditions are never enforced automatically,
+        e.g., when evaluating an operator. It is thus the user's responsibility to
+        ensure virtual points are set correctly before operators are applied.
+    """
+
+    names = ["user_derivative"]
+
+    def set_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
+        if args is None or isinstance(args, TimeArgs):
+            # usual case where set_ghost_cells is called automatically. In our case,
+            # won't do anything since we expect the user to call the function manually
+            # with the user data provided as the argument.
+            return
+
+        # ghost cells will only be set if arguments are supplied
+        idx_write, idx_read = self._get_indices(data_full)
+        bndry_values = data_full[idx_read]
+        dx = self.grid.discretization[self.axis]
+        data_full[idx_write] = dx * args.derivative + bndry_values  # type: ignore
 
 
 ExpressionBCTargetType = Literal["value", "derivative", "mixed", "virtual_point"]
@@ -1113,7 +1191,9 @@ class ExpressionBC(BCBase):
             raise IndexError(msg)
         return idx - 1 if with_ghost_cells else idx
 
-    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
+    def set_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
         dx = self.grid.discretization[self.axis]
 
         # prepare the array of slices to index bcs
@@ -1135,16 +1215,17 @@ class ExpressionBC(BCBase):
         coords = self.grid._boundary_coordinates(axis=self.axis, upper=self.upper)
         coords = np.moveaxis(coords, -1, 0)  # point coordinates to first axis
 
-        if args is None:
+        if args is None or not hasattr(args, "t"):
             if not self._is_func and self._func_expression.depends_on("t"):
                 msg = (
                     "Require value for `t` for time-dependent BC. The value must be "
-                    "passed explicitly via `args` when calling a differential operator."
+                    "passed explicitly as a NamedTuple via `args` when calling a "
+                    "differential operator."
                 )
                 raise RuntimeError(msg)
             t = 0.0
         else:
-            t = float(args["t"])
+            t = float(args.t)
 
         # calculate the virtual points
         data_full[tuple(idx_write)] = self._make_function()(values, dx, *coords, t)
@@ -1609,7 +1690,9 @@ class ConstBC1stOrderBase(ConstBCBase):
             return const + factor * arr_1d[..., index]  # type: ignore
         return const[bc_idx] + factor[bc_idx] * arr_1d[..., index]  # type: ignore
 
-    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
+    def set_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
         # calculate necessary constants
         const, factor, index = self.get_virtual_point_data()
 
@@ -2020,7 +2103,9 @@ class ConstBC2ndOrderBase(ConstBCBase):
             + data[3][bc_idx] * arr_1d[..., data[4]]
         )
 
-    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
+    def set_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
         # calculate necessary constants
         data = self.get_virtual_point_data()
 

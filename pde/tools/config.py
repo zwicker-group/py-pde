@@ -553,6 +553,28 @@ class Config(NestedDict[Parameter]):
             for k, v in self.data.items()
         }
 
+    def pprint(  # type: ignore
+        self, *args: Any, flatten: bool = False, values: bool = True, **kwargs: Any
+    ) -> dict[str, Any]:
+        """Convert the configuration to a simple dictionary.
+
+        Args:
+            *args (Any):
+                Positional arguments forwarded to `pprint.pprint`.
+            flatten (bool):
+                Return flat or nested dictionary.
+            values (bool):
+                Whether to return only values (and not :class:`Parameter` instances)
+            **kwargs (Any):
+                Keyword arguments forwarded to `pprint.pprint`.
+
+        Returns:
+            dict: A representation of the configuration in a normal :class:`dict`.
+        """
+        from pprint import pprint
+
+        pprint(self.to_dict(flatten=flatten, values=values), *args, **kwargs)
+
     def __str__(self) -> str:
         """Shows the configuration as a string."""
         return f"{self.__class__.__name__}({self.to_dict(values=True)!r})"

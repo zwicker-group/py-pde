@@ -12,6 +12,7 @@ import numpy as np
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
+from ..tools.typing import TimeArgs
 from .base import PDEBase, expr_prod
 
 if TYPE_CHECKING:
@@ -92,7 +93,7 @@ class AllenCahnPDE(PDEBase):
         if not isinstance(state, ScalarField):
             msg = "`state` must be ScalarField"
             raise TypeError(msg)
-        laplace = state.laplace(bc=self.bc, label="evolution rate", args={"t": t})
+        laplace = state.laplace(bc=self.bc, label="evolution rate", args=TimeArgs(t=t))
         rhs = self.interface_width * laplace - state**3 + state
         return self.mobility * rhs  # type: ignore
 
@@ -120,7 +121,7 @@ class AllenCahnPDE(PDEBase):
         def pde_rhs(state_data, t=0):
             """Evaluate right hand side of PDE."""
             return mobility * (
-                interface_width * laplace(state_data, args={"t": t})
+                interface_width * laplace(state_data, args=TimeArgs(t=t))
                 - state_data**3
                 + state_data
             )

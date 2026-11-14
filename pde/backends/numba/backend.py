@@ -13,7 +13,7 @@ from __future__ import annotations
 import functools
 import inspect
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import numba as nb
 import numpy as np
@@ -23,14 +23,19 @@ from numba.extending import overload as nb_overload
 from ...fields import DataFieldBase, VectorField
 from ...grids import DimensionError, DomainError, GridBase
 from ...grids.boundaries.axes import BoundariesBase, BoundariesList, BoundariesSetter
-from ...grids.boundaries.local import BCBase, UserBC
+from ...grids.boundaries.local import (
+    BCBase,
+    UserDerivativeBC,
+    UserValueBC,
+    UserVirtualPointBC,
+)
 from ...tools.cache import cached_method
 from ...tools.config import is_hpc_environment
 from ...tools.typing import OperatorInfo
 from ..numpy.backend import NumpyBackend
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable
 
     from numpy.typing import DTypeLike
 
@@ -196,9 +201,9 @@ class NumbaBackend(NumpyBackend):
                 setter should be defined.
 
         Returns:
-            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-            sets the ghost cells of the full data, potentially using additional
-            information in `args` (e.g., the time `t` during solving a PDE)
+            callable: Function that sets ghost cells. Function signature:
+            ``(data_full: NumericArray, args: NamedTuple = None)``. Args can supply
+            additional information (e.g., the time `t` during solving a PDE).
         """
         from ._boundaries import make_virtual_point_evaluator
 
@@ -213,7 +218,9 @@ class NumbaBackend(NumpyBackend):
         if bc.grid.num_axes == 1:  # 1d grid
 
             @register_jitable
-            def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+            def ghost_cell_setter(
+                data_full: NumericArray, args: NamedTuple | None = None
+            ) -> None:
                 """Helper function setting the conditions on all axes."""
                 data_valid = data_full[..., 1:-1]
                 val = vp_value(data_valid, (np_idx,), args=args)
@@ -227,7 +234,9 @@ class NumbaBackend(NumpyBackend):
                 num_y = bc.grid.shape[1]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_setter(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     """Helper function setting the conditions on all axes."""
                     data_valid = data_full[..., 1:-1, 1:-1]
                     for j in range(num_y):
@@ -241,7 +250,9 @@ class NumbaBackend(NumpyBackend):
                 num_x = bc.grid.shape[0]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_setter(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     """Helper function setting the conditions on all axes."""
                     data_valid = data_full[..., 1:-1, 1:-1]
                     for i in range(num_x):
@@ -256,7 +267,9 @@ class NumbaBackend(NumpyBackend):
                 num_y, num_z = bc.grid.shape[1:]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_setter(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     """Helper function setting the conditions on all axes."""
                     data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
                     for j in range(num_y):
@@ -271,7 +284,9 @@ class NumbaBackend(NumpyBackend):
                 num_x, num_z = bc.grid.shape[0], bc.grid.shape[2]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_setter(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     """Helper function setting the conditions on all axes."""
                     data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
                     for i in range(num_x):
@@ -286,7 +301,9 @@ class NumbaBackend(NumpyBackend):
                 num_x, num_y = bc.grid.shape[:2]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_setter(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     """Helper function setting the conditions on all axes."""
                     data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
                     for i in range(num_x):
@@ -301,21 +318,50 @@ class NumbaBackend(NumpyBackend):
             msg = "Too many axes"
             raise NotImplementedError(msg)
 
-        if isinstance(bc, UserBC):
-            # the (pretty uncommon) UserBC needs a special check, which we add here
+        # we need to add some extra checks for user BCs, which are quite uncommon
+        if isinstance(bc, UserVirtualPointBC):
 
             @register_jitable
-            def ghost_cell_setter_wrapped(data_full: NumericArray, args=None) -> None:
+            def ghost_cell_setter_wrapped(
+                data_full: NumericArray, args: NamedTuple | None = None
+            ) -> None:
                 """Helper function setting the conditions on all axes."""
-                if args is None:
+                if args is None or not hasattr(args, "virtual_point"):
                     return  # no-op when no specific arguments are given
 
-                if "virtual_point" in args or "value" in args or "derivative" in args:
-                    # ghost cells will only be set if any of the above keys are supplied
-                    ghost_cell_setter(data_full, args=args)
-                # else: no-op for the default case where BCs are not set by user
+                # ghost cells will only be set if any of the above keys are supplied
+                ghost_cell_setter(data_full, args=args)
 
             return ghost_cell_setter_wrapped  # type: ignore
+        if isinstance(bc, UserValueBC):
+
+            @register_jitable
+            def ghost_cell_setter_wrapped(
+                data_full: NumericArray, args: NamedTuple | None = None
+            ) -> None:
+                """Helper function setting the conditions on all axes."""
+                if args is None or not hasattr(args, "value"):
+                    return  # no-op when no specific arguments are given
+
+                # ghost cells will only be set if any of the above keys are supplied
+                ghost_cell_setter(data_full, args=args)
+
+            return ghost_cell_setter_wrapped  # type: ignore
+        if isinstance(bc, UserDerivativeBC):
+
+            @register_jitable
+            def ghost_cell_setter_wrapped(
+                data_full: NumericArray, args: NamedTuple | None = None
+            ) -> None:
+                """Helper function setting the conditions on all axes."""
+                if args is None or not hasattr(args, "derivative"):
+                    return  # no-op when no specific arguments are given
+
+                # ghost cells will only be set if any of the above keys are supplied
+                ghost_cell_setter(data_full, args=args)
+
+            return ghost_cell_setter_wrapped  # type: ignore
+
         # the standard case just uses the ghost_cell_setter as defined above
         return ghost_cell_setter  # type: ignore
 
@@ -330,16 +376,18 @@ class NumbaBackend(NumpyBackend):
                 setter should be defined.
 
         Returns:
-            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-            sets the ghost cells of the full data, potentially using additional
-            information in `args` (e.g., the time `t` during solving a PDE)
+            callable: Function that sets ghost cells. Function signature:
+            ``(data_full: NumericArray, args: NamedTuple = None)``. Args can supply
+            additional information (e.g., the time `t` during solving a PDE).
         """
         # get the functions that handle the data
         ghost_cell_setter_low = self._make_local_ghost_cell_setter(bc_axis.low)
         ghost_cell_setter_high = self._make_local_ghost_cell_setter(bc_axis.high)
 
         @register_jitable
-        def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+        def ghost_cell_setter(
+            data_full: NumericArray, args: NamedTuple | None = None
+        ) -> None:
             """Helper function setting the conditions on all axes."""
             # set the actual ghost cells
             ghost_cell_setter_high(data_full, args=args)
@@ -356,54 +404,45 @@ class NumbaBackend(NumpyBackend):
                 setter should be defined.
 
         Returns:
-            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-            sets the ghost cells of the full data, potentially using additional
-            information in `args` (e.g., the time `t` during solving a PDE)
+            callable: Function setting the ghost cells of full data with signature
+            ``(data_full: NumericArray, args: NamedTuple = None)`. Additional
+            information can be set via `args` (e.g., the time `t` during solving a PDE).
         """
         if isinstance(bcs, BoundariesList):
-            ghost_cell_setters = tuple(
-                self._make_axis_ghost_cell_setter(bc_axis) for bc_axis in bcs
-            )
+            # set ghost cells along each axis of the grid
+            setter0 = self._make_axis_ghost_cell_setter(bcs[0])
+            if len(bcs) == 1:
+                return setter0
 
-            # TODO: use numba.literal_unroll
-            # # get the setters for all axes
-            #
-            # from numba import jit
-            #
-            # @self.compile_function
-            # def set_ghost_cells(data_full: NumericArray, args=None) -> None:
-            #     for f in nb.literal_unroll(ghost_cell_setters):
-            #         f(data_full, args=args)
-            #
-            # return set_ghost_cells
+            setter1 = self._make_axis_ghost_cell_setter(bcs[1])
+            if len(bcs) == 2:
 
-            def chain(
-                fs: Sequence[GhostCellSetter], inner: GhostCellSetter | None = None
-            ) -> GhostCellSetter:
-                """Helper function composing setters of all axes recursively."""
+                @self.compile_function
+                def set_ghost_cells(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
+                    setter0(data_full, args)
+                    setter1(data_full, args)
 
-                first, rest = fs[0], fs[1:]
+                return set_ghost_cells
 
-                if inner is None:
+            setter2 = self._make_axis_ghost_cell_setter(bcs[2])
+            if len(bcs) == 3:
 
-                    @register_jitable
-                    def wrap(data_full: NumericArray, args=None) -> None:
-                        first(data_full, args=args)
+                @self.compile_function
+                def set_ghost_cells(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
+                    setter0(data_full, args)
+                    setter1(data_full, args)
+                    setter2(data_full, args)
 
-                else:
+                return set_ghost_cells
 
-                    @register_jitable
-                    def wrap(data_full: NumericArray, args=None) -> None:
-                        inner(data_full, args=args)
-                        first(data_full, args=args)
-
-                if rest:
-                    return chain(rest, wrap)
-                return wrap  # type: ignore
-
-            return chain(ghost_cell_setters)
+            raise NotImplementedError
 
         if isinstance(bcs, BoundariesSetter):
+            # set ghost cells all at once
             return self.compile_function(bcs._setter)
 
         msg = f"Cannot handle following boundary conditions: {bcs}"
@@ -420,7 +459,7 @@ class NumbaBackend(NumpyBackend):
         """Return a compiled function applying an operator without boundary conditions.
 
         The returned function has public signature
-        ``(arr, out=None, args=None) -> result``.
+        ``(arr, out=None, args: NamedTuple | None = None) -> result``.
 
         Note:
             The resulting function does not check whether the ghost cells of the input
@@ -430,9 +469,9 @@ class NumbaBackend(NumpyBackend):
             :meth:`make_operator` is probably the better choice.
 
             Backends can choose whether their internal operator implementation uses a
-            functional style ``op(arr, *, args=None) -> result`` or an in-place style
-            ``op(arr, out, *, args=None)``. This wrapper normalizes both styles to the
-            public signature above.
+            functional style ``op(arr, *, args: NamedTuple | None = None) -> result`` or
+            an in-place style ``op(arr, out, *, args: NamedTuple = None)``. This wrapper
+            normalizes both styles to the public signature above.
 
         Args:
             grid (:class:`~pde.grid.base.GridBase`):
@@ -447,8 +486,8 @@ class NumbaBackend(NumpyBackend):
                 Specifies extra arguments influencing how the operator is created.
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray=None, args=None).
+            callable: the function that applies the operator. Function signature:
+            ``(arr: NumericArray, out: NumericArray=None, args: NamedTuple = None)``
 
         Internally, raw operator implementations are expected to use the functional
         signature ``operator_raw(arr_full, out[, args])``.
@@ -466,7 +505,9 @@ class NumbaBackend(NumpyBackend):
             # simple case of just input and output
 
             def apply_operator(
-                arr: NumericArray, out: NumericArray | None = None, args=None
+                arr: NumericArray,
+                out: NumericArray | None = None,
+                args: NamedTuple | None = None,
             ) -> NumericArray:
                 """Apply operator to full data without setting boundary conditions."""
                 if args is not None:
@@ -483,7 +524,9 @@ class NumbaBackend(NumpyBackend):
             # operator additionally supports an args argument
 
             def apply_operator(
-                arr: NumericArray, out: NumericArray | None = None, args=None
+                arr: NumericArray,
+                out: NumericArray | None = None,
+                args: NamedTuple | None = None,
             ) -> NumericArray:
                 """Apply operator to full data without setting boundary conditions."""
                 if out is None:
@@ -543,8 +586,8 @@ class NumbaBackend(NumpyBackend):
         signature ``operator_raw(arr_full, out[, args])``.
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            callable: the function that applies the operator. Function signature:
+            ``(arr: NumericArray, out: NumericArray = None, args: NamedTuple = None)``
         """
         # determine the operator for the chosen backend
         operator_info = self.get_operator_info(grid, operator)
@@ -557,7 +600,9 @@ class NumbaBackend(NumpyBackend):
 
         # define numpy version of the operator
         def apply_op(
-            arr: NumericArray, out: NumericArray | None = None, args=None
+            arr: NumericArray,
+            out: NumericArray | None = None,
+            args: NamedTuple | None = None,
         ) -> NumericArray:
             """Set boundary conditions and apply operator."""
             # check input array
@@ -591,14 +636,18 @@ class NumbaBackend(NumpyBackend):
 
         @nb_overload(apply_op, inline="always")
         def apply_op_ol(
-            arr: NumericArray, out: NumericArray | None = None, args=None
+            arr: NumericArray,
+            out: NumericArray | None = None,
+            args: NamedTuple | None = None,
         ) -> NumericArray:
             """Make numba implementation of the operator."""
             if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                 # need to allocate memory for `out`
 
                 def apply_op_impl(
-                    arr: NumericArray, out: NumericArray | None = None, args=None
+                    arr: NumericArray,
+                    out: NumericArray | None = None,
+                    args: NamedTuple | None = None,
                 ) -> NumericArray:
                     """Allocates `out` and applies operator to the data."""
                     if arr.shape != shape_in_valid:
@@ -619,7 +668,9 @@ class NumbaBackend(NumpyBackend):
                 # reuse provided `out` array
 
                 def apply_op_impl(
-                    arr: NumericArray, out: NumericArray | None = None, args=None
+                    arr: NumericArray,
+                    out: NumericArray | None = None,
+                    args: NamedTuple | None = None,
                 ) -> NumericArray:
                     """Applies operator to the data without allocating out."""
                     if TYPE_CHECKING:
@@ -643,7 +694,9 @@ class NumbaBackend(NumpyBackend):
 
         @self.compile_function
         def apply_op_compiled(
-            arr: NumericArray, out: NumericArray | None = None, args=None
+            arr: NumericArray,
+            out: NumericArray | None = None,
+            args: NamedTuple | None = None,
         ) -> NumericArray:
             """Set boundary conditions and apply operator."""
             return apply_op(arr, out, args)

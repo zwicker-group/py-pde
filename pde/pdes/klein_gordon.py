@@ -12,6 +12,7 @@ import numpy as np
 from ..fields import FieldCollection, ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
+from ..tools.typing import TimeArgs
 from .base import PDEBase, expr_prod
 
 if TYPE_CHECKING:
@@ -123,7 +124,7 @@ class KleinGordonPDE(PDEBase):
             raise ValueError(msg)
         u, v = state
         u_t = v.copy()
-        v_t = self.speed**2 * u.laplace(self.bc, args={"t": t}) - self.mass**2 * u  # type: ignore
+        v_t = self.speed**2 * u.laplace(self.bc, args=TimeArgs(t=t)) - self.mass**2 * u  # type: ignore
         return FieldCollection([u_t, v_t])
 
     def make_evolution_rate(
@@ -153,7 +154,7 @@ class KleinGordonPDE(PDEBase):
             return np.stack(
                 (
                     state_data[1],
-                    speed2 * laplace(state_data[0], args={"t": t})
+                    speed2 * laplace(state_data[0], args=TimeArgs(t=t))
                     - mass2 * state_data[0],
                 )
             )

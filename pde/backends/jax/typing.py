@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, NamedTuple, Protocol
 
 from ...tools.typing import _OperatorImplStreamBareType
 
@@ -25,7 +25,7 @@ type JaxOperatorImplType = _OperatorImplStreamBareType["Array"]
 
 
 class JaxDataSetter(Protocol):
-    def __call__(self, data_valid: Array, args=None) -> Array:
+    def __call__(self, data_valid: Array, args: NamedTuple | None = None) -> Array:
         """Set the valid data cells (and potentially BCs).
 
         Args:
@@ -38,7 +38,7 @@ class JaxDataSetter(Protocol):
 
 
 class JaxGhostCellSetter(Protocol):
-    def __call__(self, data_full: Array, args=None) -> Array:
+    def __call__(self, data_full: Array, args: NamedTuple | None = None) -> Array:
         """Set the ghost cells.
 
         Args:
@@ -48,7 +48,9 @@ class JaxGhostCellSetter(Protocol):
 
 
 class JaxVirtualPointEvaluator(Protocol):
-    def __call__(self, arr: Array, idx: tuple[int | slice, ...], args=None) -> Array:
+    def __call__(
+        self, arr: Array, idx: tuple[int | slice, ...], args: NamedTuple | None = None
+    ) -> Array:
         """Evaluate the virtual point at the given position.
 
         Args:

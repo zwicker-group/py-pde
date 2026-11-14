@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 
@@ -106,7 +106,7 @@ def make_virtual_point_evaluator(
         point, which is assumed to be a virtual point. The result is the data value at
         this point, which is calculated using the boundary condition.
     """
-    # if isinstance(bc, UserBC):
+    # if isinstance(bc, UserBCBase):
     #     return _make_user_virtual_point_evaluator(bc)
     if isinstance(bc, ExpressionBC):
         return _make_expression_virtual_point_evaluator(bc, backend)
@@ -159,7 +159,9 @@ def _make_expression_virtual_point_evaluator(
         # use a JAX-native function derived from the sympy expression
         func = bc._func_expression.get_function(backend=backend, single_arg=False)
 
-    def virtual_point(arr: jax.Array, idx: tuple[int, ...], args=None) -> jax.Array:
+    def virtual_point(
+        arr: jax.Array, idx: tuple[int, ...], args: NamedTuple | None = None
+    ) -> jax.Array:
         """Evaluate the virtual point at the boundary."""
         # extract adjacent cell values for all boundary points
         val_field = extract_one_coordinate(
@@ -167,16 +169,17 @@ def _make_expression_virtual_point_evaluator(
         )
 
         # extract time for handling time-dependent BCs
-        if args is None or "t" not in args:
+        if args is None or not hasattr(args, "t"):
             if warn_if_time_not_set:
                 msg = (
                     "Require value for `t` for time-dependent BC. The value must be "
-                    "passed explicitly via `args` when calling a differential operator."
+                    "passed explicitly as a NamedTuple via `args` when calling a "
+                    "differential operator."
                 )
                 raise RuntimeError(msg)
             t = 0.0
         else:
-            t = args["t"]
+            t = args.t
 
         return func(val_field, dx, *bc_coords, t)  # type: ignore
 
@@ -260,7 +263,9 @@ def _make_const1storder_virtual_point_evaluator(
     const = backend.numpy_to_native(bc._match_data_shape(const))
     factor = backend.numpy_to_native(bc._match_data_shape(factor))
 
-    def virtual_point(arr: jax.Array, idx: tuple[int, ...], args=None) -> jax.Array:
+    def virtual_point(
+        arr: jax.Array, idx: tuple[int, ...], args: NamedTuple | None = None
+    ) -> jax.Array:
         """Evaluate the virtual point at `idx`"""
         val_field = extract_one_coordinate(
             arr, num_axes=num_axes, axis=axis, index=index, normal=normal
@@ -338,7 +343,9 @@ def _make_const2ndorder_virtual_point_evaluator(
     f1 = backend.numpy_to_native(bc._match_data_shape(f1))
     f2 = backend.numpy_to_native(bc._match_data_shape(f2))
 
-    def virtual_point(arr: jax.Array, idx: tuple[int, ...], args=None) -> jax.Array:
+    def virtual_point(
+        arr: jax.Array, idx: tuple[int, ...], args: NamedTuple | None = None
+    ) -> jax.Array:
         """Evaluate the virtual point at `idx`"""
         val1 = extract_one_coordinate(arr, num_axes, axis=axis, index=i1, normal=normal)
         val2 = extract_one_coordinate(arr, num_axes, axis=axis, index=i2, normal=normal)
