@@ -10,8 +10,7 @@
 
 from __future__ import annotations
 
-import warnings
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -284,40 +283,3 @@ class EulerSolver(AdaptiveSolverBase):
 
         self._logger.info("Initialize adaptive Euler stepping function")
         return adaptive_stepper
-
-
-class ExplicitSolver(AdaptiveSolverBase):
-    """Various explicit PDE solvers."""
-
-    name = "explicit"
-
-    def __new__(
-        cls,
-        pde: PDEBase,
-        scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
-        **kwargs,
-    ):
-        """
-        Args:
-            pde (:class:`~pde.pdes.base.PDEBase`):
-                The partial differential equation that should be solved
-            scheme (str):
-                Defines the explicit scheme to use. Supported values are 'euler' and
-                'runge-kutta' (or 'rk' for short).
-            **kwargs:
-                Additional arguments such as `backend`, `adaptive`, and `tolerance` that
-                are forwarded to the chosen solver class.
-        """
-        # deprecated since 2025-11-01
-        warnings.warn(
-            "`ExplicitSolver` is deprecated. Use `EulerSolver` or `RungeKuttaSolver`.",
-            stacklevel=2,
-        )
-        if scheme == "euler":
-            return EulerSolver(pde=pde, **kwargs)
-        if scheme in {"rk", "rk45", "runge-kutta"}:
-            from .runge_kutta import RungeKuttaSolver
-
-            return RungeKuttaSolver(pde=pde, **kwargs)
-        msg = f"Scheme `{scheme}` is not supported"
-        raise ValueError(msg)

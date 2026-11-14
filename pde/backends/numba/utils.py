@@ -444,6 +444,13 @@ def numba_dict(data: dict[str, Any] | None = None, /, **kwargs) -> NumbaDict:
     Returns:
         :class:`~numba.typed.Dict`: A dictionary of numba type
     """
+    # Deprecated since 2026-11-14
+    warnings.warn(
+        "`numba_dict` is deprecated. Use `numba.NumbaDict` directly",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     nb_dict = NumbaDict()
     if data is not None:
         for k, v in data.items():
