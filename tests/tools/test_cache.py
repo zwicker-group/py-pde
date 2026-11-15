@@ -205,6 +205,11 @@ def test_serializer_hash_mutable():
     assert cache.hash_mutable(TestEq(1)) == cache.hash_mutable(TestEq(1))
     assert cache.hash_mutable(TestEq(1)) != cache.hash_mutable(TestEq(2))
 
+    class OtherTestEq(TestEq):
+        pass
+
+    assert cache.hash_mutable(TestEq(1)) != cache.hash_mutable(OtherTestEq(1))
+
 
 def test_unserializer():
     """Tests whether the make_serializer and make_unserializer return the original
