@@ -728,13 +728,19 @@ def test_user_bcs_comparison(dim, target, rng):
     Args = namedtuple("Args", [target])  # noqa: PYI024
     args = Args(value)
 
-    # use normal method to set BCs
+    # compare ghost cell setters
     f1, f2 = field.copy(), field.copy()
     f1.set_ghost_cells(bc=bcs, args=args)
     setter = get_backend("numba").make_ghost_cell_setter(bcs=bcs)
     setter(f2._data_full, args=args)
-
     np.testing.assert_allclose(f1._data_full, f2._data_full)
+
+    # compare operators
+    f1, f2 = field.copy(), field.copy()
+    l1 = f1.laplace(bc=bcs, args=args)
+    laplace = get_backend("numba").make_operator(grid, "laplace", bcs=bcs)
+    l2_data = laplace(f2.data, args=args)
+    np.testing.assert_allclose(l1.data, l2_data)
 
 
 def test_mpi_bc():
