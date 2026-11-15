@@ -94,32 +94,52 @@ def _make_user_virtual_point_evaluator(bc: UserBCBase) -> VirtualPointEvaluator:
     get_arr_1d = make_get_arr_1d(bc.grid.num_axes, bc.axis)
     dx = bc.grid.discretization[bc.axis]
 
-    def extract_value(values, arr: NumericArray, idx: tuple[int, ...]):
-        """Helper function that extracts the correct value from supplied ones."""
-        if isinstance(values, (nb.types.Number, Number)):
+    def extract_value(
+        bndry_values, arr: NumericArray, idx: tuple[int, ...]
+    ) -> tuple[Number, Number]:
+        """Helper function that extracts local values for boundary and field
+
+        Args:
+            bndry_values:
+                The scalar or field marking values on the boundary
+            arr:
+                The full data array of the field
+            idx:
+                The index into the full array marking the position at the boundary
+
+        Returns:
+            float, float: The local value of `bndry_value` and `arr` at `idx`.
+        """
+        arr_1d, i, bc_idx = get_arr_1d(arr, idx)
+        if isinstance(bndry_values, (nb.types.Number, Number)):
             # scalar was supplied => simply return it
-            return values
+            return bndry_values, arr_1d[i]
         if isinstance(arr, (nb.types.Array, np.ndarray)):
             # array was supplied => extract value at current position
-            _, _, bc_idx = get_arr_1d(arr, idx)
-            return values[bc_idx]
+            return bndry_values[bc_idx], arr_1d[i]
         msg = "Either a scalar or an array must be supplied"
         raise TypeError(msg)
 
     @overload(extract_value)
-    def ol_extract_value(values, arr: NumericArray, idx: tuple[int, ...]):
-        """Helper function that extracts the correct value from supplied ones."""
-        if isinstance(values, (nb.types.Number, Number)):
+    def ol_extract_value(bndry_values, arr: NumericArray, idx: tuple[int, ...]):
+        """Helper function that extracts local values for boundary and field."""
+
+        if isinstance(bndry_values, (nb.types.Number, Number)):
             # scalar was supplied => simply return it
-            def impl(values, arr: NumericArray, idx: tuple[int, ...]):
-                return values
+            def impl(
+                bndry_values, arr: NumericArray, idx: tuple[int, ...]
+            ) -> tuple[Number, Number]:
+                arr_1d, i, _ = get_arr_1d(arr, idx)
+                return bndry_values, arr_1d[i]
 
         elif isinstance(arr, (nb.types.Array, np.ndarray)):
             # array was supplied => extract value at current position
 
-            def impl(values, arr: NumericArray, idx: tuple[int, ...]):
-                _, _, bc_idx = get_arr_1d(arr, idx)
-                return values[bc_idx]
+            def impl(
+                bndry_values, arr: NumericArray, idx: tuple[int, ...]
+            ) -> tuple[Number, Number]:
+                arr_1d, i, bc_idx = get_arr_1d(arr, idx)
+                return bndry_values[bc_idx], arr_1d[i]
 
         else:
             msg = "Either a scalar or an array must be supplied"
@@ -134,7 +154,8 @@ def _make_user_virtual_point_evaluator(bc: UserBCBase) -> VirtualPointEvaluator:
             """Evaluate the virtual point at `idx`"""
             if args is not None and hasattr(args, "virtual_point"):
                 # set the virtual point directly
-                return extract_value(args.virtual_point, arr, idx)
+                bndry_value, _ = extract_value(args.virtual_point, arr, idx)
+                return bndry_value
 
             # no-op for the default case where BCs are not set by user
             return math.nan
@@ -146,8 +167,8 @@ def _make_user_virtual_point_evaluator(bc: UserBCBase) -> VirtualPointEvaluator:
             """Evaluate the virtual point at `idx`"""
             if args is not None and hasattr(args, "value"):
                 # set the value at the boundary
-                value = extract_value(args.value, arr, idx)
-                return 2 * value - arr[idx]
+                bndry_value, field_value = extract_value(args.value, arr, idx)
+                return 2.0 * bndry_value - field_value  # type: ignore
 
             # no-op for the default case where BCs are not set by user
             return math.nan
@@ -159,8 +180,8 @@ def _make_user_virtual_point_evaluator(bc: UserBCBase) -> VirtualPointEvaluator:
             """Evaluate the virtual point at `idx`"""
             if args is not None and hasattr(args, "derivative"):
                 # set the outward derivative at the boundary
-                value = extract_value(args.derivative, arr, idx)
-                return dx * value + arr[idx]
+                bndry_value, field_value = extract_value(args.derivative, arr, idx)
+                return dx * bndry_value + field_value
 
             # no-op for the default case where BCs are not set by user
             return math.nan
