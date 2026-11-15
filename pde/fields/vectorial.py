@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from ..tools.typing import (
         Number,
         NumberOrArray,
+        TNativeArray,
         _BinaryOperatorImplType,
     )
     from .tensorial import Tensor2Field
@@ -298,8 +299,8 @@ class VectorField(DataFieldBase):
         return out
 
     def make_outer_prod_operator(
-        self, backend: str | BackendBase = "numba"
-    ) -> _BinaryOperatorImplType:
+        self, backend: str | BackendBase[TNativeArray] = "numba"
+    ) -> _BinaryOperatorImplType[TNativeArray]:
         """Return operator calculating the outer product of two vector fields.
 
         Warning:

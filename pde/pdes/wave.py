@@ -110,7 +110,7 @@ class WavePDE(PDEBase):
         return FieldCollection([u_t, v_t])
 
     def make_evolution_rate(
-        self, state: FieldCollection, backend: BackendBase
+        self, state: FieldCollection, backend: BackendBase[TNativeArray]
     ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 

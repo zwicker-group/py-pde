@@ -34,6 +34,7 @@ if TYPE_CHECKING:
         Number,
         NumberOrArray,
         NumericArray,
+        TNativeArray,
         _BinaryOperatorImplType,
     )
     from .scalar import ScalarField
@@ -905,8 +906,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return out
 
     def make_dot_operator(
-        self, backend: str | BackendBase = "default", *, conjugate: bool = True
-    ) -> _BinaryOperatorImplType:
+        self,
+        backend: str | BackendBase[TNativeArray] = "default",
+        *,
+        conjugate: bool = True,
+    ) -> _BinaryOperatorImplType[TNativeArray]:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
