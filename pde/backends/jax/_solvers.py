@@ -136,10 +136,10 @@ def _make_adams_bashforth_stepper(
 
         for i in range(steps):
             t = t_start + i * dt
-            rhs_prev = rhs_pde(state_prev, t - dt)  # type: ignore
+            rhs_prev = rhs_pde(state_prev, t - dt)
             rhs_cur = rhs_pde(state_data, t)
             state_prev = state_data
-            state_data = state_data + dt * (1.5 * rhs_cur - 0.5 * rhs_prev)  # type: ignore
+            state_data = state_data + dt * (1.5 * rhs_cur - 0.5 * rhs_prev)
             state_data, solver.info["post_step_data"] = post_step_hook(
                 state_data, t, solver.info["post_step_data"]
             )

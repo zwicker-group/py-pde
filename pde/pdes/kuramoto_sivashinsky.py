@@ -114,7 +114,7 @@ class KuramotoSivashinskyPDE(SDEBase):
         return result  # type: ignore
 
     def make_evolution_rate(
-        self, state: ScalarField, backend: BackendBase
+        self, state: ScalarField, backend: BackendBase[TNativeArray]
     ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 

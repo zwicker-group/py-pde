@@ -159,7 +159,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def make_post_step_hook(
         self, state: FieldBase, backend: str | BackendBase[TNativeArray] = "numpy"
-    ) -> tuple[StepperHook, Any]:
+    ) -> tuple[StepperHook[TNativeArray], Any]:
         """Returns a function that is called after each step.
 
         This function receives three arguments: the current state as a numpy array, the
@@ -405,7 +405,7 @@ class PDEBase(metaclass=ABCMeta):
     def make_pde_rhs(
         self,
         state: TField,
-        backend: str | BackendBase = "auto",
+        backend: str | BackendBase[TNativeArray] = "auto",
     ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
@@ -430,7 +430,7 @@ class PDEBase(metaclass=ABCMeta):
         return backend.make_pde_rhs(self, state)
 
     def make_evolution_rate(
-        self, state, backend: BackendBase
+        self, state, backend: BackendBase[TNativeArray]
     ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Return function evaluating right hand side of the PDE using given backend.
 

@@ -794,7 +794,7 @@ class PDE(SDEBase):
 
     def make_post_step_hook(
         self, state: FieldBase, backend: str | BackendBase[TNativeArray] = "numpy"
-    ) -> tuple[StepperHook, Any]:
+    ) -> tuple[StepperHook[TNativeArray], Any]:
         """Returns a function that is called after each step.
 
         Args:
@@ -1049,7 +1049,7 @@ class PDE(SDEBase):
         state: FieldBase,
         funcs: Sequence[Callable],
         *,
-        backend: BackendBase,
+        backend: BackendBase[TNativeArray],
         cache: dict[str, Any],
     ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Combine the functions of all fields of the state into a single function.
@@ -1149,7 +1149,7 @@ class PDE(SDEBase):
         self,
         state: TField,
         *,
-        backend: BackendBase,
+        backend: BackendBase[TNativeArray],
         cache: dict[str, Any],
         diff: bool = False,
     ) -> Callable[[TNativeArray, float], TNativeArray]:
@@ -1187,7 +1187,7 @@ class PDE(SDEBase):
         return self._make_combined_func(state, cache[key], backend=backend, cache=cache)
 
     def make_evolution_rate(
-        self, state: FieldCollection, backend: BackendBase
+        self, state: FieldCollection, backend: BackendBase[TNativeArray]
     ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 

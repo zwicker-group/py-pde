@@ -1176,10 +1176,10 @@ class GridBase(metaclass=ABCMeta):
         self,
         operator: str | OperatorInfo,
         *,
-        backend: str | BackendBase = "default",
+        backend: str | BackendBase[TNativeArray] = "default",
         dtype: DTypeLike | None = None,
         **kwargs,
-    ) -> OperatorType:
+    ) -> OperatorType[TNativeArray]:
         """Return a compiled function applying an operator without boundary conditions.
 
         The returned function takes the discretized full data as an input and returns
@@ -1224,7 +1224,7 @@ class GridBase(metaclass=ABCMeta):
         backend: str | BackendBase[TNativeArray] = "default",
         dtype: DTypeLike | None = None,
         **kwargs,
-    ) -> OperatorType:
+    ) -> OperatorType[TNativeArray]:
         """Return a compiled function applying an operator with boundary conditions.
 
         Args:
