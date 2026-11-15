@@ -803,8 +803,8 @@ class UserValueBC(UserBCBase):
 
         # ghost cells will only be set if arguments are supplied
         idx_write, idx_read = self._get_indices(data_full)
-        bndry_values = data_full[idx_read]
-        data_full[idx_write] = 2 * args.value - bndry_values  # type: ignore
+        field_values = data_full[idx_read]
+        data_full[idx_write] = 2 * args.value - field_values  # type: ignore
 
 
 class UserDerivativeBC(UserBCBase):
@@ -832,9 +832,9 @@ class UserDerivativeBC(UserBCBase):
 
         # ghost cells will only be set if arguments are supplied
         idx_write, idx_read = self._get_indices(data_full)
-        bndry_values = data_full[idx_read]
+        field_values = data_full[idx_read]
         dx = self.grid.discretization[self.axis]
-        data_full[idx_write] = dx * args.derivative + bndry_values  # type: ignore
+        data_full[idx_write] = dx * args.derivative + field_values  # type: ignore
 
 
 ExpressionBCTargetType = Literal["value", "derivative", "mixed", "virtual_point"]

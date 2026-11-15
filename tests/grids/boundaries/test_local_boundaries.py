@@ -715,6 +715,28 @@ def test_user_bcs_numba(dim, target):
     np.testing.assert_allclose(f1._data_full, f2._data_full)
 
 
+@pytest.mark.parametrize("dim", [1, 2])
+@pytest.mark.parametrize("target", ["virtual_point", "value", "derivative"])
+def test_user_bcs_comparison(dim, target, rng):
+    """Compare user BCs between numpy and numba."""
+    value = np.arange(3) if dim == 2 else 1
+    grid = UnitGrid([3] * dim)
+    bcs = grid.get_boundary_conditions({"type": f"user_{target}"})
+    field = ScalarField.random_uniform(grid, rng=rng)
+
+    # define boundary arguments
+    Args = namedtuple("Args", [target])  # noqa: PYI024
+    args = Args(value)
+
+    # use normal method to set BCs
+    f1, f2 = field.copy(), field.copy()
+    f1.set_ghost_cells(bc=bcs, args=args)
+    setter = get_backend("numba").make_ghost_cell_setter(bcs=bcs)
+    setter(f2._data_full, args=args)
+
+    np.testing.assert_allclose(f1._data_full, f2._data_full)
+
+
 def test_mpi_bc():
     """Test some basic methods of _MPIBC."""
     grid = UnitGrid([4], periodic=True)
