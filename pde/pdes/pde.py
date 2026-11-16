@@ -830,12 +830,7 @@ class PDE(SDEBase):
         return post_step_hook_impl, None  # hook function and initial value
 
     def _make_collection_func_numba(
-        self,
-        state: FieldCollection,
-        funcs: Sequence[Callable],
-        *,
-        backend: BackendBase,
-        cache: dict[str, Any],
+        self, state: FieldCollection, funcs: Sequence[Callable], *, backend: BackendBase
     ) -> Callable[[NumericArray, float], NumericArray]:
         """Combine functions for all fields of a collection into a single function.
 
@@ -846,9 +841,6 @@ class PDE(SDEBase):
                 The functions evaluating the quantity for each field of the collection
             backend (str or :class:`~pde.backends.base.BackendBase`):
                 The backend used for numerical operations
-            cache (dict):
-                Cached information that will be used in the function. The cache is
-                populated by :meth:`PDE._prepare_cache`.
 
         Returns:
             A function with signature `(state_data, t)`, which can be called
@@ -856,54 +848,32 @@ class PDE(SDEBase):
             the time to obtain an instance of :class:`~numpy.ndarray` giving
             the combined result of all fields.
         """
-        import numba as nb
+        # Generate explicit field accesses and RHS calls so Numba can compile
+        # collections containing fields of different ranks.
+        namespace: dict[str, Any] = {"np": np, "data_shape": state.data.shape}
+        lines = [
+            "def evolution_rate(state_data, t=0):",
+            "    out = np.empty(data_shape)",
+        ]
+        rhs_lines = []
+        args = ", ".join(f"field_{i}" for i in range(len(state)))
+        # iterate over all fields
+        for i, (field, slc) in enumerate(zip(state, state._slices, strict=True)):
+            # read field data
+            index = slc.start if field.rank == 0 else f"{slc.start}:{slc.stop}"
+            lines.append(f"    field_{i} = state_data[{index}]")
+            # evaluate rhs function
+            rhs_lines.append(f"    out[{slc.start}:{slc.stop}] = rhs_{i}({args}, t)")
+            namespace[f"rhs_{i}"] = funcs[i]
 
-        num_fields = len(state)
-        data_shape = state.data.shape
-        rhs_list = tuple(funcs)
+        # Each RHS may depend on every field, so extract them all before any calls.
+        lines.extend(rhs_lines)
+        lines.append("    return out")
 
-        starts = tuple(slc.start for slc in state._slices)
-        stops = tuple(slc.stop for slc in state._slices)
-        get_data_tuple = cache["get_data_tuple"]
-
-        def chain(
-            i: int = 0,
-            inner: Callable[[NumericArray, float, NumericArray], None] | None = None,
-        ) -> Callable[[NumericArray, float], NumericArray]:
-            """Recursive helper function for applying all rhs."""
-            # run through all functions
-            rhs = rhs_list[i]
-
-            if inner is None:
-                # the innermost function does not need to call a child
-                @nb.jit
-                def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
-                    out[starts[i] : stops[i]] = rhs(*data_tpl, t)
-
-            else:
-                # all other functions need to call one deeper in the chain
-                @nb.jit
-                def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
-                    inner(data_tpl, t, out)
-                    out[starts[i] : stops[i]] = rhs(*data_tpl, t)
-
-            if i < num_fields - 1:
-                # there are more items in the chain
-                return chain(i + 1, inner=wrap)
-
-            # this is the outermost function
-            @nb.jit
-            def evolution_rate(state_data: NumericArray, t: float = 0) -> NumericArray:
-                out = np.empty(data_shape)
-                with nb.objmode():
-                    data_tpl = get_data_tuple(state_data)
-                    wrap(data_tpl, t, out)
-                return out
-
-            return evolution_rate  # type: ignore
-
-        # compile the recursive chain
-        return chain()
+        # We here use `exec`, which should be ok, since the expression parsing by PDE is
+        # already using `exec`, so we do not add any additional vulnerabilities.
+        exec("\n".join(lines), namespace)
+        return backend.compile_function(namespace["evolution_rate"])  # type: ignore
 
     def _make_collection_func_torch(
         self,
@@ -1080,9 +1050,7 @@ class PDE(SDEBase):
                     state, funcs, backend=backend, cache=cache
                 )
             if backend.implementation == "numba":
-                return self._make_collection_func_numba(  # type: ignore
-                    state, funcs, backend=backend, cache=cache
-                )
+                return self._make_collection_func_numba(state, funcs, backend=backend)  # type: ignore
             if backend.implementation == "torch":
                 return self._make_collection_func_torch(  # type: ignore
                     state, funcs, backend=backend, cache=cache
