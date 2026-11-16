@@ -158,6 +158,54 @@ def test_pde_2scalar(backend, rng):
     np.testing.assert_allclose(res_a.data, res_b.data, rtol=1e-6)
 
 
+@pytest.mark.parametrize("mixed", [False, True])
+def test_pde_numba_collection_rhs(mixed):
+    """Compare compiled collection evolution rates with the Python implementation."""
+    grid = grids.UnitGrid([3, 3])
+    if mixed:
+        state = FieldCollection(
+            [
+                ScalarField(grid, np.arange(9).reshape(3, 3)),
+                VectorField(grid, np.array([2, 3])[:, None, None]),
+                ScalarField(grid, 4),
+            ]
+        )
+        eq = PDE({"a": "a + c + t", "b": "b + gradient(a)", "c": "a - c"})
+    else:
+        state = FieldCollection([ScalarField(grid, 2)])
+        eq = PDE({"a": "a + t"})
+
+    rhs = eq.make_evolution_rate(state, backend=get_backend("numba"))
+
+    @nb.njit
+    def apply_rhs(data, t):
+        return rhs(data, t)
+
+    for t in (0.0, 0.75):
+        expected = eq.evolution_rate(state, t=t).data
+        np.testing.assert_allclose(apply_rhs(state.data, t), expected)
+    np.testing.assert_allclose(rhs(state.data), eq.evolution_rate(state).data)
+
+
+def test_pde_numba_collection_noise_variance():
+    """Test generated collection functions for noise variance and its derivative."""
+    grid = grids.UnitGrid([3])
+    state = FieldCollection(
+        [ScalarField(grid, [1, 2, 3]), ScalarField(grid, [4, 5, 6])]
+    )
+    eq = PDE(
+        {"a": 0, "b": 0},
+        noise={"a": "a**2 + b", "b": "a + 2 * b**2"},
+    )
+    variance = eq.make_noise_variance(
+        state, backend=get_backend("numba"), ret_diff=True
+    )
+    value, derivative = variance(state.data, 0.5)
+    a, b = state.data
+    np.testing.assert_allclose(value, [a**2 + b, a + 2 * b**2])
+    np.testing.assert_allclose(derivative, [2 * a, 4 * b])
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize("backend", ALL_COMPILED_BACKENDS, indirect=True)
 def test_pde_vector_scalar(backend, rng):
