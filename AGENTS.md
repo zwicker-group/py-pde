@@ -76,3 +76,4 @@ The project is test-driven and numerical correctness matters; do not claim a fix
 - Keep patch scope consistent with the issue or task being solved.
 - If there is uncertainty about a backend-specific behavior or a project pattern, inspect the relevant module and neighboring implementations before changing code.
 - Document important assumptions or constraints in code comments only when they materially improve maintainability.
+- Ask if anything is unclear.

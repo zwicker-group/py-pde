@@ -234,10 +234,10 @@ class hybridmethod:
             self.__func__ = finstance
 
     def classmethod(self, fclass):
-        return type(self)(fclass, self.finstance, None)
+        return self.__class__(fclass, self.finstance, None)
 
     def instancemethod(self, finstance):
-        return type(self)(self.fclass, finstance, self.__doc__)
+        return self.__class__(self.fclass, finstance, self.__doc__)
 
     def __get__(self, instance, cls):
         if instance is None or self.finstance is None:
