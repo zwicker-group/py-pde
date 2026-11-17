@@ -1,5 +1,13 @@
 """Handling linear stability analysis with sympy.
 
+.. autosummary::
+   :nosignatures:
+
+   linearize_expression
+   linearize_expressions
+   dispersion_relation_scalar
+   dispersion_matrix
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -11,7 +19,7 @@ import sympy as sp
 from sympy.core.function import AppliedUndef
 
 
-class LinearDifferentialOperator(sp.Function):
+class _LinearDifferentialOperator(sp.Function):
     """Base class for abstract linear differential operators."""
 
     nargs = 1
@@ -43,16 +51,16 @@ class LinearDifferentialOperator(sp.Function):
         return self.__class__(sp.diff(self.args[0], symbol))
 
 
-class Laplace(LinearDifferentialOperator): ...
+class _Laplace(_LinearDifferentialOperator): ...
 
 
-class Gradient(LinearDifferentialOperator): ...
+class _Gradient(_LinearDifferentialOperator): ...
 
 
-class Divergence(LinearDifferentialOperator): ...
+class _Divergence(_LinearDifferentialOperator): ...
 
 
-class Dot(sp.Function):
+class _Dot(sp.Function):
     """Abstract inner product of two vector expressions."""
 
     nargs = 2
@@ -83,10 +91,10 @@ class Dot(sp.Function):
             The derivative of the inner product.
         """
         left, right = self.args
-        return Dot(sp.diff(left, symbol), right) + Dot(left, sp.diff(right, symbol))
+        return _Dot(sp.diff(left, symbol), right) + _Dot(left, sp.diff(right, symbol))
 
 
-class GradientSquared(sp.Function):
+class _GradientSquared(sp.Function):
     """Abstract squared gradient: |∇f|²."""
 
     nargs = 1
@@ -106,21 +114,21 @@ class GradientSquared(sp.Function):
             return sp.S.Zero
 
         # Use the canonical representation ∇f · ∇f.
-        return Dot(Gradient(arg), Gradient(arg))
+        return _Dot(_Gradient(arg), _Gradient(arg))
 
 
 # differential operators that annihilate homogeneous expressions
 _OPERATORS: dict[str, type[sp.Function]] = {
-    "gradient": Gradient,
-    "divergence": Divergence,
-    "laplace": Laplace,
-    "inner": Dot,
-    "dot": Dot,
-    "gradient_squared": GradientSquared,
+    "gradient": _Gradient,
+    "divergence": _Divergence,
+    "laplace": _Laplace,
+    "inner": _Dot,
+    "dot": _Dot,
+    "gradient_squared": _GradientSquared,
 }
 
 
-def replace_many(
+def _replace_many(
     expr: sp.Basic, search: Iterable[sp.Basic], replace: Iterable[sp.Basic | float]
 ) -> sp.Basic:
     """Replace multiple subexpressions simultaneously.
@@ -249,9 +257,6 @@ def linearize_expression(
 ) -> sp.Basic:
     """Linearize one expression around a homogeneous base state.
 
-    Note:
-        This function assumes that the base state
-
     Args:
         expression: Expression to linearize.
         state_hom: Mapping from the dependent-variable name to its base value.
@@ -308,7 +313,7 @@ def _parse_base_state(
 
 
 def linearize_expressions(
-    expressions: Sequence[sp.Basic | str],
+    expressions: Sequence[sp.Basic],
     state_hom: dict[str, float],
     *,
     check: bool = True,
@@ -344,13 +349,15 @@ def linearize_expressions(
 
         if check:
             # check whether the expression vanishes for the base state
-            base_rate = sp.N(replace_many(expr_repl, variables, base_values), chop=True)
+            base_rate = sp.N(
+                _replace_many(expr_repl, variables, base_values), chop=True
+            )
             if not base_rate.is_zero:
                 msg = f"Expression {expr} does not vanish for base state {state_hom}"
                 raise ValueError(msg)
 
         # linearize the expr wrt. the dependent variables
-        expr_perturbed = replace_many(expr_repl, variables, variables_pert)
+        expr_perturbed = _replace_many(expr_repl, variables, variables_pert)
         linearized = sp.diff(expr_perturbed, eps).subs(eps, 0)
 
         # simplify the linearized expression
@@ -359,8 +366,8 @@ def linearize_expressions(
         )
 
         # replace the base state and return to the original variables
-        res = replace_many(linearized_simpl, base_state, base_values)
-        result.append(replace_many(res, perturbation, variables))
+        res = _replace_many(linearized_simpl, base_state, base_values)
+        result.append(_replace_many(res, perturbation, variables))
 
     # replace base state
     return result
@@ -409,7 +416,7 @@ def _fourier_lower_scalar(
         #
         #     ∇² f  ->  -|k|² f_hat
         #
-        if isinstance(node, Laplace):
+        if isinstance(node, _Laplace):
             arg = node.args[0]
 
             # At this stage, Laplace must not act only on a homogeneous
@@ -423,7 +430,7 @@ def _fourier_lower_scalar(
 
             return -k_sq * lower(arg)
 
-        if isinstance(node, Dot) and node.has(*perturbations):
+        if isinstance(node, _Dot) and node.has(*perturbations):
             msg = (
                 "Fourier lowering of Dot products involving perturbations is not "
                 "supported by scalar dispersion analysis."
@@ -431,9 +438,9 @@ def _fourier_lower_scalar(
             raise NotImplementedError(msg)
 
         # For now, reject vector operators in the scalar-only transformer.
-        if isinstance(node, (LinearDifferentialOperator, GradientSquared)):
+        if isinstance(node, (_LinearDifferentialOperator, _GradientSquared)):
             msg = (
-                f"Fourier lowering of {type(node).__name__} requires a "
+                f"Fourier lowering of {type(node).__name__.lstrip('_')} requires a "
                 "vector/tensor Fourier representation."
             )
             raise NotImplementedError(msg)
@@ -569,7 +576,7 @@ def dispersion_matrix(
 
 
 def dispersion_matrix(
-    expressions: list[sp.Basic | str],
+    expressions: list[sp.Basic],
     state_hom: dict[str, float],
     *,
     check: bool = True,
@@ -583,7 +590,7 @@ def dispersion_matrix(
 
     Args:
         expressions:
-            A sequence of SymPy expressions or a PDEBase instance.
+            A sequence of SymPy expressions.
         state_hom:
             Mapping from the dependent-variable name to its base state value.
         check:

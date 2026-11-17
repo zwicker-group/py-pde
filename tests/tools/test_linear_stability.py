@@ -8,8 +8,8 @@ import sympy as sp
 
 from pde import PDE
 from pde.tools.linear_stability import (
-    Dot,
-    Laplace,
+    _Dot,
+    _Laplace,
     dispersion_matrix,
     dispersion_relation_scalar,
     linearize_expression,
@@ -31,7 +31,7 @@ def test_linearize_expression():
 def test_linearize_expression_with_operator():
     """Test linearization of an expression containing a differential operator."""
     result = linearize_expression("laplace(u**2)", {"u": 3})
-    assert result == 6 * Laplace(sp.Symbol("u"))
+    assert result == 6 * _Laplace(sp.Symbol("u"))
 
 
 def test_linearize_expressions_with_nested_functions_and_operators():
@@ -48,8 +48,8 @@ def test_linearize_expressions_with_nested_functions_and_operators():
 
     results = linearize_expressions(expressions, {"u": 2, "v": 3}, check=False)
     expected = [
-        (3 * u + 2 * v) * sp.exp(6) + (sp.cos(2) + 3) * Laplace(u) + 2 * Laplace(v),
-        (3 * u + 2 * v) * sp.cos(6) + Laplace(u) + 6 * Laplace(v),
+        (3 * u + 2 * v) * sp.exp(6) + (sp.cos(2) + 3) * _Laplace(u) + 2 * _Laplace(v),
+        (3 * u + 2 * v) * sp.cos(6) + _Laplace(u) + 6 * _Laplace(v),
     ]
     differences = [
         sp.simplify(result - target)
@@ -99,8 +99,8 @@ def test_dispersion_matrix_input_and_output_types(as_string, ret_type):
     else:
         u, v = sp.symbols("u v")
         expressions = [
-            -u + Laplace(u) + 2 * v,
-            3 * u - 2 * v + 4 * Laplace(v),
+            -u + _Laplace(u) + 2 * v,
+            3 * u - 2 * v + 4 * _Laplace(v),
         ]
 
     dispersion = dispersion_matrix(expressions, {"u": 0, "v": 0}, ret_type=ret_type)
@@ -224,7 +224,7 @@ def test_dispersion_relation_scalar_with_complex_coefficients():
 def test_dispersion_relation_scalar_return_type(ret_type):
     """Test the requested output type of a scalar dispersion relation."""
     u = sp.Symbol("u")
-    expression = (1 + sp.I) * u + (2 - 3 * sp.I) * Laplace(u)
+    expression = (1 + sp.I) * u + (2 - 3 * sp.I) * _Laplace(u)
 
     dispersion = dispersion_relation_scalar(expression, {"u": 0}, ret_type=ret_type)
 
@@ -249,7 +249,7 @@ def test_dispersion_relation_scalar_dot_coefficient():
     """Test dot products that act as scalar coefficients in a dispersion relation."""
     dispersion = dispersion_relation_scalar("dot(A, B) * u + laplace(u)", {"u": 0})
     k_sq = sp.Symbol("k_sq")
-    expected = Dot(sp.Symbol("A"), sp.Symbol("B")) - k_sq
+    expected = _Dot(sp.Symbol("A"), sp.Symbol("B")) - k_sq
 
     assert dispersion(k_sq) == expected
 
