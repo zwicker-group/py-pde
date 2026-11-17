@@ -19,7 +19,7 @@ axes have more option, which are represented by
 from __future__ import annotations
 
 import collections
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, NamedTuple, Union
 
 from ..base import GridBase, PeriodicityError
 from .local import _MPIBC, BCBase, BCDataError, BoundaryData, _PeriodicBC
@@ -218,7 +218,9 @@ class BoundaryAxisBase:
         # the normal case of an interior point
         return 0, {axis_coord: 1}
 
-    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
+    def set_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
         """Set the ghost cell values for all boundaries.
 
         Args:

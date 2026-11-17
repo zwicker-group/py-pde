@@ -333,7 +333,10 @@ def jit(
         kwargs.setdefault("fastmath", {"nsz", "arcp", "contract", "afn", "reassoc"})
     else:
         kwargs.setdefault("fastmath", backend._config_parameter("fastmath"))
-    kwargs.setdefault("debug", backend._config_parameter("debug", False))
+    debug = backend._config_parameter("debug", False)
+    kwargs.setdefault("debug", debug)
+    if debug:
+        kwargs.setdefault("boundscheck", True)
     # make sure parallel numba is only enabled in restricted cases
     kwargs["parallel"] = parallel and backend.use_multithreading()
 
@@ -441,6 +444,13 @@ def numba_dict(data: dict[str, Any] | None = None, /, **kwargs) -> NumbaDict:
     Returns:
         :class:`~numba.typed.Dict`: A dictionary of numba type
     """
+    # Deprecated since 2026-11-14
+    warnings.warn(
+        "`numba_dict` is deprecated. Use `numba.NumbaDict` directly",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     nb_dict = NumbaDict()
     if data is not None:
         for k, v in data.items():

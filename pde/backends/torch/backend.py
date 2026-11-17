@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import numbers
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, NamedTuple, Self
 
 import numpy as np
 import torch
@@ -322,10 +322,10 @@ class TorchBackend(BackendBase[torch.Tensor]):
                 Specifies extra arguments influencing how the operator is created.
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray=None, args=None). Since
-            `torch` arrays are immutable in this context, supplying `out` raises an
-            error.
+            callable: the function that applies the operator. Function signature:
+            ``(arr: NumericArray, out: NumericArray = None, args: NamedTuple = None)``.
+            Since `torch` arrays are immutable in this context, supplying `out` raises
+            an error.
 
         Internally, raw operator implementations are expected to use the functional
         signature ``operator_raw(arr_full[, args]) -> result``.
@@ -346,7 +346,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         def apply_op_torch(
             arr: torch.Tensor,
             out: torch.Tensor | None = None,
-            args: dict[str, Any] | None = None,
+            args: NamedTuple | None = None,
         ) -> torch.Tensor:
             """Apply operator without boundary conditions."""
             if out is not None:
@@ -391,8 +391,8 @@ class TorchBackend(BackendBase[torch.Tensor]):
             different operators.
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            callable: the function that applies the operator. Function signature:
+            ``(arr: NumericArray, out: NumericArray = None, args: NamedTuple = None)``
 
         Internally, raw operator implementations are expected to use the functional
         signature ``operator_raw(arr_full[, args]) -> result``.
@@ -414,7 +414,7 @@ class TorchBackend(BackendBase[torch.Tensor]):
         def apply_op_torch(
             arr: torch.Tensor,
             out: torch.Tensor | None = None,
-            args: dict[str, Any] | None = None,
+            args: NamedTuple | None = None,
         ) -> torch.Tensor:
             """Apply operator with boundary conditions."""
             if out is not None:

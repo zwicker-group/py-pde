@@ -22,7 +22,7 @@ import logging
 import math
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, overload
 
 import numpy as np
 
@@ -38,7 +38,6 @@ if TYPE_CHECKING:
 
     from ..backends.base import BackendBase, OperatorInfo
     from ..tools.typing import (
-        CellVolume,
         DataSetter,
         FloatingArray,
         FloatOrArray,
@@ -399,7 +398,7 @@ class GridBase(metaclass=ABCMeta):
         *,
         rank: int = 0,
         backend: str | BackendBase = "default",
-    ) -> Callable[[NumericArray, NumericArray, dict], None]: ...
+    ) -> Callable[[NumericArray, NumericArray, NamedTuple | None], None]: ...
 
     def _make_set_valid(
         self,
@@ -423,8 +422,9 @@ class GridBase(metaclass=ABCMeta):
             callable:
                 Function setting valid data in a full array and returning that full
                 array. The returned callable supports both legacy and functional styles:
-                `set_valid(data_full, data_valid, args=None)` and
-                `set_valid(data_valid, out=None, args=None)`. In both styles, `args`
+                `set_valid(data_full, data_valid, args: NamedTuple = None)` and
+                `set_valid(data_valid, out=None, args: NamedTuple = None)`. In both
+                styles, `args`
                 are optional runtime values forwarded to backend setters and boundary
                 condition handling.
         """
@@ -525,20 +525,6 @@ class GridBase(metaclass=ABCMeta):
         if not self.compatible_with(other):
             msg = f"Grids {self} and {other} are incompatible"
             raise ValueError(msg)
-
-    @property
-    def numba_type(self) -> str:
-        """str: represents type of the grid data in numba signatures"""
-        # deprecated since 2025-11-19
-        warnings.warn(
-            "`numba_type` property is deprecated. Use the method `get_grid_numba_type` "
-            "in the numba backend instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        from ..backends.numba.grids import get_grid_numba_type
-
-        return get_grid_numba_type(self)
 
     @cached_property()
     def coordinate_arrays(self) -> tuple[FloatingArray, ...]:
@@ -1190,10 +1176,10 @@ class GridBase(metaclass=ABCMeta):
         self,
         operator: str | OperatorInfo,
         *,
-        backend: str | BackendBase = "default",
+        backend: str | BackendBase[TNativeArray] = "default",
         dtype: DTypeLike | None = None,
         **kwargs,
-    ) -> OperatorType:
+    ) -> OperatorType[TNativeArray]:
         """Return a compiled function applying an operator without boundary conditions.
 
         The returned function takes the discretized full data as an input and returns
@@ -1219,8 +1205,8 @@ class GridBase(metaclass=ABCMeta):
                 Specifies extra arguments influencing how the operator is created.
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            callable: Function that applies the operator; Function signature:
+            ``(arr: NumericArray, out: NumericArray = None, args: NamedTuple = None)``.
         """
         from ..backends import get_backend
 
@@ -1238,7 +1224,7 @@ class GridBase(metaclass=ABCMeta):
         backend: str | BackendBase[TNativeArray] = "default",
         dtype: DTypeLike | None = None,
         **kwargs,
-    ) -> OperatorType:
+    ) -> OperatorType[TNativeArray]:
         """Return a compiled function applying an operator with boundary conditions.
 
         Args:
@@ -1272,16 +1258,16 @@ class GridBase(metaclass=ABCMeta):
 
         .. code-block:: python
 
-            from pde.backends.numba.utils import numba_dict
+            from pde.tools.typing import TimeArgs
 
             operator = grid.make_operator(
                 "laplace", bc={"value_expression": "t"}, backend="numba"
             )
-            operator(field.data, args=numba_dict(t=t))
+            operator(field.data, args=TimeArgs(t=t))
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            callable: Function that applies the operator; Function signature:
+            ``(arr: NumericArray, out: NumericArray = None, args: NamedTuple = None)``.
         """
         from ..backends import get_backend
 
@@ -1410,30 +1396,6 @@ class GridBase(metaclass=ABCMeta):
         raise NotImplementedError(msg)
 
     @cached_method()
-    def make_cell_volume_compiled(self, flat_index: bool = False) -> CellVolume:
-        """Return a compiled function returning the volume of a grid cell.
-
-        Args:
-            flat_index (bool):
-                When True, cell_volumes are indexed by a single integer into the
-                flattened array.
-
-        Returns:
-            function: returning the volume of the chosen cell
-        """
-        from ..backends.numba.grids import make_cell_volume_getter
-
-        # deprecated since 2025-11-19
-        warnings.warn(
-            "`make_cell_volume_compiled` is deprecated. Use "
-            "`pde.backends.numba.grids.make_cell_volume_getter` instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        return make_cell_volume_getter(grid=self, flat_index=flat_index)
-
-    @cached_method()
     def _make_interpolator_compiled(
         self,
         *,
@@ -1476,35 +1438,6 @@ class GridBase(metaclass=ABCMeta):
             with_ghost_cells=with_ghost_cells,
             cell_coords=cell_coords,
         )
-
-    def make_inserter_compiled(
-        self, *, with_ghost_cells: bool = False
-    ) -> Callable[[NumericArray, FloatingArray, NumberOrArray], None]:
-        """Return a compiled function to insert values at interpolated positions.
-
-        Args:
-            with_ghost_cells (bool):
-                Flag indicating that the interpolator should work on the full data array
-                that includes values for the grid points. If this is the case, the
-                boundaries are not checked and the coordinates are used as is.
-
-        Returns:
-            callable: A function with signature (data, position, amount), where `data`
-            is the numpy array containing the field data, position is denotes the
-            position in grid coordinates, and `amount` is the  that is to be added to
-            the field.
-        """
-        from ..backends.numba import numba_backend
-
-        # deprecated since 2025-11-19
-        warnings.warn(
-            "`make_inserter_compiled` is deprecated. Use "
-            "`pde.backends.numba_backend.make_inserter` instead",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        return numba_backend.make_inserter(grid=self, with_ghost_cells=with_ghost_cells)  # type: ignore
 
     def make_integrator(
         self, backend: str | BackendBase = "numpy"

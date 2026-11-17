@@ -10,7 +10,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 import torch
@@ -88,7 +88,7 @@ class TorchDifferentialOperator(TorchOperatorBase):
         else:
             raise NotImplementedError
 
-    def get_full_data(self, arr: Tensor, *, args=None) -> Tensor:
+    def get_full_data(self, arr: Tensor, *, args: NamedTuple | None = None) -> Tensor:
         """Get full data array including ghost cells.
 
         Args:

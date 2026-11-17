@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 from numba.extending import register_jitable
@@ -36,9 +36,9 @@ class NumbaMPIBackend(NumbaBackend):
                 setter should be defined.
 
         Returns:
-            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-            sets the ghost cells of the full data, potentially using additional
-            information in `args` (e.g., the time `t` during solving a PDE)
+            callable: Function that sets ghost cells. Function signature:
+            ``(data_full: NumericArray, args: NamedTuple = None)``. Args can supply
+            additional information (e.g., the time `t` during solving a PDE).
         """
         if not isinstance(bc, _MPIBC):
             # boundary condition is not an MPI boundary condition -> standard case
@@ -55,7 +55,9 @@ class NumbaMPIBackend(NumbaBackend):
 
         if num_axes == 1:
 
-            def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+            def ghost_cell_setter(
+                data_full: NumericArray, args: NamedTuple | None = None
+            ) -> None:
                 if data_full.ndim == 1:
                     # in this case, `data_full[..., idx]` is a scalar, which numba
                     # treats differently, so `numba_mpi.mpi_recv` fails
@@ -68,28 +70,38 @@ class NumbaMPIBackend(NumbaBackend):
         elif num_axes == 2:
             if axis == 0:
 
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_setter(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     mpi_recv(data_full[..., idx, 1:-1], cell, flag)
 
             else:
 
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_setter(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     mpi_recv(data_full[..., 1:-1, idx], cell, flag)
 
         elif num_axes == 3:
             if axis == 0:
 
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_setter(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     mpi_recv(data_full[..., idx, 1:-1, 1:-1], cell, flag)
 
             elif axis == 1:
 
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_setter(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     mpi_recv(data_full[..., 1:-1, idx, 1:-1], cell, flag)
 
             else:
 
-                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_setter(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     mpi_recv(data_full[..., 1:-1, 1:-1, idx], cell, flag)
 
         else:
@@ -109,7 +121,7 @@ class NumbaMPIBackend(NumbaBackend):
             # boundary condition is not an MPI boundary condition -> no sending
 
             @register_jitable
-            def noop(data_full: NumericArray, args=None) -> None:
+            def noop(data_full: NumericArray, args: NamedTuple | None = None) -> None:
                 """No-operation as the default case."""
 
             return noop  # type: ignore
@@ -125,34 +137,46 @@ class NumbaMPIBackend(NumbaBackend):
 
         if num_axes == 1:
 
-            def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
+            def ghost_cell_sender(
+                data_full: NumericArray, args: NamedTuple | None = None
+            ) -> None:
                 mpi_send(data_full[..., idx], cell, flag)
 
         elif num_axes == 2:
             if axis == 0:
 
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_sender(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     mpi_send(data_full[..., idx, 1:-1], cell, flag)
 
             else:
 
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_sender(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     mpi_send(data_full[..., 1:-1, idx], cell, flag)
 
         elif num_axes == 3:
             if axis == 0:
 
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_sender(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     mpi_send(data_full[..., idx, 1:-1, 1:-1], cell, flag)
 
             elif axis == 1:
 
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_sender(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     mpi_send(data_full[..., 1:-1, idx, 1:-1], cell, flag)
 
             else:
 
-                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
+                def ghost_cell_sender(
+                    data_full: NumericArray, args: NamedTuple | None = None
+                ) -> None:
                     mpi_send(data_full[..., 1:-1, 1:-1, idx], cell, flag)
 
         else:
@@ -171,9 +195,9 @@ class NumbaMPIBackend(NumbaBackend):
                 setter should be defined.
 
         Returns:
-            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-            sets the ghost cells of the full data, potentially using additional
-            information in `args` (e.g., the time `t` during solving a PDE)
+            callable: Function that sets ghost cells. Function signature:
+            ``(data_full: NumericArray, args: NamedTuple = None)``. Args can supply
+            additional information (e.g., the time `t` during solving a PDE).
         """
         # get the functions that handle the data
         ghost_cell_sender_low = self._make_local_ghost_cell_sender(bc_axis.low)
@@ -182,7 +206,9 @@ class NumbaMPIBackend(NumbaBackend):
         ghost_cell_setter_high = self._make_local_ghost_cell_setter(bc_axis.high)
 
         @register_jitable
-        def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
+        def ghost_cell_setter(
+            data_full: NumericArray, args: NamedTuple | None = None
+        ) -> None:
             """Helper function setting the conditions on all axes."""
             # send boundary information to other nodes if using MPI
             ghost_cell_sender_low(data_full, args=args)

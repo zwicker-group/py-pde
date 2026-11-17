@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from ..fields import ScalarField
 from ..grids.boundaries import set_default_bc
 from ..tools.docstrings import fill_in_docstring
+from ..tools.typing import TimeArgs
 from .base import SDEBase, expr_prod
 
 if TYPE_CHECKING:
@@ -93,11 +94,11 @@ class DiffusionPDE(SDEBase):
         if not isinstance(state, ScalarField):
             msg = "`state` must be ScalarField"
             raise TypeError(msg)
-        laplace = state.laplace(bc=self.bc, label="evolution rate", args={"t": t})
+        laplace = state.laplace(bc=self.bc, label="evolution rate", args=TimeArgs(t=t))
         return self.diffusivity * laplace  # type: ignore
 
     def make_evolution_rate(
-        self, state: ScalarField, backend: BackendBase
+        self, state: ScalarField, backend: BackendBase[TNativeArray]
     ) -> Callable[[TNativeArray, float], TNativeArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
@@ -118,6 +119,6 @@ class DiffusionPDE(SDEBase):
 
         def pde_rhs(state_data, t=0):
             """Evaluate right hand side of PDE."""
-            return diffusivity_value * laplace(state_data, args={"t": t})
+            return diffusivity_value * laplace(state_data, args=TimeArgs(t=t))
 
         return pde_rhs

@@ -6,7 +6,6 @@
    numba_environment
    jit
    make_array_constructor
-   numba_dict
    get_common_numba_dtype
    random_seed
 
@@ -28,7 +27,6 @@ from ..backends.numba.utils import (  # noqa: F401
     get_common_numba_dtype,
     jit,
     make_array_constructor,
-    numba_dict,
     numba_environment,
     random_seed,
 )

@@ -404,9 +404,9 @@ class BackendBase[TNativeArray]:
                 setter should be defined.
 
         Returns:
-            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
-            sets the ghost cells of the full data, potentially using additional
-            information in `args` (e.g., the time `t` during solving a PDE)
+            callable: Function that sets ghost cells. Function signature:
+            ``(data_full: NumericArray, args: NamedTuple = None)``. Args can supply
+            additional information (e.g., the time `t` during solving a PDE).
         """
         msg = f"Ghost cell setter not defined for backend {self.name}"
         raise NotImplementedError(msg)
@@ -491,7 +491,7 @@ class BackendBase[TNativeArray]:
         """Return a compiled function applying an operator without boundary conditions.
 
         The returned function has public signature
-        ``(arr, out=None, args=None) -> result``.
+        ``(arr, out=None, args: NamedTuple | None = None) -> result``.
 
         Note:
             The resulting function does not check whether the ghost cells of the input
@@ -501,9 +501,9 @@ class BackendBase[TNativeArray]:
             :meth:`make_operator` is probably the better choice.
 
             Backends can choose whether their internal operator implementation uses a
-            functional style ``op(arr, *, args=None) -> result`` or an in-place style
-            ``op(arr, out, *, args=None)``. This wrapper must thus normalizes both
-            styles to the public signature above.
+            functional style ``op(arr, *, args: NamedTuple | None = None) -> result`` or
+            an in-place style ``op(arr, out, *, args: NamedTuple = None)``. This wrapper
+            must thus normalizes both styles to the public signature above.
 
         Args:
             grid (:class:`~pde.grid.base.GridBase`):
@@ -518,8 +518,8 @@ class BackendBase[TNativeArray]:
                 Specifies extra arguments influencing how the operator is created.
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray=None, args=None).
+            callable: the function that applies the operator. Function signature:
+            ``(arr: NumericArray, out: NumericArray=None, args: NamedTuple = None)``
         """
         msg = f"Operators not implemented for backend {self.name}"
         raise NotImplementedError(msg)
@@ -562,14 +562,14 @@ class BackendBase[TNativeArray]:
         parameters, like time.
 
         Backends can internally implement the raw operator in either style
-        ``op(arr, args=None) -> result`` (functional) or ``op(arr, out, args=None)``
-        (in-place). The backend-specific implementation of :meth:`make_operator`
-        adapts this internal style to the public call convention
-        ``(arr, *, out=None, args=None)``.
+        ``op(arr, args: NamedTuple | None = None) -> result`` (functional) or
+        ``op(arr, out, args: NamedTuple = None)`` (in-place). The backend-specific
+        implementation of :meth:`make_operator` adapts this internal style to the public
+        call convention ``(arr, *, out=None, args: NamedTuple = None)``.
 
         Returns:
-            callable: the function that applies the operator. This function has the
-            signature (arr: NumericArray, out: NumericArray = None, args=None).
+            callable: the function that applies the operator. Function signature:
+            ``(arr: NumericArray, out: NumericArray = None, args: NamedTuple = None)``
         """
         msg = f"Operators not implemented for backend {self.name}"
         raise NotImplementedError(msg)

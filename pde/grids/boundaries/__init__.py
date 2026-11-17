@@ -111,7 +111,7 @@ conditions in the y-direction of a grid with two axes.
 
 .. code-block:: python
 
-    def setter(data, args=None):
+    def setter(data, args: NamedTuple = None):
         data[0, :] = data[1, :]  # Vanishing derivative at left side
         data[-1, :] = 2 - data[-2, :]  # Fixed value `1` at right side
         data[:, 0] = data[:, -2]  # Periodic BC at top

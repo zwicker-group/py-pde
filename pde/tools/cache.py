@@ -88,7 +88,8 @@ def hash_mutable(obj) -> int:
         This function might be a bit slow, since it iterates over all containers and
         hashes objects recursively. Moreover, the returned value might change with each
         run of the python interpreter, since the hash values of some basic objects, like
-        `None`, change with each instance of the interpreter.
+        `None`, change with each instance of the interpreter. Unhashable objects without
+        a supported data buffer are hashed using their type and instance attributes.
 
     Args:
         obj: A general python object
@@ -142,8 +143,8 @@ def hash_mutable(obj) -> int:
             # try hashing the data buffer
             return hash(sha1(obj, usedforsecurity=False))
         except (ValueError, TypeError):
-            # otherwise, hash the internal dict
-            return hash_mutable(obj.__dict__)
+            # otherwise, hash the type and internal dict
+            return hash((type(obj), hash_mutable(obj.__dict__)))
 
 
 def hash_readable(obj) -> str:

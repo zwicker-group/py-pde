@@ -41,7 +41,7 @@ from .adams_bashforth import AdamsBashforthSolver  # noqa: F401
 from .base import *  # noqa: F403
 from .controller import Controller  # noqa: F401
 from .crank_nicolson import CrankNicolsonSolver  # noqa: F401
-from .euler import EulerSolver, ExplicitSolver  # noqa: F401
+from .euler import EulerSolver  # noqa: F401
 from .implicit import ImplicitSolver  # noqa: F401
 from .milstein import MilsteinSolver  # noqa: F401
 from .runge_kutta import RungeKuttaSolver  # noqa: F401

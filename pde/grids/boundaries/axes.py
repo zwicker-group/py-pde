@@ -15,11 +15,9 @@ from __future__ import annotations
 
 import itertools
 import logging
-import warnings
 from collections.abc import Callable, Iterator, Sequence
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, NamedTuple, Union
 
-from ... import config
 from ..base import GridBase, PeriodicityError
 from .axis import BoundaryAxisBase, BoundaryPairData, get_boundary_axis
 from .local import BCBase, BCDataError, BoundaryData
@@ -54,7 +52,9 @@ class BoundariesBase:
     rank: int
     """int: The tensorial rank of the field for this boundary condition."""
 
-    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
+    def set_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
         """Set the ghost cells for all boundaries.
 
         Args:
@@ -166,18 +166,6 @@ class BoundariesList(BoundariesBase):
             **kwargs:
                 Additional keyword arguments (unused)
         """
-        if config["boundaries.accept_lists"] and ("low" in data or "high" in data):
-            # check for legacy format that has been deprecated on 2024-11-23
-            warnings.warn(
-                "Deprecated format for boundary conditions. " + cls.get_help(),
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            return [
-                get_boundary_axis(grid, i, data, rank=rank)
-                for i in range(grid.num_axes)
-            ]
-
         if _is_local_bc_data(data):
             # detected identifier signifying that a single condition was specified
             # -> create the same boundary condition for all axes
@@ -311,30 +299,7 @@ class BoundariesList(BoundariesBase):
         elif isinstance(data, dict):
             # dictionaries can either specify boundary conditions for separate sides or
             # they can specify a single boundary condition that is used on all sides
-
             bcs = cls._parse_from_dict(data, grid=grid, rank=rank)
-
-        elif config["boundaries.accept_lists"] and hasattr(data, "__len__"):
-            # sequences have been deprecated on 2024-11-23
-            warnings.warn(
-                "Deprecated format for boundary conditions. " + cls.get_help(),
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if len(data) == grid.num_axes:
-                # assume that data is given for each boundary
-                bcs = [
-                    get_boundary_axis(grid, i, boundary, rank=rank)
-                    for i, boundary in enumerate(data)
-                ]
-            elif grid.num_axes == 1 and len(data) == 2:
-                # special case where the two sides can be specified directly
-                bcs = [get_boundary_axis(grid, 0, data, rank=rank)]
-            else:
-                raise BCDataError(
-                    f"Got {len(data)} boundary conditions, but grid has "
-                    f"{grid.num_axes} axes. " + cls.get_help()
-                )
 
         else:
             # unknown format
@@ -506,7 +471,7 @@ class BoundariesSetter(BoundariesBase):
 
     The function must have accept a :class:`~numpy.ndarray`, which contains the full
     field data including the ghost points, and a second, optional argument, which is a
-    dictionary containing additional parameters, like the current time point `t` in case
+    NamedTuple containing additional parameters, like the current time point `t` in case
     of a simulation.
 
     Example:
@@ -517,7 +482,7 @@ class BoundariesSetter(BoundariesBase):
 
         .. code-block:: python
 
-            def setter(data, args=None):
+            def setter(data, args: NamedTuple = None):
                 data[0, :] = data[1, :]  # Vanishing derivative at left side
                 data[-1, :] = 2 - data[-2, :]  # Fixed value `1` at right side
                 data[:, 0] = data[:, -2]  # Periodic BC at top
@@ -559,7 +524,9 @@ class BoundariesSetter(BoundariesBase):
 
         return BoundariesSetter(data, grid, rank=rank)
 
-    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
+    def set_ghost_cells(
+        self, data_full: NumericArray, *, args: NamedTuple | None = None
+    ) -> None:
         """Set the ghost cells for all boundaries.
 
         Args:

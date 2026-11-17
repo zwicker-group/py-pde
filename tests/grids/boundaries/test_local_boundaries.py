@@ -2,6 +2,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from collections import namedtuple
+
 import numpy as np
 import pytest
 
@@ -23,6 +25,7 @@ from pde.grids.boundaries.local import (
     registered_boundary_condition_classes,
     registered_boundary_condition_names,
 )
+from pde.tools.typing import TimeArgs
 
 
 def test_get_arr_1d():
@@ -653,7 +656,7 @@ def test_user_bcs_numpy(dim, target):
     """Test setting user BCs."""
     value = np.arange(3) if dim == 2 else 1
     grid = UnitGrid([3] * dim)
-    bcs = grid.get_boundary_conditions({"type": "user"})
+    bcs = grid.get_boundary_conditions({"type": f"user_{target}"})
 
     # use normal method to set BCs
     f1 = ScalarField(grid)
@@ -666,12 +669,13 @@ def test_user_bcs_numpy(dim, target):
     f2._data_full = 3
     f2.set_ghost_cells(bc=bcs)
     np.testing.assert_allclose(f2._data_full, 3)
-    f2.set_ghost_cells(bc=bcs, args={"t": 1})
+    f2.set_ghost_cells(bc=bcs, args=TimeArgs(t=1))
     np.testing.assert_allclose(f2._data_full, 3)
     f2._data_full = 0
 
     # test whether calling setter with user data works properly
-    bcs.set_ghost_cells(f2._data_full, args={target: value})
+    Args = namedtuple("Args", [target])  # noqa: PYI024
+    bcs.set_ghost_cells(f2._data_full, args=Args(value))
 
     np.testing.assert_allclose(f1._data_full, f2._data_full)
 
@@ -687,7 +691,7 @@ def test_user_bcs_numba(dim, target):
     elif dim == 3:
         value = np.arange(9).reshape(3, 3)
     grid = UnitGrid([3] * dim)
-    bcs = grid.get_boundary_conditions({"type": "user"})
+    bcs = grid.get_boundary_conditions({"type": f"user_{target}"})
 
     # use normal method to set BCs
     f1 = ScalarField(grid)
@@ -701,13 +705,42 @@ def test_user_bcs_numba(dim, target):
     f2._data_full = 3
     setter(f2._data_full)
     np.testing.assert_allclose(f2._data_full, 3)
-    setter(f2._data_full, args={"t": 1})
+    setter(f2._data_full, args=TimeArgs(t=1))
     np.testing.assert_allclose(f2._data_full, 3)
     f2._data_full = 0
 
     # test whether calling setter with user data works properly
-    setter(f2._data_full, args={target: value})
+    Args = namedtuple("Args", [target, "t"])  # noqa: PYI024
+    setter(f2._data_full, args=Args(value, 0))
     np.testing.assert_allclose(f1._data_full, f2._data_full)
+
+
+@pytest.mark.parametrize("dim", [1, 2])
+@pytest.mark.parametrize("target", ["virtual_point", "value", "derivative"])
+def test_user_bcs_comparison(dim, target, rng):
+    """Compare user BCs between numpy and numba."""
+    value = np.arange(3) if dim == 2 else 1
+    grid = UnitGrid([3] * dim)
+    bcs = grid.get_boundary_conditions({"type": f"user_{target}"})
+    field = ScalarField.random_uniform(grid, rng=rng)
+
+    # define boundary arguments
+    Args = namedtuple("Args", [target])  # noqa: PYI024
+    args = Args(value)
+
+    # compare ghost cell setters
+    f1, f2 = field.copy(), field.copy()
+    f1.set_ghost_cells(bc=bcs, args=args)
+    setter = get_backend("numba").make_ghost_cell_setter(bcs=bcs)
+    setter(f2._data_full, args=args)
+    np.testing.assert_allclose(f1._data_full, f2._data_full)
+
+    # compare operators
+    f1, f2 = field.copy(), field.copy()
+    l1 = f1.laplace(bc=bcs, args=args)
+    laplace = get_backend("numba").make_operator(grid, "laplace", bcs=bcs)
+    l2_data = laplace(f2.data, args=args)
+    np.testing.assert_allclose(l1.data, l2_data)
 
 
 def test_mpi_bc():
