@@ -423,12 +423,34 @@ def _fourier_lower_scalar(
 
             return -k_sq * lower(arg)
 
+        if isinstance(node, Dot) and node.has(*perturbations):
+            msg = (
+                "Fourier lowering of Dot products involving perturbations is not "
+                "supported by scalar dispersion analysis."
+            )
+            raise NotImplementedError(msg)
+
         # For now, reject vector operators in the scalar-only transformer.
         if isinstance(node, (LinearDifferentialOperator, GradientSquared)):
             msg = (
                 f"Fourier lowering of {type(node).__name__} requires a "
                 "vector/tensor Fourier representation."
             )
+            raise NotImplementedError(msg)
+
+        if isinstance(node, AppliedUndef):
+            if node.func.__name__ == "integral":
+                msg = "Fourier lowering of the integral operator is not supported."
+            elif any(not isinstance(symbol, sp.Dummy) for symbol in node.free_symbols):
+                msg = (
+                    "Fourier lowering does not support spatially varying external "
+                    f"fields such as `{node}`."
+                )
+            else:
+                msg = (
+                    f"Fourier lowering of undefined function `{node.func.__name__}` "
+                    "is not supported."
+                )
             raise NotImplementedError(msg)
 
         # Recurse through ordinary SymPy expressions.

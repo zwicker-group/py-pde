@@ -6,7 +6,9 @@ import numpy as np
 import pytest
 import sympy as sp
 
+from pde import PDE
 from pde.tools.linear_stability import (
+    Dot,
     Laplace,
     dispersion_matrix,
     dispersion_relation_scalar,
@@ -115,6 +117,55 @@ def test_dispersion_matrix_input_and_output_types(as_string, ret_type):
         np.testing.assert_array_equal(dispersion(np.array([0, 1])), expected)
 
 
+def test_dispersion_matrix_checks_steady_state():
+    """Test checking and bypassing the steady-state requirement."""
+    expressions = ["u + 1", "v"]
+    state_hom = {"u": 0, "v": 0}
+
+    with pytest.raises(ValueError, match="does not vanish"):
+        dispersion_matrix(expressions, state_hom)
+
+    dispersion = dispersion_matrix(expressions, state_hom, check=False)
+    assert dispersion(0) == sp.eye(2)
+
+
+def test_dispersion_matrix_invalid_return_type():
+    """Test that dispersion matrices reject unknown output types."""
+    with pytest.raises(ValueError, match="Unknown `ret_type`"):
+        dispersion_matrix(["u", "v"], {"u": 0, "v": 0}, ret_type="unknown")
+
+
+def test_dispersion_matrix_numpy_output_shape():
+    """Test matrix output shapes for scalar and multidimensional wave numbers."""
+    dispersion = dispersion_matrix(
+        ["-u + laplace(u) + 2*v", "3*u - 2*v + 4*laplace(v)"],
+        {"u": 0, "v": 0},
+        ret_type="numpy",
+    )
+    k_sq = np.array([[0, 1], [2, 3]])
+
+    scalar_result = dispersion(1)
+    assert scalar_result.shape == (2, 2)
+    np.testing.assert_array_equal(scalar_result, [[-2, 2], [3, -6]])
+
+    result = dispersion(k_sq)
+    assert result.shape == (2, 2, 2, 2)
+    np.testing.assert_array_equal(result[..., 0, 0], -1 - k_sq)
+    np.testing.assert_array_equal(result[..., 0, 1], 2)
+    np.testing.assert_array_equal(result[..., 1, 0], 3)
+    np.testing.assert_array_equal(result[..., 1, 1], -2 - 4 * k_sq)
+
+
+def test_pde_dispersion_matrix_wrapper():
+    """Test the PDE wrapper for the dispersion matrix."""
+    pde = PDE({"u": "-u + laplace(u) + 2*v", "v": "3*u - 2*v + 4*laplace(v)"})
+    dispersion = pde._jacobian_spectral(0, ret_type="numpy")
+
+    result = dispersion(np.array([0, 1]))
+    expected = np.array([[[-1, 2], [3, -2]], [[-2, 2], [3, -6]]])
+    np.testing.assert_array_equal(result, expected)
+
+
 def test_dispersion_relation_scalar_simple():
     """Test dispersion relation for a simple diffusive equation."""
     laplace = sp.Function("laplace")
@@ -194,6 +245,30 @@ def test_dispersion_relation_scalar_invalid_return_type():
         dispersion_relation_scalar("laplace(u)", {"u": 0}, ret_type="unknown")
 
 
+def test_dispersion_relation_scalar_dot_coefficient():
+    """Test dot products that act as scalar coefficients in a dispersion relation."""
+    dispersion = dispersion_relation_scalar("dot(A, B) * u + laplace(u)", {"u": 0})
+    k_sq = sp.Symbol("k_sq")
+    expected = Dot(sp.Symbol("A"), sp.Symbol("B")) - k_sq
+
+    assert dispersion(k_sq) == expected
+
+
+@pytest.mark.parametrize(
+    ("expression", "message"),
+    [
+        ("unknown(u)", "undefined function"),
+        ("integral(u)", "integral operator"),
+        ("gradient(u)", "Gradient"),
+        ("a(x) * u", "spatially varying external field"),
+    ],
+)
+def test_dispersion_relation_scalar_unsupported_features(expression, message):
+    """Test useful errors for features unsupported by scalar Fourier analysis."""
+    with pytest.raises(NotImplementedError, match=message):
+        dispersion_relation_scalar(expression, {"u": 0}, check=False)
+
+
 def test_dispersion_relation_scalar_diffusion_reaction():
     """Test dispersion relation for a reaction-diffusion system."""
     laplace = sp.Function("laplace")
@@ -248,6 +323,3 @@ def test_dispersion_relation_complex():
     )
     q2 = sp.Symbol("q2")
     assert result(q2).equals(2 - q2 / 2 - q2**2 * sp.parse_expr("2**-(1/4)"))
-
-
-# TODO: test unsupported functions (undefined, integral, gradient, dot, constant fields)
