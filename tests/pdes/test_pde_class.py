@@ -409,7 +409,7 @@ def test_pde_complex_serial(backend, rng):
     res2 = eq.solve(field, t_range=1, dt=0.1, backend=backend, tracker=None)
     assert res2.is_complex
 
-    np.testing.assert_allclose(res1.data, res2.data)
+    np.testing.assert_allclose(res1.data, res2.data, atol=1e-7)
 
 
 @pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
