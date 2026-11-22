@@ -697,16 +697,13 @@ class PDE(SDEBase):
             # add dot product between two vector fields. This can for instance
             # appear when two gradients of scalar fields need to be multiplied
             ops_general["dot"] = VectorField(state.grid).make_dot_operator(backend)
-
         if "inner" in operators:
             # inner is a synonym for dot product operator
             ops_general["inner"] = VectorField(state.grid).make_dot_operator(backend)
-
         if "outer" in operators and backend != "torch":
             # generate an operator that calculates an outer product
             vec_field = VectorField(state.grid)
             ops_general["outer"] = vec_field.make_outer_prod_operator(backend)
-
         if "integral" in operators:
             # add an operator that integrates a field
             ops_general["integral"] = state.grid.make_integrator(backend)

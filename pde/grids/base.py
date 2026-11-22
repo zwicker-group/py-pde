@@ -1441,10 +1441,10 @@ class GridBase(metaclass=ABCMeta):
 
     def make_integrator(
         self,
-        backend: str | BackendBase = "numpy",
+        backend: str | BackendBase[TNativeArray] = "numpy",
         *,
         method: Literal["integral", "mean"] = "integral",
-    ) -> Callable[[NumericArray], NumberOrArray]:
+    ) -> Callable[[TNativeArray], Number | TNativeArray]:
         """Return a function computing the integral or spatial mean over the grid.
 
         If this function is used in a multiprocessing run (using MPI), the integrals are
@@ -1477,9 +1477,8 @@ class GridBase(metaclass=ABCMeta):
             volume = self._mesh.basegrid.volume
 
         @backend_impl.compile_function
-        def mean(arr: NumericArray) -> NumberOrArray:
-            average: NumberOrArray = integrate(arr) / volume
-            return average
+        def mean(arr: TNativeArray) -> Number | TNativeArray:
+            return integrate(arr) / volume  # type: ignore
 
         return mean
 
