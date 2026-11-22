@@ -1440,10 +1440,12 @@ class GridBase(metaclass=ABCMeta):
         )
 
     def make_integrator(
-        self, backend: str | BackendBase = "numpy"
-    ) -> Callable[[NumericArray], NumberOrArray]:
-        """Return function that can be used to integrates discretized data over the
-        grid.
+        self,
+        backend: str | BackendBase[TNativeArray] = "numpy",
+        *,
+        method: Literal["integral", "mean"] = "integral",
+    ) -> Callable[[TNativeArray], Number | TNativeArray]:
+        """Return a function computing the integral or spatial mean over the grid.
 
         If this function is used in a multiprocessing run (using MPI), the integrals are
         performed on all subgrids and then accumulated. Each process then receives the
@@ -1452,14 +1454,33 @@ class GridBase(metaclass=ABCMeta):
         Args:
             backend (str):
                 The backend to use for making the operator
+            method:
+                Select the integral or the volume-weighted mean over the spatial axes.
 
         Returns:
-            callable: A function that takes a numpy array and returns the integral with
-            the correct weights given by the cell volumes.
+            callable: A function reducing the spatial axes using the cell volumes as
+            weights, with normalization by the domain volume for the mean.
         """
         from ..backends import get_backend
 
-        return get_backend(backend).make_integrator(self)
+        backend_impl = get_backend(backend)
+        integrate = backend_impl.make_integrator(self)
+        if method == "integral":
+            return integrate
+        if method != "mean":
+            msg = f"Unknown integration method: {method!r}"
+            raise ValueError(msg)
+
+        # MPI integrators sum across subgrids and need the full domain volume.
+        volume = self.volume
+        if backend_impl.supports_mpi and self._mesh is not None:
+            volume = self._mesh.basegrid.volume
+
+        @backend_impl.compile_function
+        def mean(arr: TNativeArray) -> Number | TNativeArray:
+            return integrate(arr) / volume  # type: ignore
+
+        return mean
 
 
 def registered_grids() -> dict[str, type[GridBase]]:

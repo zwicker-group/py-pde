@@ -99,7 +99,8 @@ class PDE(SDEBase):
                 field. Moreover, the dot product between two vector fields can be
                 denoted by using `dot(field1, field2)` in the expression, an outer
                 product is calculated using `outer(field1, field2)`, and
-                `integral(field)` denotes an integral over a field.
+                `integral(field)` and `mean(field)` give the integral and the
+                volume-weighted spatial mean of a field, respectively.
                 More information can be found in the
                 :ref:`expression documentation <documentation-expressions>`.
             bc:
@@ -696,19 +697,18 @@ class PDE(SDEBase):
             # add dot product between two vector fields. This can for instance
             # appear when two gradients of scalar fields need to be multiplied
             ops_general["dot"] = VectorField(state.grid).make_dot_operator(backend)
-
         if "inner" in operators:
             # inner is a synonym for dot product operator
             ops_general["inner"] = VectorField(state.grid).make_dot_operator(backend)
-
         if "outer" in operators and backend != "torch":
             # generate an operator that calculates an outer product
             vec_field = VectorField(state.grid)
             ops_general["outer"] = vec_field.make_outer_prod_operator(backend)
-
         if "integral" in operators:
             # add an operator that integrates a field
             ops_general["integral"] = state.grid.make_integrator(backend)
+        if "mean" in operators:
+            ops_general["mean"] = state.grid.make_integrator(backend, method="mean")
 
         # Create the right hand sides for all variables. It is important to do this in a
         # separate function, so the closures work reliably
@@ -1205,7 +1205,8 @@ class PDE(SDEBase):
             all variables and then performs a Fourier transform. This method currently
             only supports scalar fields, so that inner and outer products are not
             permissible. Moreover, `user_funcs` are typically not supported and
-            `integral` does not work. Finally, boundary conditions are not supported.
+            `integral` and `mean` are unsupported. Finally, boundary conditions are not
+            supported.
 
         Args:
             state_hom (number or list or dict):

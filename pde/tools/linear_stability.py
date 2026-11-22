@@ -446,18 +446,16 @@ def _fourier_lower_scalar(
             raise NotImplementedError(msg)
 
         if isinstance(node, AppliedUndef):
-            if node.func.__name__ == "integral":
-                msg = "Fourier lowering of the integral operator is not supported."
+            name = node.func.__name__
+            if name in {"integral", "mean"}:
+                msg = f"Fourier lowering of the {name} operator is unsupported."
             elif any(not isinstance(symbol, sp.Dummy) for symbol in node.free_symbols):
                 msg = (
                     "Fourier lowering does not support spatially varying external "
                     f"fields such as `{node}`."
                 )
             else:
-                msg = (
-                    f"Fourier lowering of undefined function `{node.func.__name__}` "
-                    "is not supported."
-                )
+                msg = f"Fourier lowering of undefined function `{name}` is unsupported."
             raise NotImplementedError(msg)
 
         # Recurse through ordinary SymPy expressions.
