@@ -361,6 +361,9 @@ cell volumes, calculating the integral using only :mod:`numpy` is easy:
 
 Note that :code:`cell_volumes` is a simple number for Cartesian grids, but is
 an array for more complicated grids, where the cell volume is not uniform.
+In a :class:`~pde.pdes.pde.PDE` expression, ``mean(c)`` computes the spatial
+mean of field ``c`` with these same weights. For example, ``c - mean(c)``
+subtracts the domain average from the field at each point.
 
 
 Field interpolation

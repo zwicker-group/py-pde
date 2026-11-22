@@ -269,6 +269,9 @@ def test_integration_parallel(grid, decomposition, rank):
     assert rank > 0 or np.isscalar(res)
     np.testing.assert_allclose(res, expected)
 
+    mean = subfield.grid.make_integrator(backend="numba_mpi", method="mean")
+    np.testing.assert_allclose(mean(subfield.data), expected / grid.volume)
+
 
 def test_get_optimal_decomposition():
     """Test _get_optimal_decomposition function."""

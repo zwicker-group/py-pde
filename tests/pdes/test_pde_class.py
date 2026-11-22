@@ -639,6 +639,18 @@ def test_pde_integral(backend, rng):
         np.testing.assert_allclose(res.data, field.data - field.magnitude, atol=1e-3)
 
 
+@pytest.mark.parametrize("backend", ALL_BACKENDS, indirect=True)
+def test_pde_mean(backend):
+    """A mean over radial cells weights each cell by its physical volume."""
+    # A disk of area 16 gives the four annuli areas of 1, 3, 5, and 7.
+    grid = grids.PolarSymGrid(4 / np.sqrt(np.pi), 4)
+    field = ScalarField(grid, [1.0, 2.0, 3.0, 4.0])
+    eq = PDE({"c": "c - mean(c)"})
+    rhs = eq.make_pde_rhs(field, backend=backend)
+    res = backend._apply_function(rhs, field.data, 0)
+    np.testing.assert_allclose(res, field.data - 50 / 16)
+
+
 def test_anti_periodic_bcs():
     """Test a simulation with anti-periodic BCs."""
     grid = grids.CartesianGrid([[-10, 10]], 32, periodic=True)
