@@ -447,7 +447,7 @@ def _fourier_lower_scalar(
 
         if isinstance(node, AppliedUndef):
             name = node.func.__name__
-            if name in {"integral", "mean"}:
+            if name in {"integral", "average"}:
                 msg = f"Fourier lowering of the {name} operator is unsupported."
             elif any(not isinstance(symbol, sp.Dummy) for symbol in node.free_symbols):
                 msg = (
