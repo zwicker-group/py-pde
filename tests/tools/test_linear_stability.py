@@ -259,7 +259,7 @@ def test_dispersion_relation_scalar_dot_coefficient():
     [
         ("unknown(u)", "undefined function"),
         ("integral(u)", "integral operator"),
-        ("mean(u)", "mean operator"),
+        ("average(u)", "average operator"),
         ("gradient(u)", "Gradient"),
         ("a(x) * u", "spatially varying external field"),
     ],

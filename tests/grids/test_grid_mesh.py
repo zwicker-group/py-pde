@@ -269,7 +269,7 @@ def test_integration_parallel(grid, decomposition, rank):
     assert rank > 0 or np.isscalar(res)
     np.testing.assert_allclose(res, expected)
 
-    mean = subfield.grid.make_integrator(backend="numba_mpi", method="mean")
+    mean = subfield.grid.make_integrator(backend="numba_mpi", method="average")
     np.testing.assert_allclose(mean(subfield.data), expected / grid.volume)
 
 

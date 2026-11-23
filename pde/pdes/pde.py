@@ -99,8 +99,8 @@ class PDE(SDEBase):
                 field. Moreover, the dot product between two vector fields can be
                 denoted by using `dot(field1, field2)` in the expression, an outer
                 product is calculated using `outer(field1, field2)`, and
-                `integral(field)` and `mean(field)` give the integral and the
-                volume-weighted spatial mean of a field, respectively.
+                `integral(field)` and `average(field)` give the integral and the
+                volume-weighted spatial average of a field, respectively.
                 More information can be found in the
                 :ref:`expression documentation <documentation-expressions>`.
             bc:
@@ -707,8 +707,10 @@ class PDE(SDEBase):
         if "integral" in operators:
             # add an operator that integrates a field
             ops_general["integral"] = state.grid.make_integrator(backend)
-        if "mean" in operators:
-            ops_general["mean"] = state.grid.make_integrator(backend, method="mean")
+        if "average" in operators:
+            ops_general["average"] = state.grid.make_integrator(
+                backend, method="average"
+            )
 
         # Create the right hand sides for all variables. It is important to do this in a
         # separate function, so the closures work reliably
@@ -1205,8 +1207,8 @@ class PDE(SDEBase):
             all variables and then performs a Fourier transform. This method currently
             only supports scalar fields, so that inner and outer products are not
             permissible. Moreover, `user_funcs` are typically not supported and
-            `integral` and `mean` are unsupported. Finally, boundary conditions are not
-            supported.
+            `integral` and `average` are unsupported. Finally, boundary conditions are
+            not supported.
 
         Args:
             state_hom (number or list or dict):

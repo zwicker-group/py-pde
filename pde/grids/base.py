@@ -1443,9 +1443,9 @@ class GridBase(metaclass=ABCMeta):
         self,
         backend: str | BackendBase[TNativeArray] = "numpy",
         *,
-        method: Literal["integral", "mean"] = "integral",
+        method: Literal["integral", "average"] = "integral",
     ) -> Callable[[TNativeArray], Number | TNativeArray]:
-        """Return a function computing the integral or spatial mean over the grid.
+        """Return a function computing the integral or spatial average over the grid.
 
         If this function is used in a multiprocessing run (using MPI), the integrals are
         performed on all subgrids and then accumulated. Each process then receives the
@@ -1459,7 +1459,7 @@ class GridBase(metaclass=ABCMeta):
 
         Returns:
             callable: A function reducing the spatial axes using the cell volumes as
-            weights, with normalization by the domain volume for the mean.
+            weights, with normalization by the domain volume for the average.
         """
         from ..backends import get_backend
 
@@ -1467,7 +1467,7 @@ class GridBase(metaclass=ABCMeta):
         integrate = backend_impl.make_integrator(self)
         if method == "integral":
             return integrate
-        if method != "mean":
+        if method != "average":
             msg = f"Unknown integration method: {method!r}"
             raise ValueError(msg)
 
