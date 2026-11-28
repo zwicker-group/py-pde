@@ -121,6 +121,41 @@ def run_test_types(*, report: bool = False, verbose: bool = True) -> int:
     return sp.run(args, cwd=PACKAGE_PATH).returncode
 
 
+def _check_mpi_error_propagation(command: list[str], env: dict[str, str]) -> bool:
+    """Check failure propagation in a separate two-rank job."""
+    probe = PACKAGE_PATH / "tests" / "tools" / "_mpi_error_probe.py"
+    # Keep the main pytest job outside the communicator that will abort.
+    print("Checking MPI error propagation...", flush=True)
+    with tempfile.TemporaryFile() as output:
+        try:
+            result = sp.run(
+                [*command, str(probe)],
+                env=env,
+                cwd=PACKAGE_PATH,
+                stdout=output,
+                stderr=sp.STDOUT,
+                timeout=60,
+            )
+        except sp.TimeoutExpired:
+            print("MPI error propagation check timed out.", file=sys.stderr)
+            return False
+        output.seek(0)
+        log = output.read().decode(errors="replace")
+
+    if (
+        result.returncode != 0
+        and "[FATAL] rank=" in log
+        and "Undefined variable in expression: undefined_rhs" in log
+    ):
+        return True
+
+    print(
+        f"MPI error propagation check failed (exit {result.returncode}):\n{log}",
+        file=sys.stderr,
+    )
+    return False
+
+
 def run_unit_tests(
     *,
     runslow: bool = False,
@@ -164,7 +199,7 @@ def run_unit_tests(
 
     # modify current environment
     env = os.environ.copy()
-    env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = os.pathsep.join((str(PACKAGE_PATH), env.get("PYTHONPATH", "")))
     env["MPLBACKEND"] = "agg"
     if nojit:
         env["NUMBA_DISABLE_JIT"] = "1"
@@ -176,6 +211,9 @@ def run_unit_tests(
 
     # determine how to invoke the python interpreter
     if use_mpi:
+        if not importlib.util.find_spec("numba_mpi"):
+            msg = "Module `numba_mpi` is required to test with MPI"
+            raise RuntimeError(msg)
         # run pytest using MPI with two cores
         args = ["mpiexec", "-n", "2"]
         if sys.platform == "darwin":
@@ -183,6 +221,9 @@ def run_unit_tests(
     else:
         args = []
     args += [sys.executable]
+
+    if use_mpi and pattern is None and not _check_mpi_error_propagation(args, env):
+        return 1
 
     # add the arguments to invoke memory tracing
     if use_memray:
@@ -206,11 +247,7 @@ def run_unit_tests(
     if runinteractive:
         args.append("--runinteractive")  # also run interactive tests
     if use_mpi:
-        if importlib.util.find_spec("numba_mpi"):
-            args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
-        else:
-            msg = "Module `numba_mpi` is required to test with MPI"
-            raise RuntimeError(msg)
+        args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
 
     # run tests using multiple cores?
     if num_cores == "auto":
